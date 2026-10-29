@@ -251,6 +251,8 @@ struct Buffer {
     knockout_attribute: bool,
     /// Every store's opacity equals its shape.
     opaque_members: bool,
+    /// Every store's opacity after the first equals its shape.
+    later_opaque: bool,
     /// Every store blends Normal.
     normal: bool,
     /// It provides the backdrop of a non-isolated child whose content is not
@@ -281,8 +283,12 @@ struct Buffer {
 }
 
 impl Buffer {
+    /// Its members knock each other out: unless every store after the
+    /// first has opacity equal to its shape, where knockout is source-over
+    /// (11.4.6). The first store meets the initial backdrop, where it is
+    /// source-over at any opacity.
     fn knockout(&self) -> bool {
-        self.knockout_attribute && !self.opaque_members
+        self.knockout_attribute && !self.later_opaque
     }
 
     /// Normal content: compositing it onto a backdrop equals compositing
@@ -294,6 +300,8 @@ impl Buffer {
     fn merge(&mut self, other: &Self, bytes: &mut Meter) -> Result<()> {
         self.forced |= other.forced;
         self.opaque_members &= other.opaque_members;
+        // Merged stores follow its own.
+        self.later_opaque &= other.opaque_members;
         self.normal &= other.normal;
         self.reads |= other.reads;
         self.stores = self.stores.saturating_add(other.stores);
@@ -350,6 +358,7 @@ impl Survey<'_> {
             forced: self.inputs.simulate || layout.process != Process::Rgb,
             knockout_attribute: knockout,
             opaque_members: true,
+            later_opaque: true,
             normal: true,
             reads: false,
             stores: 0,
@@ -526,6 +535,7 @@ impl Survey<'_> {
             },
         );
         let target = &mut self.buffers[buffer];
+        let first = target.stores == 0 && count == 1;
         target.stores = target.stores.saturating_add(count);
         target.transfer |= transfer;
         // A store that keeps channels reads its backdrop.
@@ -538,8 +548,9 @@ impl Survey<'_> {
         // only when they blend Normal and keep no channel of the backdrop.
         let shaped =
             stores.alpha_shape && (state.alpha_is_shape || (state.alpha == 1.0 && mask.is_none()));
-        target.opaque_members &=
-            shaped && cell.is_none() && state.blend == BlendMode::Normal && !keeps;
+        let member = cell.is_none() && state.blend == BlendMode::Normal && !keeps;
+        target.opaque_members &= shaped && member;
+        target.later_opaque &= (shaped || first) && member;
         if cell_reads {
             // A cell whose content reads its backdrop reads this buffer.
             target.reads = true;
@@ -672,6 +683,7 @@ impl Survey<'_> {
         target.forced |= state.blend != BlendMode::Normal;
         target.transfer |= transfer;
         target.opaque_members &= pending;
+        target.later_opaque &= pending;
         if pending {
             bytes.reserve_capacity(&mut target.pending, 1)?;
             target.pending.push(((id, parent_layout.process), child));

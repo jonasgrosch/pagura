@@ -192,6 +192,76 @@ fn the_f32_count_bound_sends_long_faint_stacks_to_f64() {
 }
 
 #[test]
+fn knockout_groups_of_opaque_later_members_composite_as_source_over() {
+    let mut b = Build::new(8.0, 6.0);
+    let back = b.rgb([0.1, 0.5, 0.9]);
+    let green = b.rgb([0.6, 0.73, 0.35]);
+    let dark = b.rgb([0.45, 0.55, 0.24]);
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(PAGE, [0.0, 0.0, 8.0, 6.0], back, mark(StateId(0)));
+    // Fill and stroke of one path (11.7.4.4): a translucent fill under an
+    // opaque stroke, non-isolated and isolated.
+    for isolated in [false, true] {
+        let attributes = GroupAttributes {
+            isolated,
+            knockout: true,
+            space: None,
+        };
+        let both = b.transparency(PAGE, attributes, mark(StateId(0)));
+        b.rect(both, [1.0, 1.0, 5.5, 4.5], green, mark(half));
+        b.rect(both, [0.75, 0.75, 2.25, 5.0], dark, mark(StateId(0)));
+    }
+    let prepared = b
+        .prepare(&b.request(b.page(), 32), &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(prepared.plan.groups.len(), 1);
+    check(&b);
+    // A translucent member after the first knocks out.
+    let knockout = GroupAttributes {
+        isolated: false,
+        knockout: true,
+        space: None,
+    };
+    let group = b.transparency(PAGE, knockout, mark(StateId(0)));
+    b.rect(group, [3.0, 2.0, 7.5, 5.5], dark, mark(StateId(0)));
+    b.rect(group, [2.5, 1.5, 6.0, 4.0], green, mark(half));
+    assert_eq!(formats(&b)[1..], [Format::F64]);
+    check(&b);
+    // So does a translucent first run of two glyphs.
+    let mut b = Build::new(6.0, 4.0);
+    let back = b.rgb([0.1, 0.5, 0.9]);
+    let red = b.rgb([0.9, 0.2, 0.1]);
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(PAGE, [0.0, 0.0, 6.0, 4.0], back, mark(StateId(0)));
+    let text = b.transparency(PAGE, knockout, mark(StateId(0)));
+    let source = GlyphSource {
+        outline: rect_path([0.0, 0.0, 2.5, 2.5]),
+        key: OutlineKey {
+            font: pagura_interpret::FontKey(1),
+            glyph: 2,
+        },
+        linear: Transform::IDENTITY,
+    };
+    b.node(
+        text,
+        Node::Glyphs(GlyphsNode {
+            sources: vec![source],
+            placements: (0..2_u32)
+                .map(|i| Placement {
+                    source: 0,
+                    origin: Point::new(0.5 + 1.5 * f64::from(i), 0.5),
+                })
+                .collect(),
+            positions: Vec::new(),
+            paint: red,
+            mark: mark(half),
+        }),
+    );
+    assert_eq!(formats(&b)[1..], [Format::F64]);
+    check(&b);
+}
+
+#[test]
 fn knockout_groups_of_opaque_members_fold_with_their_plain_groups() {
     let knockout = GroupAttributes {
         isolated: false,
