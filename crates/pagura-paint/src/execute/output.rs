@@ -216,13 +216,25 @@ impl Preview {
         }
         // Only the page's spots carry tints; the kept ones past them are 0.
         let tint = |c: f64| 1.0 - (c / alpha).clamp(0.0, 1.0);
-        let equivalent = match &self.last {
-            Some((previous, equivalent))
-                if previous.iter().zip(spots).all(|(&p, &c)| p == tint(c)) =>
-            {
-                *equivalent
-            }
-            _ => {
+        let equivalent =
+            if let Some((previous, cached)) = &mut self.last {
+                let changed = previous.iter().zip(spots).enumerate().find_map(
+                    |(i, (&previous, &component))| {
+                        let value = tint(component);
+                        (previous != value).then_some((i, value))
+                    },
+                );
+                if let Some((i, value)) = changed {
+                    // The equal prefix already holds these tints. Keep it,
+                    // including the first changed value just calculated.
+                    previous[i] = value;
+                    for (value, &component) in previous[i + 1..].iter_mut().zip(&spots[i + 1..]) {
+                        *value = tint(component);
+                    }
+                    *cached = equivalent(output, previous, usage);
+                }
+                *cached
+            } else {
                 let mut tints = [0.0; crate::plan::MAX_SPOTS];
                 for (value, &c) in tints.iter_mut().zip(spots) {
                     *value = tint(c);
@@ -230,8 +242,7 @@ impl Preview {
                 let equivalent = equivalent(output, &tints, usage);
                 self.last = Some((tints, equivalent));
                 equivalent
-            }
-        };
+            };
         let mixed = [0, 1, 2, 3].map(|i| (cmyk[i] + equivalent[i] - 1.0).max(0.0));
         process::rgb(Process::Cmyk, &mixed)
     }
@@ -354,6 +365,39 @@ mod tests {
             assert_eq!(
                 wide(&output, pixel, 0, &mut preview, &mut usage),
                 wide(&output, pixel, 0, &mut Preview::default(), &mut usage)
+            );
+        }
+    }
+    #[test]
+    fn a_long_kept_tint_prefix_survives_misses_and_opacity_changes() {
+        let count = crate::plan::MAX_SPOTS;
+        let output = Output {
+            layout: crate::plan::Layout {
+                process: Process::Cmyk,
+                spots: count,
+            },
+            background: [230, 245, 255, 255],
+            spots: (0..count)
+                .map(|channel| crate::plan::SpotPlan {
+                    convert: super::super::tests::ink([0.0, 0.8, 0.3, 0.0]),
+                    components: 1,
+                    inputs: vec![(0, channel)],
+                })
+                .collect(),
+            transfers: Vec::new(),
+        };
+        let (mut preview, mut usage) = (Preview::default(), Usage::default());
+        for k in 0..192 {
+            let alpha = [1.0, 0.5, 0.25][k / 8 % 3];
+            let mut pixel = vec![alpha; output.layout.stride()];
+            pixel[..4].copy_from_slice(&[0.0; 4]);
+            pixel[4 + count] = alpha;
+            let changed = [count - 1, 0, count / 2][k / 16 % 3];
+            pixel[4 + changed] = alpha * [0.125, 0.5, 0.875][k / 2 % 3];
+            assert_eq!(
+                wide(&output, &pixel, 0, &mut preview, &mut usage),
+                wide(&output, &pixel, 0, &mut Preview::default(), &mut usage),
+                "case {k} changed tint {changed}"
             );
         }
     }
