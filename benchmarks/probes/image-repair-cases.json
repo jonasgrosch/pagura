@@ -1,0 +1,125 @@
+{
+  "scope": "Pinned public pdf.js first-page observations; no acceptance or accuracy claims from successful rendering",
+  "cases": [
+    {
+      "id": "pdfjs/bitmap-composite-and-xnor-refine.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "c2046037b2617ffdde875d523bf56a428339d7a6f753c25f4f957317bc9ecc9a",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-composite-and-xnor-refine.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-composite-or-xor-replace-refine.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "cc9510f5b113c8a2053fbc3891e0c8275bf0f59e1ca44522832e77d6a26cc145",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-composite-or-xor-replace-refine.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-halftone-refine.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "f2efff25bcf1ee5d8ee87e3b7c54c7b75e8a1ad33c9e5be22386ed35648dfd7d",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-halftone-refine.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine-customat-tpgron.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "7a17d8f6d26061f3110efd54f297a7e0e8d4652e3086cc99e3c171d31fd0810f",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine-customat-tpgron.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine-customat.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "161d25d77c9bf788515dd0fc1aaaf6e35e1c23495acffe9cf99a98d567d1c5de",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine-customat.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine-lossless.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "f30056cb8e30203e3c16f00ffe28bc90bdb6af8aa72d58c14f19e71ec9c7cecf",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine-lossless.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine-page-subrect.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "74114e6f3925faf7145c0738168ecd3041c45c0ea69b2a91e7f105cdf7045bd0",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine-page-subrect.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine-page.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "7dbeb64018e183c77333996eeb5c2b9bcc90caaca8381ad42fb98a64c14025eb",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine-page.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine-refine.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "2ebb942ac5be0e066ab4ce204384a39b61692ca75fab0a4df4f36dae925e1f4d",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine-refine.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine-template1-tpgron.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "921c1eab4ece655029bb524eb22136d21f305d13779f86fbe81086b62a22d4b3",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine-template1-tpgron.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine-template1.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "019b26e3de36cbdd829e2faef67866f4140abb17040cd0b626e5bceab272b68c",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine-template1.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine-tpgron.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "6b17840d81375faafbe48e2150706f1a70271865ec18b9f2e6700e06dadbe86c",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine-tpgron.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-refine.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "ec9e2f9601167ccb00f961e33dec5cc46a23bf08e132f9dce5d3aecb3f1cd9f9",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-refine.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-symbol-refine.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "5e2ae6875ea8d0f1d2aecfaeff6aeac6acb8ff76eadef42e5f0fa7fc76c818b0",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-symbol-refine.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-trailing-7fff-stripped-harder-refine.pdf/p0",
+      "repair": "jbig2.page-capabilities",
+      "sha256": "17e08dc35c1fe2c6a9ce5db25ee53805248ccb9a8ae528a339d37d764f29dc9a",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-trailing-7fff-stripped-harder-refine.pdf"
+    },
+    {
+      "id": "pdfjs/bug_jpx.pdf/p0",
+      "repair": "jpx.raw-codestream",
+      "sha256": "4010d808557a72278368c05518367735ed186cbdd04974b8506275f9ac40f999",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bug_jpx.pdf"
+    },
+    {
+      "id": "pdfjs/issue5567.pdf/p0",
+      "repair": "jpx.raw-codestream",
+      "sha256": "35431e73744702c34b0a4295867550dba020afca0c85c5d7d3100533d27abfdc",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/issue5567.pdf"
+    },
+    {
+      "id": "pdfjs/jpx_numcomps.pdf/p0",
+      "repair": "jpx.raw-codestream",
+      "sha256": "fa0e65f443c750bc899fe1601b72e817b8160ceff5ad1db95247ddacd4cb15d4",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/jpx_numcomps.pdf"
+    },
+    {
+      "id": "pdfjs/jpx_subsampling.pdf/p0",
+      "repair": "jpx.raw-codestream",
+      "sha256": "01f92ae453f8f6d2e8c61574054c1ca3160e3481a3f9c8cc365aa1ff7cd3e1f3",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/jpx_subsampling.pdf"
+    },
+    {
+      "id": "pdfjs/red_stamp.pdf/p0",
+      "repair": "jpx.raw-codestream",
+      "sha256": "41371762b5efdde3b81896e64445736abdec2f9e09d37c8979054e430293cfe4",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/red_stamp.pdf"
+    }
+  ]
+}
