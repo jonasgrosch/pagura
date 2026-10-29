@@ -98,7 +98,7 @@
     "crates/pagura-image/src/jpx/packet.rs": "59c21e1adb720a157b2934dbf7665ed7ba90e3541ff48abe60b6a6cbee66c0eb",
     "crates/pagura-image/src/jpx/wavelet.rs": "3ca65a16c20137bc0d20046eea90aebbd6e7acfe868259696964490048fb1b53",
     "crates/pagura-image/src/jpx_channels.rs": "5015e7dab70d531a0b6da41272b8eab7229b97f80d80b5c68b6a9de0e74ecc3f",
-    "crates/pagura-image/src/jpx_image.rs": "ebd9527622166581d4bbf66452b3fa5eb54bcdea07052797923ad7ac52c9ba71",
+    "crates/pagura-image/src/jpx_image.rs": "558094a3066ae5d93e92b60ef8d37f7b0f0c9e26d8ae2b80ef65a724ab683ae4",
     "crates/pagura-image/src/source.rs": "bc057ac77c521d2cf13f49cbcbc711a0f8c7042d78d25691fd55093540d56dec",
     "crates/pagura-interpret/src/dump.rs": "9af4c6ef19ca9f2c3c41a29cd5afc2769422706cb5a7aed471ac165170fcf776",
     "crates/pagura-interpret/src/features.rs": "7e5a38d35b2250c7e352e0ae74cc14b61325aad361c4e75cd93af5a0a84c7e5f",
