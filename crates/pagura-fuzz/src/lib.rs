@@ -80,6 +80,7 @@ pub fn limits() -> Limits {
         string_bytes: 1 << 20,
         stream_bytes: 4 << 20,
         decoded_bytes: 16 << 20,
+        decode_bytes: 16 << 20,
         revisions: 64,
         pages: 256,
         pixels: 1 << 18,

@@ -242,3 +242,35 @@ fn native_planes_are_admitted_against_decode_bytes() {
         super::deferred::prepare(&mut frame, (None, None), &limits(need - 1), native).unwrap_err();
     assert_eq!(error.message, "JPEG native plane budget exceeded");
 }
+
+/// A narrow image can hold many padded component blocks. The output pixel
+/// cap alone does not keep its progressive working planes small.
+#[test]
+fn padded_frames_obey_small_working_memory_budgets() {
+    let mut data = vec![8, 0, 1, 0xff, 0xff, 4];
+    for id in 1..=4 {
+        data.extend([id, 0x44, 0]);
+    }
+    let limits = Limits {
+        pixels: 1 << 18,
+        decoded_bytes: 16 << 20,
+        decode_bytes: 16 << 20,
+        decode_work: 32 << 18,
+        ..Limits::default()
+    };
+    assert!(
+        super::Frame::header(
+            &data,
+            0xc2,
+            &Limits {
+                decode_bytes: Limits::default().decode_bytes,
+                ..limits
+            },
+        )
+        .is_ok()
+    );
+    let Err(error) = super::Frame::header(&data, 0xc2, &limits) else {
+        panic!("padded frame exceeded its small working-memory budget");
+    };
+    assert_eq!(error.message, "JPEG plane and coefficient budget exceeded");
+}
