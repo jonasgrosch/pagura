@@ -194,8 +194,9 @@ pub(super) fn read<'a>(
         4 => 4,
         _ => return Err(Error::syntax("invalid ICC component count")),
     };
-    let range = range(document, dictionary, usize::from(components))?;
     let profile = profiles.get(id, usize::from(components))?;
+    let lab = profile.as_deref().is_some_and(Profile::lab_input);
+    let range = range(document, dictionary, usize::from(components), lab)?;
     Ok(Read {
         dictionary,
         components,
@@ -205,9 +206,20 @@ pub(super) fn read<'a>(
     })
 }
 
-fn range(document: &Document, dictionary: &Dictionary, count: usize) -> Result<[[f64; 2]; 4]> {
+/// `Range`, by default the unit interval, and for a Lab-input profile the
+/// CIELAB ranges its components take: Table 65 requires `Range` to match
+/// the profile, and the unit interval would clip L* to 1.
+fn range(
+    document: &Document,
+    dictionary: &Dictionary,
+    count: usize,
+    lab: bool,
+) -> Result<[[f64; 2]; 4]> {
     let mut ranges = [[0.0, 1.0]; 4];
     let Some(value) = dictionary.get(b"Range") else {
+        if lab {
+            ranges[..3].copy_from_slice(&[[0.0, 100.0], [-128.0, 127.0], [-128.0, 127.0]]);
+        }
         return Ok(ranges);
     };
     let values = document
