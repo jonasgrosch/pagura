@@ -438,10 +438,13 @@ format costs bandwidth, not page-sized memory.
   transfer function, and every soft mask with a transfer function; buffers
   with spot channels and every buffer under overprint simulation; buffers
   whose blending space is not RGB; knockout groups, except those whose
-  members' opacity equals their shape (opaque members), which composite as
-  source-over; non-isolated groups whose content is not all Normal, and the
-  buffers that provide their backdrop; tiling-pattern cells; every child of
-  an F64 buffer; and every buffer that no narrow bound admits.
+  members after the first have opacity equal to their shape (opaque
+  members), which composite as source-over: the first meets the group's
+  initial backdrop, where knockout is source-over at any opacity, as the
+  translucent fill under an opaque stroke of a fill-and-stroke operator
+  does (11.7.4.4); non-isolated groups whose content is not all Normal,
+  and the buffers that provide their backdrop; tiling-pattern cells; every
+  child of an F64 buffer; and every buffer that no narrow bound admits.
 - **N16** for the page buffer when its bound in section 6 holds, otherwise
   **F32** for a page, group or soft-mask buffer when its bound holds.
 
