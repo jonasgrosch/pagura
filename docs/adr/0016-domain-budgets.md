@@ -191,18 +191,18 @@ bound; this replaces the consequence above that `render_bytes` alone bounds a
 page's peak memory.
 
 
-## Amendment, 2026-10-29: work budgets of 2 Gi units
+## Amendment, 2026-10-29: function work of 2 Gi units
 
-`render_work`, `decode_work` and `function_work` default to 2,147,483,648
-units, or 32 units per pixel of a 64 Mi-pixel reference. Each budget still
-covers its documented domain and is reserved before execution. This raises
-`function_work` from 50,000,000 and `render_work` from 2,000,000,000;
-`decode_work` is unchanged. The value fits a 32-bit `usize`. The output and
-image pixel cap remains 64 Mi, and all byte caps remain unchanged.
+`function_work` defaults to 2,147,483,648 units, matching `decode_work`:
+32 units per pixel of a 64 Mi-pixel reference. This raises its previous
+50,000,000-unit allowance. The value fits a 32-bit `usize`. The existing
+2,000,000,000-unit `render_work` allowance, 64 Mi pixel cap, byte caps and
+host frame cap remain unchanged. The fuzz driver explicitly retains its
+previous 50,000,000-unit function allowance.
 
 Function preparation reserves its evaluation cost per sample. A boundary
 regression checks the largest admitted sample count at the default and
 refusal of one more. Newly admitted renders must match the unchanged
-renderer with only these work limits raised; a prior refusal is not a
-performance baseline. This amendment does not introduce separate image
-size limits or change the host frame cap.
+renderer with only `function_work` raised; a prior refusal is not a
+performance baseline. Rendering arithmetic and per-sample charging are
+unchanged.

@@ -213,7 +213,7 @@ impl Default for Limits {
             mask_sources: 256,
             display_commands: 10_000_000,
             render_bytes: 512 * MIB,
-            render_work: WORK,
+            render_work: 2_000_000_000,
             // 32 units per pixel at the pixel cap: a progressive or 4:4:4
             // JPEG of that size decodes, unlike under the 50M-token
             // `operations` budget that capped codecs before (ADR 0016).

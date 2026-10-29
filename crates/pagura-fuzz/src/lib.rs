@@ -86,7 +86,6 @@ pub fn limits() -> Limits {
         operations: 100_000,
         path_segments: 200_000,
         raster_work: 50_000_000,
-        render_work: 2_000_000_000,
         function_work: 50_000_000,
         // The default ratio: 32 units per pixel at the pixel cap.
         decode_work: 32 << 18,
