@@ -176,7 +176,7 @@ impl Jpx {
 fn report_raw(diagnostics: &mut Diagnostics) -> Result<()> {
     diagnostics.repair_once(
         Diagnostic::new(
-            crate::tags::JPX_CODESTREAM,
+            crate::repairs::JPX_CODESTREAM,
             "unboxed JPEG 2000 data uses the explicit PDF colour space (7.4.9)",
         )
         .at(Position::Buffer(0)),

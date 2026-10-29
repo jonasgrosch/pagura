@@ -46,10 +46,6 @@ pub mod tags {
     /// T.800 I.5.3.4–I.5.3.5: a sole top-level cmap before the codestream
     /// supplies the header palette's missing component mapping.
     pub const JPX_MAPPING_LOCATION: Repair = Repair::new("jpx.mapping-box-location");
-    /// 7.4.9 requires a full JPX file. Viewing may decode an unboxed
-    /// T.800 codestream only with an explicit PDF colour space and no
-    /// embedded-opacity request; metadata is never inferred from channel count.
-    pub const JPX_CODESTREAM: Repair = Repair::new("jpx.raw-codestream");
     /// 8.9.5 Table 87: Subtype Image identifies an image XObject despite a
     /// malformed optional Type entry. Missing/invalid Subtype remains an error.
     pub const XOBJECT_TYPE: Repair = Repair::new("image.xobject-type");
@@ -57,6 +53,19 @@ pub mod tags {
     /// Flate only after strict framing/checksum/predictor validation and an
     /// exact match to the declared eight-bit image sample count.
     pub const FILTER_MISMATCH: Repair = Repair::new("image.filter-mismatch");
+}
+
+/// Stable reported repairs of image framing (ADR 0003).
+pub mod repairs {
+    use pagura_core::Repair;
+
+    /// 7.4.9 requires a full JPX file. Viewing may decode an unboxed
+    /// T.800 codestream only with an explicit PDF colour space and no
+    /// embedded-opacity request; metadata is never inferred from channel count.
+    pub const JPX_CODESTREAM: Repair = Repair::new("jpx.raw-codestream");
+
+    /// Every framing repair owned by this module.
+    pub const ALL: &[Repair] = &[JPX_CODESTREAM];
 }
 
 mod dispatch;
