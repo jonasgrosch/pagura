@@ -173,6 +173,15 @@ pub(crate) enum Precision {
 }
 
 impl Source {
+    /// Adds the optional storage that speeds painting this source, charged
+    /// to `bytes` where it has room once the page's own storage is: an
+    /// image's curve values ([`ImageSampler::admit_curves`]).
+    pub(crate) fn admit_optional(&mut self, bytes: &mut Meter) {
+        if let Self::Image(image) = self {
+            image.admit_curves(bytes);
+        }
+    }
+
     pub(crate) fn scratch_layout(&self) -> Option<ScratchLayout> {
         match self {
             Self::Image(image) => Some(image.scratch_layout()),

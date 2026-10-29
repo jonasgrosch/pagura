@@ -5,6 +5,7 @@
     reason = "small random counts and bytes"
 )]
 
+mod curved;
 mod oracle;
 
 use super::*;

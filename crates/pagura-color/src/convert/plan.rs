@@ -97,6 +97,15 @@ enum Source {
     },
 }
 
+/// An ICC source that is a conversion alone ([`Plan::icc`]).
+struct IccAlone<'a> {
+    profile: &'a Profile,
+    intent: Intent,
+    range: &'a [[f64; 2]; 4],
+    count: usize,
+    encode: &'a Encode,
+}
+
 /// The encoding of sRGB into a process space's channels.
 #[derive(Debug, Clone)]
 pub(super) enum Encode {
@@ -292,6 +301,80 @@ impl Plan {
             ),
             _ => false,
         }
+    }
+
+    /// The ICC source of a conversion that is that source alone, with no
+    /// lookup and no step before its encoded sRGB terminal.
+    fn icc(&self) -> Option<IccAlone<'_>> {
+        let Kind::Chain(chain) = &self.kind else {
+            return None;
+        };
+        if self.lookup.is_some() || !chain.steps.is_empty() {
+            return None;
+        }
+        match &chain.terminal {
+            Terminal::Rgb {
+                source:
+                    Source::Icc {
+                        profile,
+                        intent,
+                        range,
+                        count,
+                    },
+                encode,
+            } => Some(IccAlone {
+                profile,
+                intent: *intent,
+                range,
+                count: *count,
+                encode,
+            }),
+            _ => None,
+        }
+    }
+
+    /// The stage of [`Self::convert`] that takes component `i` on its own,
+    /// where the conversion is an ICC gray or matrix/TRC profile's alone
+    /// and its components are exactly those the profile reads: component
+    /// `i` clipped to the space's range and through the profile's curve
+    /// ([`Profile::curve`]). `None` otherwise.
+    pub(super) fn curve(&self, i: usize, value: f64) -> Option<f64> {
+        let icc = self.icc()?;
+        if icc.profile.curved_inputs(icc.intent) != Some(icc.count) || i >= icc.count {
+            return None;
+        }
+        let [low, high] = *icc.range.get(i)?;
+        icc.profile.curve(i, value.clamp(low, high), icc.intent)
+    }
+
+    /// [`Self::convert`] of components already through [`Self::curve`].
+    pub(super) fn convert_curved(&self, curved: &[f64], output: &mut [f64]) {
+        let (process, spots) = output.split_at_mut(self.process.min(output.len()));
+        if let Some(icc) = self.icc() {
+            let linear = icc.profile.linear_curved(curved, icc.intent);
+            icc.encode.apply(linear.map(cie::encode), process);
+        }
+        spots.fill(1.0);
+    }
+
+    /// [`Self::convert_rounded`] of components already through
+    /// [`Self::curve`].
+    pub(super) fn convert_curved_rounded(
+        &self,
+        curved: &[f64],
+        output: &mut [f64],
+        round: impl Fn(f64) -> u32,
+    ) {
+        let Some(icc) = self.icc().filter(|icc| matches!(icc.encode, Encode::Rgb)) else {
+            self.convert_curved(curved, output);
+            return;
+        };
+        let (process, spots) = output.split_at_mut(self.process.min(output.len()));
+        let linear = icc.profile.linear_curved(curved, icc.intent);
+        for (out, v) in process.iter_mut().zip(linear) {
+            *out = encode_rounded(v, &round);
+        }
+        spots.fill(1.0);
     }
 
     /// Converts colours of `count` components each into `output`,

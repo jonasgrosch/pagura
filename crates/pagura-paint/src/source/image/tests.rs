@@ -267,6 +267,14 @@ fn case(image: DecodedImage) -> Case {
 /// The new sampler for `case` under `unit_to_device`, into `target`
 /// channels.
 fn sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSampler {
+    let mut sampler = prepared_sampler(case, unit_to_device, target);
+    // A page with room to spare keeps the optional curve values.
+    sampler.admit_curves(&mut meter());
+    sampler
+}
+
+/// [`sampler`] before the optional curve values are admitted.
+fn prepared_sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSampler {
     let inverse = unit_to_device.inverse().unwrap();
     let window = window(unit_to_device);
     let mask = case.mask.as_ref().map(|(mask, decode, kind)| {
@@ -1451,6 +1459,107 @@ fn icc_rgb() -> ColorSpace {
         range: [[0.0, 1.0]; 4],
         object: None,
     }))
+}
+
+/// Texels converted from each component's first-stage values, found as
+/// texels need them, are those converted directly, exactly and kept to F32
+/// levels, under every placement.
+#[test]
+fn curved_texels_are_direct_texels() {
+    let photo = Case {
+        space: Some(icc_rgb()),
+        ..case(image((37, 29), 3, 8, bytes(37 * 29 * 3, 8, 97)))
+    };
+    let mut curved = 0;
+    for unit_to_device in placements(37, 29) {
+        let tabled = sampler(&photo, unit_to_device, 3);
+        let mut direct = sampler(&photo, unit_to_device, 3);
+        if let super::Plan::Texels {
+            paint: Paint::Colors(paint),
+            ..
+        } = &mut direct.prepared.as_deref_mut().unwrap().plan
+        {
+            curved += usize::from(paint.0.curved.take().is_some());
+        }
+        let (mut tabled_storage, mut direct_storage) = (scratch(&tabled), scratch(&direct));
+        let (x0, y0, x1, y1) = window(unit_to_device);
+        let len = usize::try_from(x1 - x0).unwrap();
+        let (mut a, mut b) = (SpanColors::default(), SpanColors::default());
+        for y in y0..y1 {
+            let exact = Pixels::new(x0, y, len);
+            let levels = Pixels {
+                precision: crate::source::Precision::Level,
+                ..exact
+            };
+            for pixels in [exact, levels] {
+                tabled.span(pixels, &mut tabled_storage, &mut a);
+                direct.span(pixels, &mut direct_storage, &mut b);
+                let place = format!("{unit_to_device:?} row {y} {:?}", pixels.precision);
+                assert_eq!(bits(&a.colors), bits(&b.colors), "{place}");
+                assert_eq!(bits(&a.alpha), bits(&b.alpha), "{place}");
+            }
+        }
+    }
+    assert!(curved > 0, "no image tabulated its first stage");
+}
+
+/// The curve values are optional: an image whose budget lacks room for them
+/// keeps none and charges nothing for them, and its spans are those of an
+/// image that keeps them.
+#[test]
+fn curve_values_are_declined_without_room() {
+    let photo = Case {
+        space: Some(icc_rgb()),
+        ..case(image((37, 29), 3, 8, bytes(37 * 29 * 3, 8, 97)))
+    };
+    let curved = |sampler: &ImageSampler| match &sampler.prepared.as_deref().unwrap().plan {
+        super::Plan::Texels {
+            paint: Paint::Colors(paint),
+            ..
+        } => paint.0.curved.is_some(),
+        _ => false,
+    };
+    let room = super::texels::Curved::bytes_of(3);
+    let mut kept_any = false;
+    for unit_to_device in placements(37, 29) {
+        let mut kept = prepared_sampler(&photo, unit_to_device, 3);
+        let mut declined = prepared_sampler(&photo, unit_to_device, 3);
+        let bytes = declined.bytes();
+        let mut short = pagura_core::Meter::new(room - 1, "test");
+        declined.admit_curves(&mut short);
+        assert!(!curved(&declined), "{unit_to_device:?}");
+        assert_eq!(
+            (declined.bytes(), short.used()),
+            (bytes, 0),
+            "{unit_to_device:?}"
+        );
+        let mut enough = pagura_core::Meter::new(room, "test");
+        kept.admit_curves(&mut enough);
+        if curved(&kept) {
+            kept_any = true;
+            assert_eq!(kept.bytes(), bytes + room, "{unit_to_device:?}");
+            assert_eq!(enough.used(), room, "{unit_to_device:?}");
+        }
+        let (mut kept_storage, mut declined_storage) = (scratch(&kept), scratch(&declined));
+        let (x0, y0, x1, y1) = window(unit_to_device);
+        let len = usize::try_from(x1 - x0).unwrap();
+        let (mut a, mut b) = (SpanColors::default(), SpanColors::default());
+        for y in y0..y1 {
+            let exact = Pixels::new(x0, y, len);
+            let levels = Pixels {
+                precision: crate::source::Precision::Level,
+                ..exact
+            };
+            for pixels in [exact, levels] {
+                kept.span(pixels, &mut kept_storage, &mut a);
+                declined.span(pixels, &mut declined_storage, &mut b);
+                let place = format!("{unit_to_device:?} row {y} {:?}", pixels.precision);
+                assert_eq!(bits(&a.colors), bits(&b.colors), "{place}");
+                assert_eq!(bits(&a.alpha), bits(&b.alpha), "{place}");
+            }
+        }
+    }
+    assert!(kept_any, "no image kept its curve values");
 }
 
 /// Spans kept to F32 levels that copy one opaque texel per pixel convert
