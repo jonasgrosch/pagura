@@ -207,7 +207,10 @@ mod tests {
         let error = meter.reserve(&mut values, 1).unwrap_err();
         assert_eq!(error.message, MESSAGE);
         let mut huge = Meter::new(usize::MAX, MESSAGE);
-        let error = huge.reserve(&mut values, usize::MAX / 8).unwrap_err();
+        // Exceed Vec's byte-capacity ceiling without relying on the host
+        // allocator to refuse an otherwise representable reservation.
+        let too_many = usize::try_from(isize::MAX).unwrap() / size_of::<u32>() + 1;
+        let error = huge.reserve(&mut values, too_many).unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit);
     }
 

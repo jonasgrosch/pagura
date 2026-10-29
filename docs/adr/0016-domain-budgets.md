@@ -190,3 +190,19 @@ store's capacity, plus any value too large to retain, which its build budgets
 bound; this replaces the consequence above that `render_bytes` alone bounds a
 page's peak memory.
 
+
+## Amendment, 2026-10-29: function work of 2 Gi units
+
+`function_work` defaults to 2,147,483,648 units, matching `decode_work`:
+32 units per pixel of a 64 Mi-pixel reference. This raises its previous
+50,000,000-unit allowance. The value fits a 32-bit `usize`. The existing
+2,000,000,000-unit `render_work` allowance, 64 Mi pixel cap, byte caps and
+host frame cap remain unchanged. The fuzz driver explicitly retains its
+previous 50,000,000-unit function allowance.
+
+Function preparation reserves its evaluation cost per sample. A boundary
+regression checks the largest admitted sample count at the default and
+refusal of one more. Newly admitted renders must match the unchanged
+renderer with only `function_work` raised; a prior refusal is not a
+performance baseline. Rendering arithmetic and per-sample charging are
+unchanged.
