@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { attachmentValues } from './capability_pdfjs_services.mjs';
+import { attachmentValues, annotationAttachmentValues, ProbeLimit } from './capability_pdfjs_services.mjs';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
@@ -41,6 +41,8 @@ if (operation === '--version') {
         value = { Title: info.Title || '', Author: info.Author || '' };
       } else if (operation === 'attachments') {
         value = await attachmentValues(document);
+      } else if (operation === 'annotation-attachments') {
+        value = await annotationAttachmentValues(document, pdfjs.AnnotationType.FILEATTACHMENT);
       } else if (operation === 'text') {
         const content = await (await document.getPage(1)).getTextContent();
         value = content.items.filter(item => 'str' in item)
@@ -52,7 +54,7 @@ if (operation === '--version') {
       response = { status: 'ok', value };
     }
   } catch (error) {
-    response = { status: 'adapter-error', reason: error.name };
+    response = { status: error instanceof ProbeLimit ? 'limit' : 'adapter-error', reason: error.name };
   } finally {
     await loading.destroy();
   }

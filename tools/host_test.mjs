@@ -1,3 +1,11 @@
+import { testExtendedServicesView } from './document_services_extended_view_test.mjs';
+import { testExtendedServices } from './document_services_extended_test.mjs';
+import { testAttachmentChecks, testAttachmentCheckView } from './attachment_checks_test.mjs';
+import { testPageAttachments } from './page_attachments_test.mjs';
+import { testPageAttachmentView } from './page_attachments_view_test.mjs';
+import { testPngExport, testPngExportView } from './png_export_test.mjs';
+import { testDocumentServices } from './document_services_test.mjs';
+import { testDocumentServicesView } from './document_services_view_test.mjs';
 import { externalUrl, activateTarget, targetLabel } from '../web/link_actions.mjs';
 import { textLayer, selectedText } from '../web/text_layer.mjs';
 import { pagePoint } from '../web/page_geometry.mjs';
@@ -222,6 +230,16 @@ async function main() {
       tested++;
     }
     await testReading(client, root, native, wasiRun);
+    await testDocumentServices(client, root, native, wasiRun);
+    await testExtendedServices(client, root, native, wasiRun);
+    await testDocumentServicesView();
+    await testExtendedServicesView();
+    await testAttachmentChecks(client, root, native, wasiRun);
+    await testPageAttachments(client, root, native, wasiRun, () => new SessionClient(new TestWorker()));
+    await testPageAttachmentView();
+    await testAttachmentCheckView();
+    await testPngExport(client, root, native, wasiRun);
+    await testPngExportView();
     await testTwoPages(client, root, native, wasiRun);
     await testGenerations(client, root, native, wasiRun);
     const emptyStats = { sourceBytes: 0, cacheBytes: 0, documents: 0, lists: 0 };
@@ -449,6 +467,10 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     'password-dialog', 'password', 'password-feedback', 'password-form', 'password-cancel',
     'find-open', 'find-close', 'find-panel', 'find-query', 'find-case', 'find-word', 'find-next', 'find-previous', 'find-count',
     'outline-tree', 'page-label', 'reading-status', 'copy-page',
+    'png-export-dialog', 'png-export-open', 'png-export-form', 'png-export-page', 'png-export-dpi', 'png-export-transparent', 'png-export-submit', 'png-export-close', 'png-export-status',
+    'document-services-dialog', 'document-services-open', 'document-services-close', 'document-properties', 'document-attachments', 'document-services-status',
+    'document-page-attachments', 'document-page-attachments-title', 'document-attachment-page-form', 'document-attachment-page', 'document-attachment-page-submit',
+    'document-service-source-form', 'document-service-source', 'document-service-object', 'document-service-source-results',
     'edit-open', 'form-status', 'form-reset', 'form-download',
     'document-sidebar', 'thumbnails-panel', 'thumbnail-list', 'thumbnails-tab', 'outline-tab', 'outline-sidebar',
     'sidebar-toggle', 'rotate-view', 'empty-state', 'reading-dismiss', 'cache-summary', 'more-menu', 'diagnostics-dialog', 'diagnostics-open', 'diagnostics-close'];

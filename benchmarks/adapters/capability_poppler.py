@@ -12,7 +12,27 @@ import tempfile
 from pathlib import Path
 
 
-def read(document, operation):
+class ProbeLimit(Exception):
+    """An adapter bound, not a capability verdict."""
+
+
+def attachment_values(attachments):
+    result = []
+    with tempfile.TemporaryDirectory(prefix="poppler-service-") as temporary:
+        destination = Path(temporary) / "attachment.bin"
+        for attachment in attachments:
+            if len(result) >= 1024:
+                raise ProbeLimit("attachment count exceeds adapter bound")
+            if not attachment.save(str(destination)):
+                raise ValueError("attachment save failed")
+            if destination.stat().st_size > 64 * 1024 * 1024:
+                raise ProbeLimit("attachment exceeds 64 MiB adapter bound")
+            result.append({"name": attachment.get_name(), "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()})
+            destination.unlink()
+    return sorted(result, key=lambda row: row["name"])
+
+
+def read(document, operation, backend):
     if operation == "pages":
         count = document.get_n_pages()
         return {"count": count, "sizes": [list(document.get_page(i).get_size()) for i in range(count)]}
@@ -21,15 +41,14 @@ def read(document, operation):
     if operation == "text":
         return (document.get_page(0).get_text() or "").replace("\r\n", "\n").strip("\n")
     if operation == "attachments":
-        result = []
-        with tempfile.TemporaryDirectory(prefix="poppler-service-") as temporary:
-            destination = Path(temporary) / "attachment.bin"
-            for attachment in document.get_attachments() or []:
-                if not attachment.save(str(destination)):
-                    raise ValueError("attachment save failed")
-                result.append({"name": attachment.get_name(), "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()})
-                destination.unlink()
-        return sorted(result, key=lambda row: row["name"])
+        return attachment_values(document.get_attachments() or [])
+    if operation == "annotation-attachments":
+        page = document.get_page(0)
+        annotations = page.get_annot_mapping() or []
+        if len(annotations) > 1024:
+            raise ProbeLimit("annotation count exceeds adapter bound")
+        return attachment_values(entry.annot.get_attachment() for entry in annotations
+                                 if entry.annot.get_annot_type() == backend.AnnotType.FILE_ATTACHMENT)
     raise ValueError("unknown operation")
 
 
@@ -47,9 +66,11 @@ def main():
         response = {"status": "rejected", "reason": type(error).__name__}
     else:
         try:
-            response = {"status": "ok", "value": read(document, operation)}
+            response = {"status": "ok", "value": read(document, operation, Poppler)}
         except AttributeError:
             response = {"status": "adapter-unavailable", "reason": "installed GLib binding lacks the expected public API"}
+        except ProbeLimit as error:
+            response = {"status": "limit", "reason": str(error)}
         except Exception as error:
             response = {"status": "adapter-error", "reason": type(error).__name__}
     print(json.dumps({"schema": 1, **response}, sort_keys=True))

@@ -1,5 +1,6 @@
 import { HostFailure } from './failure.mjs';
-import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_7 } from './protocol.mjs';
+import { encodeRequest, FrameDecoder, HostError, VERSION_1_4, VERSION_1_12 } from './protocol.mjs';
+import { MetadataOwnerCode, PngBackground, RequestKind } from './protocol_constants.mjs';
 import { createInput, InputWriter } from './transport.mjs';
 
 /** Long-lived serial session. Recreate the client after a trap/terminal failure. */
@@ -70,19 +71,41 @@ export class SessionClient {
     this.tail = result.then(() => {}, () => {}).finally(() => { this.queued--; });
     return result;
   }
-  async hello(version = VERSION_1_7) {
+  async hello(version = VERSION_1_12) {
     const result = await this.request(1, { version });
     if (result.version !== version) { const error = new Error('Unsupported host protocol version'); this.fail(error); throw error; }
     this.version = version;
     return result;
   }
   open(bytes, recovery = 1, password = new Uint8Array()) { return this.request(2, { bytes, recovery, password }); }
+  files(document, scope) { return this.request(RequestKind.Files, { document, scope }); }
+  fileBytes(document, scope, index, key, related = null) { return this.request(RequestKind.FileBytes, { document, scope, index, key, related }); }
+  fileCheck(document, scope, index, key, related = null) { return this.request(RequestKind.FileCheck, { document, scope, index, key, related }); }
+  metadataFor(document, owner) { return this.request(RequestKind.ObjectMetadata, { document, owner }); }
+  metadataBytesFor(document, owner) { return this.request(RequestKind.ObjectMetadataBytes, { document, owner }); }
+  collection(document) { return this.request(RequestKind.Collection, { document }); }
+  images(document, owner) { return this.request(RequestKind.Images, { document, owner }); }
+  thumbnail(document, owner) { return this.request(RequestKind.Thumbnail, { document, owner }); }
+  imageBytes(document, identity, mode, thumbnail = false) { const owner = identity.page === undefined ? { kind: MetadataOwnerCode.Object, object: identity } : { kind: MetadataOwnerCode.Page, page: identity.page }; return this.request(RequestKind.ImageBytes, { document, owner, mode, thumbnail }); }
+  reauthenticate(document, password) { return this.request(RequestKind.Reauthenticate, { document, password }); }
+  metadata(document) { return this.request(RequestKind.Metadata, { document }); }
+  attachments(document) { return this.request(RequestKind.Attachments, { document }); }
+  metadataBytes(document) { return this.request(RequestKind.MetadataBytes, { document }); }
+  attachmentCheck(document, index, key) { return this.request(RequestKind.AttachmentCheck, { document, index, key }); }
+  attachmentBytes(document, index, key) { return this.request(RequestKind.AttachmentBytes, { document, index, key }); }
+  /** FileAttachment annotations preserve their original Annots slots, independently of catalog attachments. */
+  pageAttachments(document, page) { return this.request(RequestKind.PageAttachments, { document, page }); }
+  /** Retrieve the exact page, Annots slot and EF key; never activate source-controlled names. */
+  pageAttachmentBytes(document, page, index, key) { return this.request(RequestKind.PageAttachmentBytes, { document, page, index, key }); }
+  /** Check complete decoded bytes against declarations for one exact annotation payload. */
+  pageAttachmentCheck(document, page, index, key) { return this.request(RequestKind.PageAttachmentCheck, { document, page, index, key }); }
   formStyles(document, page) { return this.request(21, { document, page }); }
   formWidgets(document, page) { return this.request(20, { document, page }); }
   formFields(document) { return this.request(18, { document }); }
   saveForm(document, changes) { return this.request(19, { document, changes }); }
   pageInfo(document, page) { return this.request(3, { document, page }); }
   contentBounds(document, page) { return this.request(16, { document, page }); }
+  pagePng(document, page, scale = 1, background = PngBackground.White) { return this.request(RequestKind.PagePng, { document, page, scale, background }); }
   renderTile(document, page, scale, tile) { return this.request(4, { document, page, scale, ...tile }); }
   invalidate(document) {
     const generation = (this.generations.get(document) ?? 0) + 1;

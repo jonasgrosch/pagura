@@ -3,13 +3,24 @@
 //! Every reading response is encoded here into one capped payload, which the
 //! frame encoder sends without copying.
 
+mod annotations;
+mod extended;
+pub(crate) use extended::service;
+pub use extended::{FileSelection, ServiceRequest};
 mod navigation;
+mod services;
 mod text;
 
+pub(crate) use annotations::{page_attachment_bytes, page_attachment_check, page_attachments};
 pub(crate) use navigation::{labels, links, outlines};
+pub(crate) use services::{
+    attachment_bytes, attachment_check, attachments, metadata, metadata_bytes,
+};
 pub(crate) use text::{page_text, search};
 
-use crate::protocol::{Field, PageRef, RequestKind, ResponseKind, SearchFlags, SessionStats};
+use crate::protocol::{
+    AttachmentKey, Field, PageRef, RequestKind, ResponseKind, SearchFlags, SessionStats,
+};
 use crate::wire::Writer;
 use pagura::{Error, Rect, Result, SearchOptions};
 
@@ -21,6 +32,8 @@ pub const MAX_SEARCH_PAGES: u32 = 16;
 pub const MAX_QUERY_BYTES: usize = 4096;
 /// Most semantic characters in one page text response.
 pub const MAX_PAGE_CHARACTERS: usize = 1_000_000;
+/// Most catalog or page attachment records in one listing response.
+pub const MAX_ATTACHMENTS: usize = 1024;
 
 /// The bounded search window and continuation cursor.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -92,10 +105,17 @@ impl Search<'_> {
     }
 }
 
-/// Requests added by protocol 1.2 and 1.3.
+/// Requests added by protocol 1.2, 1.3, 1.8 and 1.10.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum Request<'a> {
+    /// Exact scoped document-service operation (1.12).
+    Service {
+        /// Session-local handle.
+        document: Field<u32>,
+        /// Bounded, typed source selection.
+        request: ServiceRequest,
+    },
     /// Reading-order page text and selection geometry.
     Text(PageRef),
     /// A resumable search window.
@@ -110,12 +130,57 @@ pub enum Request<'a> {
     Stats,
     /// Conservative painted bounds in default user space (1.3).
     Bounds(PageRef),
+    /// Info, catalog language and metadata-stream identity (1.8).
+    Metadata(Field<u32>),
+    /// Catalog EmbeddedFiles declarations, with lazy payload identities (1.8).
+    Attachments(Field<u32>),
+    /// Inert metadata-stream bytes, separately requested (1.8).
+    MetadataBytes(Field<u32>),
+    /// FileAttachment annotations on a page, with lazy payload identities (1.11).
+    PageAttachments(PageRef),
+    /// Bytes from an explicitly selected page attachment (1.11).
+    PageAttachmentBytes {
+        /// Session-local document and zero-based page index.
+        page: PageRef,
+        /// Original zero-based Annots slot, including non-file annotations.
+        index: Field<u32>,
+        /// Exact EF key; no fallback to catalog or another key.
+        key: Field<AttachmentKey>,
+    },
+    /// Parameter observations for an explicitly selected page attachment (1.11).
+    PageAttachmentCheck {
+        /// Session-local document and zero-based page index.
+        page: PageRef,
+        /// Original zero-based Annots slot, including non-file annotations.
+        index: Field<u32>,
+        /// Exact EF key; no fallback to catalog or another key.
+        key: Field<AttachmentKey>,
+    },
+    /// Explicit size/checksum check; the complete authorized payload is decoded (1.10).
+    AttachmentCheck {
+        /// Session-local document handle.
+        document: Field<u32>,
+        /// Zero-based catalog EmbeddedFiles index.
+        index: Field<u32>,
+        /// Exact EF key, with no fallback.
+        key: Field<AttachmentKey>,
+    },
+    /// Explicit embedded-file bytes (1.8).
+    AttachmentBytes {
+        /// Session-local document handle.
+        document: Field<u32>,
+        /// Zero-based index in catalog EmbeddedFiles byte-key order.
+        index: Field<u32>,
+        /// Exact EF key; no fallback to another key.
+        key: Field<AttachmentKey>,
+    },
 }
 
 impl Request<'_> {
     /// The request's kind byte.
     pub const fn kind(&self) -> RequestKind {
         match self {
+            Self::Service { request, .. } => request.kind(),
             Self::Text(_) => RequestKind::PageText,
             Self::Search(_) => RequestKind::Search,
             Self::Links(_) => RequestKind::Links,
@@ -123,6 +188,14 @@ impl Request<'_> {
             Self::Labels(_) => RequestKind::Labels,
             Self::Stats => RequestKind::ReadingStats,
             Self::Bounds(_) => RequestKind::Bounds,
+            Self::Metadata(_) => RequestKind::Metadata,
+            Self::Attachments(_) => RequestKind::Attachments,
+            Self::MetadataBytes(_) => RequestKind::MetadataBytes,
+            Self::AttachmentBytes { .. } => RequestKind::AttachmentBytes,
+            Self::AttachmentCheck { .. } => RequestKind::AttachmentCheck,
+            Self::PageAttachments(_) => RequestKind::PageAttachments,
+            Self::PageAttachmentBytes { .. } => RequestKind::PageAttachmentBytes,
+            Self::PageAttachmentCheck { .. } => RequestKind::PageAttachmentCheck,
         }
     }
 }

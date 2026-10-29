@@ -50,8 +50,8 @@ jobs:
         with:
           version: 0.13.1
       - run: uv sync --locked --only-group lint
-      - run: uv run --locked --offline ruff check tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py tools/competitors.py
-      - run: uv run --locked --offline basedpyright tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py tools/competitors.py
+      - run: uv run --locked --offline ruff check tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py tools/test_capability_pagura.py tools/test_capability_attachments.py tools/test_capability_hayro.py benchmarks/adapters/capability_hayro.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py benchmarks/adapters/capability_pagura.py tools/competitors.py
+      - run: uv run --locked --offline basedpyright tools/capabilities.py tools/capability_probes.py tools/capability_render.py tools/test_capabilities.py tools/test_capability_probes.py tools/test_capability_render.py tools/test_capability_pagura.py tools/test_capability_attachments.py tools/test_capability_hayro.py benchmarks/adapters/capability_hayro.py benchmarks/adapters/capability_python.py benchmarks/adapters/capability_poppler.py benchmarks/adapters/capability_pagura.py tools/competitors.py
       - run: python tools/capabilities.py --check
       - run: python tools/capability_probes.py check
       - run: python tools/capability_render.py check
@@ -68,7 +68,7 @@ jobs:
         include:
           - os: ubuntu-latest
             install: pdfium,mupdf,pdfjs,hayro
-            engines: pdfium,mupdf,pdfjs,poppler,hayro
+            engines: pdfium,mupdf,pdfjs,poppler,hayro,pagura
             render_engines: pdfium,mupdf,pdfjs,poppler,hayro,pagura
           - os: macos-latest
             install: quartz
@@ -141,7 +141,7 @@ jobs:
         with:
           pattern: capability-document-services-*
           path: ${{ runner.temp }}/capability-inputs
-      - name: Require one source revision and all six baseline engines
+      - name: Require one source revision, all six service baselines and Pagura
         run: python tools/capability_probes.py combine "$RUNNER_TEMP"/capability-inputs/*/capability-report.json --output "$RUNNER_TEMP/capability-report.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

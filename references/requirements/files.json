@@ -1,0 +1,84 @@
+{
+  "schema": 2,
+  "area": "files",
+  "scope": "File specifications and embedded/associated file views, reviewed against the locally supplied ISO 32000-2:2020 EC3 text. File path strings retain bytes; only UF, Desc and date strings use the shared PDF text-string decoder. AF is an association view, not a profile validator or a content activation request.",
+  "requirements": [
+    {
+      "id": "document-file-views",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.11.1-7.11.4; Tables 43-45",
+        "7.7.4; 7.9.6",
+        "14.13.1-14.13.4",
+        "7.6.6; Tables 20, 25"
+      ],
+      "status": "implemented for inert library views and bounded payload reads",
+      "tests": [
+        "pagura-document/tests/files.rs",
+        "files/populated",
+        "files/related",
+        "files/encrypted-no-type",
+        "files/encrypted-explicit-no-type",
+        "files/encrypted-identity-no-type"
+      ],
+      "gaps": "collection and encrypted-payload models, MIME/date/associated-file conformance validation, streaming extraction, authoring and CLI/host annotation and AF/RF selection remain open. Catalog CLI/host/viewer listing and extraction are implemented separately. Names/URLs never cause IO; permission flags remain a host policy distinct from stream authentication."
+    },
+    {
+      "id": "document-file-parameter-checks",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.11.4.1; Table 45"
+      ],
+      "status": "explicit bounded library/facade, CLI and protocol 1.10/viewer Size/CheckSum comparison; hosted validation pending",
+      "tests": [
+        "pagura-document/tests/file_checks.rs",
+        "pagura-cli/tests/attachment_checks.rs",
+        "files/check-flate",
+        "files/check-size-mismatch",
+        "files/check-checksum-mismatch",
+        "files/check-both-mismatch",
+        "files/check-size-only",
+        "files/check-checksum-only",
+        "files/check-empty-params"
+      ],
+      "gaps": "Whole-buffer payload decoding; date/MIME/profile/content validation and authenticity assessment are outside this operation.",
+      "rule": "Compare declared Size with the actual uncompressed length and declared CheckSum with MD5 over fully decoded and decrypted embedded bytes. An absent declaration is not a match. Mismatches remain observations and never modify the source. Password/filter/limit failures cannot become successful checks. The CLI emits complete schema-1 check JSON before returning exit 1 for a mismatch."
+    },
+    {
+      "id": "document-file-annotations",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.7.3.3; Table 31",
+        "12.5.2; Table 166",
+        "12.5.6.15; Table 187",
+        "7.11; Tables 43-45"
+      ],
+      "status": "bounded library/facade page FileAttachment discovery implemented; hosted validation pending",
+      "tests": [
+        "pagura-document/tests/file_annotations.rs",
+        "file_annotations/populated",
+        "file_annotations/page-only",
+        "file_annotations/mixed",
+        "file_annotations/indirect-array-and-geometry",
+        "file_annotations/encrypted-no-type",
+        "file_annotations/late-failure"
+      ],
+      "gaps": "Host/viewer annotation selection, activation policy, generic annotation/markup views and icon appearances remain separate work; no file execution, full annotation or profile validation is implied.",
+      "rule": "Keep original Annots indexes and resolved annotation/file/payload identities distinct. Require indirect annotation dictionaries and FileAttachment FS/Rect. Normalize geometry, decode Contents without FS/Desc substitution, preserve icon names and apply the PushPin default. Validate shared discovery shape and matching attachment entries under source-located work/result limits. Never decode or activate a payload during discovery."
+    },
+    {
+      "id": "cli-annotation-attachments",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "explicit page attachment listing/extraction/checks implemented; hosted validation pending",
+      "tests": [
+        "pagura-cli/src/args/tests.rs attachment_page_selection_is_explicit_and_scoped_to_attachment_commands",
+        "pagura-cli/tests/cli.rs page_attachment_json_keeps_annotation_geometry_names_and_original_indexes",
+        "pagura-cli/tests/cli.rs annotation_extraction_selects_annots_indexes_without_catalog_fallback",
+        "pagura-cli/tests/cli.rs annotation_checks_record_scope_and_failures_have_no_completed_json"
+      ],
+      "gaps": "AF/RF selection, host/viewer annotation selection and streaming remain separate work.",
+      "rule": "Only attachment commands accept --page; page and Annots indexes start at zero. Page listing has a distinct annotations schema with source identity, geometry, Contents and icon/file fields. Selection matches the original Annots index and exact EF key without catalog fallback. Full view/authorization/decoding succeeds before output creation or completed check JSON; existing destinations are never overwritten."
+    }
+  ]
+}
