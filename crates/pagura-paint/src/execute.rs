@@ -1197,6 +1197,10 @@ pub(crate) fn store(
 /// Stores a non-Normal group result into narrow storage. Marks and
 /// Normal stores retain the ordinary kernels and their dispatch. Returns
 /// false for wide storage, which keeps the full compositing kernel.
+#[expect(
+    clippy::inline_always,
+    reason = "keep one destination dispatch visible to group-result specialization"
+)]
 #[inline(always)]
 pub(super) fn store_blended_result(
     target: &mut Target<'_>,
