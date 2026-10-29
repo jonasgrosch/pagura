@@ -258,13 +258,20 @@ impl Lanes {
             return;
         }
         if !self.opaque {
+            let mut shape = shape;
+            let fast = match self.channels {
+                1 => self.pairs::<1, 3>(averages, out, shape.as_deref_mut()),
+                3 => self.pairs::<3, 5>(averages, out, shape.as_deref_mut()),
+                4 => self.pairs::<4, 6>(averages, out, shape.as_deref_mut()),
+                _ => false,
+            };
+            if fast {
+                return;
+            }
             let maximum = f64::from(self.maximum);
             let pairs = averages.as_chunks::<2>().0.iter().map(<[f64; 2]>::as_slice);
-            self.emit(pairs, out, shape, |averages, values| {
-                let (code, complement) = (averages[0] / maximum, averages[1] / maximum);
-                for (value, &(zero, top)) in values.iter_mut().zip(&self.ends) {
-                    *value = zero * complement + top * code;
-                }
+            self.emit(pairs, out, shape, |pair, values| {
+                pair_values(&self.ends, maximum, [pair[0], pair[1]], values);
             });
             return;
         }
@@ -401,6 +408,61 @@ impl Lanes {
         });
     }
 
+    /// [`Self::write_averages`] of non-opaque lanes, `C` colour channels of
+    /// `L` lanes (with alpha and shape), from their pixels' average codes and
+    /// complements: each lane's value ([`pair_values`]), straight
+    /// colour, alpha and shape as [`Self::emit`] forms them, written in
+    /// place; false when the lanes are not of that shape. Out of line, so
+    /// that the code paths around it compile as they did.
+    #[inline(never)]
+    fn pairs<const C: usize, const L: usize>(
+        &self,
+        averages: &[f64],
+        out: &mut SpanColors,
+        shape: Option<&mut Vec<f64>>,
+    ) -> bool {
+        let Ok(ends) = <&[(f64, f64); L]>::try_from(self.ends.as_slice()) else {
+            return false;
+        };
+        if self.channels != C || self.table.len() != L || C + 2 != L {
+            return false;
+        }
+        let maximum = f64::from(self.maximum);
+        let pairs = averages.as_chunks::<2>().0;
+        let len = pairs.len();
+        out.colors.resize(len * C, 0.0);
+        out.alpha.clear();
+        out.alpha.resize(len, 0.0);
+        let mut shape = shape;
+        if let Some(shape) = shape.as_deref_mut() {
+            shape.clear();
+            shape.resize(len, 0.0);
+        }
+        let colors = out.colors.as_chunks_mut::<C>().0;
+        for (index, ((&[code, complement], colors), alpha)) in
+            pairs.iter().zip(colors).zip(&mut out.alpha).enumerate()
+        {
+            let mut values = [0.0; L];
+            pair_values(ends, maximum, [code, complement], &mut values);
+            let (premultiplied, rest) = values.split_at(C);
+            let a = rest[0];
+            for (color, &value) in colors.iter_mut().zip(premultiplied) {
+                *color = if a == 1.0 {
+                    value
+                } else if a > 0.0 {
+                    value / a
+                } else {
+                    0.0
+                };
+            }
+            *alpha = a;
+            if let Some(own) = shape.as_deref_mut().and_then(|shape| shape.get_mut(index)) {
+                *own = rest[1];
+            }
+        }
+        true
+    }
+
     /// Writes each pixel's lanes, as `texel` gives them, as straight colours
     /// with alpha and shape.
     fn emit<'c, T: 'c>(
@@ -448,6 +510,22 @@ impl Lanes {
                 shape.push(own);
             }
         }
+    }
+}
+
+/// The lanes' values of a pixel's average `code` and `complement`, each over
+/// the largest code `maximum`: between each lane's values at code zero and
+/// at the largest code, `ends`.
+#[inline]
+fn pair_values(
+    ends: &[(f64, f64)],
+    maximum: f64,
+    [code, complement]: [f64; 2],
+    values: &mut [f64],
+) {
+    let (code, complement) = (code / maximum, complement / maximum);
+    for (value, &(zero, top)) in values.iter_mut().zip(ends) {
+        *value = zero * complement + top * code;
     }
 }
 
@@ -927,6 +1005,81 @@ mod unpack_tests {
                 let mut out = vec![[9, 9]; len];
                 unpack(&[], (x0, x0 + len), &mut out, |code| [code, 1 - code]);
                 assert_eq!(out, vec![[0, 1]; len]);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Lanes, pair_values};
+    use crate::source::SpanColors;
+    use pagura_core::Meter;
+
+    fn bits(values: &[f64]) -> Vec<u64> {
+        values.iter().map(|v| v.to_bits()).collect()
+    }
+
+    /// Non-opaque lanes of each fixed shape write, from average codes and
+    /// complements, exactly the span the general route writes: stencils
+    /// upright and inverted and lanes of any ends, at alpha 0, 1 and between.
+    #[test]
+    fn pair_spans_are_the_general_route_bit_for_bit() {
+        let mut state = 0x2545_f491_u64;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            f64::from(u32::try_from(state >> 40).unwrap()) / f64::from(1u32 << 24)
+        };
+        for channels in [1_usize, 3, 4] {
+            let lanes = channels + 2;
+            for codes in [2_usize, 4] {
+                let largest = f64::from(u32::try_from(codes - 1).unwrap());
+                let color: Vec<f64> = (0..channels).map(|_| next()).collect();
+                let upright = |l: usize| (0.0, color.get(l).copied().unwrap_or(1.0));
+                let inverted = |l: usize| (color.get(l).copied().unwrap_or(1.0), 0.0);
+                let ends: [Vec<(f64, f64)>; 3] = [
+                    (0..lanes).map(upright).collect(),
+                    (0..lanes).map(inverted).collect(),
+                    (0..lanes).map(|_| (next(), next())).collect(),
+                ];
+                for ends in ends {
+                    let mut table = vec![0.0; codes * lanes];
+                    for (code, texel) in table.chunks_exact_mut(lanes).enumerate() {
+                        let t = f64::from(u32::try_from(code).unwrap()) / largest;
+                        for (value, &(zero, top)) in texel.iter_mut().zip(&ends) {
+                            *value = zero + (top - zero) * t;
+                        }
+                    }
+                    let meter = &mut Meter::new(usize::MAX, "test");
+                    let lane = Lanes::single(&table, lanes, codes, false, meter)
+                        .unwrap()
+                        .unwrap();
+                    let mut averages = vec![0.0, largest, largest, 0.0, largest, largest];
+                    for _ in 0..40 {
+                        let code = next() * largest;
+                        averages.extend([code, largest - code, code, next() * largest]);
+                    }
+                    let (mut fast, mut general) = (SpanColors::default(), SpanColors::default());
+                    let (mut fast_shape, mut general_shape) = (vec![7.0; 3], Vec::new());
+                    lane.write_averages(&averages, 2, &mut fast, Some(&mut fast_shape));
+                    let maximum = f64::from(lane.maximum);
+                    let pairs = averages.as_chunks::<2>().0.iter().map(<[f64; 2]>::as_slice);
+                    lane.emit(
+                        pairs,
+                        &mut general,
+                        Some(&mut general_shape),
+                        |pair, values| {
+                            pair_values(&lane.ends, maximum, [pair[0], pair[1]], values);
+                        },
+                    );
+                    let context =
+                        format!("{channels} channels, {codes} codes, ends {:?}", lane.ends);
+                    assert_eq!(bits(&fast.colors), bits(&general.colors), "{context}");
+                    assert_eq!(bits(&fast.alpha), bits(&general.alpha), "{context}");
+                    assert_eq!(bits(&fast_shape), bits(&general_shape), "{context}");
+                }
             }
         }
     }
