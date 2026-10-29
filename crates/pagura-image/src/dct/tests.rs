@@ -7,7 +7,7 @@ fn arithmetic_and_twelve_bit_mutations_remain_bounded() {
     let limits = Limits {
         pixels: 4096,
         decoded_bytes: 1 << 20,
-        operations: 100_000,
+        decode_work: 100_000,
         ..Limits::default()
     };
     for name in [
@@ -37,7 +37,7 @@ fn arithmetic_work_and_coefficient_storage_use_existing_limits() {
     let data = fixture("image", "jpeg-arithmetic-sequential.in");
     for limits in [
         Limits {
-            operations: 100,
+            decode_work: 100,
             ..Limits::default()
         },
         Limits {
@@ -57,11 +57,12 @@ fn arithmetic_work_and_coefficient_storage_use_existing_limits() {
 
 #[test]
 fn arithmetic_and_huffman_twins_share_a_pixel_scaled_work_budget() {
-    // Default Limits admit 24 MP: keep the same operations/pixel ratio here.
-    let operations = u64::try_from(Limits::default().operations).unwrap() * (128 * 64) / 24_000_000;
+    // Default Limits admit `decode_work / pixels` units per pixel: keep the
+    // same ratio for this 128×64 image.
+    let defaults = Limits::default();
     let limits = Limits {
-        operations: usize::try_from(operations).unwrap(),
-        ..Limits::default()
+        decode_work: defaults.decode_work / defaults.pixels * (128 * 64),
+        ..defaults
     };
     let huffman = fixture("image", "jpeg-budget-huffman.in");
     let arithmetic = fixture("image", "jpeg-budget-arithmetic.in");
@@ -75,7 +76,7 @@ fn arithmetic_and_huffman_twins_share_a_pixel_scaled_work_budget() {
             data,
             Some(0),
             &Limits {
-                operations: 128 * 64 - 1,
+                decode_work: 128 * 64 - 1,
                 ..limits
             },
         )
@@ -154,9 +155,10 @@ fn missing_quantizer_reports_the_entropy_data_position() {
 #[test]
 fn twelve_bit_native_buffers_are_admitted_before_allocation() {
     let data = fixture("image", "jpeg-12bit-sequential.in");
-    // Six 8x8 blocks: i32 coefficients, u16 planes and expanded samples,
-    // plus the final bytes coexist through conversion.
-    let bytes = 24 * 16 * (4 + 2 + 2 + 1);
+    // Six 8x8 blocks: the u16 planes the scan reconstructs, and the
+    // expanded u16 samples plus the final bytes through conversion, beside
+    // the conversion's rows.
+    let bytes = 24 * 16 * (2 + 2 + 1) + 24 * super::transform::ROW_BYTES;
     let limits = Limits {
         decoded_bytes: bytes,
         ..Limits::default()
@@ -174,140 +176,40 @@ fn twelve_bit_native_buffers_are_admitted_before_allocation() {
     assert_eq!(error.kind, ErrorKind::Limit);
 }
 
-/// Exact rational area means of a full decode's samples over cell (row,
-/// column) of `cells` per eight, when the cell lies inside the frame.
-fn cell_mean(
-    full: &super::DctImage,
-    cells: u32,
-    (row, column): (u32, u32),
-    c: usize,
-) -> Option<u8> {
-    let components = usize::from(full.components);
-    let (x0, x1) = (column * 8, (column + 1) * 8);
-    let (y0, y1) = (row * 8, (row + 1) * 8);
-    if x1 > full.width * cells || y1 > full.height * cells {
-        return None;
-    }
-    // Work in units of 1/cells of a sample: cell edges fall on 8 units.
-    let overlap = |s: u32, low: u32, high: u32| {
-        (cells * (s + 1))
-            .min(high)
-            .saturating_sub((cells * s).max(low))
-    };
-    let mut sum = 0u64;
-    for y in 0..full.height {
-        let wy = overlap(y, y0, y1);
-        for x in 0..full.width {
-            let w = u64::from(wy * overlap(x, x0, x1));
-            let index = (y as usize * full.width as usize + x as usize) * components + c;
-            sum += w * u64::from(full.samples[index]);
-        }
-    }
-    u8::try_from((sum + 32) / 64).ok()
-}
-
 #[test]
-fn six_cells_stay_within_a_level_of_the_full_gray_sample_means() {
-    let limits = Limits::default();
-    let mut strict = pagura_core::Diagnostics::new(pagura_core::Recovery::Strict);
-    for name in [
-        "jpeg-baseline-gray",
-        "jpeg-restart",
-        "jpeg-progressive",
-        "jpeg-extended",
+fn sequential_frames_budget_their_sample_planes_not_coefficients() {
+    // 1000×1000 without subsampling: 125×125 blocks of 64 samples per
+    // component beside the expanded samples and the conversion's rows.
+    let header = |precision: u8| {
+        let mut data = vec![precision, 0x03, 0xe8, 0x03, 0xe8, 3];
+        for id in 1..=3 {
+            data.extend([id, 0x11, 0]);
+        }
+        data
+    };
+    let pixels = 1000 * 1000 * 3;
+    let rows = 1000 * super::transform::ROW_BYTES;
+    let planes = 3 * 125 * 125 * 64;
+    for (precision, process, bytes) in [
+        (8, 0xc0, pixels + planes + rows),
+        (8, 0xc1, pixels + planes + rows),
+        (12, 0xc1, 3 * pixels + 2 * planes + rows),
+        (8, 0xc2, pixels + 5 * planes + rows),
+        (12, 0xc2, 3 * pixels + 6 * planes + rows),
     ] {
-        let data = fixture("image", &format!("{name}.in"));
-        let full = super::decode(&data, Some(0), &limits).unwrap();
-        let six = super::decode_cells(&data, Some(0), &limits, &mut strict, 6).unwrap();
-        assert_eq!(six.cells, 6);
-        assert_eq!(
-            (six.width, six.height),
-            (
-                super::scaled_length(full.width, 6),
-                super::scaled_length(full.height, 6)
-            )
+        let limits = |decoded_bytes| Limits {
+            decoded_bytes,
+            ..Limits::default()
+        };
+        let data = header(precision);
+        assert!(
+            super::Frame::header(&data, process, &limits(bytes)).is_ok(),
+            "{precision}-bit {process:#x}"
         );
-        let mut compared = 0;
-        for row in 0..six.height {
-            for column in 0..six.width {
-                if let Some(expected) = cell_mean(&full, 6, (row, column), 0) {
-                    // Means of the unclamped samples, rounded once, against
-                    // means of the rounded, clamped samples.
-                    let actual = six.samples[(row * six.width + column) as usize];
-                    assert!(actual.abs_diff(expected) <= 1, "{name} ({row},{column})");
-                    compared += 1;
-                }
-            }
-        }
-        assert!(compared > 0, "{name}");
-    }
-}
-
-#[test]
-fn reduced_frames_decode_and_fail_as_full_frames_do() {
-    let limits = Limits {
-        pixels: 4096,
-        decoded_bytes: 1 << 20,
-        operations: 100_000,
-        ..Limits::default()
-    };
-    let mut repair = pagura_core::Diagnostics::new(pagura_core::Recovery::Repair);
-    for name in [
-        "jpeg-baseline-gray",
-        "jpeg-baseline-rgb",
-        "jpeg-420",
-        "jpeg-interleaved-420",
-        "jpeg-interleaved-progressive",
-        "jpeg-progressive-rgb",
-        "jpeg-arithmetic-sequential",
-        "jpeg-cmyk",
-        "jpeg-bad-huffman",
-        "jpeg-missing-scan",
-        "jpeg-truncated",
-    ] {
-        let data = fixture("image", &format!("{name}.in"));
-        let full = super::decode(&data, None, &limits);
-        for cells in [1, 2, 3, 4, 6, 8] {
-            let reduced = super::decode_cells(&data, None, &limits, &mut repair, cells);
-            match (&full, &reduced) {
-                (Ok(full), Ok(reduced)) => {
-                    assert_eq!(reduced.cells, cells, "{name}");
-                    assert_eq!(reduced.components, full.components, "{name}");
-                    assert_eq!(reduced.width, super::scaled_length(full.width, cells));
-                    assert_eq!(reduced.height, super::scaled_length(full.height, cells));
-                    let count = reduced.width as usize
-                        * reduced.height as usize
-                        * usize::from(reduced.components);
-                    assert_eq!(reduced.samples.len(), count, "{name} {cells}");
-                    if cells == 8 {
-                        assert_eq!(reduced, full, "{name}");
-                    }
-                }
-                (Err(full), Err(reduced)) => assert_eq!(reduced.kind, full.kind, "{name}"),
-                _ => panic!("{name} with {cells} cells: {full:?} but {reduced:?}"),
-            }
-        }
-        for end in (0..data.len()).step_by(3) {
-            let prefix = &data[..end];
-            assert_eq!(
-                super::decode_cells(prefix, None, &limits, &mut repair, 3).is_ok(),
-                super::decode(prefix, None, &limits).is_ok(),
-                "{name} prefix {end}"
-            );
-        }
-    }
-}
-
-#[test]
-fn twelve_bit_frames_keep_every_sample_and_counts_are_validated() {
-    let limits = Limits::default();
-    let mut strict = pagura_core::Diagnostics::new(pagura_core::Recovery::Strict);
-    let data = fixture("image", "jpeg-12bit-sequential.in");
-    let reduced = super::decode_cells(&data, Some(0), &limits, &mut strict, 2).unwrap();
-    assert_eq!(reduced.cells, 8);
-    assert_eq!(reduced, super::decode(&data, Some(0), &limits).unwrap());
-    for cells in [0, 5, 7, 9, 16] {
-        let error = super::decode_cells(&data, Some(0), &limits, &mut strict, cells).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::InvalidArgument);
+        let Err(error) = super::Frame::header(&data, process, &limits(bytes - 1)) else {
+            panic!("{precision}-bit {process:#x} admitted below its planes and samples");
+        };
+        assert_eq!(error.kind, ErrorKind::Limit);
+        assert_eq!(error.message, "JPEG coefficient and sample budget exceeded");
     }
 }

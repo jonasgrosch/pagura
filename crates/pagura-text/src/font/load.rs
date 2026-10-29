@@ -1,8 +1,5 @@
 //! Font dictionary loading (9.6–9.7; Tables 109–117).
-use super::{
-    FontKind, Mapping, Ownership, PdfFont, Source, WritingMode, to_unicode,
-    unicode::collection_unicode,
-};
+use super::{FontKind, Mapping, Ownership, PdfFont, Source, WritingMode};
 use crate::{
     cid::CidToGidMap,
     cmap::{self, CMapRole},
@@ -13,10 +10,78 @@ use crate::{
     objects::{array, numbers, optional, required},
     selection::Route,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
+use pagura_core::{
+    Diagnostic, Dictionary, Error, ErrorKind, ObjectId, Position, Recovery, Result, Value,
+};
 use pagura_document::Document;
 use pagura_raster::Transform;
 use std::{collections::BTreeMap, sync::Arc};
+
+/// What substituting an unusable embedded program needs (ADR 0009).
+struct Fallback<'a> {
+    font: &'a Dictionary,
+    metrics_font: &'a Dictionary,
+    metrics_id: Option<ObjectId>,
+    descriptor: Descriptor<'a>,
+    kind: FontKind,
+    position: Position,
+}
+
+impl Fallback<'_> {
+    /// Replaces an embedded program that cannot be used, even with the
+    /// parser's own repairs, by the substitute a non-embedded font would get,
+    /// reported as `font.embedded-unusable` (ADR 0009). Strict mode keeps the
+    /// program's error with that repair. Budgets, cycles and other errors, and
+    /// fonts no substitute can draw, keep the program's error.
+    fn replace(
+        &self,
+        document: &Document,
+        mut error: Error,
+        mapping: Option<Mapping>,
+        provider: Option<&dyn crate::Provider>,
+    ) -> Result<PdfFont> {
+        let unusable = matches!(error.kind, ErrorKind::Syntax | ErrorKind::Unsupported(_));
+        let Some(provider) = provider.filter(|_| unusable) else {
+            return Err(error);
+        };
+        if document.recovery() == Recovery::Strict {
+            error
+                .repair
+                .get_or_insert(crate::repairs::EMBEDDED_UNUSABLE);
+            return Err(error);
+        }
+        let substitute = match mapping {
+            Some(mapping) => crate::substitute::cid::load(
+                document,
+                self.font,
+                self.metrics_font,
+                self.metrics_id,
+                mapping,
+                provider,
+            ),
+            None => crate::substitute::load(
+                document,
+                self.font,
+                Some(self.descriptor),
+                self.kind,
+                provider,
+                self.position,
+            ),
+        };
+        let Ok(substitute) = substitute else {
+            return Err(error);
+        };
+        crate::report::Report::new(document).diagnostic(
+            Diagnostic::new(
+                crate::repairs::EMBEDDED_UNUSABLE,
+                "unusable embedded font program replaced by the substitute for its name and descriptor",
+            )
+            .at(error.position)
+            .in_object_opt(error.object),
+        )?;
+        Ok(substitute)
+    }
+}
 
 pub(super) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
     load_with(document, font, None, Position::Unknown, false)
@@ -74,13 +139,20 @@ pub(super) fn load_with(
         Error::unsupported(features::NON_EMBEDDED, "font program is not embedded")
     })?;
     let route = route(document, font, descriptor, position)?;
-    let program = Arc::new(crate::program::load(
-        document,
-        descriptor,
-        kind,
-        metrics_font,
-        rendering,
-    )?);
+    let program = match crate::program::load(document, descriptor, kind, metrics_font, rendering) {
+        Ok(program) => Arc::new(program),
+        Err(error) => {
+            let fallback = Fallback {
+                font,
+                metrics_font,
+                metrics_id,
+                descriptor,
+                kind,
+                position,
+            };
+            return fallback.replace(document, error, mapping, provider);
+        }
+    };
     let metrics = if kind == FontKind::Type0 {
         Metrics::composite(document, metrics_font)?
     } else {
@@ -107,8 +179,6 @@ pub(super) fn load_with(
         Mapping::Composite { map, .. } => map.mode,
         Mapping::Simple(_) => WritingMode::Horizontal,
     };
-    let to_unicode = to_unicode(document, font, &mapping)?;
-    let cid_unicode = collection_unicode(document, metrics_font, &mapping, provider)?;
     Ok(PdfFont {
         kind,
         writing_mode: mode,
@@ -120,16 +190,14 @@ pub(super) fn load_with(
         },
         mapping,
         metrics,
-        to_unicode,
         limits: document.limits(),
-        cid_unicode,
         retained: 0,
     }
     .accounted())
 }
 
 /// The single CIDFont of a Type 0 font and its object (9.7.6.1).
-fn descendant<'a>(
+pub(super) fn descendant<'a>(
     document: &'a Document,
     font: &'a Dictionary,
 ) -> Result<(&'a Dictionary, Option<ObjectId>)> {
@@ -260,7 +328,6 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
         &document.limits(),
         encoding::font_name(document, font)?,
     )?));
-    let to_unicode = to_unicode(document, font, &mapping)?;
     Ok(PdfFont {
         kind: FontKind::Type3,
         writing_mode: WritingMode::Horizontal,
@@ -271,9 +338,7 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
             matrix,
         },
         mapping,
-        to_unicode,
         limits: document.limits(),
-        cid_unicode: None,
         retained: 0,
     }
     .accounted())
@@ -335,23 +400,23 @@ mod tests {
                 },
             )
         };
-        let document = open(pagura_core::Recovery::Repair)?;
+        let document = open(Recovery::Repair)?;
         let font: Dictionary = [(Name::new(b"Encoding"), Value::name(b"InvalidEncoding"))]
             .into_iter()
             .collect();
         let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Raw, None)?;
         assert!(mapping.names.iter().all(Option::is_none));
-        assert!(mapping.unicode.iter().all(Option::is_none));
+        assert!((0..=255).all(|code| mapping.unicode(code).is_none()));
         // An unknown encoding name is a reported repair: StandardEncoding applies.
         let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Named, None)?;
-        assert_eq!(mapping.unicode[65].as_deref(), Some("A"));
+        assert_eq!(mapping.unicode(65).map(crate::GlyphText::as_str), Some("A"));
         assert!(
             document
                 .diagnostics()
                 .iter()
                 .any(|d| d.repair() == Some(crate::repairs::ENCODING_NAME))
         );
-        let strict = open(pagura_core::Recovery::Strict)?;
+        let strict = open(Recovery::Strict)?;
         let error = simple_mapping(&strict, &font, FontKind::TrueType, Route::Named, None)
             .err()
             .map(|error| error.repair);
@@ -368,7 +433,7 @@ mod tests {
             .into_iter()
             .collect();
         let mapping = simple_mapping(&document, &named, FontKind::TrueType, Route::Named, None)?;
-        assert_eq!(mapping.unicode[65].as_deref(), Some("A"));
+        assert_eq!(mapping.unicode(65).map(crate::GlyphText::as_str), Some("A"));
         Ok(())
     }
 }

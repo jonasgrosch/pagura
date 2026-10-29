@@ -86,11 +86,12 @@ pub struct Bitmap {
 
 /// Decodes PDF page 1 and its optional `/JBIG2Globals` stream.
 ///
-/// Every input and bitmap is bounded by `limits`; cumulative pixel work is
-/// bounded by `raster_work`, segment count by `objects`, and referrals by
-/// `value_nodes`. Segment dispatch, referral expansion, symbol height/export
-/// runs and text placements share the cumulative `operations` budget. `decoded_bytes` also bounds simultaneously live bitmaps
-/// and arithmetic contexts. No partial page is returned on an error.
+/// Every input and bitmap is bounded by `limits`; segment count is bounded
+/// by `objects` and referrals by `value_nodes`. Pixel work, segment
+/// dispatch, referral expansion, symbol height/export runs and text
+/// placements share the cumulative `decode_work` budget. `decoded_bytes`
+/// also bounds simultaneously live bitmaps and arithmetic contexts. No
+/// partial page is returned on an error.
 ///
 /// # Errors
 ///

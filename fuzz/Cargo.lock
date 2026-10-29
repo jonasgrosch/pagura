@@ -73,18 +73,49 @@ dependencies = [
 name = "pagura"
 version = "0.1.0"
 dependencies = [
+ "pagura-appearance",
+ "pagura-color",
  "pagura-core",
  "pagura-crypto",
  "pagura-data",
  "pagura-document",
+ "pagura-extract",
+ "pagura-font",
+ "pagura-image",
+ "pagura-paint",
  "pagura-pki",
  "pagura-raster",
  "pagura-render",
+ "pagura-text",
  "pagura-write",
 ]
 
 [[package]]
+name = "pagura-appearance"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+ "pagura-document",
+ "pagura-text",
+]
+
+[[package]]
 name = "pagura-codec"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+]
+
+[[package]]
+name = "pagura-color"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+ "pagura-crypto",
+]
+
+[[package]]
+name = "pagura-content"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
@@ -176,6 +207,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-interpret"
+version = "0.1.0"
+dependencies = [
+ "pagura-appearance",
+ "pagura-color",
+ "pagura-content",
+ "pagura-core",
+ "pagura-document",
+ "pagura-extract",
+ "pagura-font",
+ "pagura-image",
+ "pagura-raster",
+ "pagura-text",
+]
+
+[[package]]
+name = "pagura-paint"
+version = "0.1.0"
+dependencies = [
+ "pagura-color",
+ "pagura-core",
+ "pagura-image",
+ "pagura-interpret",
+ "pagura-raster",
+]
+
+[[package]]
 name = "pagura-pki"
 version = "0.1.0"
 dependencies = [
@@ -194,11 +252,10 @@ name = "pagura-render"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
- "pagura-crypto",
  "pagura-document",
  "pagura-extract",
- "pagura-font",
- "pagura-image",
+ "pagura-interpret",
+ "pagura-paint",
  "pagura-raster",
  "pagura-text",
 ]

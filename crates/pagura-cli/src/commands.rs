@@ -2,14 +2,35 @@
 
 use crate::args::{Command, Conversion, HELP, Output, Source, Timings, USAGE};
 use crate::failure::Failure;
-use crate::input::write_new;
+use crate::input::{create_new, write_new};
 use crate::{json, microbench, scan};
+use pagura::provider::default_provider;
 use pagura::text::SearchOptions;
-use pagura::{Document, Pixmap, Rgba8};
+use pagura::{Document, RenderContext, RenderOptions, Rgba8, device_size};
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+/// The store capacity of the commands that visit each page once (`text`,
+/// `find`, `render`, `convert` and `scan`).
+///
+/// They drop each page's scene after the page, so the store keeps only what
+/// later pages reuse: font programs, glyph edge setups, colour transforms and
+/// repeated images. 16 MiB holds the fonts of typical documents while
+/// bounding what the decoded images of earlier pages add to peak memory; the
+/// previous renderer kept fonts and one page surface between pages and no
+/// decoded image when rendering exactly. A font program larger than this is
+/// parsed again for every page instead of being kept.
+pub(crate) const ONE_PASS_STORE_BYTES: usize = 16 * 1024 * 1024;
+
+/// A context for one pass over the pages of `document`, with the
+/// feature-selected font data and [`ONE_PASS_STORE_BYTES`].
+pub(crate) fn one_pass_context(document: Document) -> RenderContext {
+    let provider = default_provider(document.limits());
+    RenderContext::with_store_capacity(Arc::new(document), provider, ONE_PASS_STORE_BYTES)
+}
 
 /// Runs `command`, writing its output to `out`.
 ///
@@ -83,7 +104,7 @@ fn pages(document: &Document, selected: Option<usize>) -> Result<std::ops::Range
 
 /// Prints the text of the selected pages, separated by form feeds.
 fn text(source: &Source, page: Option<usize>, out: &mut impl Write) -> Result<(), Failure> {
-    let context = pagura::render_context(Arc::new(source.open()?));
+    let context = one_pass_context(source.open()?);
     let document = context.document();
     for (ordinal, index) in pages(document, page)?.enumerate() {
         let text = context.text_page(document.page(index)?)?;
@@ -99,7 +120,7 @@ fn text(source: &Source, page: Option<usize>, out: &mut impl Write) -> Result<()
 /// Prints one JSON line per match, with its page, character range and
 /// quads in default user space.
 fn find(source: &Source, query: &str, out: &mut impl Write) -> Result<(), Failure> {
-    let context = pagura::render_context(Arc::new(source.open()?));
+    let context = one_pass_context(source.open()?);
     let document = context.document();
     for index in pages(document, None)? {
         let text = context.text_page(document.page(index)?)?;
@@ -134,7 +155,7 @@ struct Stage {
 /// whole range is validated against the page list before anything is written.
 fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure> {
     let started = Instant::now();
-    let context = pagura::render_context(Arc::new(conversion.source.open()?));
+    let context = one_pass_context(conversion.source.open()?);
     let document = context.document();
     let count = document.page_count()?;
     let indices = conversion
@@ -147,24 +168,75 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
         )));
     }
     let open = started.elapsed();
-    let options = conversion.render;
+    // PPM has no alpha. The renderer composites onto opaque white before
+    // quantizing, so its final RGB bytes can be written directly.
+    let options = RenderOptions {
+        background: Rgba8::WHITE,
+        ..conversion.render
+    };
     let mut stages = Vec::with_capacity(indices.clone().count());
     for page in indices {
-        let render_started = Instant::now();
-        let pixmap = context.render_page(document.page(page)?, &options)?;
-        let render = render_started.elapsed();
+        let page_started = Instant::now();
         let emit_started = Instant::now();
         let path = match &conversion.output {
             Output::File(path) => path.clone(),
             Output::Directory(directory) => image_path(directory, page),
         };
-        write_new(&path, &encode_ppm(&pixmap))?;
-        context.recycle(pixmap);
-        stages.push(Stage {
-            page,
-            render,
-            emit: emit_started.elapsed(),
-        });
+        #[expect(
+            clippy::large_stack_arrays,
+            reason = "one fixed 48 KiB output packing buffer, independent of input dimensions"
+        )]
+        let mut rgb = [0; RGB_CHUNK_BYTES];
+        let mut used = 0;
+        let mut file: Option<File> = None;
+        let mut emit = emit_started.elapsed();
+        // Each page is visited once: its scene is dropped after rendering
+        // instead of being stored.
+        let source = document.page(page)?;
+        let scene = context.record(source)?;
+        let size = device_size(source, &options)?;
+        let rendered = context.render_bands(
+            &scene,
+            &options,
+            None,
+            |_| false,
+            |_, pixels| {
+                let emit_started = Instant::now();
+                let written = (|| {
+                    // The first callback follows preparation, strict
+                    // repair checks and every renderer allocation.
+                    let file = match &mut file {
+                        Some(file) => file,
+                        empty => {
+                            let mut opened = create_new(&path)?;
+                            write_ppm_header(&mut opened, size)?;
+                            empty.insert(opened)
+                        }
+                    };
+                    write_rgb(file, pixels, &mut rgb, &mut used)
+                })();
+                emit += emit_started.elapsed();
+                written
+            },
+        );
+        drop(scene);
+        let emit_started = Instant::now();
+        // A successful stop keeps its completed bands. On any earlier engine
+        // or consumer error, discard the tail without another writer call.
+        let finished = if matches!(&rendered, Ok(Ok(_))) {
+            file.as_mut()
+                .map_or(Ok(()), |file| drain_rgb(file, &rgb, &mut used))
+        } else {
+            Ok(())
+        };
+        drop(file);
+        emit += emit_started.elapsed();
+        // Sink work is interleaved with execution. Measure all of it in
+        // emit, including conversion and file close, rather than render.
+        let render = page_started.elapsed().saturating_sub(emit);
+        rendered??;
+        finished?;
+        stages.push(Stage { page, render, emit });
     }
     if conversion.timings == Timings::Print {
         write_timings(out, open, &stages, started.elapsed())?;
@@ -178,11 +250,58 @@ fn image_path(directory: &Path, page: usize) -> std::path::PathBuf {
     directory.join(format!("page-{:04}.ppm", page + 1))
 }
 
-/// Binary PPM (P6) over white: the simplest raw image format.
-fn encode_ppm(pixmap: &Pixmap) -> Vec<u8> {
-    let mut ppm = format!("P6\n{} {}\n255\n", pixmap.width(), pixmap.height()).into_bytes();
-    ppm.extend(pixmap.to_rgb_over(Rgba8::WHITE));
-    ppm
+/// The sole fixed packing buffer, shared across bands and independent of
+/// page dimensions. Its complete chunks are written without a second copy.
+const RGB_CHUNK_BYTES: usize = 3 * 16_384;
+
+/// Binary PPM (P6) starts with the dimensions of the complete page.
+fn write_ppm_header(out: &mut impl Write, (width, height): (u32, u32)) -> std::io::Result<()> {
+    write!(out, "P6\n{width} {height}\n255\n")
+}
+
+/// Packs already-quantized opaque output, with no second compositing or
+/// rounding step. Opaque white is fixed at the CLI's RenderOptions above.
+fn write_rgb(
+    out: &mut impl Write,
+    rgba: &[u8],
+    rgb: &mut [u8; RGB_CHUNK_BYTES],
+    used: &mut usize,
+) -> std::io::Result<()> {
+    let (mut pixels, rest) = rgba.as_chunks::<4>();
+    debug_assert_eq!(rest, []);
+    debug_assert!(*used <= rgb.len() && used.is_multiple_of(3));
+    while !pixels.is_empty() {
+        let count = pixels.len().min((rgb.len() - *used) / 3);
+        let (next, remaining) = pixels.split_at(count);
+        for (target, pixel) in rgb[*used..][..count * 3]
+            .as_chunks_mut::<3>()
+            .0
+            .iter_mut()
+            .zip(next)
+        {
+            debug_assert_eq!(pixel[3], 255);
+            target.copy_from_slice(&pixel[..3]);
+        }
+        *used += count * 3;
+        if *used == rgb.len() {
+            drain_rgb(out, rgb, used)?;
+        }
+        pixels = remaining;
+    }
+    Ok(())
+}
+
+/// Drains only on explicit success paths. There is no Drop-time writer.
+fn drain_rgb(
+    out: &mut impl Write,
+    rgb: &[u8; RGB_CHUNK_BYTES],
+    used: &mut usize,
+) -> std::io::Result<()> {
+    if *used != 0 {
+        out.write_all(&rgb[..*used])?;
+        *used = 0;
+    }
+    Ok(())
 }
 
 fn write_timings(
@@ -211,72 +330,4 @@ fn write_timings(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::run;
-    use crate::args::{Command, Source};
-    use crate::failure::Failure;
-    use pagura::Recovery;
-    use pagura_testkit::fixture_path;
-
-    fn source(area: &str, file: &str, recovery: Recovery) -> Source {
-        Source {
-            path: fixture_path(area, file),
-            password: Vec::new(),
-            recovery,
-        }
-    }
-
-    fn output(command: &Command) -> Result<String, Failure> {
-        let mut out = Vec::new();
-        run(command, &mut out)?;
-        Ok(String::from_utf8(out).unwrap())
-    }
-
-    #[test]
-    fn inspect_reports_counts_and_diagnostics_as_one_json_line() {
-        let trailing = source("classic", "trailing-bytes.pdf", Recovery::Repair);
-        let line = output(&Command::Inspect(trailing.clone())).unwrap();
-        assert!(line.starts_with("{\"schema\":2,\"pages\":1,"), "{line}");
-        assert!(
-            line.ends_with(",\"repairs\":[\"file.trailing-bytes\"],\"information\":[]}\n"),
-            "{line}"
-        );
-        let strict = Source {
-            recovery: Recovery::Strict,
-            ..trailing
-        };
-        let Err(Failure::Engine(error)) = output(&Command::Inspect(strict)) else {
-            panic!("strict inspect accepted trailing bytes");
-        };
-        assert_eq!(
-            error.repair.map(pagura::Repair::as_str),
-            Some("file.trailing-bytes")
-        );
-    }
-
-    #[test]
-    fn text_rejects_a_page_outside_the_document_before_printing() {
-        let command = Command::Text {
-            source: source("text", "extract-tj.pdf", Recovery::Repair),
-            page: Some(1),
-        };
-        let Err(Failure::Request(message)) = output(&command) else {
-            panic!("page 1 of a one-page document");
-        };
-        assert_eq!(message, "page 1 outside the document's 1 pages");
-    }
-
-    #[test]
-    fn help_version_and_licenses_print_to_the_output() {
-        assert!(
-            output(&Command::Help)
-                .unwrap()
-                .contains("Exit status: 0 on")
-        );
-        assert!(output(&Command::Version).unwrap().starts_with("pagura "));
-        let licenses = output(&Command::Licenses).unwrap();
-        for (subject, _) in pagura::notices() {
-            assert!(licenses.contains(subject), "{subject}");
-        }
-    }
-}
+mod tests;

@@ -3,7 +3,7 @@
 //! A [`Provider`] supplies standard-font metrics and substitute programs,
 //! predefined CMaps and CID-to-Unicode tables. The default `bundled-data`
 //! feature links [`Bundled`], which [`default_provider`] returns; the
-//! facade's free functions ([`crate::compile_page`], [`crate::text_page`],
+//! facade's free functions ([`crate::record_page`], [`crate::text_page`],
 //! [`crate::prepare_form`] …) and [`crate::render_context`] use it.
 //!
 //! To supply other data, implement [`Provider`] and pass it to
@@ -28,8 +28,9 @@ pub const BUNDLED: bool = cfg!(feature = "bundled-data");
 
 /// The feature-selected provider: [`Bundled`] parsing within `limits` with
 /// the `bundled-data` feature, otherwise `None`, which leaves only the
-/// resources embedded in each PDF. Each call creates empty caches; keep and
-/// share the result to parse each resource once.
+/// resources embedded in each PDF. The standard fonts are parsed once per
+/// process and shared by every provider; each call creates empty caches for
+/// the other resources, so keep and share the result to parse each once.
 ///
 /// ```
 /// let provider = pagura::provider::default_provider(pagura::Limits::default());

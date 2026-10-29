@@ -38,6 +38,16 @@ pub const WIDTHS_LENGTH: Repair = Repair::new("font.widths-length");
 /// with its decoded program (Table 125). The program is parsed as decoded.
 pub const STREAM_LENGTHS: Repair = Repair::new("font.stream-lengths");
 
+/// A non-embedded font flagged Symbolic whose name is a known Latin family
+/// and whose `/Encoding` names a Latin base encoding (9.6.5, 9.8.2). The named
+/// encoding selects the standard face's glyphs instead of refusing the font;
+/// symbol and dingbat families and unknown names stay unsupported.
+pub const SYMBOLIC_LATIN_ENCODING: Repair = Repair::new("font.symbolic-latin-encoding");
+/// An embedded font program that cannot be used, even with the parser's own
+/// repairs, is replaced by the substitute a non-embedded font with the same
+/// name and descriptor would get (ADR 0009); the PDF's widths keep the advances.
+pub const EMBEDDED_UNUSABLE: Repair = Repair::new("font.embedded-unusable");
+
 /// Every repair tag defined by this crate.
 pub const ALL: &[Repair] = &[
     CID_TO_GID_IDENTITY,
@@ -53,4 +63,6 @@ pub const ALL: &[Repair] = &[
     ENCODING_NAME,
     WIDTHS_LENGTH,
     STREAM_LENGTHS,
+    SYMBOLIC_LATIN_ENCODING,
+    EMBEDDED_UNUSABLE,
 ];

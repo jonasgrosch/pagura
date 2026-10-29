@@ -10,6 +10,7 @@ mod format;
 mod lut;
 mod mab;
 
+use crate::affine::{Affine, Undecided};
 use crate::cie::{self, D50};
 use crate::features;
 use curves::Curve;
@@ -96,6 +97,16 @@ enum Pcs {
     Xyz,
     Lab,
 }
+
+impl Pcs {
+    /// The PCS XYZ of a gray model's curve value.
+    fn xyz(self, value: f64) -> [f64; 3] {
+        match self {
+            Self::Lab => cie::lab_to_xyz([value * 100.0, 0.0, 0.0], D50),
+            Self::Xyz => D50.map(|w| w * value),
+        }
+    }
+}
 #[derive(Debug, Clone, Copy)]
 enum Encoding {
     Xyz,
@@ -176,23 +187,161 @@ impl Profile {
     ///
     /// # Errors
     /// Returns `Unsupported` when the selected transform is outside the
-    /// supported subset.
+    /// supported subset, and `Syntax` for undefined curve arithmetic.
     pub fn convert(&self, inputs: &[f64], intent: Intent) -> Result<[f64; 3]> {
-        let mut values = [0.0; 4];
-        for (i, (value, &input)) in values.iter_mut().zip(inputs).enumerate() {
-            *value = if self.lab_input {
-                if i == 0 {
-                    input.clamp(0.0, 100.0) / 100.0
-                } else {
-                    (input.clamp(-128.0, 127.0) + 128.0) / 255.0
-                }
-            } else {
-                input.clamp(0.0, 1.0)
-            };
+        let transform = self.forward(intent)?;
+        let mut arithmetic = Arithmetic::default();
+        let rgb = self.evaluate(transform, inputs, intent, &mut arithmetic);
+        if arithmetic.undefined {
+            return Err(Error::syntax("undefined ICC curve arithmetic"));
         }
-        // ICC 8.10.2: designated AToB, then AToB0, then matrix/TRCs.
-        // Unsupported DToB elements may be bypassed at step (a); BToA and
-        // the header's preferred intent are ignored for PDF source spaces.
+        Ok(rgb)
+    }
+
+    /// Checks that `intent` selects a supported forward transform, so that
+    /// [`Self::convert_total`] converts as [`Self::convert`] does.
+    pub(crate) fn check(&self, intent: Intent) -> Result<()> {
+        self.forward(intent).map(|_| ())
+    }
+
+    /// Converts as [`Self::convert`] does, with undefined curve arithmetic
+    /// giving 0 instead of an error; black when the intent's transform is
+    /// unsupported, which [`Self::check`] rules out.
+    pub(crate) fn convert_total(&self, inputs: &[f64], intent: Intent) -> [f64; 3] {
+        self.linear_total(inputs, intent).map(cie::encode)
+    }
+
+    /// The gamut-clipped linear sRGB that [`Self::convert_total`] encodes.
+    pub(crate) fn linear_total(&self, inputs: &[f64], intent: Intent) -> [f64; 3] {
+        self.forward(intent).map_or([0.0; 3], |transform| {
+            cie::linear_srgb(self.xyz(transform, inputs, intent, &mut Arithmetic::default()))
+        })
+    }
+
+    /// The inputs the transform for `intent` reads where it is a gray (1) or
+    /// matrix/TRC (3) model of device inputs, whose first stage takes each
+    /// input on its own ([`Self::curve`]); `None` for other transforms.
+    pub(crate) fn curved_inputs(&self, intent: Intent) -> Option<usize> {
+        match self.forward(intent).ok()? {
+            _ if self.lab_input => None,
+            Forward::Gray { .. } => Some(1),
+            Forward::Matrix { .. } => Some(3),
+            _ => None,
+        }
+    }
+
+    /// The stage of [`Self::linear_total`] that takes each input on its
+    /// own, where the transform is a gray or matrix/TRC model of device
+    /// inputs: input `i` clamped to `0..=1` and through its curve, with
+    /// undefined curve arithmetic giving 0 as there. `None` for other
+    /// transforms, and for an input the transform does not read.
+    pub(crate) fn curve(&self, i: usize, input: f64, intent: Intent) -> Option<f64> {
+        if self.lab_input {
+            return None;
+        }
+        let curve = match self.forward(intent).ok()? {
+            Forward::Gray { curve, .. } if i == 0 => curve,
+            Forward::Matrix { curves, .. } => curves.get(i)?,
+            _ => return None,
+        };
+        Some(curve.evaluate(input.clamp(0.0, 1.0), &mut Arithmetic::default()))
+    }
+
+    /// [`Self::linear_total`] of inputs already through [`Self::curve`],
+    /// `curved` holding one value for each input the transform reads.
+    pub(crate) fn linear_curved(&self, curved: &[f64], intent: Intent) -> [f64; 3] {
+        let value = |i: usize| curved.get(i).copied().unwrap_or(0.0);
+        let xyz = match self.forward(intent) {
+            Ok(Forward::Gray { pcs, .. }) => pcs.xyz(value(0)),
+            Ok(Forward::Matrix { matrix, .. }) => cie::map(*matrix, [value(0), value(1), value(2)]),
+            _ => return [0.0; 3],
+        };
+        cie::linear_srgb(self.relative(xyz, intent))
+    }
+
+    /// [`Self::linear_total`] of several colours, `count` components each,
+    /// into `out`, three values each. A matrix/TRC model is applied a stage
+    /// at a time: each curve over every colour, then the matrices colour by
+    /// colour, with the same arithmetic as one colour at a time.
+    pub(crate) fn linear_line(
+        &self,
+        inputs: &[f64],
+        count: usize,
+        intent: Intent,
+        out: &mut [f64],
+    ) {
+        const CHUNK: usize = 32;
+        let count = count.max(1);
+        let Ok(transform) = self.forward(intent) else {
+            out.as_chunks_mut::<3>().0.fill([0.0; 3]);
+            return;
+        };
+        let batch = crate::batch::Batch::new((inputs, count), (out, 3));
+        let arithmetic = &mut Arithmetic::default();
+        let staged = !self.lab_input && intent != Intent::Absolute;
+        let (Forward::Matrix { matrix, curves }, true) = (transform, staged) else {
+            for (inputs, out) in batch.points() {
+                out.copy_from_slice(&cie::linear_srgb(
+                    self.xyz(transform, inputs, intent, arithmetic),
+                ));
+            }
+            return;
+        };
+        let mut values = [[0.0; CHUNK]; 3];
+        for chunk in batch.chunks(CHUNK) {
+            let (inputs, out) = chunk.parts();
+            let out = out.as_chunks_mut::<3>().0;
+            let len = out.len();
+            for (i, inputs) in inputs.chunks_exact(count).enumerate() {
+                for (channel, values) in values.iter_mut().enumerate() {
+                    values[i] = inputs.get(channel).map_or(0.0, |&v| v.clamp(0.0, 1.0));
+                }
+            }
+            for (curve, values) in curves.iter().zip(&mut values) {
+                curve.evaluate_line(&mut values[..len], arithmetic);
+            }
+            for (i, out) in out.iter_mut().enumerate() {
+                let xyz = cie::map(*matrix, [values[0][i], values[1][i], values[2][i]]);
+                *out = cie::linear_srgb(cie::map(cie::D50_TO_D65, xyz));
+            }
+        }
+    }
+
+    /// Encloses what [`Self::linear_total`] computes for every value of
+    /// `inputs` (see [`crate::affine`]), for a matrix/TRC model with
+    /// identity or sampled curves and a source that is not CIELAB.
+    pub(crate) fn enclose_linear(
+        &self,
+        inputs: &[Affine],
+        intent: Intent,
+    ) -> std::result::Result<[Affine; 3], Undecided> {
+        let (Ok(Forward::Matrix { matrix, curves }), false) =
+            (self.forward(intent), self.lab_input)
+        else {
+            return Err(Undecided::Unsupported);
+        };
+        let mut linear = [Affine::point(0.0); 3];
+        for (i, (out, curve)) in linear.iter_mut().zip(curves).enumerate() {
+            let value = match inputs.get(i) {
+                Some(input) => input.clamp(0.0, 1.0)?,
+                None => Affine::point(0.0),
+            };
+            *out = curve.enclose(value)?;
+        }
+        let mut xyz = cie::enclose_map(*matrix, linear);
+        if intent == Intent::Absolute {
+            for (i, value) in xyz.iter_mut().enumerate() {
+                *value = value.scale(self.white[i] / D50[i]);
+            }
+        }
+        cie::enclose_linear_srgb(cie::enclose_map(cie::D50_TO_D65, xyz))
+    }
+
+    /// The forward transform `intent` selects (ICC 8.10.2): the designated
+    /// AToB, then AToB0, then the matrix/TRC model. Unsupported DToB
+    /// elements may be bypassed at step (a); BToA and the header's preferred
+    /// intent are ignored for PDF source spaces.
+    fn forward(&self, intent: Intent) -> Result<&Forward> {
         let transform = self.transforms[intent.index()]
             .as_deref()
             .or(self.transforms[0].as_deref())
@@ -200,15 +349,62 @@ impl Profile {
             .ok_or(Error::syntax(
                 "ICC profile has no applicable forward transform",
             ))?;
-        let mut xyz = transform.evaluate(values)?;
+        if let Forward::Unsupported(error) = transform {
+            return Err(error.clone());
+        }
+        Ok(transform)
+    }
+
+    fn evaluate(
+        &self,
+        transform: &Forward,
+        inputs: &[f64],
+        intent: Intent,
+        arithmetic: &mut Arithmetic,
+    ) -> [f64; 3] {
+        cie::xyz_to_srgb(self.xyz(transform, inputs, intent, arithmetic))
+    }
+
+    /// The D65-relative XYZ of source components.
+    fn xyz(
+        &self,
+        transform: &Forward,
+        inputs: &[f64],
+        intent: Intent,
+        arithmetic: &mut Arithmetic,
+    ) -> [f64; 3] {
+        let values = std::array::from_fn(|i| {
+            inputs.get(i).map_or(0.0, |&input| {
+                if self.lab_input {
+                    if i == 0 {
+                        input.clamp(0.0, 100.0) / 100.0
+                    } else {
+                        (input.clamp(-128.0, 127.0) + 128.0) / 255.0
+                    }
+                } else {
+                    input.clamp(0.0, 1.0)
+                }
+            })
+        });
+        self.relative(transform.evaluate(values, arithmetic), intent)
+    }
+
+    /// D65-relative XYZ from the transform's PCS XYZ.
+    fn relative(&self, mut xyz: [f64; 3], intent: Intent) -> [f64; 3] {
         if intent == Intent::Absolute {
             // ICC 6.3.2: recover media-absolute colorimetry from relative PCS.
             for (i, value) in xyz.iter_mut().enumerate() {
                 *value *= self.white[i] / D50[i];
             }
         }
-        Ok(cie::xyz_to_srgb(cie::map(cie::D50_TO_D65, xyz)))
+        cie::map(cie::D50_TO_D65, xyz)
     }
+}
+
+/// Undefined arithmetic seen while evaluating one transform.
+#[derive(Debug, Default)]
+struct Arithmetic {
+    undefined: bool,
 }
 impl Forward {
     fn parse(tag: &Cursor<'_>, inputs: usize, lab: bool, budget: &mut Budget) -> Result<Self> {
@@ -232,25 +428,16 @@ impl Forward {
             _ => Self::Unsupported(unsupported("unsupported ICC forward transform type")),
         })
     }
-    fn evaluate(&self, values: [f64; 4]) -> Result<[f64; 3]> {
+    fn evaluate(&self, values: [f64; 4], arithmetic: &mut Arithmetic) -> [f64; 3] {
         match self {
-            Self::Gray { curve, pcs } => {
-                let value = curve.evaluate(values[0])?;
-                Ok(match pcs {
-                    Pcs::Lab => cie::lab_to_xyz([value * 100.0, 0.0, 0.0], D50),
-                    Pcs::Xyz => D50.map(|w| w * value),
-                })
-            }
+            Self::Gray { curve, pcs } => pcs.xyz(curve.evaluate(values[0], arithmetic)),
             Self::Matrix { matrix, curves } => {
-                let mut linear = [0.0; 3];
-                for (i, curve) in curves.iter().enumerate() {
-                    linear[i] = curve.evaluate(values[i])?;
-                }
-                Ok(cie::map(*matrix, linear))
+                let linear = std::array::from_fn(|i| curves[i].evaluate(values[i], arithmetic));
+                cie::map(*matrix, linear)
             }
-            Self::Lut(lut, encoding) => Ok(encoding.decode(lut.evaluate(values))),
-            Self::Mab(mab, encoding) => Ok(encoding.decode(mab.evaluate(values)?)),
-            Self::Unsupported(error) => Err(error.clone()),
+            Self::Lut(lut, encoding) => encoding.decode(lut.evaluate(values)),
+            Self::Mab(mab, encoding) => encoding.decode(mab.evaluate(values, arithmetic)),
+            Self::Unsupported(_) => [0.0; 3],
         }
     }
     fn retained_bytes(&self) -> usize {

@@ -240,6 +240,30 @@
       "height": 64
     },
     {
+      "id": "classic/undefined-contents-is-null",
+      "kind": "pdf",
+      "description": "Contents refers to an object that does not exist: null, so the page has no content (Table 31)",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "undefined-reference-null"
+      ],
+      "path": "corpus/generated/classic/undefined-contents-is-null.pdf",
+      "sha256": "e9521beb932e08f197a09674f0ec312b91f7f24e0c97b1358ef7ac92a44a0ad2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "pages.contents-undefined"
+      ],
+      "oracle": "corpus/generated/classic/undefined-contents-is-null.ppm",
+      "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
       "id": "classic/trailing-bytes",
       "kind": "pdf",
       "description": "data after the final %%EOF is a reported repair",
@@ -315,8 +339,7 @@
       "oracle_sha256": "c7fcccb35e4e35be1787d09b6c60705c7d316d5466b1dc41842cec6cc9aea4ff",
       "dpi": 72,
       "width": 64,
-      "height": 64,
-      "competitive_tolerance": 1
+      "height": 64
     },
     {
       "id": "classic/colorspace-unsupported",

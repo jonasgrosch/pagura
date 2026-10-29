@@ -89,9 +89,8 @@ fn exact_generic_budgets_are_enforced_before_work() {
     let limits = Limits {
         pixels: 19 * 9,
         decoded_bytes: bytes,
-        raster_work: work,
+        decode_work: work + 2,
         objects: 2,
-        operations: 2,
         stream_bytes: data.len(),
         file_bytes: data.len(),
         ..Limits::default()
@@ -107,15 +106,11 @@ fn exact_generic_budgets_are_enforced_before_work() {
             ..limits
         },
         Limits {
-            raster_work: work - 1,
+            decode_work: work + 1,
             ..limits
         },
         Limits {
             objects: 1,
-            ..limits
-        },
-        Limits {
-            operations: 1,
             ..limits
         },
         Limits {
@@ -141,8 +136,7 @@ fn truncations_and_mutations_remain_bounded() {
         decoded_bytes: 160_000,
         objects: 64,
         value_nodes: 64,
-        operations: 4096,
-        raster_work: 200_000,
+        decode_work: 204_096,
         stream_bytes: 4096,
         file_bytes: 8192,
         ..Limits::default()
@@ -248,7 +242,7 @@ fn huffman_table_setup_is_charged_before_construction() {
     let data = fixture("jbig2", "huffman-symbols-raw-4-2.jb2");
     let globals = fixture("jbig2", "huffman-symbols-raw-4-2.globals");
     let limits = Limits {
-        operations: super::huffman::STANDARD_ROWS,
+        decode_work: super::huffman::STANDARD_ROWS,
         ..Limits::default()
     };
     let error = decode(&data, Some(&globals), &limits).unwrap_err();
@@ -274,8 +268,7 @@ fn unknown_length_allocates_actual_rows_and_keeps_following_segment() {
     let limits = Limits {
         pixels: 25,
         decoded_bytes: bytes,
-        raster_work: work,
-        operations: 3,
+        decode_work: work + 3,
         objects: 3,
         stream_bytes: data.len(),
         file_bytes: data.len(),
@@ -288,15 +281,11 @@ fn unknown_length_allocates_actual_rows_and_keeps_following_segment() {
             ..limits
         },
         Limits {
-            raster_work: work - 1,
+            decode_work: work + 2,
             ..limits
         },
         Limits {
             stream_bytes: data.len() - 1,
-            ..limits
-        },
-        Limits {
-            operations: 2,
             ..limits
         },
     ] {

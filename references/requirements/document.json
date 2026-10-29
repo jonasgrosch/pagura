@@ -23,7 +23,8 @@
       ],
       "status": "implemented",
       "tests": [
-        "classic/undefined-reference-is-null"
+        "classic/undefined-reference-is-null",
+        "classic/undefined-contents-is-null"
       ],
       "gaps": ""
     },
@@ -36,7 +37,7 @@
         "pagura-core diagnostic",
         "classic/trailing-bytes"
       ],
-      "gaps": "xref reconstruction and the ADR 0003 repair catalogue"
+      "gaps": "Reported reconstruction and the ADR 0003 repair catalogue exist; compatibility breadth and ambiguous/irrecoverable input remain bounded. See document-repairs and the specific recovery entries."
     },
     {
       "id": "xref-streams",
@@ -102,7 +103,7 @@
         "pagura-document unit tests",
         "corpus/manifests/document.json"
       ],
-      "gaps": "non-ASCII R6 password preparation and public-key security handlers remain unsupported"
+      "gaps": "Public-key security handlers remain unsupported. Non-ASCII R6 SASLprep is implemented in pagura-crypto; its specific requirement entries own the preparation evidence."
     },
     {
       "id": "document-header-recovery",
@@ -191,9 +192,10 @@
       ],
       "status": "implemented",
       "tests": [
-        "document/object-end-missing"
+        "document/object-end-missing",
+        "document/object-stray-delimiter"
       ],
-      "gaps": "requires a complete value and an immediately following object/xref/trailer boundary; EOF is insufficient"
+      "gaps": "requires a complete value and an immediately following object/xref/trailer boundary, or only unmatched closing delimiters before endobj; EOF is insufficient"
     },
     {
       "id": "page-type-recovery",
@@ -590,7 +592,7 @@
         "Unresolvable child references are omitted only below a usable root, with tree.structure or tree.cycle reported. Dangling or cyclic Limits references are treated as malformed bounds. Limit errors are always propagated.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "7.9.6; Table 36; 7.9.7; Table 37",
@@ -622,7 +624,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.3.2.2; Table 149; 12.3.2.4; J.3.3; J.3.4",
@@ -654,7 +656,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.3.3; Tables 150-152; 7.9.2.2; D.3",
@@ -690,7 +692,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.5.6.5; Table 176; 12.5.4; Table 168; 12.6.2; 12.6.4.2; 12.6.4.3; 12.6.4.6; 12.6.4.8; Tables 210-211; 12.6.4.12; 12.6.4.17",
@@ -720,7 +722,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.4.2; Table 161; 7.9.7",
@@ -754,7 +756,7 @@
         "document/forms-cycle",
         "document/forms-duplicate-conflict"
       ],
-      "gaps": "Read-only; no filling, appearance generation, signature validation or XFA interpretation."
+      "gaps": "This entry covers the read-only model. Filling, appearance generation and persistence are implemented in their respective layers and tracked in forms.json and write.json. XFA interpretation and complete signature validation remain incomplete."
     },
     {
       "id": "forms-actions",

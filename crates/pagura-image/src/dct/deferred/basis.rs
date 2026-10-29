@@ -90,13 +90,9 @@ pub(super) struct Reference {
     basis: [[f64; 8]; 8],
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "rounded samples are clamped to the byte domain"
-)]
+/// The byte of a reconstructed sample, rounded and clamped.
 fn sample(value: f64) -> u8 {
-    value.round().clamp(0.0, 255.0) as u8
+    pagura_core::convert::round_u8(value)
 }
 
 impl Reference {
@@ -110,8 +106,9 @@ impl Reference {
         sample(f64::from(dc) * self.basis[0][0] * self.basis[0][0] + 128.0)
     }
 
-    /// Recomputes the samples selected by `mask` (bit `8y + x`) and returns
-    /// the arithmetic operations used.
+    /// Recomputes the samples selected by `mask` (bit `8y + x`) of a block
+    /// whose coefficients are given column by column, and returns the
+    /// arithmetic operations used.
     pub(super) fn refine(
         &self,
         coefficients: &[i32; 64],
@@ -126,7 +123,7 @@ impl Reference {
             let horizontal = std::array::from_fn::<_, 8, _>(|v| {
                 let mut sum = 0.0;
                 for u in 0..8 {
-                    sum += f64::from(coefficients[v * 8 + u]) * self.basis[u][x];
+                    sum += f64::from(coefficients[u * 8 + v]) * self.basis[u][x];
                 }
                 sum
             });

@@ -3897,7 +3897,7 @@
     {
       "id": "text/paint-tounicode-simple",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.tounicode-simple-codes neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3905,10 +3905,8 @@
       "path": "corpus/generated/text/paint-tounicode-simple.pdf",
       "sha256": "aabf8bfce0505f521d821eba136ac9d39296f33e27222e72682ed60a0c6a096e",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.tounicode-simple-codes"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-simple.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
@@ -3918,7 +3916,7 @@
     {
       "id": "text/paint-tounicode-utf16",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.tounicode-utf16 neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3926,10 +3924,8 @@
       "path": "corpus/generated/text/paint-tounicode-utf16.pdf",
       "sha256": "6874ebecb7203c23fa72a5a7b463c50ca5e908b2ea28e6f19755a34dfbb5cace",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.tounicode-utf16"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-utf16.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
@@ -3939,7 +3935,7 @@
     {
       "id": "text/paint-tounicode-range",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.tounicode-range neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3947,10 +3943,8 @@
       "path": "corpus/generated/text/paint-tounicode-range.pdf",
       "sha256": "4eace401911c554a9c594ee0f4f0d2559f3770c76496747b058f28074ad1d097",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.tounicode-range"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-range.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
@@ -3960,7 +3954,7 @@
     {
       "id": "text/paint-tounicode-block-count",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.cmap-block-count neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3968,10 +3962,8 @@
       "path": "corpus/generated/text/paint-tounicode-block-count.pdf",
       "sha256": "4eea5a8f4851131c19e1b8264d6c246ff713f2305ecb4e05d846d6e3a0ca5148",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.cmap-block-count"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-block-count.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
@@ -3981,7 +3973,7 @@
     {
       "id": "text/paint-tounicode-invalid",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.tounicode-invalid neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3989,10 +3981,8 @@
       "path": "corpus/generated/text/paint-tounicode-invalid.pdf",
       "sha256": "19c2bafb67cd2f58400a1f53ec3f231461527e4aff8660f5e9089cf2f17b29c9",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.tounicode-invalid"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-invalid.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
@@ -8733,6 +8723,71 @@
         ".pdf": {
           "path": "corpus/generated/text/substitute-cid-identity-unknown.pdf",
           "sha256": "3cf360553f5284805cd9fe032776e2c2d00a4ddb70ee42f4cdddc4318a85c2d4"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
+      "id": "text/substitute-cid-identity-latin",
+      "kind": "vector",
+      "description": "A Latin-named Identity CIDFont draws through its ToUnicode text with the metric-compatible face; unmapped codes and ligatures draw nothing; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin.input",
+          "sha256": "958f471f5477894347dcbff396bd76f96a462df65c79f3b9cac58e340cd8a61e"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin.out",
+          "sha256": "0ed329497cdab3f4a1030685529bc1fecaa0ec5d3cf7091aabbf53ca41459242"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin.pdf",
+          "sha256": "c6e09a00db227fc9d61faa740c9e0d648e612e7f05f7738e33c9db12d5fa6c70"
+        }
+      },
+      "driver": "bundled-cid-latin"
+    },
+    {
+      "id": "text/substitute-cid-identity-latin-no-tounicode",
+      "kind": "vector",
+      "description": "Without ToUnicode text a Latin-named Identity CIDFont draws nothing, keeps the PDF advances and reports incomplete coverage",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-no-tounicode.input",
+          "sha256": "b413f47d13ee2fe6c845b2ee141af81de858df4ec549a58b7970bb96645bc8d2"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-no-tounicode.out",
+          "sha256": "6f88e68e20bb0d3049fadc14d5c6f9874814f9088dc99017fc36aceee4714581"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-no-tounicode.pdf",
+          "sha256": "bb4d145092c1f66c3b3844f418a5e1d6574bed98e3b0d0c3386feb0bd7a47562"
+        }
+      },
+      "driver": "bundled-cid-latin"
+    },
+    {
+      "id": "text/substitute-cid-identity-latin-vertical",
+      "kind": "vector",
+      "description": "Vertical writing still needs vertical forms",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-vertical.error",
+          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-latin-vertical.pdf",
+          "sha256": "aac9917ed3e3ace9edf22248196827e52026b81b1137478e4b8618d2ed20ea7a"
         }
       },
       "driver": "bundled-cid-error"
@@ -14005,10 +14060,64 @@
         },
         ".pdf": {
           "path": "corpus/generated/text/substitute-unsafe-symbolic-known-base.pdf",
-          "sha256": "2db1d52a128916d498593d8664ee6c24888ae439fa392be841b5f3c4593ad8e1"
+          "sha256": "0905b9cfa4d5a4fc26fc9f20012b9a85d8003794f0ba89d8029026391d292f9f"
         }
       },
       "driver": "provider-error"
+    },
+    {
+      "id": "text/substitute-symbolic-latin-encoding",
+      "kind": "vector",
+      "description": "A Symbolic flag contradicted by a known Latin family and an explicit Latin encoding is a reported repair; strict mode rejects it",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-encoding.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-encoding.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-encoding.pdf",
+          "sha256": "2db1d52a128916d498593d8664ee6c24888ae439fa392be841b5f3c4593ad8e1"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-encoding.repair",
+          "sha256": "fd55fb10fadae07ffb9691b9443856e1f4189f9292eda510b2729057f80bd659"
+        }
+      },
+      "driver": "substitute-repair"
+    },
+    {
+      "id": "text/substitute-symbolic-latin-base-encoding",
+      "kind": "vector",
+      "description": "A Symbolic flag contradicted by a known Latin family and an explicit Latin encoding is a reported repair; strict mode rejects it",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-base-encoding.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-base-encoding.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-base-encoding.pdf",
+          "sha256": "44278bf7f3c00a7cb235c570f28f573be051fcc8f9e4ed5a27a42c43c7d74ab2"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/substitute-symbolic-latin-base-encoding.repair",
+          "sha256": "fd55fb10fadae07ffb9691b9443856e1f4189f9292eda510b2729057f80bd659"
+        }
+      },
+      "driver": "substitute-repair"
     },
     {
       "id": "text/substitute-weight-zero",

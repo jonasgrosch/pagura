@@ -1,8 +1,8 @@
 # ADR 0016: One meaning per `Limits` field; domain budgets
 
 Status: accepted, 2026-10-18. Amended 2026-10-19 (signature, function and
-traversal budgets). Refines invariant 3 of `docs/ARCHITECTURE.md` and ADR
-0012.
+traversal budgets) and 2026-10-21 (render budgets, ADR 0034). Refines
+invariant 3 of `docs/ARCHITECTURE.md` and ADR 0012.
 
 ## Context
 
@@ -142,3 +142,67 @@ borrowed `operations` and `value_nodes`.
    between revisions (12.8), which run on the same bounded navigation
    context as outlines and name trees.
 
+## Amendment, 2026-10-21: render budgets (ADR 0034)
+
+The renderer never read `render_bytes` or `function_work`: functions charged
+`operations`, the compositor charged its cumulative work to `raster_work`,
+which is documented per fill, and its surfaces and caches each borrowed
+`decoded_bytes`. ADR 0034 makes preparation the only fallible step of a
+render, so every budget that execution consumes must be reserved before it.
+
+1. **Render budgets.**
+
+   | Field | Default | Bounds |
+   |---|---|---|
+   | `render_bytes` | 512 MiB | What one render holds besides the values it takes from the `Store`: prepared marks, coverage sources and paint, the band buffers of the page, groups and soft masks, coverage rows and scratch |
+   | `render_work` (new) | 2,000,000,000 units | The rasterization work of the marks that meet the region, plus one unit per pixel each of them composites |
+   | `function_work` | 50,000,000 units | Function evaluations of one render, in the units of the 2026-10-19 amendment, reserved through the prepared sources that evaluate them |
+   | `raster_work` | 2,000,000,000 units | The rasterization work of one fill, as before, and nothing cumulative |
+   | `path_segments` | 4,000,000 | The line segments of one flattened path, as before |
+
+   Retained values move to the `Store` under its own capacity (ADR 0012,
+   amendment of 2026-10-21), so `render_bytes` no longer covers decoded
+   content, images, colour transforms or fonts, only one render's working
+   storage. Functions no longer charge `operations`.
+2. **Preparation reserves; execution cannot fail.** In source order over the
+   marks that meet the region, preparation checks the per-fill budgets and
+   reserves `render_bytes`, `render_work` and `function_work` through a
+   `Meter` from prepared quantities: coverage cells and rows, covered area
+   times samples, evaluations per sample and buffer bytes. Each reservation
+   is an upper bound of what execution uses, which tests assert. The first
+   failure in source order, of a budget or of validation, is the render's
+   error. Execution charges nothing and stops only for cancellation between
+   bands, which is not an error.
+3. **Render charges do not depend on the `Store`.** A value taken from the
+   store costs the render's budgets the same whether it was found or built;
+   building it charges its own per-value budgets (`decode_work`,
+   `font_work` and the others) when it is built.
+4. **Budgets are per render of one region.** A whole page can reach a limit
+   that each of its tiles stays below. This is documented, not hidden: for
+   one region, charges and the reported error do not depend on band height
+   or the store's state, but they do depend on the region.
+5. **`Limits` is 256 bytes with `render_work`,** the threshold of decision 2
+   of the 2026-10-19 amendment. The next render budget joins a nested group
+   of `u32` fields, as the signature budgets did.
+
+Peak memory of one render is therefore bounded by `render_bytes`, plus the
+store's capacity, plus any value too large to retain, which its build budgets
+bound; this replaces the consequence above that `render_bytes` alone bounds a
+page's peak memory.
+
+
+## Amendment, 2026-10-29: function work of 2 Gi units
+
+`function_work` defaults to 2,147,483,648 units, matching `decode_work`:
+32 units per pixel of a 64 Mi-pixel reference. This raises its previous
+50,000,000-unit allowance. The value fits a 32-bit `usize`. The existing
+2,000,000,000-unit `render_work` allowance, 64 Mi pixel cap, byte caps and
+host frame cap remain unchanged. The fuzz driver explicitly retains its
+previous 50,000,000-unit function allowance.
+
+Function preparation reserves its evaluation cost per sample. A boundary
+regression checks the largest admitted sample count at the default and
+refusal of one more. Newly admitted renders must match the unchanged
+renderer with only `function_work` raised; a prior refusal is not a
+performance baseline. Rendering arithmetic and per-sample charging are
+unchanged.

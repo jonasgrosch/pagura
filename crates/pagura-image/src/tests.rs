@@ -1,11 +1,46 @@
 //! Independent generated image vectors and dictionary invariants.
 use crate::{
-    ImageKind, MaskKind, Samples, ccitt, dct, decode_inline, decode_xobject, inline_data_length,
+    DecodeRequest, DecodedImage, ImageId, ImageKind, ImageSource, MaskKind, Samples, ccitt, dct,
+    inline_data_length,
 };
-use pagura_core::{Dictionary, ErrorKind, Limits, Name, ObjectId, Recovery, Value};
-use pagura_document::{Document, OpenOptions};
+use pagura_core::{Dictionary, ErrorKind, Limits, Name, ObjectId, Recovery, Result, Value};
+use pagura_document::{Document, IndirectObject, OpenOptions};
 use pagura_testkit::{fixture, fixture_path};
 use std::collections::BTreeMap;
+
+/// Decodes an image XObject through its source as painting does, every
+/// sample exactly, and reports the decode's repairs to `document`.
+pub(crate) fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<DecodedImage> {
+    let source = ImageSource::from_xobject(document, image)?;
+    let decoded = source.decode(
+        &DecodeRequest::FULL,
+        &document.limits(),
+        document.recovery(),
+    )?;
+    document.report(decoded.diagnostics);
+    Ok(decoded.image)
+}
+
+/// [`decode_xobject`] for an inline image with `resources`.
+pub(crate) fn decode_inline(
+    document: &Document,
+    resources: &Dictionary,
+    dictionary: &Dictionary,
+    data: &[u8],
+) -> Result<DecodedImage> {
+    let id = ImageId::Inline {
+        stream: None,
+        offset: 0,
+    };
+    let source = ImageSource::from_inline(document, resources, dictionary, data, id)?;
+    let decoded = source.decode(
+        &DecodeRequest::FULL,
+        &document.limits(),
+        document.recovery(),
+    )?;
+    document.report(decoded.diagnostics);
+    Ok(decoded.image)
+}
 
 fn dictionary(entries: &[(&[u8], Value)]) -> Dictionary {
     entries
@@ -133,7 +168,7 @@ fn independent_vectors() {
 }
 
 #[test]
-fn decode_arrays_stencils_color_keys_and_inline_abbreviations() {
+fn decode_arrays_stencils_and_inline_abbreviations() {
     let document = document();
     let mut dict = dictionary(&[
         (b"W", Value::Integer(3)),
@@ -174,38 +209,6 @@ fn decode_arrays_stencils_color_keys_and_inline_abbreviations() {
     ]);
     let image = decode_inline(&document, &Dictionary::new(), &stencil, &[0x80]).unwrap();
     assert_eq!(image.kind, ImageKind::Stencil { inverted: true });
-    let mut keyed = dictionary(&[
-        (b"Width", Value::Integer(2)),
-        (b"Height", Value::Integer(1)),
-        (b"BitsPerComponent", Value::Integer(8)),
-        (b"ColorSpace", Value::name(b"DeviceGray")),
-        (
-            b"Mask",
-            Value::Array(vec![Value::Integer(12), Value::Integer(25)]),
-        ),
-    ]);
-    let image = crate::dispatch::decode(
-        &document,
-        &keyed,
-        std::borrow::Cow::Borrowed(&[12, 26]),
-        None,
-        &mut pagura_core::Diagnostics::new(Recovery::Strict),
-    )
-    .unwrap();
-    assert_eq!(image.mask, MaskKind::ColorKey(vec![(12, 25)]));
-    keyed.insert(Name::new(b"Decode"), Value::Array(vec![Value::Integer(0)]));
-    assert_eq!(
-        crate::dispatch::decode(
-            &document,
-            &keyed,
-            std::borrow::Cow::Borrowed(&[12, 26]),
-            None,
-            &mut pagura_core::Diagnostics::new(Recovery::Strict)
-        )
-        .unwrap_err()
-        .kind,
-        ErrorKind::Syntax
-    );
 }
 
 #[test]
@@ -406,7 +409,7 @@ fn truncated_and_mutated_codecs_never_invent_samples() {
     let limits = Limits {
         pixels: 4096,
         decoded_bytes: 65536,
-        operations: 100_000,
+        decode_work: 100_000,
         ..Limits::default()
     };
     for name in [

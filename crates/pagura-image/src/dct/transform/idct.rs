@@ -215,7 +215,7 @@ mod tests {
     use super::Idct;
 
     #[test]
-    fn truncation_forms_match_the_rounding_functions() {
+    fn truncation_form_matches_the_rounding_distance() {
         let mut values = vec![
             f32::NAN,
             f32::INFINITY,
@@ -242,13 +242,6 @@ mod tests {
                 actual.to_bits() == expected.to_bits() || actual.is_nan() && expected.is_nan(),
                 "{value}"
             );
-            let wide = f64::from(value) * 1.000_000_1;
-            for value in [f64::from(value), wide] {
-                let expected = value.round().clamp(0.0, 255.0);
-                let expected = if expected.is_nan() { 0.0 } else { expected };
-                let actual = f64::from(super::super::sample_by_truncation(value));
-                assert_eq!(actual, expected, "{value}");
-            }
         }
     }
 

@@ -62,8 +62,7 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1,
-      "competitive_tolerance": 33
+      "tolerance": 1
     },
     {
       "id": "content/precision-slivers-255",
@@ -83,8 +82,7 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1,
-      "competitive_tolerance": 33
+      "tolerance": 1
     },
     {
       "id": "content/precision-slivers-1000",
@@ -104,8 +102,7 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1,
-      "competitive_tolerance": 122
+      "tolerance": 1
     },
     {
       "id": "content/precision-slivers-270000",
@@ -125,8 +122,7 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1,
-      "competitive_tolerance": 127
+      "tolerance": 1
     },
     {
       "id": "content/precision-translucent-stagnation",
@@ -146,8 +142,7 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1,
-      "competitive_tolerance": 127
+      "tolerance": 1
     },
     {
       "id": "content/precision-tiny-alpha",
@@ -4015,8 +4010,7 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "api": "compile_page",
-      "competitive_tolerance": 1
+      "api": "compile_page"
     },
     {
       "id": "content/alpha-stroke",
@@ -4756,8 +4750,7 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "api": "compile_page",
-      "competitive_tolerance": 66
+      "api": "compile_page"
     },
     {
       "id": "content/group-incoming-alpha",
@@ -6421,6 +6414,29 @@
       "repairs": [],
       "oracle": "corpus/generated/content/marked-OC-other.ppm",
       "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/marked-unclosed-hidden",
+      "kind": "pdf",
+      "description": "Reported recovery: marked-unclosed",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/marked-unclosed-hidden.pdf",
+      "sha256": "904250c93db31491a70cb763cc78fa5b1541501d0d9e68fd982dcee649cc7ff3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unclosed"
+      ],
+      "oracle": "corpus/generated/content/marked-unclosed-hidden.ppm",
+      "oracle_sha256": "26e05920e6bbdeb401387cbda8007fdace761fc2e4ca9e590ac633f7e0c83cd8",
       "dpi": 72,
       "width": 8,
       "height": 8,

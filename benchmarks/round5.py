@@ -20,6 +20,7 @@ from benchkit.documents import GOOD, METRICS, _statistics, document_command, doc
 from benchkit.engines import engines, identify
 from benchkit.images import normalize
 from benchkit.reports import new_report, write_summary
+from benchkit.rustflags import repository_rustflags
 import benchkit.documents as documents
 
 from agreement import pixel_difference
@@ -39,9 +40,6 @@ V8_NOTE = ("V8 compiles the whole module at instantiation (`--no-wasm-lazy-compi
            "Compare V8 cells only within one setting.")
 CONTENT = ("text-heavy", "image-heavy", "vector-heavy", "mixed")
 X86_V3 = "pagura-x86-64-v3"
-# The competitive accuracy path (ADR 0004) of the same portable binary, as a row of its own.
-COMPETITIVE = "pagura-competitive"
-COMPETITIVE_FLAGS = ("--accuracy", "competitive")
 
 
 def target_features(toolchain, host, env, *flags):
@@ -53,7 +51,7 @@ def target_features(toolchain, host, env, *flags):
 
 
 def build_x86_v3(output, toolchain, host, env):
-    """Keep the optional ISA track isolated from the portable headline build."""
+    """Keep the optional ISA track isolated from the headline build."""
     track = {"status": "unavailable", "target": host, "rustflags": "-C target-cpu=x86-64-v3"}
     if not host.startswith("x86_64-"):
         return {**track, "reason": "x86-64-v3 requires an x86_64 host"}
@@ -118,15 +116,18 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
     env = dict(os.environ, CARGO_TARGET_DIR=str(target))
     for name in ("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS"):
         env.pop(name, None)
-    env["CARGO_ENCODED_RUSTFLAGS"] = ""  # override per-target/global Cargo config too
-    features = target_features(toolchain, host, env)
+    # The repository's flags, passed explicitly: they replace inherited and user-level flags.
+    flags = {host: repository_rustflags(toolchain, host, env)}
+    if include_wasm:
+        flags["wasm32-wasip1"] = repository_rustflags(toolchain, "wasm32-wasip1", env)
+    flagged = {triple: dict(env, CARGO_ENCODED_RUSTFLAGS="\x1f".join(values)) for triple, values in flags.items()}
+    features = target_features(toolchain, host, env, *flags[host])
     log = output / "build.log"
     checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "--target", host,
-             "--bin", "pagura", "--bin", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=env)
-    wasi_env = dict(env, CARGO_ENCODED_RUSTFLAGS="-C\x1ftarget-feature=+simd128")
+             "--bin", "pagura", "--bin", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=flagged[host])
     if include_wasm:
         checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "-p", "pagura-host",
-                 "--features", "bundled-data", "--target", "wasm32-wasip1"], log, env=wasi_env)
+                 "--features", "bundled-data", "--target", "wasm32-wasip1"], log, env=flagged["wasm32-wasip1"])
     targets = [(host, "native-control")] + ([("wasm32-wasip1", "convert.wasm")] if include_wasm else [])
     for triple, name in targets:
         deps = target / triple / "release/deps"
@@ -135,9 +136,7 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
             raise ValueError("ambiguous facade library in clean benchmark target")
         command = toolchain + ["rustc", "--edition=2024", "--target", triple, "-O", "-C", "lto=thin",
                    "-C", "codegen-units=1", "-L", f"dependency={deps}", "--extern", f"pagura={libraries[0]}",
-                   ROOT / "benchmarks/adapters/wasm_convert.rs", "-o", artifacts / name]
-        if triple == "wasm32-wasip1":
-            command += ["-C", "target-feature=+simd128"]
+                   ROOT / "benchmarks/adapters/wasm_convert.rs", "-o", artifacts / name, *flags[triple]]
         checked(command, log, env=env)
     if include_wasm:
         checked([wasmtime, "compile", "-C", "cache=n", "-C", "parallel-compilation=n",
@@ -147,10 +146,10 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
     if x86_v3:
         tracks[X86_V3] = build_x86_v3(output, toolchain, host, env)
     atomic_json(output / "compiler.json", {"rustc": info, "host": host, "native_tracks": tracks,
-        "features": ["bundled-data"], "native_rustflags": "target baseline; inherited RUSTFLAGS cleared",
-        "native_target_features": features,
-        "wasm_target_features": target_features(toolchain, "wasm32-wasip1", env, "-C", "target-feature=+simd128") if include_wasm else None,
-        "wasm_rustflags": "-C target-feature=+simd128" if include_wasm else None,
+        "features": ["bundled-data"], "rustflags_source": ".cargo/config.toml; inherited and user-level flags replaced",
+        "native_rustflags": flags[host], "native_target_features": features,
+        "wasm_target_features": target_features(toolchain, "wasm32-wasip1", env, *flags["wasm32-wasip1"]) if include_wasm else None,
+        "wasm_rustflags": flags["wasm32-wasip1"] if include_wasm else None,
         "wasmtime": "Cranelift AOT opt-level=2; parallel-compilation=n" if include_wasm else None,
         "product_host_wasm_sha256": sha((target / "wasm32-wasip1/release/pagura-host.wasm").read_bytes()) if include_wasm else None})
     return target / host / "release/pagura", artifacts
@@ -159,14 +158,15 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
 def native_simd(host, features):
     """Describe compiler-enabled SIMD, rather than the hardware's capabilities."""
     if host.startswith("x86_64-"):
-        enabled = ("sse2" in features, "avx2" in features, any(item.startswith("avx512") for item in features))
+        enabled = ("sse2" in features, "sse4.1" in features, "avx2" in features,
+                   any(item.startswith("avx512") for item in features))
         detail = ", ".join(f"{name} {'enabled' if present else 'disabled'}"
-                           for name, present in zip(("SSE2", "AVX2", "AVX-512"), enabled))
+                           for name, present in zip(("SSE2", "SSE4.1", "AVX2", "AVX-512"), enabled))
     elif host.startswith("aarch64-"):
         detail = "NEON enabled" if "neon" in features else "NEON disabled"
     else:
         detail = "target features: " + (", ".join(features) or "none")
-    return f"compiler autovectorization at {host} target baseline: {detail}"
+    return f"compiler autovectorization for {host} with the repository's target flags: {detail}"
 
 
 def page_metadata(manifest):
@@ -278,12 +278,11 @@ def idle_record(machine, path, node, *, smoke):
 
 
 def timed_engines(selected, bases):
-    """The optional x86-64-v3 build and competitive path are Pagura rows, timed whenever portable Pagura is."""
-    rows = tuple(name for name in (X86_V3, COMPETITIVE) if name in bases)
-    if not rows or "pagura" not in selected:
+    """The optional x86-64-v3 build is a Pagura row, timed whenever headline Pagura is."""
+    if X86_V3 not in bases or "pagura" not in selected:
         return selected
     native = tuple(name for name in selected if name not in WASM)
-    return (*native, *rows, *selected[len(native):])
+    return (*native, X86_V3, *selected[len(native):])
 
 
 def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, machine, args):
@@ -330,7 +329,7 @@ def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, 
                     timeout = min(policy["timeout_seconds"], remaining_time(args))
                     destination = temporary / name
                     destination.mkdir()
-                    command = (document_command("pagura" if name in (X86_V3, COMPETITIVE) else name, bases[name], pages, destination) if name in bases else
+                    command = (document_command("pagura" if name == X86_V3 else name, bases[name], pages, destination) if name in bases else
                                wasm_command(name, node, wasmtime, artifacts, pages, destination))
                     decoded = {}
                     run = measure_document(command, destination, expected, {**policy, "timeout_seconds": timeout},
@@ -450,10 +449,7 @@ def parse_args(argv=None):
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--smoke", action="store_true", help="two pages, 72 dpi, three samples and one warmup")
     parser.add_argument("--pagura-x86-64-v3", action="store_true",
-                        help="add a separate x86-64-v3 row when the host supports it; portable Pagura stays the reference")
-    parser.add_argument("--pagura-competitive", action="store_true",
-                        help="add a separate row for the competitive accuracy path (RenderOptions::accuracy) "
-                             "of the portable build; exact Pagura stays the reference")
+                        help="add a separate x86-64-v3 row when the host supports it; headline Pagura stays the reference")
     parser.add_argument("--dpi300-pages", type=int, choices=(20, 40), default=20)
     parser.add_argument("--seed", type=int, default=52018)
     parser.add_argument("--timebox-seconds", type=int, default=7200)
@@ -469,8 +465,6 @@ def parse_args(argv=None):
         parser.error("reference requires --control >= 1")
     if args.pagura_x86_64_v3 and args.engines is not None and "pagura" not in args.engines:
         parser.error("pagura-x86-64-v3 requires pagura in --engines as its parity reference")
-    if args.pagura_competitive and args.engines is not None and "pagura" not in args.engines:
-        parser.error("pagura-competitive requires pagura in --engines as its accuracy reference")
     if args.timebox_seconds <= 0:
         parser.error("timebox-seconds must be positive")
     return args
@@ -555,11 +549,6 @@ def main(argv=None):
                     raise ValueError("x86-64-v3 build failed its executable preflight")
             else:
                 identities[X86_V3] = track
-        if args.pagura_competitive and "pagura" in bases:
-            bases[COMPETITIVE] = [*bases["pagura"], *COMPETITIVE_FLAGS]
-            identities[COMPETITIVE] = identify("pagura", bases[COMPETITIVE])
-            if identities[COMPETITIVE]["status"] != "available":
-                raise ValueError("the competitive path failed its executable preflight")
         names = timed_engines(names, bases)
         for name, runtime in (("v8-wasi", node), ("wasmtime", wasmtime)):
             if name not in needed:

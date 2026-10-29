@@ -71,9 +71,38 @@ pub(crate) fn end(
             .in_object(id),
         );
     }
+    if let Some(after) = stray_delimiters(parser, limits)? {
+        diagnostics.repair(
+            Diagnostic::new(
+                repairs::OBJECT_STRAY_DELIMITER,
+                "unmatched closing delimiters between a complete value and endobj ignored",
+            )
+            .at(parser.position())
+            .in_object(id),
+        )?;
+        return parser.seek(after);
+    }
     Err(Error::syntax("missing endobj")
         .at(parser.position())
         .in_object(id))
+}
+
+/// The offset after `endobj` when only unmatched `>>` or `]` precede it: a
+/// closing delimiter cannot begin a value (7.3.7), so none of them can hold
+/// content. At most `limits.depth` delimiters are read.
+fn stray_delimiters(parser: &Parser<'_>, limits: &Limits) -> Result<Option<usize>> {
+    let mut probe = Parser::with_offset(parser.data(), parser.offset(), Origin::File, *limits)?;
+    let mut found = false;
+    for _ in 0..limits.depth {
+        let width = match probe.peek() {
+            Some(b']') => 1,
+            Some(b'>') if probe.data().get(probe.offset() + 1) == Some(&b'>') => 2,
+            _ => break,
+        };
+        probe.seek(probe.offset() + width)?;
+        found = true;
+    }
+    Ok((found && probe.keyword(ENDOBJ)).then(|| probe.offset()))
 }
 
 /// Recognize a positive indirect-object identity at a token boundary (7.3.10).

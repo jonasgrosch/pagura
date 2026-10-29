@@ -1,60 +1,128 @@
 # Capability and evidence status
 
-Pagura is in **milestones M3–M5** (`docs/ROADMAP.md`). It opens real-world
-files reliably and paints vector graphics, text and images; colour and
-transparency are partly done, and the remaining gaps fail explicitly with
-stable tags. Exploratory timings put rendering at roughly 6–12× slower than
-PDFium, MuPDF and CoreGraphics on the benchmark pages and about level with
-pdf.js. That is not an ADR 0002 measurement. No claim of conformance or
-speed superiority is made. Requirement registries
-whose `scope` does not say so have not yet been verified against the
-primary standards.
+Pagura has substantial rendering, reading, form-filling and incremental-writing
+support. It is **not a complete PDF implementation**, and feature parity with
+PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics has not been established.
+Work spans M1–M7; none of those milestones is declared complete by this page.
 
-| Area | Implemented | Remaining |
+This inventory was reconciled against `render/one-pass` at
+`847fb26f0616e8b70bec76883880c78cbc47915d`, the embedded-colour follow-up to the fetched
+one-pass head `7c03b656d1e1093c6951e80ec2fc189b5b1bf90a` (PR #118).
+It describes that branch, including refactoring not yet merged into `main`.
+**Implemented** below means an implementation and associated tests exist, within the stated
+limits. It does not mean those tests or all corpora were rerun for this audit.
+Library support, PDF integration and viewer support are listed separately where
+they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
+remaining work, dependencies and acceptance criteria.
+
+G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
+43 capability families, all 90 literal tags reviewed, and all 335 requirement IDs assigned.
+It includes API families without tags and separates library, CLI, host and viewer support.
+All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
+The source check detects stale evidence and missing ownership, not runtime parity.
+
+## Capability matrix
+
+| Area | Implemented | Remaining boundary |
 |---|---|---|
-| Core | Order-preserving dictionaries (key-indexed above 16 entries), inline names, finite reals, generation-aware references; per-object value budgets; structured errors with `Feature` tags, positions, objects and the repair a strict rejection refused; typed repair/information diagnostics (`Recovery::Strict`/`Repair`) | Broader syntax recovery |
-| Document | Classic and stream cross-references, object streams, `/Prev` revisions with cycle detection, hybrid files, lazily parsed `OnceLock`-cached objects, references to undefined objects as null, typed cached page tree with shared resources, the ADR 0003 repair catalogue including full reconstruction | Linearization hints; the remaining failures of other projects' bug-reproduction suites |
-| Filters | ASCIIHex, ASCII85, RunLength, LZW, Flate (zlib and reported raw DEFLATE), PNG/TIFF predictors at 1–16 bits; caps enforced while decoding | — |
-| Security | MD5, SHA-2, RC4, AES; standard handler R2–R4, R5 (Adobe extension), R6 with SASLprep (Unicode 3.2.0 NFKC) for non-ASCII passwords; crypt filters; `/Perms` checks reported | Public-key handlers (`security.Adobe-PubSec`) |
-| Fonts | `pagura-font`: TrueType and OpenType (glyf and CFF/CFF2 default instance), bare and CID-keyed CFF, Type 1 (PFA, PFB, eexec); outlines, advances, matrices, names, built-in encodings, cmap formats 0, 4, 6, 12 | Expert CFF charsets, FDSelect 4, CFF2 Private DICT blends and variations, other cmap formats, hinting |
-| Text | `pagura-text`: simple, Type 3 and composite fonts; standard encodings and Differences; widths, CID metrics, embedded CMaps with usecmap, CIDToGIDMap, ToUnicode; non-embedded fonts through bundled substitutes via a `Provider` (ADR 0009): metric-compatible Latin outlines, FoxitSymbol and FoxitDingbats, and, with the opt-in `cjk-fonts` feature, Source Han Sans for the four CJK collections; the predefined CJK CMaps; `pagura licenses` lists the notices; fonts and outlines shared across a document's pages by `RenderContext`; TrueType glyph selection per 9.6.5.4 with documented reader fallbacks; per-font retained-memory estimates | Vertical writing with substituted CID fonts (`font.cid-substitute-vertical`); non-embedded fonts with unknown symbolic encodings or Identity-ordered collections; Type 1 programs that need PostScript |
-| Images | `pagura-image`: samples at 1–16 bits, decode arrays, mask metadata, inline images; JPEG (baseline, extended sequential and progressive, Huffman/QM arithmetic, 8/12-bit precision, CMYK/YCCK); CCITT G3/G4; JBIG2 generic, refinement, symbol, text, halftone and Huffman-coded regions; JPEG 2000 Part 1 with precincts, progression changes, code-block modes, ROI and partial-quality reconstruction; reported repairs for damaged data and malformed parameters | JPEG lossless/hierarchical processes; JBIG2 extended templates; JPEG 2000 colour specifications and sample layouts outside the supported set |
-| Rendering | Display list; sweep rasterizer with exact-area antialiasing; strokes with caps, joins, dashes and stroke adjustment; geometric clipping; Device, Default, Indexed, ICC (matrix/TRC and LUT profiles), CalGray, CalRGB, Lab, Separation and DeviceN colour; PDF functions with linear and cubic sampled interpolation and transfer functions; form XObjects; text in every render mode, Type 3 glyphs and bundled substitutes; images with masks, soft masks, Decode, Interpolate and separable minification; tiling patterns and mesh shadings; transparency groups, soft masks and blend modes; CMYK and spot overprint display simulation; optional content with View usage; annotation appearances; crop, rotation, UserUnit; tiles; reported recovery of common content faults | Non-RGB group colour spaces (`transparency.group-colorspace`); fractional, pattern and per-colourant transfer regions (`transparency.transfer`); nonempty widgets and rotated widget borders without explicit appearances; known defect: the 8-bit path for all-opaque pages can exceed ADR 0004's one-level bound at partially covered pixels, because it quantizes source colours and rounds twice per mark (up to about 1.5 levels per partial store, accumulating) |
-| Reading | Positioned text extraction from the content interpreter, with words, lines, reading order, ActualText/Alt/ReversedChars (14.9.4) and search with highlight quads (`pagura text`, `pagura find`); a separate logical view for tagged pages (14.7–14.8: structure order, role maps, artifacts, structure ActualText/Alt, linked to the page's glyphs) that never changes page search or selection; viewer search, selection, copy, links and outlines (protocol 1.4); navigation: name and number trees, every destination type, named destinations, outlines, link annotations, inert actions (never followed or executed) and page labels; a form field model (AcroForm 12.7: field tree, types, inherited values, widgets, inert field actions; XFA detected, not interpreted); in-memory filling of text, check box, radio and choice fields, with their widget appearances prepared as data (12.7.4.3: DA and DR, auto-size, quadding, comb, multiline, MK borders and backgrounds) | The logical view in the viewer's accessibility tree; structure namespaces (`text.structure-namespace`); bidirectional text; rendering and saving filled forms; XFA (`form.xfa`), rich text (`form.rich-text`) and other field types (`form.field-type`); appearances with oblique text matrices or negative font sizes (`appearance.text-matrix`), other DA operators (`appearance.default-appearance`), fonts without a reversible simple encoding (`appearance.font-encoding`), rounded, beveled or inset borders (`appearance.border-style`), rotated widgets (`appearance.widget-rotation`) and AP updates with inline images, several Tx sections or crossed scopes (`appearance.update`); accessibility; signature validation (ADR 0015) (M6) |
-| Signatures | Read-only fields, source-bound ByteRange and revision coverage; `pagura::signatures` verifies CMS integrity for adbe.pkcs7.detached, ETSI.CAdES.detached and ETSI.RFC3161: SHA-1 (reported weak), SHA-224/256/384/512, RSA v1.5/PSS and ECDSA P-256/P-384/P-521, signed attributes, signer-certificate identifiers, ESS v1/v2 binding, CMSAlgorithmProtection and timestamp imprints/token signatures; isolated signature errors and malformed certificate schemas; Perms/DocMDP certification link | Host trust anchors/path validation, revocation, modification classification, TSA authorization and clock trust, complete PAdES attribute/policy validation; normalized issuer-name matching; unreadable form values can still prevent discovery (ADR 0015) |
-| Writing | Deterministic new documents; immutable editing transactions; append-only classic/xref-stream revisions; saved text/choice fields and existing checkbox/radio states with appearances; inline browser form controls and PDF download (ADR 0031) | Full rewrite, object deletion, encryption-on-write, redaction, undo/redo and general page-content editing; signed-change permission enforcement; generated button states and nested direct fields |
-| WebAssembly | `pagura-host` WASI command (protocol v1, `crates/pagura-host/PROTOCOL.md`); dependency-free browser shim and viewer; native/WASI byte parity; protocol 1.1 viewport generations; bounded LRU of compiled pages; continuous scrolling, zoom and a password prompt; verified in a real browser (cross-origin isolated, exact pixels at DPR 2, multi-page navigation, explicit unsupported banner) | Threads; interrupting a running tile; browser checks of the new gestures |
-| Safety | Workspace-only product dependencies; every product target forbids unsafe; clippy pedantic, `missing_docs`, no `unwrap`/`expect`/`panic`; eleven cargo-fuzz targets with a bounded smoke run (`tools/fuzz_smoke.py`) and every finding replayed on stable Rust | Process sandbox, long fuzz campaigns |
-| Benchmarks | Stage-timed conversion track (open/render/emit, document mode), regression track, raw-format normalization, competitors out of tree (PDFium, MuPDF, pdf.js, hayro, CoreGraphics, Poppler) | Controlled runners; release gate |
+| Rendering architecture | One interpreter with negotiated device needs; separate text device; appearance generation in `pagura-appearance`; cached resolution-independent scenes; source-order preparation, per-buffer N16/F32/F64 storage and one band executor; exact rendering only | Additional output/hit-testing devices, persistent resumable jobs and broader scheduling. `Accuracy::Competitive` and the former rendering pipelines have been removed. Architecture alone does not establish complete PDF feature coverage. |
+| Core and document structure | Bounded syntax, generation-aware objects, classic/xref streams, object streams, hybrid files, incremental revisions, lazy object caches, page trees and reported reconstruction/repair | Broader malformed-file compatibility needs current corpus evidence. Opening requires complete bytes; linearization hints and range loading are not implemented. External-file streams remain unsupported. |
+| Filters | ASCIIHex, ASCII85, RunLength, LZW, Flate, PNG/TIFF predictors and bounded decoding; explicit raw-DEFLATE entry point and reported compatibility repairs | Image filters dispatch to `pagura-image`; their tags in the generic filter crate do not mean the engine lacks those codecs. |
+| Password encryption | Standard handler R2–R6, RC4/AES, crypt filters, permissions consistency checks and Unicode 3.2 SASLprep for R6; CLI legacy PDFDocEncoding password conversion | Adobe public-key security handlers; encrypted historical-revision access; encryption on write. The browser password path does not provide the CLI's legacy text conversion. |
+| Font programs | TrueType/OpenType glyf; cmap 0/2/4/6/10/12/13 and post 1/2/3; CFF Expert/ExpertSubset charsets, FDSelect 0/3/4; CFF2 default-instance charstring and Private DICT blends; static Type 1/PFA/PFB programs | Nondefault variations, CFF2 Font DICT matrices, cmap 8, other post formats, collections, general PostScript, hybrid/synthetic Type 1, synthetic CFF, CFF CharstringType 1, standalone CIDFont programs and nonhorizontal Type 1 `sbw`. Hints are not executed. Primary-text verification remains incomplete for some implemented formats. See the [font inventory](../crates/pagura-font/README.md). |
+| PDF text/font binding | Simple, Type 3 and CID fonts; embedded and predefined CMaps, ToUnicode, widths and vertical metrics; bundled standard-14 substitutes and opt-in CJK substitutes (`cjk-fonts`); shared document font resources | Vertical substituted CID fonts, unknown symbolic encodings/collections and executable CMap programs. Embedded vertical fonts are supported. Substitution coverage depends on the provider and build features. |
+| Image codecs | JPEG baseline/extended/progressive, Huffman and arithmetic, 8/12-bit, CMYK/YCCK; CCITT G3/G4; JBIG2 generic/refinement/symbol/text/halftone/Huffman regions; JPEG 2000 Part 1 with progression, precincts, ROI and partial-quality reconstruction | JPEG lossless/hierarchical modes, CCITT extension mode, JBIG2 extended templates/necessary extensions, and JPX profiles/layouts outside the implemented subset. Codec success does not establish complete PDF image rendering. |
+| PDF image integration | Inline images and XObjects, 1–16-bit samples, Decode arrays, masks, separate soft masks and interpolation/minification; JPX straight/premultiplied embedded alpha is decoded and composited, with Gray/RGB/CMYK embedded spaces, bounded embedded ICC forward transforms, eight-bit unsigned sYCC, direct Indexed index/opacity channels, and mixed-precision/reference-grid adaptation | Indexed JPX opacity with container palettes, other/mixed sYCC precisions, Lab-input ICC, multi-profile precedence and unsupported selected-transform fallback remain open. Gray/RGB embedded ICC and eight-bit sYCC have independent pixel fixtures; broader interactions still need evidence. See [image description](../crates/pagura-interpret/src/machine/image/describe.rs) and [painting](../crates/pagura-paint/src/source/image.rs). |
+| Paths and shading | Fills/strokes, dashes, clipping, forms, tiling patterns, mesh shadings, functions, crop/rotation/UserUnit and tiled output | Explicit refusals remain for singular transforms and pattern-placement/state/image-mask cases; classify each as valid unsupported input, invalid input or a resource/numerical limit. Difficult mesh/geometry cases need independent accuracy evidence. |
+| Colour and transparency | Device/Default/Indexed, ICC forward matrix/TRC and LUT processing, calibrated colours, Lab, Separation/DeviceN; Gray/RGB/CMYK transparency groups, standard blend modes, knockout and soft masks | ICC destination/inverse transforms and calibrated group destinations; nonzero calibrated black points/black-point compensation; fractional, pattern and per-colourant transfer-region selection. Supported ICC group destinations currently use their resolved device base. Lab is prohibited as a blending destination, not a feature to implement. |
+| Overprint | CMYK process and spot display simulation, including group interactions, with `Auto`/`Always`/`Never` library and CLI options; catalog/page PDF/X intent detection | Destination ICC output transforms and transfer/overprint combinations; viewer control. Spot display uses alternate-based ink equivalents with a 32-plate bound, not physical ink prediction. PDF/X detection is not conformance validation. |
+| Annotation display | Existing normal appearance streams and states; screen visibility and NoZoom/NoRotate placement; generated Link/Square borders, Text icons and supported empty widgets | Appearance synthesis for other subtypes and richer borders; ordinary rendering of nonempty widgets without an appearance remains limited. Playing media or interacting with 3D content is not provided by painting an appearance. Annotation authoring is not yet a general editing API. |
+| AcroForms | Field tree/types/inheritance/widgets; text, checkbox, radio and choice filling; appearance generation; filled-page rendering; incremental saved values and appearances; browser controls, preview, discard and download | XFA, rich text, generated button states, nested direct field/widget identities, password-field persistence, complex appearance updates, rotated widgets and encodings outside the reversible simple horizontal model. See [editing](EDITING.md) for library and browser boundaries. |
+| Navigation and actions | Name/number trees, destinations, outlines, links and page labels; inert action data; browser internal destinations and controlled URI activation | No JavaScript calculations/events or automatic action execution. General external-file, launch, submission and media actions need explicit host contracts. |
+| Text extraction and accessibility | Positioned glyphs, words/lines/reading order, ActualText/Alt/ReversedChars, Unicode search and quads; separate tagged logical view; viewer search/copy/selection and screen-reader-readable DOM text | Tagged logical structure is not connected to the viewer accessibility tree. Custom namespaces/RoleMapNS and some cross-stream/cross-page replacements are unsupported; bidi/script-specific reconstruction remains incomplete. The DOM text layer alone is not PDF/UA support. |
+| PDF signature structure | Current and discoverable historical signatures, source-bound ByteRange/revisions, DocMDP/FieldMDP structural modification analysis, per-signature errors and explicit inconclusive results | Inaccessible encrypted/repaired history, unsupported roles/transforms/template operations and DSS/timestamp exceptions remain inconclusive. Structural permission analysis does not establish cryptographic validity or enforce save policy. |
+| CMS integrity | Detached CMS/CAdES and RFC3161 integrity, SHA-1 (reported weak), SHA-2, RSA v1.5/PSS and ECDSA P-256/P-384/P-521; signed attributes, ESS binding and timestamp imprints | PDF-facing signer trust, validation time and revocation still report `NotCheckedYet`; complete PAdES policy/LTV and legacy encodings remain incomplete. Issuer matching currently requires identical DER names. |
+| PKI library | Host-anchored certificate path construction/validation, policy/name constraints, offline complete/indirect/delta CRL checking and bounded path search | OCSP, remaining name-normalization cases and application-specific timestamp/CMS policy; connecting these APIs to PDF signatures and the viewer. CRL/path support exists and must not be described as wholly absent. See [PKI scope](../crates/pagura-pki/README.md). |
+| Writing and editing | Deterministic new PDF 1.7 files; immutable transactions; classic/xref-stream append revisions; saved forms; no-op byte preservation and rollback | Full rewrite, freed objects, object-stream output, PDF 2.0 new-file header/ID generation, encryption-on-write, sanitizing redaction, undo/redo and general page-content/page-tree editing APIs. Modified saves require strict, unencrypted input; signed input defaults to refusal. |
+| Image output and cancellation | Public `RenderContext::render_bands` lends final premultiplied RGBA bands with a fallible consumer and between-band stop callback after preflight; the CLI streams PPM with bounded output storage. Library zlib compression and whole-buffer PNG encoding for eight-bit Gray/RGB/straight RGBA exist | Calls restart from the region's first row; persistent pause/resume, incremental PNG/DEFLATE, facade/CLI PNG export, async backpressure and public embedded-image extraction remain. Existing streamed PPM does not imply streamed PNG or progressive input. |
+| Browser and WASM host | Native/WASI session protocol, viewport generations, bounded render `Store` for scenes/images/fonts/glyph setups, continuous scrolling/zoom, password prompt, text/navigation and form editing | Range input and resumable host jobs, active-request cancellation, parallel scheduling, layer/overprint/print controls and broader browser/device/accessibility validation. Library band-stop support is not wired into active host requests; generation cancellation discards stale queued work. |
+| Profiles and document services | PDF 1.x/2.x headers and many shared features; low-level access to document objects; PDF/X declarations influence overprint policy | Complete PDF 2.0 feature coverage; PDF/A and PDF/UA validation; PDF/X conformance; typed attachment/associated-file, portfolio, metadata and richer document-service APIs. Rendering a profile-labelled file is separate from validating or authoring that profile. |
+| Safety and release evidence | Safe Rust and workspace-only product dependencies, bounded APIs, deterministic replay, fuzz drivers, generated independent fixtures, conversion/regression harnesses | Long fuzz campaigns, host/process containment and cancellation evidence, refreshed compatibility reports, non-render operation adapters and the complete controlled performance gate. |
 
-## Editing foundations (M7)
+## Evidence and accuracy
 
-[ADR 0031](adr/0031-editing-foundations.md) records the reviewed pending writer
-and typed-document dependencies. This branch implements library APIs described
-in [Editing](EDITING.md); it does not complete M7. Modified saves require strict,
-unencrypted input. Signed input needs an explicit original-byte preservation
-policy, which makes no signature-validity or permitted-change claim.
+Source entry points and existing tests supporting this reconciliation include:
 
-`pagura/tests/api/editing.rs` exercises independent source syntax, prefix/trailer and
-generation preservation, rollback, repeated saves, bounds, signature integrity,
-and form save/reopen pixel equivalence. Hosted CI performs the full product
-contract; `editing-interoperability` also checks saved outputs with qpdf and
-compares Poppler page counts against their original inputs. Poppler 24.02.0
-rejects the original `document/hybrid-precedence` fixture and its saved version;
-qpdf 11.9.0 accepts both. This is recorded as a baseline incompatibility, not a
-successful Poppler reopen. The PR check results record validation for each exact
-branch head.
-No local builds, benchmarks or test suites run in this lane.
+- [Font program inventory](../crates/pagura-font/README.md),
+  [font vectors](../crates/pagura-font/tests/vectors/static_fonts.rs) and
+  [font requirements](../references/requirements/font.json).
+- [Group colour-space resolution](../crates/pagura-interpret/src/resources/group.rs),
+  [transparency requirements](../references/requirements/transparency.json),
+  [overprint requirements](../references/requirements/overprint.json),
+  [precision planning](../crates/pagura-paint/src/prepare/storage.rs) and
+  [format tests](../crates/pagura-paint/src/prepare/tests/formats.rs).
+- [Editing API/tests](../crates/pagura/tests/api/editing.rs),
+  [form appearance implementation](../crates/pagura-appearance/src/form.rs)
+  and [browser reading behaviour](../web/README.md#reading-search-and-navigation).
+- [Signature discovery/change analysis](../crates/pagura-document/src/signatures.rs),
+  [PDF-facing result types](../crates/pagura-document/src/signatures/model.rs),
+  [CMS verifier](../crates/pagura/src/signatures.rs) and
+  [offline CRL validation](../crates/pagura-pki/src/validation/revocation/mod.rs).
+- [JPX alpha adaptation](../crates/pagura-image/src/jpx_image.rs),
+  [alpha sampling](../crates/pagura-paint/src/source/image/texels.rs) and
+  [paint fixtures](../corpus/manifests/paint.json), including `image-jpx-alpha-1/2`, plus the new [embedded colour fixtures](../corpus/manifests/paint_jpx.json).
+- [PNG encoder](../crates/pagura-codec/src/png.rs) and
+  [zlib compressor](../crates/pagura-codec/src/flate/encode.rs).
+- [Public band/stop API](../crates/pagura-render/src/context.rs),
+  [shared executor](../crates/pagura-paint/src/execute.rs),
+  [streaming tests](../crates/pagura-paint/src/prepare/tests/streaming.rs) and
+  [CLI PPM output](../crates/pagura-cli/src/commands.rs).
 
-## Accuracy policy
+The existing detailed [recovery and information-diagnostic notes](RECOVERY.md)
+are retained separately from this capability summary.
 
-`RenderOptions::accuracy` selects `Accuracy::Exact`, the default, which keeps
-every pixel within one level of its exact result, or `Accuracy::Competitive`,
-an approximate path measured against ADR 0004's competitive accuracy gate:
-row-fragment glyph masks, signed-cell fills, clip products, one-round byte
-composition, fused decoding of sole JPEG pages and drawn-size reconstruction
-of other minified JPEG images. The CLI exposes `--accuracy exact|competitive`;
-the host protocol and viewer render exactly.
+Rendering is exact throughout under ADR 0004's one-level error contract. The
+preparer chooses N16/F32/F64 storage for each buffer from its whole content;
+one executor serves collected and streamed output. The old accuracy selector
+and Competitive implementation are removed. See [ADR 0034](adr/0034-one-interpreter-one-renderer.md),
+[render options](../crates/pagura-render/src/options.rs) and
+[ADR 0004](adr/0004-rendering-pipeline.md). This is a source description and
+contract, not a new claim of measured accuracy for every document.
+
+The existing [reference harness](../crates/pagura-reference/tests/harness/)
+and [raster exact tests](../crates/pagura-raster/tests/exact/) check independent
+coverage and the renderer across band heights, regions and store states. CI also
+checks native/WASI parity. Previously reported fixture counts and rounding rates
+are not promoted to this source revision without matching run evidence.
+Extreme coordinates can still exhaust the bounded coverage certificate and
+return `Limit`; this is distinct from accepting inaccurate pixels.
+
+The editing tests and hosted interoperability job retain explicit independent
+reopen checks. The recorded Poppler 24.02.0 failure on both the original and
+saved `document/hybrid-precedence` fixture is a baseline incompatibility, not a
+successful reopen; qpdf 11.9.0 accepts both. See [testing](TESTING.md).
+
+The committed [corpus scoreboards](scoreboard/) identify their own older source
+revisions, binary hashes and corpora. They are historical observations, not
+current-head compatibility rates or cross-engine parity measurements. The old
+aggregate table and timing ratios previously on this page were not reconciled
+with those individual snapshots and have been removed. No replacement percentage
+is asserted without a new run. Fixture counts likewise do not measure the
+percentage of the PDF standard implemented.
+
+The [requirement registries](../references/requirements/) retain normative
+locators, tests and review status. Broad security, form, text, CMS and host
+summaries were corrected where this audit established stale claims; the complete
+future registry/API discoveries reopen the inventory. A `gaps` string or declared feature
+tag alone is not a current capability verdict. The parity plan requires checking
+live call sites and testing all new claims. A primary-text audit is
+separate from an execution test and from corpus compatibility.
+
+The [release matrix](../benchmarks/release-matrix.json) describes **benchmark
+adapter coverage**, not product API availability. Its unimplemented operations
+and unbound workloads still block the ADR 0002 performance claim. There is no
+current claim of complete PDF conformance, competitor feature parity or universal
+speed superiority.
 
 ## Overprint display policy
 
@@ -86,218 +154,29 @@ colourant name supplies its alternate transform; channels sharing that
 first DeviceN definition are transformed together. This is a display policy,
 not a prediction of physical ink interaction. A simulated page supports at
 most 32 spot plates; larger sets fail with `Limit`. Destination ICC output
-transforms and transfer selection under transparency remain unimplemented.
+transforms and fractional/pattern/per-colourant transfer selection remain
+incomplete; whole-pixel transfer regions are implemented.
 
-## Evidence (scoreboards in `docs/scoreboard/`)
+## Editing and signature boundaries
 
-The realworld and adversarial rows were re-recorded at commit c18ae90; the
-other rows date from commit 8909e1c.
-Each file gets 60 seconds of CPU time, so machine load does not turn into
-timeouts. Real-world files that exceed it now render all their pages too slowly;
-painting dominates their time and is being optimized.
+Changed incremental saves require a strict, unencrypted source. The default
+signature policy rejects signed or uncertain input. `PreserveSignedBytes`
+permits appending while preserving original bytes; it does not establish that
+DocMDP/FieldMDP permits the edit or that a signature remains valid. Current
+structural modification analysis is not yet connected to save enforcement.
+Incremental saves retain previous values and therefore cannot sanitize redacted
+content. See [Editing](EDITING.md) and [ADR 0031](adr/0031-editing-foundations.md).
 
-| Corpus | PDFs | Open, pages enumerated | Strictly | Pages rendered | Crashes / timeouts |
-|---|---:|---:|---:|---:|---:|
-| realworld (SafeDocs Common Crawl zip 0000) | 998 | 99.5% | 614 | 94.0% (13163/14008) | 0 / 3 |
-| adversarial (SafeDocs UNSAFE, mutated) | 1,416 | 99.9% | 886 | 88.7% (3544/3997) | 0 / 0 |
-| veraPDF | 2,906 | 100.0% | 2,633 | 97.9% (12681/12948) | 0 / 0 |
-| pdf.js test PDFs | 996 | 98.0% | 635 | 60.7% (1115/1838) | 0 / 0 |
-| qpdf test PDFs | 701 | 95.7% | 578 | 4.2% (159/3817) | 0 / 0 |
-| PDFium test PDFs | 336 | 90.8% | 184 | 44.9% (170/379) | 0 / 0 |
-| PDFBox test PDFs | 174 | 94.8% | 138 | 36.2% (111/307) | 0 / 0 |
-| Poppler test PDFs | 83 | 95.2% | 65 | 70.8% (68/96) | 0 / 0 |
-| PDF Differences | 37 | 75.7% | 24 | 23.3% (10/43) | 0 / 0 |
-| PDF 2.0 examples | 7 | 100.0% | 6 | 12.5% (1/8) | 0 / 0 |
+PKI validation takes caller-selected anchors, time, policy and evidence; it does
+not obtain trust from an embedded certificate or fetch a URL. Its implemented
+path/CRL stages are separate from the PDF CMS integrity API. Signature results
+must continue to distinguish integrity, revision coverage, permitted changes,
+trust, validation time, revocation and algorithm policy (ADR 0015).
 
-Generated fixtures: 1022 PDF cases with independent expectations pass
-(`tools/conformance.py`), plus 337 codec, 97 crypto and 19 raster vectors in
-crate tests.
+## Maintaining this inventory
 
-Informational diagnostics (`DiagnosticKind::Information`, ADR 0003/0009):
-`font.substituted` reports permitted non-embedded font substitution;
-`font.cid-glyph-missing` reports incomplete substitute coverage once per font,
-keeping the PDF advance while an unavailable glyph paints nothing. Both are
-permitted in Strict and Repair modes; neither is an applied repair. All other
-existing diagnostic tags remain repairs. CLI reports separate `repairs` and
-`information` lists. Host protocol 1.4 and the viewer preserve the distinction;
-older protocol diagnostic snapshots contain repairs only.
-
-Signature integrity is a separate mathematical result, never an unqualified
-validity flag. `Document::signatures` remains structural; the facade adds CMS
-verification. CMS buffer errors and repairs are retained per signature, and
-malformed embedded certificates remain visible without suppressing a usable
-signer certificate. Limits bound parsing, hashing, certificate counts and
-verification counts; no URLs are fetched. Issuer/serial and ESS issuer names
-currently require identical DER. Unreadable form trees or non-dictionary Sig
-values fail discovery; dictionary-level errors are per field. Timestamp
-integrity does not establish the asserted time or TSA trust. Independent
-signed-PDF cases are in `corpus/manifests/cms-signatures.json`.
-
-Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
-
-- `asn1.ber-set-order` (X.690 11.6; RFC 5652 5.1): retain BER SET OF source
-  order with a diagnostic. Signed attributes, certificates and DER entry
-  points remain strict. BER length, indefinite-container and OCTET STRING
-  deviations also remain reported; none normalizes signed bytes.
-
-- `font.sfnt-version`, `font.table-alignment`, `font.table-bounds`,
-  `font.cmap-truncated`, `font.cmap-data`, `font.cmap-alignment`,
-  `font.component-flags`, `font.charstring-operator`, `font.glyph-data`:
-  diagnostic-aware font APIs infer usable containers, retain intact
-  tables/mappings, ignore reserved component bits, end unknown charstrings and
-  replace unusable glyphs with empty paths; page callers still need to forward
-  these diagnostics.
-- `syntax.duplicate-key`: the last value of a repeated key wins.
-- `image.data-short`, `image.data-excess` (8.9.3, 8.9.5.1): zero-fill missing
-  packed bytes or ignore the excess suffix; `jpeg.entropy-padding` (T.81
-  B.1.1.5, E.1.4): ignore non-one unused entropy bits; `jpeg.adobe-marker`
-  (7.4.8, Table 13): use the known APP14 prefix and ignore its extension (Adobe
-  TN 5116 review pending); `ccitt.eob-padding` (Table 11; T.6 2.4.1.1-2): ignore
-  up to seven zero fill bits before a byte-aligned Group 4 EOFB;
-  `ccitt.damaged-row` (Table 11): substitute the preceding good row or white
-  within the declared tolerance.
-- `font.cid-to-gid-identity` (9.7.4.1, Table 115): a missing embedded Type2
-  CIDFont map uses Identity; `font.cmap-block-count` (9.7.5.4; TN5014 7.4):
-  accept blocks above 100 within budgets; `font.cmap-codespace` (9.7.6.2): split
-  malformed byte bounds into exact disjoint integer-interval pieces;
-  `font.tounicode-simple-codes`, `font.tounicode-utf16`, `font.tounicode-range`,
-  `font.tounicode-invalid` (9.10.3): use low-byte simple-font sources, omit
-  invalid UTF-16 values, carry overflowing range destinations without
-  full-string wrap, or discard unusable extraction data. Conflicting low-byte
-  aliases lose their Unicode value. Strict rejects font loading on malformed
-  ToUnicode data, preserving the original error kind, repair tag, object and
-  position without reporting an applied repair. Repair mode retains drawable
-  fonts and reports extraction repairs or discarded maps. Null ToUnicode
-  values, including indirect and
-  undefined references, are absent without repairs (7.3.9–7.3.10).
-- `content.color-operator` (8.6.8, Table 73): `sc`/`SC` on a space that needs
-  `scn`/`SCN` reads matching numeric operands as `scn`/`SCN`;
-  `content.empty-path` (8.5.3.1): painting with no current path paints nothing
-  and discards a pending clip; `content.clip-order` (8.5.4): construction after
-  `W`/`W*` keeps the deferred clip; `content.indexed-excess` (8.6.6.3): excess
-  Indexed lookup bytes are ignored, short palettes stay errors.
-  `content.optional-group`, `content.optional-config`,
-  `content.optional-groups`, `content.optional-properties` (8.11.4.2, Tables
-  98–99): unregistered groups start ON and incomplete configurations disable
-  optional-content evaluation. Readers disagree on `AnyOff` membership and on
-  empty clips; these are project policy.
-- `font.descriptor-weight` (9.8.1, Table 120): an invalid optional FontWeight
-  is ignored when choosing a substitute.
-- `image.decode-params` (7.3.8.1, Table 5; 7.4.1): a `(null)` string or an
-  unused wrong-typed entry in an image's DecodeParms is treated as absent;
-  `jpeg.entropy-excess` (T.81 B.2.1): excess bytes immediately before EOI are
-  discarded; `image.stencil-color-space` (8.9.5.1, Table 87): an image mask's
-  extraneous ColorSpace is ignored; `image.filter-abbreviation` (8.9.7, Table
-  92): the inline-image filter abbreviations are accepted on image XObjects.
-- `content.text-clip-reset` (9.3.6, 9.4.1): a text rendering mode reset to a
-  non-clipping mode before `ET` keeps the clip already accumulated.
-- `text.marked-property` (14.6.2, 14.9.3–14.9.5): an unusable marked-content
-  property list, or a wrong-typed ActualText, Alt or E, is ignored; glyphs
-  are unaffected.
-- `text.structure-fallback` (14.7–14.8): an unusable or unsupported
-  structure tree leaves the page without a logical view; its page text,
-  search and selection are unaffected.
-- `font.descriptor-flags` (9.8.2, Table 121; 9.6.5): Symbolic and
-  Nonsymbolic both set or both clear, or `/Flags` missing; Symbolic is kept
-  and Nonsymbolic is treated as its inverse. Valid pairs are not repairs and
-  keep their 9.6.5 selection routes, even when the font's character set
-  disagrees. Applied by `pagura-text` for every caller of `PdfFont`.
-- `font.widths-length` (Table 109): a `Widths` array whose length disagrees
-  with `FirstChar` and `LastChar`; codes past the array use `MissingWidth`
-  and extra entries are ignored.
-- `font.encoding-name` (Table 112): an `/Encoding` or `/BaseEncoding` name
-  that is not a predefined encoding; the font's default encoding applies,
-  with any `Differences`.
-- `image.ccitt-columns` (7.4.6, 8.9.5.1): CCITT data whose `Columns` differs
-  from the image `Width` decodes with `Columns`, then each row is cropped or
-  extended with fax white to `Width`.
-- `annotation.appearance-empty` (7.9.5, 12.5.5): an appearance with zero extent
-  is skipped without running its content.
-- Navigation (7.9.6–7.9.7, 12.3.2–12.3.3, 12.5.6.5, 12.6.2): `tree.limits`,
-  `tree.order`, `tree.cycle` and `tree.structure` read malformed name and
-  number trees in their best-defined order; `outline.links`, `outline.cycle`,
-  `outline.count` and `outline.type` rebuild a consistent outline tree;
-  `destination.page-number`, `string.invalid-text`, `navigation.target-conflict`,
-  `link.quad-points` and `action.cycle` cover the remaining navigation faults.
-- `font.cff-dict-operands`, `font.cff-dict-operator` (CFF section 4 and
-  Appendix H): unused hint arrays with no operands are dropped, and reserved
-  DICT operators are ignored with their operands; `font.cff-encoding-supplement`
-  (CFF section 12): a supplement for a glyph absent from the main encoding is
-  dropped; `font.type1-duplicate-glyph` (Type 1 chapters 6 and 10.3): the first
-  definition of a repeated glyph name is kept.
-- Forms (7.9.2.2, 12.6.2, 12.7.3–12.7.4): `form.fields`, `form.name`,
-  `form.duplicate-name`, `form.parent`, `form.cycle` and `form.structure` read a
-  malformed field tree into a consistent model; equivalent duplicate names
-  stay valid.
-- `font.cff-blue-order` (CFF section 15, Table 23; Type 1 5.3–5.5): unused
-  hint zones whose pairs do not ascend are ignored; outlines and widths are
-  unchanged.
-- `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
-  `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.
-- `filter.lzw-full-table`, `filter.lzw-padding`: an LZW encoder that fills its
-  table without a clear code, or leaves nonzero bits after EOD (7.4.4.2), is
-  decoded with the table frozen and the padding ignored.
-- `xref.rebuilt`, `xref.offset-corrected`, `xref.stream-boundary`,
-  `stream.length-corrected`, `stream.eol`, `trailer.reconstructed`,
-  `file.header-offset`, `file.header-format`, `catalog.type-missing`:
-  structure recovered by scanning; the last complete physical definition of
-  an object wins.
-- `security.permissions-unsigned`, `security.literal-hash`,
-  `security.hash-padding`: malformed encryption entries recovered; normal
-  authentication is still required.
-
-- `content.graphics-unclosed` (7.8.2, 8.4.2): unmatched saved graphics states
-  are discarded at the end of an otherwise finished content sequence.
-- `font.type3-width` (9.6.4, Table 111): `Widths` controls the advance when a
-  CharProc's `d0`/`d1` width disagrees or declares a nonzero vertical advance;
-  glyph geometry is retained.
-- `font.type3-empty-bounds` (9.6.4, Table 111): reversed `d1` bounds are
-  ignored only after the entire Type 3 procedure compiles without drawing
-  commands. `Widths`, text extraction and following page content are retained.
-  Strict mode rejects this repair; reversed bounds on painted glyphs and
-  other procedure errors remain failures in both modes.
-- `content.pattern-underlying` (8.7.3.2, Table 73): coloured patterns keep their
-  intrinsic colours and accept a lone pattern name even when a base space is
-  declared. Extra numeric underlying-colour operands are reported and discarded.
-  The base space remains available for a later uncoloured pattern.
-- `filter.lzw-initial-clear` (7.4.4.2): a literal or EOD before the initial
-  clear code uses the initial dictionary; invalid dictionary codes still fail.
-- `jpeg.trailing-restart` (T.81 B.2.1, B.2.4.4): a restart immediately before
-  EOI after the complete MCU sequence is discarded.
-- `image.predictor-precision` (7.4.4.3): syntax failures with conflicting valid
-  predictor precision are retried with the image's BitsPerComponent. Only a
-  successful retry reports a repair; a failed retry retains the original error.
-- `jpx.tile-part-count` (T.800 A.4.2): inconsistent tile-part counts are ignored
-  while ordered part indices, exact byte lengths and packet validation remain
-  mandatory. No samples or entropy codes are synthesized.
-- `jpx.mapping-box-location` (T.800 I.5.3.4–I.5.3.5): a sole mapping box before
-  the codestream supplies the header palette's missing mapping; duplicate or
-  late mappings and missing palettes stay errors.
-- `image.xobject-type` (8.9.5, Table 87): `Subtype /Image` identifies an image
-  XObject despite a malformed optional `Type`; invalid subtypes remain errors.
-- `image.filter-mismatch` (7.4.4, 7.4.8): a purported JPEG with predictor
-  parameters uses Flate only after strict zlib framing, checksum, row-tag and
-  exact eight-bit sample-count validation. Incomplete, checksum-damaged or
-  ambiguously described data remain errors.
-
-Empty text and unsigned signature widgets without an explicit appearance paint
-only their specified `MK` background and border (12.5.6.19, 12.7.5). Field type
-and value inherit through `Parent`; nonempty values still require an appearance.
-Cubic sampled functions use local Hermite interpolation with centred interior
-and one-sided endpoint tangents; 7.10.2 leaves the boundary conditions unspecified.
-Applying the linear fallback independently to axes with fewer than four samples
-is the project reading of 7.10.2. Transfer-region selection follows
-11.7.5.2 for whole device pixels; arrays of four `Identity` names are the
-default transfer, including through indirect references. A fractional boundary involving a nondefault
-transfer still fails explicitly: averaging colour before region selection would
-lose the correlation needed for nonlinear transfer functions.
-
-ICC profiles are not applied: `ICCBased` spaces use their alternate or the
-`/N` default, as clause 8.6.5.5 permits.
-
-`python3 tools/check.py` runs every product check offline; `python3
-tools/policy.py --local-assets` verifies private caches and pinned corpora.
-Release gate output is expected to be BLOCKED with exit code 2. The ISO
-32000-2:2020 text (sponsored, with errata collection 3) is registered as a
-locally supplied, single-user reference (`references/lock.json`); it is never
-committed or redistributed.
+A capability change updates its implementation, independent fixtures,
+requirement entry and this page together. Record library, renderer, CLI, host
+and viewer availability separately. Replace a historical scoreboard only with
+an actual run that records the new source/binary/corpus identities. Unknown or
+untested competitor cells remain open in the parity plan; they are never a pass.

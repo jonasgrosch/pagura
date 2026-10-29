@@ -26,7 +26,8 @@ pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[
         },
     )
     .unwrap();
-    let result = crate::decode_xobject(&document, document.object(ObjectId::new(3, 0)).unwrap());
+    let result =
+        crate::tests::decode_xobject(&document, document.object(ObjectId::new(3, 0)).unwrap());
     if params["outcome"] == "repair" {
         assert_repairs(name, params, &document);
     } else if params["outcome"] != "valid" {
@@ -122,7 +123,7 @@ fn assert_rejected(name: &str, params: &BTreeMap<String, String>, error: &pagura
         )
         .unwrap();
         let refused =
-            crate::decode_xobject(&repaired, repaired.object(ObjectId::new(3, 0)).unwrap())
+            crate::tests::decode_xobject(&repaired, repaired.object(ObjectId::new(3, 0)).unwrap())
                 .unwrap_err();
         assert_eq!(refused.kind, error.kind, "{name}");
     }
@@ -165,7 +166,6 @@ fn empty() -> DecodedImage {
         decode: None,
         mask: MaskKind::None,
         interpolate: false,
-        reduction: None,
     }
 }
 
@@ -281,8 +281,8 @@ fn assert_repairs(name: &str, params: &BTreeMap<String, String>, document: &Docu
         },
     )
     .unwrap();
-    let error =
-        crate::decode_xobject(&strict, strict.object(ObjectId::new(3, 0)).unwrap()).unwrap_err();
+    let error = crate::tests::decode_xobject(&strict, strict.object(ObjectId::new(3, 0)).unwrap())
+        .unwrap_err();
     assert_eq!(error.repair.unwrap().as_str(), params["repair"], "{name}");
     assert_eq!(error.object, Some(ObjectId::new(3, 0)), "{name}");
     assert!(matches!(error.position, Position::Stream { .. }), "{name}");
@@ -305,7 +305,7 @@ fn assert_repairs(name: &str, params: &BTreeMap<String, String>, document: &Docu
         assert!(matches!(report.position, Position::Stream { .. }), "{name}");
     }
     // A second use of the same XObject must not duplicate reports.
-    crate::decode_xobject(document, document.object(ObjectId::new(3, 0)).unwrap()).unwrap();
+    crate::tests::decode_xobject(document, document.object(ObjectId::new(3, 0)).unwrap()).unwrap();
     assert_eq!(document.diagnostics(), reports, "{name}");
 }
 
@@ -377,6 +377,26 @@ fn retained_jpx_metadata_capacity_counts_against_the_adapter_budget() {
         .unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit);
     }
+}
+
+#[test]
+fn short_eight_bit_data_ends_in_zero_samples() {
+    let mut diagnostics = pagura_core::Diagnostics::new(Recovery::Repair);
+    let samples = crate::parameters::unpack_with_diagnostics(
+        &[7, 8, 9],
+        2,
+        2,
+        1,
+        8,
+        &Limits::default(),
+        &mut diagnostics,
+    )
+    .unwrap();
+    assert_eq!(samples, Samples::Bytes(vec![7, 8, 9, 0]));
+    assert_eq!(
+        diagnostics.as_slice()[0].repair(),
+        Some(crate::tags::DATA_SHORT)
+    );
 }
 
 #[test]

@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "scope": "G01 document-service controls across six baseline public APIs, read-only synthetic PDFs. Per-fixture observations only; no family-level support, optional build, rendering, editing or release-parity verdict.",
+  "cases": [
+    {
+      "id": "pages.services",
+      "capability": "document.structure",
+      "operation": "pages",
+      "fixture": "services",
+      "oracle": "exact-json",
+      "expected": {
+        "count": 1,
+        "sizes": [
+          [
+            200,
+            100
+          ]
+        ]
+      }
+    },
+    {
+      "id": "pages.empty",
+      "capability": "document.structure",
+      "operation": "pages",
+      "fixture": "empty",
+      "oracle": "exact-json",
+      "expected": {
+        "count": 1,
+        "sizes": [
+          [
+            200,
+            100
+          ]
+        ]
+      }
+    },
+    {
+      "id": "metadata.services",
+      "capability": "document.metadata",
+      "operation": "metadata",
+      "fixture": "services",
+      "oracle": "exact-json",
+      "expected": {
+        "Title": "Capability probe",
+        "Author": "Pagura fixtures"
+      }
+    },
+    {
+      "id": "metadata.empty",
+      "capability": "document.metadata",
+      "operation": "metadata",
+      "fixture": "empty",
+      "oracle": "exact-json",
+      "expected": {
+        "Title": "",
+        "Author": ""
+      }
+    },
+    {
+      "id": "attachments.services",
+      "capability": "document.attachments",
+      "operation": "attachments",
+      "fixture": "services",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
+    },
+    {
+      "id": "attachments.empty",
+      "capability": "document.attachments",
+      "operation": "attachments",
+      "fixture": "empty",
+      "oracle": "exact-json",
+      "expected": []
+    },
+    {
+      "id": "attachments.complete-ef",
+      "capability": "document.attachments",
+      "operation": "attachments",
+      "fixture": "complete-ef",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
+    },
+    {
+      "id": "text.services",
+      "capability": "text.accessibility",
+      "operation": "text",
+      "fixture": "services",
+      "oracle": "exact-json",
+      "expected": "Parity probe"
+    },
+    {
+      "id": "text.empty",
+      "capability": "text.accessibility",
+      "operation": "text",
+      "fixture": "empty",
+      "oracle": "exact-json",
+      "expected": ""
+    },
+    {
+      "id": "pages.invalid",
+      "capability": "document.structure",
+      "operation": "pages",
+      "fixture": "invalid",
+      "oracle": "reject-invalid",
+      "expected": null
+    }
+  ]
+}

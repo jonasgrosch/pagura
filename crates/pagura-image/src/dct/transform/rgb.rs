@@ -2,45 +2,7 @@
 //! Integer luminance can be added after rounding a chroma contribution, except
 //! at a green half tie where the reference's two f64 subtractions matter.
 use super::sample;
-
-const fn offsets(coefficient: i32) -> [i32; 256] {
-    let mut result = [0; 256];
-    let mut index = 0u8;
-    loop {
-        result[index as usize] =
-            (coefficient * (index as i32 - 128) + 500_000).div_euclid(1_000_000);
-        if index == 255 {
-            break;
-        }
-        index += 1;
-    }
-    result
-}
-const RED: [i32; 256] = offsets(1_402_000);
-const BLUE: [i32; 256] = offsets(1_772_000);
-
-/// Table 13's rounded green offset of a chroma pair, and whether the pair
-/// sits at an exact half tie. The numerator lies within ±1.36e8 and the
-/// offset within -227..=227, so the wrapping operations are exact; free of
-/// overflow checks, they vectorize.
-#[inline]
-#[expect(
-    clippy::cast_sign_loss,
-    clippy::cast_possible_wrap,
-    reason = "biased green numerator is in 122..393 million, quotient in 122..393"
-)]
-fn green(cb: u8, cr: u8) -> (i32, bool) {
-    let (cb, cr) = (
-        i32::from(cb).wrapping_sub(128),
-        i32::from(cr).wrapping_sub(128),
-    );
-    let numerator = (-344_136i32)
-        .wrapping_mul(cb)
-        .wrapping_sub(714_136i32.wrapping_mul(cr));
-    let offset = (numerator.wrapping_add(256_500_000) as u32 / 1_000_000) as i32 - 256;
-    let tie = numerator == offset.wrapping_mul(1_000_000).wrapping_sub(500_000);
-    (offset, tie)
-}
+use crate::deferred::offset;
 
 pub(super) struct Rgb {
     offsets: [i32; 3],
@@ -51,9 +13,9 @@ pub(super) struct Rgb {
 impl Rgb {
     #[inline]
     pub(super) fn new(cb: u8, cr: u8) -> Self {
-        let (green, green_tie) = green(cb, cr);
+        let (red, green, blue, green_tie) = offset(cb, cr);
         Self {
-            offsets: [RED[usize::from(cr)], green, BLUE[usize::from(cb)]],
+            offsets: [red, green, blue].map(i32::from),
             cb: i32::from(cb) - 128,
             cr: i32::from(cr) - 128,
             green_tie,
@@ -81,6 +43,11 @@ impl Rgb {
 /// Pixels converted together: fixed lane arrays the compiler vectorizes.
 const LANES: usize = 16;
 
+/// The most bytes [`Offsets`] holds per luma column: three chroma and three
+/// channel rows of `i16`, and a tie for every chroma pair, reserved once
+/// per row so that pushing it never grows past the row's pairs.
+pub(in crate::dct) const ROW_BYTES: usize = 6 * size_of::<i16>() + size_of::<(usize, u8, u8)>();
+
 /// Table 13 offsets of one chroma row, replicated to its luma columns, so a
 /// luma row converts as independent lanes of clamped additions. Pixels of a
 /// chroma pair at a green half tie are converted again with its [`Rgb`].
@@ -99,6 +66,7 @@ impl Offsets {
         let count = width.div_ceil(repeat).min(blue.len()).min(red.len());
         let (blue, red) = (&blue[..count], &red[..count]);
         for channel in &mut self.chroma {
+            channel.reserve_exact(count.saturating_sub(channel.len()));
             channel.resize(count, 0);
         }
         let [r, g, b] = &mut self.chroma;
@@ -120,20 +88,20 @@ impl Offsets {
         }
         let done = count / LANES * LANES;
         for (index, (&cb, &cr)) in blue.iter().zip(red).enumerate().skip(done) {
-            let (offset, tie) = green(cb, cr);
+            let tie;
+            (r[index], g[index], b[index], tie) = offset(cb, cr);
             tied |= tie;
-            r[index] = narrow(RED[usize::from(cr)]);
-            g[index] = narrow(offset);
-            b[index] = narrow(BLUE[usize::from(cb)]);
         }
         if tied {
+            self.ties.reserve_exact(count);
             for (index, (&cb, &cr)) in blue.iter().zip(red).enumerate() {
-                if green(cb, cr).1 {
+                if offset(cb, cr).3 {
                     self.ties.push((index * repeat, cb, cr));
                 }
             }
         }
         for (channel, chroma) in self.channels.iter_mut().zip(&self.chroma) {
+            channel.reserve_exact(width.saturating_sub(channel.len()));
             channel.resize(width, 0);
             match repeat {
                 1 => replicate::<1>(chroma, channel),
@@ -184,22 +152,11 @@ impl Offsets {
 fn chroma(blue: &[u8; LANES], red: &[u8; LANES], [r, g, b]: [&mut [i16; LANES]; 3]) -> bool {
     let mut tied = false;
     for i in 0..LANES {
-        let (offset, tie) = green(blue[i], red[i]);
-        r[i] = narrow(RED[usize::from(red[i])]);
-        g[i] = narrow(offset);
-        b[i] = narrow(BLUE[usize::from(blue[i])]);
+        let tie;
+        (r[i], g[i], b[i], tie) = offset(blue[i], red[i]);
         tied |= tie;
     }
     tied
-}
-
-/// Every Table 13 offset lies within -227..=227.
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "byte-domain chroma offsets are below 228 in magnitude"
-)]
-fn narrow(offset: i32) -> i16 {
-    offset as i16
 }
 
 /// Copies each chroma offset to its `REPEAT` luma columns.
@@ -236,7 +193,31 @@ fn clamp(value: i16) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Offsets, Rgb};
+    use super::{Offsets, ROW_BYTES, Rgb};
+
+    #[test]
+    fn a_row_of_ties_stays_within_its_admitted_bytes() {
+        // Cb 178 and Cr 78 are a green half tie: every pair of the row ties.
+        for (width, repeat) in [1_usize, 2, 3, 4, 17, 1025, 1027]
+            .into_iter()
+            .flat_map(|width| (1..=4).map(move |repeat| (width, repeat)))
+        {
+            let count = width.div_ceil(repeat);
+            let mut offsets = Offsets::default();
+            for _ in 0..3 {
+                offsets.fill(&vec![178; count], &vec![78; count], repeat, width);
+                assert_eq!(offsets.ties.len(), count);
+                let held = offsets
+                    .chroma
+                    .iter()
+                    .chain(&offsets.channels)
+                    .map(|row| row.capacity() * size_of::<i16>())
+                    .sum::<usize>()
+                    + offsets.ties.capacity() * size_of::<(usize, u8, u8)>();
+                assert!(held <= width * ROW_BYTES, "{width}/{repeat}: {held}");
+            }
+        }
+    }
 
     #[test]
     fn lane_rows_match_each_pixel_and_green_tie() {

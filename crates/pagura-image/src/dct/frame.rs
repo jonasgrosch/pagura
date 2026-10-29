@@ -25,10 +25,10 @@ impl Storage {
 }
 
 impl Storage {
-    fn new(blocks: usize, progressive: bool, twelve_bit: bool, cells: usize) -> Self {
+    fn new(blocks: usize, progressive: bool, twelve_bit: bool) -> Self {
         match (progressive, twelve_bit) {
             (true, _) => Self::Coefficients(vec![[0; 64]; blocks]),
-            (false, false) => Self::Bytes(vec![0; blocks * cells * cells]),
+            (false, false) => Self::Bytes(vec![0; blocks * 64]),
             (false, true) => Self::Words(vec![0; blocks * 64]),
         }
     }
@@ -57,14 +57,19 @@ pub(super) struct Frame {
     pub(super) baseline: bool,
     pub(super) arithmetic: bool,
     pub(super) precision: u8,
-    /// Samples kept per block axis: eight, or fewer for an eight-bit frame
-    /// reconstructed near its drawn size.
-    pub(super) cells: usize,
 }
 impl Frame {
-    /// Parses a frame header. An eight-bit frame keeps `cells` samples per
-    /// block axis (1, 2, 3, 4, 6 or 8); twelve-bit frames keep all eight.
-    pub(super) fn parse(data: &[u8], process: u8, limits: &Limits, cells: usize) -> Result<Self> {
+    /// Parses a frame header and allocates its components' storage.
+    pub(super) fn parse(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
+        let mut frame = Self::header(data, process, limits)?;
+        for c in &mut frame.components {
+            c.storage = Storage::new(c.stride * c.rows, frame.progressive, frame.precision == 12);
+        }
+        Ok(frame)
+    }
+
+    /// Parses a frame header; its components hold no storage yet.
+    pub(super) fn header(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
         if data.len() < 6 {
             return Err(Error::syntax("truncated JPEG frame"));
         }
@@ -131,27 +136,33 @@ impl Frame {
             .ok_or(Error::syntax("missing JPEG components"))?;
         let mcu_cols = (width as usize).div_ceil(8 * max_h);
         let mcu_rows = (height as usize).div_ceil(8 * max_v);
-        // Coefficients coexist with native planes and expanded samples. For
-        // P=12 the latter coexist with the final byte buffer as well.
-        // Sequential frames store native samples instead of coefficients;
-        // they keep this bound.
+        // Progressive coefficients (four bytes) coexist with the native
+        // planes reconstructed from them and with the expanded samples.
+        // Sequential frames reconstruct native samples into their planes
+        // during the scans, so only planes and expanded samples coexist. For
+        // P=12 planes and samples are words, and the samples coexist with
+        // the final byte buffer as well. Colour conversion adds its rows
+        // (`ROW_BYTES` per pixel of width).
+        let progressive = matches!(process, 0xc2 | 0xca);
         let twelve_bit = data[0] == 12;
+        let plane_bytes = u64::from(twelve_bit) + 1;
+        let per_sample = if progressive {
+            4 + plane_bytes
+        } else {
+            plane_bytes
+        };
         let mut memory =
-            u64::from(width) * u64::from(height) * u64::from(n) * if twelve_bit { 3 } else { 1 };
+            u64::from(width) * u64::from(height) * u64::from(n) * if twelve_bit { 3 } else { 1 }
+                + u64::from(width) * super::transform::ROW_BYTES as u64;
         for c in &mut components {
             c.stride = mcu_cols * c.h;
             c.rows = mcu_rows * c.v;
             memory = memory
-                .checked_add((c.stride * c.rows) as u64 * 64 * if twelve_bit { 6 } else { 5 })
+                .checked_add((c.stride * c.rows) as u64 * 64 * per_sample)
                 .ok_or(Error::limit("JPEG allocation overflow"))?;
         }
         if memory > limits.decoded_bytes as u64 {
             return Err(Error::limit("JPEG coefficient and sample budget exceeded"));
-        }
-        let progressive = matches!(process, 0xc2 | 0xca);
-        let cells = if twelve_bit { 8 } else { cells };
-        for c in &mut components {
-            c.storage = Storage::new(c.stride * c.rows, progressive, twelve_bit, cells);
         }
         Ok(Self {
             width,
@@ -165,7 +176,6 @@ impl Frame {
             arithmetic: matches!(process, 0xc9 | 0xca),
             precision: data[0],
             baseline: process == 0xc0,
-            cells,
         })
     }
 }

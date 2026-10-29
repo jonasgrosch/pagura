@@ -3,6 +3,8 @@
 
 use crate::{Error, Result};
 
+mod tables;
+
 /// A budget that work or bytes are charged against before they are spent.
 ///
 /// A meter is created from one [`Limits`](crate::Limits) field, or a value
@@ -93,6 +95,48 @@ impl Meter {
             .map_err(|_| Error::limit(self.message))
     }
 
+    /// Makes room for `additional` values, charging changes in capacity.
+    /// The vector's existing capacity must already be charged. Growth
+    /// includes the old and replacement allocations until reservation
+    /// succeeds, then returns the old capacity to the budget. It doubles
+    /// capacity, from at least as many values as `Vec` first allocates,
+    /// when that fits, otherwise reserves only the needed room.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::reserve`], before changing the vector when the temporary
+    /// overlap would exceed the budget.
+    pub fn reserve_capacity<T>(&mut self, values: &mut Vec<T>, additional: usize) -> Result<()> {
+        let need = values
+            .len()
+            .checked_add(additional)
+            .ok_or(Error::limit(self.message))?;
+        let capacity = values.capacity();
+        if need <= capacity {
+            return Ok(());
+        }
+        let smallest = match size_of::<T>() {
+            1 => 8,
+            2..=1024 => 4,
+            _ => 1,
+        };
+        let preferred = need.max(capacity.saturating_mul(2)).max(smallest);
+        let target = if preferred
+            .checked_mul(size_of::<T>())
+            .is_some_and(|bytes| bytes <= self.remaining())
+        {
+            preferred
+        } else {
+            need
+        };
+        self.charge_items::<T>(target)?;
+        values
+            .try_reserve_exact(target - values.len())
+            .map_err(|_| Error::limit(self.message))?;
+        self.refund(capacity.saturating_mul(size_of::<T>()));
+        Ok(())
+    }
+
     /// Returns `units` to the budget, for memory that has been released.
     /// Refunds saturate at zero.
     pub const fn refund(&mut self, units: usize) {
@@ -163,7 +207,54 @@ mod tests {
         let error = meter.reserve(&mut values, 1).unwrap_err();
         assert_eq!(error.message, MESSAGE);
         let mut huge = Meter::new(usize::MAX, MESSAGE);
-        let error = huge.reserve(&mut values, usize::MAX / 8).unwrap_err();
+        // Exceed Vec's byte-capacity ceiling without relying on the host
+        // allocator to refuse an otherwise representable reservation.
+        let too_many = usize::try_from(isize::MAX).unwrap() / size_of::<u32>() + 1;
+        let error = huge.reserve(&mut values, too_many).unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit);
+    }
+
+    #[test]
+    fn capacity_growth_charges_the_old_and_replacement_buffers() {
+        let mut meter = Meter::new(35, MESSAGE);
+        let mut values = Vec::new();
+        meter.reserve(&mut values, 4).unwrap();
+        values.extend([1_u32, 2, 3, 4]);
+        let capacity = values.capacity();
+        // The final five words fit, but the old four must stay alive
+        // until the replacement allocation has succeeded.
+        let error = meter.reserve_capacity(&mut values, 1).unwrap_err();
+        assert_eq!((error.kind, error.message), (ErrorKind::Limit, MESSAGE));
+        assert_eq!(values, [1, 2, 3, 4]);
+        assert_eq!((values.capacity(), meter.used()), (capacity, 16));
+        assert!(meter.reserve_capacity(&mut values, usize::MAX).is_err());
+        assert_eq!((values.capacity(), meter.used()), (capacity, 16));
+    }
+
+    #[test]
+    fn growth_from_empty_reserves_a_few_values() {
+        let mut meter = Meter::new(1024, MESSAGE);
+        let mut values: Vec<u32> = Vec::new();
+        meter.reserve_capacity(&mut values, 1).unwrap();
+        assert_eq!((values.capacity(), meter.used()), (4, 16));
+        let mut bytes: Vec<u8> = Vec::new();
+        meter.reserve_capacity(&mut bytes, 1).unwrap();
+        assert_eq!((bytes.capacity(), meter.used()), (8, 24));
+    }
+
+    #[test]
+    fn capacity_growth_uses_exact_room_when_doubling_would_not_fit() {
+        let mut meter = Meter::new(40, MESSAGE);
+        let mut values = Vec::new();
+        meter.reserve(&mut values, 4).unwrap();
+        values.extend([1_u32, 2, 3, 4]);
+        // Four old words plus five new words fit; doubling to eight does not.
+        meter.reserve_capacity(&mut values, 1).unwrap();
+        values.push(5);
+        assert_eq!(values, [1, 2, 3, 4, 5]);
+        assert_eq!((values.capacity(), meter.used()), (5, 20));
+        values.pop();
+        meter.reserve_capacity(&mut values, 1).unwrap();
+        assert_eq!(meter.used(), 20, "spare capacity was already charged");
     }
 }

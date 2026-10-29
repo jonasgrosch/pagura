@@ -85,20 +85,24 @@ fn corrupt_offsets_and_truncated_tails_are_strict_errors_and_reported_repairs() 
     for length in [0, 8] {
         assert!(open(bytes[..length].to_vec()).is_err(), "{length}");
     }
-    // Missing content can preserve the page tree, but cannot become a
-    // deceptively successful partial render.
-    assert!(
-        open(bytes[..bytes.len() / 2].to_vec())
-            .and_then(|document| {
-                pagura::render_page(
-                    &document,
-                    document.page(0)?,
-                    &pagura::RenderOptions::default(),
-                )
-                .map(|_| ())
-            })
-            .is_err()
-    );
+    // Missing content preserves the page tree. The undefined Contents
+    // reference is null (7.3.10), so the page renders without content, and
+    // both the reconstruction and the undefined reference are reported: the
+    // result is never a silent partial render.
+    let truncated = open(bytes[..bytes.len() / 2].to_vec()).unwrap();
+    pagura::render_page(
+        &truncated,
+        truncated.page(0).unwrap(),
+        &pagura::RenderOptions::default(),
+    )
+    .unwrap();
+    let tags: Vec<&str> = truncated
+        .diagnostics()
+        .iter()
+        .map(pagura::Diagnostic::tag)
+        .collect();
+    assert!(tags.contains(&"xref.rebuilt"), "{tags:?}");
+    assert!(tags.contains(&"pages.contents-undefined"), "{tags:?}");
     let repaired = open(bytes[..bytes.len() - 6].to_vec()).unwrap();
     assert_eq!(repaired.page_count().unwrap(), 1);
     assert_eq!(repaired.diagnostics()[0].tag(), "xref.rebuilt");

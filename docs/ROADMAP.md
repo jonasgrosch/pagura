@@ -4,6 +4,13 @@ Work is organized as vertical milestones measured on pinned corpora
 (ADR 0007). A milestone is done when its metric is met, `python3
 tools/check.py` passes, and `docs/STATUS.md` records the evidence.
 
+The [competitive feature parity plan](COMPETITIVE_PARITY.md) is the consolidated
+backlog against `render/one-pass` and its upcoming merge into `main`. It defines
+23 packages, owners, dependencies and independent acceptance gates against the
+versioned union of PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics. The
+[capability inventory](STATUS.md) separates implemented features from missing
+integration. Milestone numbers are outcomes, not completion claims.
+
 ## Milestones
 
 | ID | Outcome | Metric |
@@ -19,24 +26,42 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
 
 ## Current focus
 
-- **M7 foundations, alongside performance work:** caller-owned transactions,
-  append-only save and filled-form persistence (ADR 0031). Work and review use
-  an isolated branch; tests run on hosted runners. Full rewrite, sanitizing
-  redaction, encryption-on-write and general page-content editing remain later M7 work.
-  Inline form controls support filling, preview and PDF download.
-
+- **Establish competitive coverage (G00/G01):** inventory actual baseline APIs
+  and builds, reconcile live unsupported paths and stale requirement summaries,
+  add operation adapters and refresh the pinned corpus evidence. Historical
+  scoreboards do not establish current-head parity.
+- **Performance on the one-pass architecture (ADR 0034):** one interpreter,
+  a recorded scene per page, preparation that validates and reserves in
+  source order, the band rasterizer and a band executor with per-buffer
+  storage formats are in place, held to ADR 0004's one-level contract by the
+  reference harness. The next goal is exact rendering faster than hayro in
+  every category (text, vector, mixed, images), then the 0.80 target of ADR
+  0002, judged on the scoreboard harness (C02). Profile the remaining coverage,
+  preparation, execution and output costs on the current source; earlier
+  experiments are not a list of still-missing features. Every retained change
+  needs independent accuracy evidence and native/WASI SIMD/scalar measurements.
+  Exact is the sole rendering mode; the former Competitive path is removed.
+- **M7 foundations are implemented:** caller-owned transactions, append-only
+  save, filled-form persistence and browser filling/preview/download (ADR 0031).
+  Full rewrite, sanitizing redaction, encryption-on-write, undo/redo and general
+  editing remain E01–E03. Structural DocMDP/FieldMDP analysis exists; save
+  enforcement and complete signature trust validation remain S01. Preserve
+  isolated changes and ADR 0031's hosted-validation constraints.
 - **Specification verification:** every requirement registry is being checked
   against the primary standards (ISO 32000-2 and the format standards in the
   private reference cache); discrepancies become fixtures with independent
   expectations. A registry whose `scope` does not state this is unverified.
-- **Rendering speed without spending accuracy:** one compositor with f32
-  page and group buffers under ADR 0004's accuracy contract (every pixel
-  within one level of its exact result), opaque text-object groups elided,
-  device geometry prepared once. Speed comes from the rasterizer and the
-  compositor, not from glyph-position snapping (ADR 0013).
-- **M3/M5 gaps on real files:** vertical writing with substituted CJK fonts,
-  Type 1 programs that need PostScript, non-RGB transparency group colour
-  spaces, overprint, and transfer functions under transparency.
+- **M3/M4 gaps (R02–R04):** vertical substituted CJK fonts and executable font
+  programs; higher/mixed-precision JPX sYCC, Lab-input/multi-profile ICC fallback and Indexed container-palette opacity integration; residual
+  codec variants. Expert CFF charsets, FDSelect 4, default CFF2 blends and JPX
+  embedded alpha already exist and are not scheduled for reimplementation.
+- **M5 gaps (R05/R06):** inverse/destination ICC transforms, calibrated blending
+  destinations and remaining transfer/graphics combinations. Gray/RGB/CMYK
+  groups, knockout and process/spot overprint display simulation already exist.
+- **M6 integration:** annotation/form appearances (V01/V02), tagged
+  accessibility (V04), layers/printing (V05) and PDF integration of existing PKI
+  path/CRL validation (S01). XFA/scripts and signature creation need explicit
+  scope ADRs (V03/S02); an intentional exclusion remains a competitive difference.
 - **M1:** files whose catalog opens but whose page tree fails, and the
   remaining open failures in other projects' bug-reproduction suites.
 - **Robustness:** a short, routine coverage-guided fuzz run with every finding
@@ -54,9 +79,44 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
   95% confidence interval from about ±1.4 to ±0.45 points; consider an EC2
   runner for that size.
 - Long coverage-guided fuzz campaigns (the `fuzz/` targets) on dedicated hardware.
-- PNG output (Flate compressor, PNG encoder) for the conversion use case.
-- Multithreaded tile rendering (native threads, `wasm32-wasip1-threads`).
-- Linearization and incremental loading for large files.
+- **Loading, image extraction and output (D01/D02a):** the
+  [consolidated detailed design](plans/async-pdf-loading-and-image-streaming.md)
+  and [proposed ADR 0035](adr/0035-progressive-sources-and-streaming-jobs.md)
+  cover immutable range sources, missing-data jobs, tail-first/linearized
+  loading, image assets, resumable bands, incremental PNG/DEFLATE and native
+  async/browser integration. Band callbacks, stop callbacks, CLI streamed PPM
+  and whole-buffer PNG/zlib encoders already exist. P0–P9 subdivide these parity
+  packages; they are not a duplicate roadmap. Parsed-object eviction and
+  parent/overlay revisions remain separate ADR 0012 follow-ups.
+- **Host and viewer:** protocol v2 replacing versions 1.0–1.7; rendering in
+  persistent band steps and host cancellation using the existing band driver;
+  a JSPI transport so cross-origin
+  isolation becomes optional, with the Atomics path as fallback (an ADR 0005
+  amendment); low-resolution previews and stale tiles while zooming; a worker
+  pool fed with serialized prepared scenes; ARIA from the logical structure
+  view; a size budget for the core module.
+- **Preview rendering:** a rough profile for thumbnails and progressive
+  first paint (greeking small text, images decoded at drawn size or as their
+  average colour, coarse coverage), built only after exact rendering beats
+  hayro. This remains a proposal, separately named and measured; it does not
+  restore the retired Competitive mode or weaken exact rendering's contract.
+- **More devices** on the interpreter's `Device` trait: SVG output, PDF
+  re-emission through the operator layer, hit testing.
+- **Concurrency:** native band threads (`std::thread::scope`) and WebAssembly
+  threads under cross-origin isolation, on `PreparedScene` bands.
+- **Editing additions to M7:** sessions on snapshots with undo and redo;
+  semantic operations with XFDF; content filters on `pagura-content`;
+  redaction with a residual scan (E01–E03); connect the existing DocMDP/FieldMDP
+  structural classifier to save policy and trust evidence (S01);
+  two-phase external signing (signature creation needs its own decision; ADR
+  0015 is verification only); a native AcroForm AF function library, with no
+  JavaScript engine. Broader script parity remains V03's explicit ADR decision.
+- **Document services and profiles:** typed metadata/attachments/portfolios
+  and export APIs (D02), public-key security and encrypted history (D03), and
+  version/profile validation (C01). Recognizing a version or PDF/X declaration
+  does not establish conformance.
+- **Crate splits:** `pagura-interactive` (fields, navigation, actions) and
+  `pagura-sign`.
 
 Deferred capabilities remain release blockers wherever the performance or
 feature contract requires them. Exclusions are explicit product decisions,

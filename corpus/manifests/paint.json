@@ -642,8 +642,7 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 0,
-      "competitive_tolerance": 1
+      "tolerance": 0
     },
     {
       "id": "paint/text-extgstate-font",
@@ -1988,16 +1987,21 @@
       "id": "paint/image-jpx-icc-explicit",
       "kind": "pdf",
       "description": "image jpx icc explicit",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "paint-images"
+        "paint-jpx-icc"
       ],
       "path": "corpus/generated/paint/image-jpx-icc-explicit.pdf",
-      "sha256": "d212845b9fc424b2385c5611135484f65203dade9f27cae5bd0a89d272911215",
+      "sha256": "888d6872364b0daa85dfeaf06c3789d911114b6e034e9fe5192e3ed4e58891e3",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "xobject.jpx-color"
+      "oracle": "corpus/generated/paint/image-jpx-icc-explicit.ppm",
+      "oracle_sha256": "62471ca8edad777a8931c6fa2e2786e6204ebfdb3b339e6d21603a72bbb0ff37",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
     },
     {
       "id": "paint/image-stencil-pattern-explicit",
@@ -2292,8 +2296,7 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1,
-      "competitive_tolerance": 25
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-symbol-differences",
@@ -2326,8 +2329,7 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1,
-      "competitive_tolerance": 27
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-zapfdingbats",
@@ -2360,8 +2362,7 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1,
-      "competitive_tolerance": 14
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-zapfdingbats-differences",
@@ -2394,8 +2395,7 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1,
-      "competitive_tolerance": 19
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-cjk-cmap",
@@ -3443,8 +3443,7 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 0,
-      "competitive_tolerance": 1
+      "tolerance": 0
     },
     {
       "id": "paint/image-direct-bilinear",

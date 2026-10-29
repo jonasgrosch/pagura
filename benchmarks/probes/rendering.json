@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
+  "cases": [
+    {
+      "id": "control.blank",
+      "capability": "render.graphics",
+      "operation": "render",
+      "fixture": "classic/blank",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "2a32d9a94209e87b46358ff2151efee07dea13d3171a3dfb4331dede6e060479",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "control.rectangle",
+      "capability": "render.graphics",
+      "operation": "render",
+      "fixture": "classic/rectangle",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "9c1f47734a0f9c886b3819056c69774b65fb5d61fbb43ca5f849add25dd4f35c",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "graphics.fractional",
+      "capability": "render.graphics",
+      "operation": "render",
+      "fixture": "classic/fractional-rectangle",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 64,
+        "height": 64,
+        "rgb_sha256": "8cc43e71ada4b386f559040c1dcc042c81e935e8519127587e9f187a9d7658d1",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "jpx.gray",
+      "capability": "images.jpx-colour",
+      "operation": "render",
+      "fixture": "paint/image-jpx",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "b5cd30d0f4c249640527971a5f014c5a9fbb733ac02250f85bd623e15a5c892c",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx.alpha-straight",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint/image-jpx-alpha-1",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f6fda891c1973279318185b5d8fad2cd741b9b124e5205ba53b8ec3f08056fb8",
+        "tolerance": 0
+      }
+    },
+    {
+      "id": "jpx.alpha-premultiplied",
+      "capability": "images.jpx-alpha",
+      "operation": "render",
+      "fixture": "paint/image-jpx-alpha-2",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 32,
+        "height": 32,
+        "rgb_sha256": "f6fda891c1973279318185b5d8fad2cd741b9b124e5205ba53b8ec3f08056fb8",
+        "tolerance": 0
+      }
+    }
+  ]
+}

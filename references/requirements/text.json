@@ -248,7 +248,7 @@
         "verdict": "documented capability limit",
         "choices": [
           "Without an explicit Provider, the original loading API keeps its unavailable-font/CMap errors. ADR 0009 now approves the bundled data provider; its integration is covered separately.",
-          "Malformed ToUnicode and painting-critical data reject in Strict or require a reported repair; see text-tounicode-recovery."
+          "Malformed painting-critical data, and ToUnicode data where text is extracted, reject in Strict or require a reported repair; see text-tounicode-recovery."
         ]
       }
     },
@@ -326,7 +326,7 @@
       "tests": [
         "text/embedded-cid-variable-codes"
       ],
-      "gaps": "Text-state operators, BT/ET, positioning and painting belong to pagura-render and are outside this registry's execution tests.",
+      "gaps": "Text-state operators, BT/ET and positioning now belong to pagura-interpret; painting belongs to pagura-paint. These remain outside this registry's PDF binding tests; earlier verification records retain their historical crate names.",
       "verification": {
         "rule": "Simple strings use one byte per glyph; composite strings use CMap codes; only single-byte code 32 is eligible for word spacing.",
         "implementation": "ISO decoder interface agrees; text-state operator execution remains in pagura-render",
@@ -785,6 +785,8 @@
         "text/substitute-unsafe-symbolic",
         "text/substitute-unsafe-symbolic-both",
         "text/substitute-unsafe-symbolic-known-base",
+        "text/substitute-symbolic-latin-encoding",
+        "text/substitute-symbolic-latin-base-encoding",
         "text/substitute-style-angle",
         "text/substitute-style-medium-weight",
         "text/substitute-style-bold-weight",
@@ -794,7 +796,7 @@
         "text/substitute-style-dingbats-italic",
         "text/substitute-style-inventory"
       ],
-      "gaps": "Non-embedded composite and multiple-master fonts remain unsupported.",
+      "gaps": "Provider-backed non-embedded CID substitution exists for supported Adobe collections (text-cid-substitution); vertical substitutes, unknown symbolic encodings/collections and multiple-master substitution remain unsupported.",
       "verification": {
         "rule": "Font descriptors identify fixed pitch, serif and italic style and weight for choosing a substitute; declared PDF widths still determine layout.",
         "implementation": "Descriptor fields checked against ISO; substitute choice is documented policy. All 24 family/style/subtype vectors preserve PDF widths and report substitution; unsafe symbolic substitutes fail.",
@@ -803,6 +805,7 @@
         "choices": [
           "Fixed-pitch selects Courier ahead of serif; serif selects Times; otherwise Helvetica. Italic flag or nonzero ItalicAngle selects the italic style; FontWeight >= 600 or ForceBold selects bold.",
           "Unknown Type1/TrueType fonts without an Encoding use the substitute AFM built-in encoding. No guess is made for unknown symbolic fonts.",
+          "A Symbolic flag on a non-embedded font whose name is a known Latin family (a standard alias, or the Liberation, croscore or DejaVu text families, whose face then comes from the descriptor) and whose Encoding names, or has a BaseEncoding naming, StandardEncoding, WinAnsiEncoding or MacRomanEncoding follows that encoding as the reported repair font.symbolic-latin-encoding; strict mode rejects it. Symbol, dingbat and unknown families, and fonts without an explicit Latin encoding, still fail with font.non-embedded.",
           "Known Symbol and ZapfDingbats style suffixes retain the regular bundled program and its encoding without synthetic slant or weight. Substitution is reported in both recovery modes; explicit PDF widths take precedence over AFM widths. Indirect Flags are resolved before symbolic TrueType encodings are ignored."
         ]
       }
@@ -1049,7 +1052,7 @@
         "expectations": "Independently authored Python fixtures give strict error tags and exact repaired glyph IDs, widths, matrices and Unicode; no Rust output is used. Pixel fixtures independently calculate the same rectangle in actual rendered pages.",
         "verdict": "Normative checks and explicit repair policy agree with the independent fixtures.",
         "choices": [
-          "Reject malformed extraction data at font loading under Strict, preserving the original error and refused repair tag without reporting an applied repair. Repair mode keeps drawable glyphs and other Unicode fallback methods.",
+          "Reject malformed extraction data when the font's Unicode is loaded for text extraction under Strict, preserving the original error and refused repair tag without reporting an applied repair. Repair mode keeps drawable glyphs and other Unicode fallback methods. Rendering never loads ToUnicode (ADR 0034), so its faults neither fail nor repair a rendering.",
           "Repair two-byte simple-font source codes by their low byte, preserving agreeing aliases and dropping conflicting aliases.",
           "Omit invalid UTF-16 destinations atomically, including malformed surrogate sequences and odd byte counts. An invalid child definition suppresses inherited text for that source.",
           "Repair overflowing bfrange strings with big-endian byte carry. Keep valid UTF-16 results, omit invalid ones, and stop at full-string overflow without wrapping.",
@@ -1311,6 +1314,9 @@
       ],
       "status": "CID collection identities determine character meaning; the PDF CMap selects CIDs, and W/DW supply advances independently of the external program; ToUnicode serves extraction only.",
       "tests": [
+        "text/substitute-cid-identity-latin",
+        "text/substitute-cid-identity-latin-no-tounicode",
+        "text/substitute-cid-identity-latin-vertical",
         "text/substitute-cid-Japan1-CIDFontType0",
         "text/substitute-cid-Japan1-CIDFontType2",
         "text/substitute-cid-Japan1-tounicode",
@@ -1476,7 +1482,7 @@
         "text/extract-composite",
         "text/extract-vertical"
       ],
-      "gaps": "Structure-tree semantics and script-specific segmentation remain future work; layout/search heuristics are explicit policy.",
+      "gaps": "Tagged structure ordering is implemented separately by text-structure, with its own namespace/content/replacement limits. Script-specific segmentation remains future work; layout/search heuristics are explicit policy.",
       "verification": {
         "rule": "ActualText replaces enclosed characters without adding word breaks; Alt is whole-word/phrase replacement and consecutive alternatives have a word break; ReversedChars reverses each individual shown string.",
         "implementation": "agrees with the cited ISO subset and documented policies",
@@ -1524,7 +1530,7 @@
         "text/extract-composite",
         "text/extract-vertical"
       ],
-      "gaps": "Structure-tree semantics and script-specific segmentation remain future work; layout/search heuristics are explicit policy.",
+      "gaps": "Search remains geometric and independent of the separate text-structure logical view. Script-specific segmentation remains future work; layout/search heuristics are explicit policy.",
       "verification": {
         "rule": "Search operates on extracted Unicode and replacement text; match normalization, boundaries and discretionary hyphens are reader policy.",
         "implementation": "agrees with the cited ISO subset and documented policies",
@@ -2147,7 +2153,7 @@
       }
     },
     "encoding_rule": "D.2 assignments include WinAnsi bullet aliases, space/hyphen aliases, MacRoman currency and space; D.3 defines TAB/LF/CR; D.4-D.6 provide expert and symbolic assignments. No differing code-to-name entry was found.",
-    "ownership_boundary": "BT/ET, text-state operators, positioning and rendering are owned by pagura-render; this registry checks the font decoder interface and word-spacing eligibility, not execution of those operators."
+    "ownership_boundary": "BT/ET, text-state operators and positioning are owned by pagura-interpret; pagura-paint executes prepared marks. This registry checks the font decoder interface and word-spacing eligibility, not execution of those operators."
   },
   "pending_primary_text_review": [
     {

@@ -32,6 +32,11 @@ impl FontFlags {
         self.0 & flag.0 == flag.0
     }
 
+    /// These flags with Nonsymbolic in place of Symbolic.
+    pub(crate) const fn nonsymbolic(self) -> Self {
+        Self((self.0 & !Self::SYMBOLIC.0) | Self::NONSYMBOLIC.0)
+    }
+
     /// Whether exactly one of Symbolic and Nonsymbolic is set, as 9.8.2
     /// requires.
     pub(crate) const fn is_consistent(self) -> bool {

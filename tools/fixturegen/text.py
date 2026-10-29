@@ -881,10 +881,10 @@ def symbol_substitute_cases(data, lock):
         ("text-symbol-substitution",),"After the named Latin route lacks a glyph, a known Symbol TrueType face falls back to its AFM code mapping",{"driver":"bundled-symbol"})
 
 
-def cid_substitute_document(ordering, cmap, *, extra=b"", descendant=b"", subtype=b"CIDFontType2", unicode_map=None, flags=4):
-    font = b"<< /Subtype /Type0 /BaseFont /Collection /DescendantFonts [5 0 R] /Encoding "+cmap
+def cid_substitute_document(ordering, cmap, *, extra=b"", descendant=b"", subtype=b"CIDFontType2", unicode_map=None, flags=4, base=b"Collection"):
+    font = b"<< /Subtype /Type0 /BaseFont /"+base+b" /DescendantFonts [5 0 R] /Encoding "+cmap
     font += (b" /ToUnicode 8 0 R" if unicode_map else b"")+b" >>"
-    cidfont = b"<< /Subtype /"+subtype+b" /BaseFont /Collection /CIDSystemInfo << /Registry (Adobe) /Ordering ("+ordering.encode()+b") /Supplement 0 >> /FontDescriptor 6 0 R "+descendant+b" >>"
+    cidfont = b"<< /Subtype /"+subtype+b" /BaseFont /"+base+b" /CIDSystemInfo << /Registry (Adobe) /Ordering ("+ordering.encode()+b") /Supplement 0 >> /FontDescriptor 6 0 R "+descendant+b" >>"
     return pdf(font,[cidfont,b"<< /Flags %d /FontName /Collection >>" % flags,stream(extra) if extra else b"null",stream(unicode_map) if unicode_map else b"null"])
 
 
@@ -933,6 +933,18 @@ def cid_substitute_cases(data, lock):
     ]:
         yield Vector(name,{".pdf":cid_substitute_document(ordering,encoding),".error":error+b"\n"},
                      ("text-cid-substitution",),"Incompatible or unknown character collections never select guessed glyphs",{"driver":"bundled-cid-error"})
+    # An Identity collection with a Latin family name: the font's ToUnicode
+    # text selects glyphs of the bundled metric-compatible face (ADR 0009).
+    # Codes without ToUnicode text draw nothing; PDF widths stay authoritative.
+    helvetica = data/lock["standard_14"]["Helvetica"]["outline"]
+    tounicode = b"/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /T def 1 begincodespacerange <0000> <ffff> endcodespacerange 2 beginbfchar <0001> <0041> <0003> <00660069> endbfchar endcmap CMapName currentdict /CMap defineresource pop end end"
+    rows = [(1,1,731,"A",bundled_tt_glyph(helvetica,65)),(2,2,500,None,None),(3,3,500,"fi",None)]
+    yield Vector("substitute-cid-identity-latin",{".pdf":cid_substitute_document("Identity",b"/Identity-H",descendant=b"/DW 500 /W [1 [731]]",unicode_map=tounicode,base=b"ArialMT"),".input":b"\0\1\0\2\0\3",".out":expected(rows)},
+                 ("text-cid-substitution",),"A Latin-named Identity CIDFont draws through its ToUnicode text with the metric-compatible face; unmapped codes and ligatures draw nothing; PDF W and DW supply advances",{"driver":"bundled-cid-latin"})
+    yield Vector("substitute-cid-identity-latin-no-tounicode",{".pdf":cid_substitute_document("Identity",b"/Identity-H",descendant=b"/DW 500",base=b"Arial,Bold"),".input":b"\0\1",".out":expected([(1,1,500,None,None)])},
+                 ("text-cid-substitution",),"Without ToUnicode text a Latin-named Identity CIDFont draws nothing, keeps the PDF advances and reports incomplete coverage",{"driver":"bundled-cid-latin"})
+    yield Vector("substitute-cid-identity-latin-vertical",{".pdf":cid_substitute_document("Identity",b"/Identity-V",base=b"ArialMT"),".error":b"font.cid-substitute-vertical\n"},
+                 ("text-cid-substitution",),"Vertical writing still needs vertical forms",{"driver":"bundled-cid-error"})
     cmap=b"/WMode 1 def 1 begincodespacerange <0000> <ffff> endcodespacerange 1 begincidchar <0001> 1 endcidchar"
     yield Vector("substitute-cid-wmode",{".pdf":cid_substitute_document("Japan1",b"7 0 R",extra=cmap),".error":b"font.cid-substitute-vertical\n"},
                  ("text-cid-substitution",),"Embedded CMap WMode 1 also rejects horizontal-only substitution",{"driver":"bundled-cid-error"})
@@ -1097,9 +1109,20 @@ def substitution_cases(data, lock):
             descriptor = b"<< /Flags %d /FontWeight %d >>" % (flags,weight)
             yield Vector(fixture,{".pdf":pdf(font,[descriptor]),".input":b"A",".out":expected([(65,.731,"A",glyph)]),".base":base.encode()},("text-font-substitution","text-provider"),"Descriptor-based substitution preserves the PDF width",{"driver":"substitute"})
     yield Vector("bundled-substitute-inventory",{".out":expected([(name,) for name in choices])},("text-font-substitution",),"All serif, fixed-pitch, weight and italic substitution routes",{"driver":"inventory"})
-    for name,base,flags in [("unsafe-symbolic","UnknownSymbol",4),("unsafe-symbolic-both","UnknownSymbol",36),("unsafe-symbolic-known-base","Arial",4)]:
-        font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R /Encoding /WinAnsiEncoding /FirstChar 65 /LastChar 65 /Widths [731] >>"
+    # An unknown family, or a known one without an explicit Latin encoding,
+    # leaves the glyphs of a Symbolic font unknown: no guess is made.
+    for name,base,flags,encoding in [("unsafe-symbolic","UnknownSymbol",4,b" /Encoding /WinAnsiEncoding"),("unsafe-symbolic-both","UnknownSymbol",36,b" /Encoding /WinAnsiEncoding"),("unsafe-symbolic-known-base","Arial",4,b"")]:
+        font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R"+encoding+b" /FirstChar 65 /LastChar 65 /Widths [731] >>"
         yield Vector("substitute-"+name,{".pdf":pdf(font,[b"<< /Flags %d >>" % flags]),".error":b"font.non-embedded\n"},("text-font-substitution",),"Unsafe symbolic substitution fails explicitly",{"driver":"provider-error"})
+    # A known Latin family whose Encoding names a Latin base encoding: the
+    # contradicting Symbolic flag is a reported repair and the encoding's
+    # glyph names select the standard face's glyphs (9.6.5, 9.8.2).
+    item = lock["standard_14"]["Helvetica"]
+    glyph = bundled_tt_glyph(data/item["outline"],65)
+    for name,base,encoding in [("symbolic-latin-encoding","Arial",b"/WinAnsiEncoding"),
+                               ("symbolic-latin-base-encoding","DejaVuSans",b"<< /BaseEncoding /MacRomanEncoding >>")]:
+        font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R /Encoding "+encoding+b" /FirstChar 65 /LastChar 65 /Widths [731] >>"
+        yield Vector("substitute-"+name,{".pdf":pdf(font,[b"<< /Flags 4 >>"]),".input":b"A",".out":expected([(65,.731,"A",glyph)]),".repair":b"font.symbolic-latin-encoding\n"},("text-font-substitution",),"A Symbolic flag contradicted by a known Latin family and an explicit Latin encoding is a reported repair; strict mode rejects it",{"driver":"substitute-repair"})
 
 
 def style_substitution_cases(data, lock):
@@ -1319,7 +1342,9 @@ def tolerance_cases():
 
 
 def tolerance_paint_cases():
-    """Actual page pixels prove optional Unicode never selects the outline."""
+    """Actual page pixels prove optional Unicode never selects the outline,
+    and that painting never examines ToUnicode: malformed maps neither fail
+    a strict rendering nor are repaired by one (ADR 0034)."""
     from .paint import ttf, page
     from .model import Case, RENDER
     from .pdf import opaque_rectangles
@@ -1337,7 +1362,7 @@ def tolerance_paint_cases():
         objects[0]=objects[0][:-2]+b" /ToUnicode 8 0 R >>"
         objects.append(stream(cmap))
         yield Case("paint-tounicode-"+name,page(b"BT /F 20 Tf 4 4 Td (A) Tj ET",objects,b"<< /Font << /F 5 0 R >> >>"),RENDER,
-                   ("text-tounicode-recovery",),"Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",oracle=oracle,repairs=(tag,),strict_valid=False)
+                   ("text-tounicode-recovery",),"Painting never reads ToUnicode, so data that extraction rejects with "+tag+" neither fails nor repairs a rendering of the same analytic rectangle glyph",oracle=oracle)
     for name,cmap,tag in [
         ("identity",None,"font.cid-to-gid-identity"),
         ("codespace",b"1 begincodespacerange <00ff> <0102> endcodespacerange 1 begincidchar <00ff> 1 endcidchar","font.cmap-codespace"),

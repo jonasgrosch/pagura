@@ -842,6 +842,8 @@ def standard_semantics_cases():
     for name,config in [('base-off',b'/BaseState /OFF'),('intent-empty',b'/Intent []')]:
         yield Case('configuration-invalid-'+name,optional_pdf(b'',configuration=config),OPEN,('content-optional',),'Default configuration constraints from Table 99',extra={'render_error':'Syntax'})
     yield render('marked-OC-other',b'/OC << /Other 1 >> BDC 0 0 8 8 re f EMC',[((0,0,8,8),BLACK)],requirements=('content-optional',))
+    # Open marked content closed at the end keeps its visibility until then.
+    yield repaired('marked-unclosed-hidden',optional_pdf(b'0 0 4 4 re f /OC /Off BDC 1 0 0 rg 0 0 8 8 re f'),'marked-unclosed',[((0,0,4,4),BLACK)],requirements=('content-optional',))
     hidden=document([b'<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [6 0 R] /D << /BaseState /ON /OFF [6 0 R] >> >> >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /F 5 0 R >> >> /Contents 4 0 R >>',stream(b'/F Do'),stream(b'BT ET',b'/Type /XObject /Subtype /Form /BBox [0 0 8 8] /Resources << >> /OC 6 0 R'),b'<< /Type /OCG /Name (hidden) >>'])
     yield Case('form-hidden-body',hidden,RENDER,('content-forms',),'An invisible form skips its entire body, including unsupported text operators',oracle=opaque_rectangles(8,8,[]))
 

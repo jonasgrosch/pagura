@@ -1,42 +1,146 @@
 //! PDF JPEG 2000 adaptation: ISO 32000-2 7.4.9 and Table 87.
 use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, features, jpx, parameters};
-use pagura_core::{Dictionary, Error, Limits, Result, Value};
+use pagura_core::{Dictionary, Error, Limits, Meter, Recovery, Result, Value};
 
-pub(crate) fn decode(
-    data: &[u8],
-    dictionary: &Dictionary,
-    image: &mut DecodedImage,
-    limits: &Limits,
-    diagnostics: &mut pagura_core::Diagnostics,
-) -> Result<()> {
-    let mode = parameters::integer(dictionary, b"SMaskInData", 0)?;
-    if !(0..=2).contains(&mode)
-        || (mode != 0 && dictionary.get(b"SMask").is_some_and(|v| !v.is_null()))
-    {
-        return Err(Error::syntax("invalid SMaskInData or simultaneous SMask"));
+/// How a PDF JPXDecode image is decoded: its `SMaskInData` mode and the
+/// container metadata it ignores (7.4.9, Table 87).
+#[derive(Debug, Clone)]
+pub(crate) struct Jpx {
+    pub(crate) mode: i64,
+    options: jpx::Options,
+    indexed: bool,
+}
+
+/// A JPXDecode image's colour channels as decoding will return them,
+/// without its samples.
+#[derive(Debug, Clone)]
+pub(crate) struct Description {
+    /// Precision of each colour channel, in interleave order.
+    pub(crate) bits: Vec<u8>,
+    /// The sample interpretation of an image without a dictionary colour
+    /// space, from the container.
+    pub(crate) kind: Option<ImageKind>,
+}
+
+impl Jpx {
+    /// Validates the dictionary entries and data framing that decoding
+    /// checks before it reads the container.
+    pub(crate) fn read(data: &[u8], dictionary: &Dictionary, kind: &ImageKind) -> Result<Self> {
+        let mode = parameters::integer(dictionary, b"SMaskInData", 0)?;
+        if !(0..=2).contains(&mode)
+            || (mode != 0 && dictionary.get(b"SMask").is_some_and(|v| !v.is_null()))
+        {
+            return Err(Error::syntax("invalid SMaskInData or simultaneous SMask"));
+        }
+        if data.starts_with(&[255, 79]) {
+            return Err(Error::syntax(
+                "PDF JPXDecode requires a full JPEG 2000 container",
+            ));
+        }
+        let options = jpx::Options {
+            ignore_color: !matches!(kind, ImageKind::Color { color_space: None }),
+            ignore_opacity: mode == 0,
+        };
+        let indexed = matches!(kind, ImageKind::Color { color_space: Some(Value::Array(space)) }
+            if space.first().and_then(Value::as_name).is_some_and(|name| name == b"Indexed"));
+        Ok(Self {
+            mode,
+            options,
+            indexed,
+        })
     }
-    if data.starts_with(&[255, 79]) {
-        return Err(Error::syntax(
-            "PDF JPXDecode requires a full JPEG 2000 container",
-        ));
+
+    pub(crate) fn decode(
+        &self,
+        data: &[u8],
+        image: &mut DecodedImage,
+        limits: &Limits,
+        diagnostics: &mut pagura_core::Diagnostics,
+    ) -> Result<()> {
+        let mut decoded = jpx::decode_pdf(data, limits, &self.options, diagnostics, self.indexed)?;
+        if self.mode == 0 {
+            super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
+        }
+        adapt(decoded, self.mode, image, limits)
     }
-    let options = jpx::Options {
-        ignore_color: !matches!(image.kind, ImageKind::Color { color_space: None }),
-        ignore_opacity: mode == 0,
-    };
-    let indexed = matches!(&image.kind, ImageKind::Color { color_space: Some(Value::Array(space)) }
-        if space.first().and_then(Value::as_name).is_some_and(|name| name == b"Indexed"));
-    if indexed && mode != 0 {
-        return Err(Error::unsupported(
-            features::JPX_SAMPLE_LAYOUT,
-            "Indexed JPX opacity requires channel mapping",
-        ));
+
+    /// The colour channels of `data` for an image of `width` × `height`
+    /// whose colour space has `components` (0 when the dictionary has
+    /// none), with the checks of decoding that need no samples.
+    pub(crate) fn describe(
+        &self,
+        data: &[u8],
+        (width, height, components): (u32, u32, u8),
+        limits: &Limits,
+        mode: Recovery,
+    ) -> Result<Description> {
+        let mut decoded = jpx::describe_pdf(data, limits, &self.options, mode, self.indexed)?;
+        if self.mode == 0 {
+            super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
+        }
+        let jpx::Decoded {
+            image: decoded,
+            reference_origin,
+            component_geometry,
+            ..
+        } = decoded;
+        if component_geometry.len() != decoded.components.len() {
+            return Err(Error::syntax("invalid JPX component geometry count"));
+        }
+        if decoded.width != width || decoded.height != height {
+            return Err(Error::syntax(
+                "JPX dimensions disagree with image dictionary",
+            ));
+        }
+        if decoded
+            .alpha
+            .is_some_and(|index| index >= decoded.components.len())
+        {
+            return Err(Error::syntax("invalid JPX alpha component index"));
+        }
+        if self.mode != 0 && decoded.alpha.is_none() {
+            return Err(Error::syntax("SMaskInData requires an opacity channel"));
+        }
+        let colours: Vec<_> = decoded
+            .components
+            .iter()
+            .zip(&component_geometry)
+            .enumerate()
+            .filter(|(index, _)| Some(*index) != decoded.alpha)
+            .map(|(_, pair)| pair)
+            .collect();
+        let first = colours
+            .first()
+            .ok_or(Error::syntax("JPX has no colour components"))?;
+        let count =
+            u8::try_from(colours.len()).map_err(|_| Error::limit("too many JPX components"))?;
+        if components != 0 && components != count {
+            return Err(Error::syntax(
+                "JPX component count disagrees with colour space",
+            ));
+        }
+        parameters::budget(width, height, 1, 1, limits)?;
+        for (index, (component, geometry)) in decoded
+            .components
+            .iter()
+            .zip(&component_geometry)
+            .enumerate()
+        {
+            if self.mode != 0 || Some(index) != decoded.alpha {
+                validate_placement(component, geometry, (width, height), reference_origin)?;
+            }
+        }
+        let mixed = colours.iter().any(|c| c.0.bits != first.0.bits);
+        let precision = if mixed { 16 } else { first.0.bits };
+        parameters::budget(width, height, count, precision, limits)?;
+        let kind = (components == 0)
+            .then(|| embedded_space(decoded.color, count, colours.iter().any(|c| c.0.signed)))
+            .transpose()?;
+        Ok(Description {
+            bits: colours.iter().map(|c| c.0.bits).collect(),
+            kind,
+        })
     }
-    let mut decoded = jpx::decode_pdf(data, limits, &options, diagnostics, indexed)?;
-    if mode == 0 {
-        super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
-    }
-    adapt(decoded, mode, image, limits)
 }
 
 pub(crate) fn adapt(
@@ -108,7 +212,15 @@ pub(crate) fn adapt(
     }
     image.components = count;
     image.bits_per_component = if mixed { 0 } else { first.0.bits };
-    image.samples = interleave(&components, values, mixed, image.width, reference_origin)?;
+    let scratch_bytes = limits.decoded_bytes.saturating_sub(storage);
+    image.samples = interleave(
+        &components,
+        values,
+        mixed,
+        image.width,
+        reference_origin,
+        scratch_bytes,
+    )?;
     if mode != 0 {
         let opacity = decoded
             .alpha
@@ -122,12 +234,13 @@ pub(crate) fn adapt(
                 false,
                 image.width,
                 reference_origin,
+                scratch_bytes,
             )?,
             premultiplied: mode == 2,
         });
     }
     if matches!(image.kind, ImageKind::Color { color_space: None }) {
-        image.kind = embedded_space(decoded.color, count)?;
+        image.kind = embedded_space(decoded.color, count, components.iter().any(|c| c.0.signed))?;
     }
     Ok(())
 }
@@ -159,6 +272,25 @@ fn validate_component(
     height: u32,
     reference_origin: [u32; 2],
 ) -> Result<()> {
+    validate_placement(c, geometry, (width, height), reference_origin)?;
+    if u64::try_from(c.samples.len()).ok() != Some(u64::from(c.width) * u64::from(c.height)) {
+        return Err(Error::syntax("invalid JPX sample count"));
+    }
+    let max = u16::MAX >> (16 - c.bits);
+    if c.samples.iter().any(|&v| v > max) {
+        return Err(Error::syntax("JPX sample exceeds precision"));
+    }
+    Ok(())
+}
+
+/// The precision and reference-grid placement checks of
+/// [`validate_component`], which need no samples.
+fn validate_placement(
+    c: &jpx::JpxComponent,
+    geometry: &jpx::ComponentGeometry,
+    (width, height): (u32, u32),
+    reference_origin: [u32; 2],
+) -> Result<()> {
     if !(1..=16).contains(&c.bits) {
         return Err(Error::unsupported(
             features::JPX_SAMPLE_LAYOUT,
@@ -177,13 +309,6 @@ fn validate_component(
         {
             return Err(Error::syntax("inconsistent JPX component placement"));
         }
-    }
-    if u64::try_from(c.samples.len()).ok() != Some(u64::from(c.width) * u64::from(c.height)) {
-        return Err(Error::syntax("invalid JPX sample count"));
-    }
-    let max = u16::MAX >> (16 - c.bits);
-    if c.samples.iter().any(|&v| v > max) {
-        return Err(Error::syntax("JPX sample exceeds precision"));
     }
     Ok(())
 }
@@ -253,6 +378,150 @@ fn interleave(
     mixed: bool,
     width: u32,
     reference_origin: [u32; 2],
+    scratch_bytes: usize,
+) -> Result<Samples> {
+    let first = components
+        .first()
+        .ok_or(Error::syntax("missing JPX components"))?
+        .0;
+    let Some(mut scratch) =
+        InterleaveScratch::new(components, width, reference_origin, scratch_bytes)
+    else {
+        return interleave_plain(components, count, mixed, width, reference_origin);
+    };
+    if !mixed && first.bits <= 8 {
+        let mut values = Vec::with_capacity(count);
+        each_sample(
+            components,
+            count,
+            width,
+            reference_origin,
+            &mut scratch,
+            |sample| {
+                values.push(
+                    u8::try_from(sample)
+                        .map_err(|_| Error::syntax("JPX sample exceeds byte precision"))?,
+                );
+                Ok(())
+            },
+        )?;
+        return Ok(Samples::Bytes(values));
+    }
+    let mut values = Vec::with_capacity(count);
+    each_sample(
+        components,
+        count,
+        width,
+        reference_origin,
+        &mut scratch,
+        |sample| {
+            values.push(sample);
+            Ok(())
+        },
+    )?;
+    if mixed {
+        Ok(Samples::Mixed {
+            values,
+            bits: components.iter().map(|c| c.0.bits).collect(),
+        })
+    } else {
+        Ok(Samples::Words(values))
+    }
+}
+
+/// Optional interleaving scratch. All allocations fit beside every mandatory
+/// decoded/output buffer, or the previous sampler is used without scratch.
+struct InterleaveScratch<'a> {
+    columns: Vec<Vec<usize>>,
+    rows: Vec<&'a [u16]>,
+}
+
+impl<'a> InterleaveScratch<'a> {
+    fn new(
+        components: &[(&'a jpx::JpxComponent, &jpx::ComponentGeometry)],
+        width: u32,
+        reference_origin: [u32; 2],
+        available: usize,
+    ) -> Option<Self> {
+        let width = usize::try_from(width).ok()?;
+        let mut bytes = Meter::new(available, "JPX interleaving scratch exceeds budget");
+        let mut columns = Vec::new();
+        bytes.reserve(&mut columns, components.len()).ok()?;
+        let mut rows = Vec::new();
+        bytes.reserve(&mut rows, components.len()).ok()?;
+        for &(component, geometry) in components {
+            let mut column = Vec::new();
+            bytes.reserve(&mut column, width).ok()?;
+            for x in 0..width {
+                let at = u64::from(reference_origin[0]) + u64::try_from(x).ok()?;
+                let sample = (at.saturating_sub(u64::from(geometry.origin[0]))
+                    / u64::from(geometry.step[0]))
+                .min(u64::from(component.width.saturating_sub(1)));
+                column.push(usize::try_from(sample).ok()?);
+            }
+            columns.push(column);
+        }
+        Some(Self { columns, rows })
+    }
+}
+
+/// Passes `take` the `count` samples of `components` in image order: pixel
+/// by pixel, each pixel's components in turn. T.800 B.2/G.4 fix the sample
+/// positions. Piecewise-constant expansion with border replication is the
+/// chosen resampling policy; no phase reset occurs at a nonzero
+/// reference-grid origin. Each component's sample column is found once for
+/// every image column, and its sample row once a row.
+fn each_sample<'a>(
+    components: &[(&'a jpx::JpxComponent, &jpx::ComponentGeometry)],
+    count: usize,
+    width: u32,
+    reference_origin: [u32; 2],
+    scratch: &mut InterleaveScratch<'a>,
+    mut take: impl FnMut(u16) -> Result<()>,
+) -> Result<()> {
+    let overflow = || Error::limit("JPX sample index overflow");
+    let place = |at: u64, origin: u32, step: u32, size: u32| {
+        (at.saturating_sub(u64::from(origin)) / u64::from(step))
+            .min(u64::from(size.saturating_sub(1)))
+    };
+    let pixels = count / components.len().max(1);
+    let image_width = usize::try_from(width).map_err(|_| overflow())?;
+    if image_width == 0 {
+        return Ok(());
+    }
+    let InterleaveScratch { columns, rows } = scratch;
+    for (row, start) in (0u64..).zip((0..pixels).step_by(image_width)) {
+        rows.clear();
+        for &(c, g) in components {
+            let y = place(
+                u64::from(reference_origin[1]) + row,
+                g.origin[1],
+                g.step[1],
+                c.height,
+            );
+            let span = usize::try_from(c.width).map_err(|_| overflow())?;
+            let first = usize::try_from(y * u64::from(c.width)).map_err(|_| overflow())?;
+            rows.push(
+                c.samples
+                    .get(first..first + span)
+                    .ok_or(Error::syntax("invalid JPX sample index"))?,
+            );
+        }
+        for x in 0..(pixels - start).min(image_width) {
+            for (samples, columns) in rows.iter().zip(columns.iter()) {
+                take(samples[columns[x]])?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn interleave_plain(
+    components: &[(&jpx::JpxComponent, &jpx::ComponentGeometry)],
+    count: usize,
+    mixed: bool,
+    width: u32,
+    reference_origin: [u32; 2],
 ) -> Result<Samples> {
     let first = components
         .first()
@@ -304,8 +573,11 @@ fn interleave(
     }
 }
 
-fn embedded_space(color: jpx::JpxColor, count: u8) -> Result<ImageKind> {
+fn embedded_space(color: jpx::JpxColor, count: u8, signed: bool) -> Result<ImageKind> {
     let space = match (&color, count) {
+        (jpx::JpxColor::Enumerated(18), _) if signed => {
+            return Err(Error::syntax("JPX sYCC requires unsigned colour channels"));
+        }
         (jpx::JpxColor::Enumerated(17), 1) => Some(b"DeviceGray".as_slice()),
         (jpx::JpxColor::Enumerated(16), 3) => Some(b"DeviceRGB".as_slice()),
         (jpx::JpxColor::Enumerated(12), 4) => Some(b"DeviceCMYK".as_slice()),
@@ -339,4 +611,181 @@ fn embedded_space(color: jpx::JpxColor, count: u8) -> Result<ImageKind> {
             color_space: Some(Value::name(space)),
         },
     ))
+}
+
+#[cfg(test)]
+mod row_scratch_tests {
+    use super::*;
+
+    fn placed(mixed: bool) -> jpx::Decoded {
+        let origin = [1_u32, 2_u32];
+        let mut components = Vec::new();
+        let mut geometry = Vec::new();
+        for channel in 0..4_u32 {
+            let step = if channel == 3 { 1 } else { channel + 1 };
+            let width = (origin[0] + 11).div_ceil(step) - origin[0].div_ceil(step);
+            let height = (origin[1] + 7).div_ceil(step) - origin[1].div_ceil(step);
+            let bits = if mixed && channel == 1 { 12 } else { 8 };
+            let count = usize::try_from(width * height).unwrap();
+            let range = usize::from(u16::MAX >> (16 - bits)) + 1;
+            let samples = (0..count)
+                .map(|i| {
+                    u16::try_from((i * 13 + usize::try_from(channel).unwrap() * 37) % range)
+                        .unwrap()
+                })
+                .collect();
+            components.push(jpx::JpxComponent {
+                bits,
+                signed: false,
+                width,
+                height,
+                samples,
+            });
+            geometry.push(jpx::ComponentGeometry {
+                step: [step, step],
+                origin: [
+                    origin[0].div_ceil(step) * step,
+                    origin[1].div_ceil(step) * step,
+                ],
+            });
+        }
+        jpx::Decoded {
+            image: jpx::JpxImage {
+                width: 11,
+                height: 7,
+                components,
+                color: jpx::JpxColor::Enumerated(16),
+                alpha: Some(3),
+            },
+            reference_origin: origin,
+            component_geometry: geometry,
+            opacity: None,
+        }
+    }
+
+    fn scratch_bytes(width: usize, components: usize) -> usize {
+        components * (size_of::<Vec<usize>>() + size_of::<&[u16]>() + width * size_of::<usize>())
+    }
+
+    #[test]
+    fn optional_interleave_scratch_is_charged_before_allocation() {
+        let decoded = placed(false);
+        let components: Vec<_> = decoded
+            .image
+            .components
+            .iter()
+            .zip(&decoded.component_geometry)
+            .take(3)
+            .collect();
+        let bytes = scratch_bytes(11, components.len());
+        assert!(InterleaveScratch::new(&components, 11, decoded.reference_origin, 0).is_none());
+        assert!(
+            InterleaveScratch::new(&components, 11, decoded.reference_origin, bytes - 1).is_none()
+        );
+        let scratch =
+            InterleaveScratch::new(&components, 11, decoded.reference_origin, bytes).unwrap();
+        let held = scratch.columns.capacity() * size_of::<Vec<usize>>()
+            + scratch.rows.capacity() * size_of::<&[u16]>()
+            + scratch
+                .columns
+                .iter()
+                .map(|c| c.capacity() * size_of::<usize>())
+                .sum::<usize>();
+        assert!(held <= bytes);
+    }
+
+    #[test]
+    fn optional_interleave_scratch_keeps_subsampled_mixed_and_byte_values() {
+        for mixed in [false, true] {
+            let decoded = placed(mixed);
+            let components: Vec<_> = decoded
+                .image
+                .components
+                .iter()
+                .zip(&decoded.component_geometry)
+                .take(3)
+                .collect();
+            let expected =
+                interleave_plain(&components, 11 * 7 * 3, mixed, 11, decoded.reference_origin)
+                    .unwrap();
+            for bytes in [0, scratch_bytes(11, components.len())] {
+                assert_eq!(
+                    interleave(
+                        &components,
+                        11 * 7 * 3,
+                        mixed,
+                        11,
+                        decoded.reference_origin,
+                        bytes
+                    )
+                    .unwrap(),
+                    expected
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn full_jpx_adapter_keeps_its_previous_minimum_storage_budget() {
+        for mode in [0, 1, 2] {
+            let decoded = placed(false);
+            let components: Vec<_> = decoded
+                .image
+                .components
+                .iter()
+                .zip(&decoded.component_geometry)
+                .take(3)
+                .collect();
+            let expected =
+                interleave_plain(&components, 11 * 7 * 3, false, 11, decoded.reference_origin)
+                    .unwrap();
+            let bytes = storage_bytes(
+                &decoded.image,
+                decoded.component_geometry.capacity(),
+                11 * 7 * 3,
+                8,
+                mode,
+            )
+            .unwrap();
+            for extra in [0, scratch_bytes(11, components.len())] {
+                let mut image = DecodedImage {
+                    width: 11,
+                    height: 7,
+                    bits_per_component: 8,
+                    components: 3,
+                    samples: Samples::Bytes(Vec::new()),
+                    kind: ImageKind::EmbeddedColor {
+                        color: jpx::JpxColor::Enumerated(16),
+                    },
+                    decode: None,
+                    mask: MaskKind::None,
+                    interpolate: false,
+                };
+                let limits = Limits {
+                    decoded_bytes: bytes + extra,
+                    ..Limits::default()
+                };
+                adapt(decoded.clone(), mode, &mut image, &limits).unwrap();
+                assert_eq!(image.samples, expected);
+                if mode != 0 {
+                    let alpha = interleave_plain(
+                        &[(&decoded.image.components[3], &decoded.component_geometry[3])],
+                        11 * 7,
+                        false,
+                        11,
+                        decoded.reference_origin,
+                    )
+                    .unwrap();
+                    assert_eq!(
+                        image.mask,
+                        MaskKind::Embedded(ImageAlpha {
+                            samples: alpha,
+                            bits_per_component: 8,
+                            premultiplied: mode == 2
+                        })
+                    );
+                }
+            }
+        }
+    }
 }

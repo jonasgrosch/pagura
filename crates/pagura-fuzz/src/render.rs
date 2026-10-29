@@ -1,11 +1,11 @@
-//! `render`: rendering a page under either accuracy path returns a complete
-//! surface of the advertised size or a structured error; never a panic or a
-//! surface of the wrong size (ADR 0004).
+//! `render`: recording a page and rendering it returns a complete surface of
+//! the advertised size or a structured error; never a panic or a surface of
+//! the wrong size (ADR 0004, ADR 0034).
 
-use pagura::{Accuracy, Document, OpenOptions, RenderOptions};
+use pagura::{Document, OpenOptions, RenderOptions};
+use std::sync::Arc;
 
-/// Opens the input and renders its first page at 18 dpi, exactly and
-/// competitively.
+/// Opens the input, records its first page once and renders it at 18 dpi.
 ///
 /// # Panics
 ///
@@ -18,21 +18,20 @@ pub fn run(data: &[u8]) {
     let Some(document) = super::checked(Document::open(data.to_vec(), &options)) else {
         return;
     };
+    let context = pagura::render_context(Arc::new(document));
+    let document = context.document();
     let Some(page) = super::checked(document.page(0)) else {
         return;
     };
-    for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
-        let render = RenderOptions {
-            accuracy,
-            ..RenderOptions::from_dpi(18.0)
-        };
+    if let Some(scene) = super::checked(context.scene(page)) {
+        let render = RenderOptions::from_dpi(18.0);
         let size = super::checked(pagura::device_size(page, &render));
-        let pixmap = super::checked(pagura::render_page(&document, page, &render));
+        let pixmap = super::checked(context.render_scene(&scene, &render, None));
         if let (Some(size), Some(pixmap)) = (size, pixmap) {
             assert_eq!(
                 (pixmap.width(), pixmap.height()),
                 size,
-                "{accuracy:?} surface size differs from device_size"
+                "surface size differs from device_size"
             );
         }
     }

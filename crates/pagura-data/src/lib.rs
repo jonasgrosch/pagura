@@ -88,12 +88,14 @@ pub fn notices() -> impl Iterator<Item = (&'static str, &'static str)> {
         .map(|notice| (notice.subject, notice.text))
 }
 
-/// Bundled font data with instance-local lazy caches. Resource parsing uses
-/// the limits selected at construction, independent of any PDF's contents.
+/// Bundled font data. CID substitutes, CMaps and Unicode tables are parsed
+/// into instance-local lazy caches within the limits selected at
+/// construction, independent of any PDF's contents. The standard fonts are
+/// fixed data parsed once per process, at first use, under the default
+/// limits and shared by every instance: about 0.2 MB each, 2.6 MB for all 14.
 #[derive(Debug)]
 pub struct Bundled {
     limits: Limits,
-    standard_fonts: Cache<StandardFont>,
     cid_fonts: Cache<FontProgram>,
     cmaps: Cache<PredefinedCMap>,
     cid_to_unicode: Cache<CidToUnicode>,
@@ -101,13 +103,12 @@ pub struct Bundled {
 
 impl Bundled {
     /// Creates empty caches with explicit parsing budgets. The inventory bounds
-    /// cache keys (14 standard fonts, four CID substitutes, 59 CMaps,
-    /// four Unicode tables); unknown names are
-    /// never retained. Sharing this provider amortizes parsing across documents.
+    /// cache keys (four CID substitutes, 59 CMaps, four Unicode tables);
+    /// unknown names are never retained. Sharing this provider amortizes
+    /// parsing across documents.
     pub fn new(limits: Limits) -> Self {
         Self {
             limits,
-            standard_fonts: Cache::new(),
             cid_fonts: Cache::new(),
             cmaps: Cache::new(),
             cid_to_unicode: Cache::new(),
@@ -126,7 +127,7 @@ impl Provider for Bundled {
         cjk::cid_font(registry, ordering, &self.cid_fonts, &self.limits)
     }
     fn standard_font(&self, base_name: &[u8]) -> Result<Option<Arc<StandardFont>>> {
-        fonts::standard_font(base_name, &self.standard_fonts, &self.limits)
+        fonts::standard_font(base_name)
     }
     fn predefined_cmap(&self, name: &[u8]) -> Result<Option<PredefinedCMap>> {
         cmaps::predefined_cmap(name, &self.cmaps, &self.limits)
@@ -188,11 +189,8 @@ mod tests {
         // debug output lists their names rather than their bytes.
         let debug = format!("{provider:?}");
         assert!(debug.len() < 4096, "{debug}");
-        if cfg!(feature = "standard-metrics") {
-            assert!(
-                debug.contains(r#"standard_fonts: {"Helvetica"}"#),
-                "{debug}"
-            );
+        if cfg!(feature = "cmaps") {
+            assert!(debug.contains(r#"cmaps: {"90ms-RKSJ-H"}"#), "{debug}");
         }
         assert!(!debug.contains("Unknown"), "{debug}");
         Ok(())
@@ -221,13 +219,11 @@ mod tests {
             let provider = Bundled::new(limits);
             let results = [
                 provider.cid_font(b"Adobe", b"Japan1").map(|_| ()),
-                provider.standard_font(b"Helvetica").map(|_| ()),
                 provider.predefined_cmap(b"90ms-RKSJ-H").map(|_| ()),
                 provider.cid_to_unicode(b"Adobe", b"Japan1").map(|_| ()),
             ];
             let linked = [
                 cfg!(feature = "cjk-fonts"),
-                cfg!(feature = "standard-metrics"),
                 cfg!(feature = "cmaps"),
                 cfg!(feature = "cmaps"),
             ];
@@ -239,6 +235,11 @@ mod tests {
             }
             // Nothing was published: the debug output names no cached key.
             assert_eq!(format!("{provider:?}").matches('"').count(), 0);
+            // The standard fonts are fixed data under fixed limits.
+            assert_eq!(
+                provider.standard_font(b"Helvetica").map(|f| f.is_some()),
+                Ok(cfg!(feature = "standard-metrics"))
+            );
         }
     }
 

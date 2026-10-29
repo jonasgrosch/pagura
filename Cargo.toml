@@ -7,12 +7,17 @@ members = [
     "crates/pagura-document",
     "crates/pagura-raster",
     "crates/pagura-color",
+    "crates/pagura-content",
     "crates/pagura-font",
     "crates/pagura-text",
     "crates/pagura-extract",
     "crates/pagura-data",
     "crates/pagura-image",
+    "crates/pagura-appearance",
+    "crates/pagura-interpret",
+    "crates/pagura-paint",
     "crates/pagura-render",
+    "crates/pagura-reference",
     "crates/pagura-write",
     "crates/pagura-host",
     "crates/pagura-testkit",
@@ -32,8 +37,10 @@ publish = false
 
 [workspace.dependencies]
 pagura = { path = "crates/pagura", default-features = false }
+pagura-appearance = { path = "crates/pagura-appearance" }
 pagura-codec = { path = "crates/pagura-codec" }
 pagura-color = { path = "crates/pagura-color" }
+pagura-content = { path = "crates/pagura-content" }
 pagura-core = { path = "crates/pagura-core" }
 pagura-crypto = { path = "crates/pagura-crypto" }
 pagura-data = { path = "crates/pagura-data" }
@@ -42,8 +49,11 @@ pagura-extract = { path = "crates/pagura-extract" }
 pagura-font = { path = "crates/pagura-font" }
 pagura-host = { path = "crates/pagura-host" }
 pagura-image = { path = "crates/pagura-image" }
+pagura-interpret = { path = "crates/pagura-interpret" }
+pagura-paint = { path = "crates/pagura-paint" }
 pagura-pki = { path = "crates/pagura-pki" }
 pagura-raster = { path = "crates/pagura-raster" }
+pagura-reference = { path = "crates/pagura-reference" }
 pagura-render = { path = "crates/pagura-render" }
 pagura-testkit = { path = "crates/pagura-testkit" }
 pagura-text = { path = "crates/pagura-text" }
@@ -87,6 +97,18 @@ allow_attributes_without_reason = "deny"
 lto = "thin"
 codegen-units = 1
 overflow-checks = true
+
+# The rasterizer and compositor run the hot loops on validated, budgeted
+# geometry and buffers, and CONTRIBUTING requires their arithmetic that can
+# overflow to be explicit (checked, saturating or wrapping). Native release
+# builds therefore drop the implicit checks there; the wasm32 target turns
+# them back on in .cargo/config.toml, where `usize` is 32 bits. Parsers and
+# decoders, which read hostile bytes, keep them everywhere.
+[profile.release.package.pagura-raster]
+overflow-checks = false
+
+[profile.release.package.pagura-paint]
+overflow-checks = false
 
 [profile.bench]
 inherits = "release"

@@ -148,7 +148,7 @@ fn truncation_and_mutation_never_panic() {
         );
     }
     let limits = Limits {
-        operations: 100_000,
+        decode_work: 100_000,
         decoded_bytes: 1_000_000,
         pixels: 4096,
         ..Limits::default()
@@ -179,7 +179,7 @@ fn limits_bound_input_pixels_allocations_and_work() {
             ..Limits::default()
         },
         Limits {
-            operations: 10,
+            decode_work: 10,
             ..Limits::default()
         },
         Limits {
@@ -195,7 +195,7 @@ fn limits_bound_input_pixels_allocations_and_work() {
 #[test]
 fn smooth_tile_synthesis_stays_within_work_budget() -> pagura_core::Result<()> {
     let limits = Limits {
-        operations: 250_000,
+        decode_work: 250_000,
         ..Limits::default()
     };
     let image = decode(&fixture("jpx", "wavelet-budget.jpx"), &limits)?;
@@ -233,7 +233,7 @@ fn packed_and_progression_boundaries_never_panic() {
     let limits = Limits {
         pixels: 4096,
         decoded_bytes: 2_000_000,
-        operations: 200_000,
+        decode_work: 200_000,
         objects: 256,
         ..Limits::default()
     };
