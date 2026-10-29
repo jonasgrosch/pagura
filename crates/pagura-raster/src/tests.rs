@@ -478,13 +478,42 @@ fn convex_strokes_preserve_reflected_oracles_at_large_origins() {
             x1: origin.0 + 8,
             y1: origin.1 + 8,
         };
-        let coverage = fill(
+        let area = Area {
             region,
-            (&outline, transform, FillRule::NonZero),
-            &[],
-            &limits,
+            band_height: 16,
+        };
+        let shape = Shape::fill(
+            &outline,
+            transform,
+            FillRule::NonZero,
+            &ShapeOptions {
+                area,
+                limits: &limits,
+            },
         )
+        .unwrap()
         .unwrap();
+        // The ordinary rasterizer reserves a prefix through region.x1.
+        // At 2^30 this would allocate over 17 GiB through the unlimited
+        // test helper, despite this being an eight-by-eight oracle.
+        // Inspection accumulates the same device-space geometry in the
+        // shape's compact window, preserving the large-origin arithmetic.
+        let coverage = crate::band::inspected_coverage(&shape, area);
+        if origin.0 < 1 << 30 {
+            assert_eq!(
+                coverage,
+                fill(
+                    region,
+                    (&outline, transform, FillRule::NonZero),
+                    &[],
+                    &limits
+                )
+                .unwrap()
+            );
+        } else {
+            let mut bytes = crate::testing::bytes();
+            assert!(crate::BandRasterizer::new(area, &mut bytes).is_err());
+        }
         for y in 0..8 {
             for x in 0..8 {
                 assert_eq!(

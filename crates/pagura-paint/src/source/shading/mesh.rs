@@ -124,17 +124,20 @@ impl Mesh {
     }
 
     /// The most geometry work units a sample at `point` costs: one per
-    /// primitive its cell lists, times the most a primitive's test costs,
-    /// and one for an empty cell.
+    /// primitive its cell lists, except the most a search costs for each
+    /// patch whose bounds hold the sample (only those search), and one for
+    /// an empty cell.
     pub(super) fn work_at(&self, point: Point) -> usize {
-        let per_primitive = match self.kind {
-            Kind::Triangles => 1,
-            Kind::Patches => patch::MAX_WORK,
+        let cell = self.grid.cell(point);
+        let searched = match self.kind {
+            Kind::Triangles => 0,
+            Kind::Patches => cell
+                .iter()
+                .filter(|&&i| self.patches.get(i as usize).is_some_and(|p| p.holds(point)))
+                .count(),
         };
-        self.grid
-            .cell(point)
-            .len()
-            .saturating_mul(per_primitive)
+        (cell.len() - searched)
+            .saturating_add(searched.saturating_mul(patch::MAX_WORK))
             .max(1)
     }
 
@@ -403,6 +406,46 @@ mod tests {
         );
         let total: usize = points.iter().map(|&p| mesh.work_at(p)).sum();
         assert!(4 * total < points.len() * mesh.grid.occupancy, "{total}");
+    }
+
+    #[test]
+    fn a_sample_reserves_searches_only_for_patches_whose_bounds_hold_it() {
+        // A large patch, and a small one in its corner that the corner's
+        // cells list too.
+        let square = |size: f64| Patch {
+            points: std::array::from_fn(|k| {
+                let (i, j) = (u8::try_from(k % 4).unwrap(), u8::try_from(k / 4).unwrap());
+                Point::new(size * f64::from(i) / 3.0, size * f64::from(j) / 3.0)
+            }),
+            colors: std::array::from_fn(|_| Components::from_slice(&[0.5])),
+        };
+        let mut bytes = Meter::new(1 << 20, "mesh test");
+        let mesh = Mesh::patches(&[square(8.0), square(1.0)], 1, &mut bytes).unwrap();
+        let mut input = Input::default();
+        let (mut missed, mut total) = (0, 0);
+        for y in 0..32 {
+            for x in 0..32 {
+                let point = Point::new(f64::from(x) / 4.0 + 0.125, f64::from(y) / 4.0 + 0.125);
+                let listed = mesh.grid.cell(point);
+                let held = listed
+                    .iter()
+                    .filter(|&&i| mesh.patches[i as usize].holds(point))
+                    .count();
+                for &i in listed {
+                    let patch = &mesh.patches[i as usize];
+                    // A patch whose bounds miss the sample cannot cover it.
+                    if !patch.holds(point) {
+                        assert!(!patch.sample(point, 1, &mut input));
+                    }
+                }
+                let work = mesh.work_at(point);
+                assert_eq!(work, (listed.len() - held + held * patch::MAX_WORK).max(1));
+                missed += usize::from(held < listed.len());
+                total += work;
+            }
+        }
+        assert!(missed > 0);
+        assert!(total < 32 * 32 * 2 * patch::MAX_WORK);
     }
 
     #[test]
