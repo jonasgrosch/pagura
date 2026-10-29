@@ -222,5 +222,12 @@ mod tests {
             assert!(!item.is_empty() && item.bytes().all(|b| b.is_ascii_lowercase() || b == b'-'));
             assert!(!ALL[..index].contains(tag), "{tag}");
         }
+        for (index, tag) in crate::information::ALL.iter().enumerate() {
+            let (area, item) = tag.split_once('.').unwrap();
+            assert!(areas.contains(&area), "{tag}");
+            assert!(!item.is_empty() && item.bytes().all(|b| b.is_ascii_lowercase() || b == b'-'));
+            assert!(!crate::information::ALL[..index].contains(tag), "{tag}");
+            assert!(!ALL.iter().any(|repair| repair.as_str() == *tag), "{tag}");
+        }
     }
 }

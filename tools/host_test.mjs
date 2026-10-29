@@ -199,8 +199,10 @@ async function main() {
       const browserTile = await client.renderTile(opened.document, 0, 1, tile);
       bytesEqual(browserTile.rgba, frames[3].value.rgba, `${entry.id}: browser shim/native pixels`);
       const diagnostics = await client.diagnostics(opened.document);
-      assert.deepEqual(diagnostics, frames[4].value);
-      assert.deepEqual(diagnostics.map((item) => item.tag), entry.repairs);
+      // The raw requests use a protocol before 1.4, whose snapshots carry repairs only.
+      assert.deepEqual(diagnostics.filter((item) => item.kind === 'repair'), frames[4].value);
+      assert.deepEqual(diagnostics.filter((item) => item.kind === 'repair').map((item) => item.tag), entry.repairs);
+      assert.deepEqual(diagnostics.filter((item) => item.kind === 'information').map((item) => item.tag), entry.information ?? []);
       if (entry.id.startsWith('recovery/type3-empty-bounds-')) {
         assert.equal((await client.pageText(opened.document, 0)).text, 'AAB');
         assert.deepEqual(await client.diagnostics(opened.document), diagnostics);
