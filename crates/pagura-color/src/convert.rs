@@ -17,6 +17,7 @@
 mod plan;
 
 pub(crate) use plan::Channel;
+pub use plan::CurvedRgb;
 
 use crate::function::Function;
 use crate::icc::Intent;
@@ -284,6 +285,13 @@ impl Converter {
     ) -> Painted {
         self.plan.convert_curved_rounded(curved, output, round);
         self.plan.painted()
+    }
+
+    /// [`Self::convert_curved_rounded`] of three components resolved once,
+    /// for a caller that converts many: `Some` where the conversion is an
+    /// ICC matrix/TRC profile's alone into an RGB target without spots.
+    pub fn curved_rgb(&self) -> Option<CurvedRgb> {
+        self.plan.curved_rgb(self.target.channels())
     }
 
     /// Converts colours of `count` components each into `output`,
