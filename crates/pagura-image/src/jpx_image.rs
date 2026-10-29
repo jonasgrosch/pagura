@@ -59,7 +59,9 @@ impl Jpx {
             }
             // Description checks policy without reporting it. Decoding below
             // forwards the repair to the caller's bounded diagnostic sink.
-            report_raw(&mut Diagnostics::new(recovery))?;
+            if recovery == Recovery::Strict {
+                report_raw(&mut Diagnostics::new(recovery))?;
+            }
         }
         let options = jpx::Options {
             ignore_color: !matches!(kind, ImageKind::Color { color_space: None }),
