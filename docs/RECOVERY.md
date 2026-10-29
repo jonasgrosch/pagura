@@ -98,6 +98,12 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   uses that encoding with the standard face instead of failing. Symbol,
   dingbat and unknown families, and fonts without such an encoding, still
   fail with `font.non-embedded`.
+
+- `font.embedded-unusable` (9.9; ADR 0009): an embedded program that still
+  cannot be used after its parser's own repairs (syntax, binding or
+  unsupported construct) is replaced by the substitute a non-embedded font with
+  the same name and descriptor would get, with the PDF's widths. Strict mode
+  keeps the program's error; budget and cycle errors are never replaced.
 - `font.widths-length` (Table 109): a `Widths` array whose length disagrees
   with `FirstChar` and `LastChar`; codes past the array use `MissingWidth`
   and extra entries are ignored.

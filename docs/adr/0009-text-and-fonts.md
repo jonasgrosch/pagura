@@ -174,3 +174,22 @@ face (Arimo, Tinos or Cousine) draws the font:
   coverage as `font.cid-glyph-missing`. Vertical writing stays unsupported.
 
 Other families, including unknown or non-Latin names, keep the refusal.
+
+as a diagnostic, never silent, and a document's own embedded program wins
+whenever it is usable.
+
+### Unusable embedded programs (amended 2026-10-27)
+
+An embedded program first goes through its parser's own reported repairs
+(`font.sfnt-version`, `font.table-bounds` and the others in
+`docs/RECOVERY.md`). If the program still cannot be used, because of a syntax
+error, a format that disagrees with the font's binding, or an unsupported
+construct, it is replaced by the substitute a non-embedded font with the same
+name and descriptor would get. The same rules apply as for a non-embedded
+font, including the symbolic and collection rules.
+
+- Reported as the repair `font.embedded-unusable` at the program's error.
+  Strict mode keeps the program's error with that repair attached.
+- The PDF's widths (`Widths`, `W`, `DW`) keep every advance.
+- Budget, cycle and other errors keep the program's error, and so do fonts
+  for which no substitute exists.
