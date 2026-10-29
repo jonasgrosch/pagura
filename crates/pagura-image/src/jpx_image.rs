@@ -82,7 +82,7 @@ impl Jpx {
         data: &[u8],
         image: &mut DecodedImage,
         limits: &Limits,
-        diagnostics: &mut pagura_core::Diagnostics,
+        diagnostics: &mut Diagnostics,
     ) -> Result<()> {
         if self.raw {
             report_raw(diagnostics)?;
