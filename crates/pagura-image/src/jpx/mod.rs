@@ -16,8 +16,9 @@
 //!
 //! `Limits::stream_bytes` caps encoded input, `pixels` caps the reference-grid
 //! image, `decoded_bytes` conservatively caps cumulative allocations (including
-//! scratch buffers), `objects` caps tiles, and `operations` caps parsing,
-//! tag-tree and coefficient-pass work. All allocations are charged first.
+//! scratch buffers), `objects` and `decode_work` cap tiles, and `decode_work`
+//! caps parsing, tag-tree and coefficient-pass work. All allocations are
+//! charged first.
 
 mod boxes;
 mod codestream;

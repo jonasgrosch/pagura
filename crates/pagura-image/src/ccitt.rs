@@ -263,7 +263,7 @@ fn decode_inner(
         data,
         at: 0,
         work: 0,
-        cap: limits.operations,
+        cap: limits.decode_work,
     };
     let mut output = Vec::new();
     let (mut reference, mut changes) =

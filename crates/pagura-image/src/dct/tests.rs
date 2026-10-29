@@ -7,7 +7,7 @@ fn arithmetic_and_twelve_bit_mutations_remain_bounded() {
     let limits = Limits {
         pixels: 4096,
         decoded_bytes: 1 << 20,
-        operations: 100_000,
+        decode_work: 100_000,
         ..Limits::default()
     };
     for name in [
@@ -37,7 +37,7 @@ fn arithmetic_work_and_coefficient_storage_use_existing_limits() {
     let data = fixture("image", "jpeg-arithmetic-sequential.in");
     for limits in [
         Limits {
-            operations: 100,
+            decode_work: 100,
             ..Limits::default()
         },
         Limits {
@@ -57,11 +57,12 @@ fn arithmetic_work_and_coefficient_storage_use_existing_limits() {
 
 #[test]
 fn arithmetic_and_huffman_twins_share_a_pixel_scaled_work_budget() {
-    // Default Limits admit 24 MP: keep the same operations/pixel ratio here.
-    let operations = u64::try_from(Limits::default().operations).unwrap() * (128 * 64) / 24_000_000;
+    // Default Limits admit `decode_work / pixels` units per pixel: keep the
+    // same ratio for this 128×64 image.
+    let defaults = Limits::default();
     let limits = Limits {
-        operations: usize::try_from(operations).unwrap(),
-        ..Limits::default()
+        decode_work: defaults.decode_work / defaults.pixels * (128 * 64),
+        ..defaults
     };
     let huffman = fixture("image", "jpeg-budget-huffman.in");
     let arithmetic = fixture("image", "jpeg-budget-arithmetic.in");
@@ -75,7 +76,7 @@ fn arithmetic_and_huffman_twins_share_a_pixel_scaled_work_budget() {
             data,
             Some(0),
             &Limits {
-                operations: 128 * 64 - 1,
+                decode_work: 128 * 64 - 1,
                 ..limits
             },
         )

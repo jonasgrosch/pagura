@@ -135,7 +135,7 @@ impl Decoder {
                 super::arithmetic::Arithmetic::new(
                     data,
                     offset,
-                    limits.operations.saturating_sub(self.work),
+                    limits.decode_work.saturating_sub(self.work),
                 )
             })
             .transpose()?;
@@ -242,14 +242,14 @@ impl Decoder {
             self.work = self
                 .work
                 .checked_add(used)
-                .filter(|&w| w <= limits.operations)
+                .filter(|&w| w <= limits.decode_work)
                 .ok_or(Error::limit("JPEG arithmetic work budget exceeded"))?;
             return Ok(offset);
         }
         self.work = self
             .work
             .checked_add(bits.stream_work())
-            .filter(|&w| w <= limits.operations)
+            .filter(|&w| w <= limits.decode_work)
             .ok_or(Error::limit("JPEG entropy work exceeded"))?;
         bits.align(diagnostics, &mut self.padding_reported)?;
         scan_end(data, bits.offset(), &mut self.work, limits, diagnostics)
@@ -281,7 +281,7 @@ fn restart(
 /// Charges data units' 64 coefficients each against the work budget.
 fn block_work(work: usize, units: usize, limits: &Limits) -> Result<usize> {
     work.checked_add(64 * units)
-        .filter(|&w| w <= limits.operations)
+        .filter(|&w| w <= limits.decode_work)
         .ok_or(Error::limit("JPEG scan work budget exceeded"))
 }
 
@@ -303,7 +303,7 @@ fn entropy_bits<'a>(
         let held: usize = frame.components.iter().map(|c| c.storage.bytes()).sum();
         bits.limit_stream(
             limits.decoded_bytes.saturating_sub(held),
-            limits.operations.saturating_sub(work),
+            limits.decode_work.saturating_sub(work),
         );
     }
     bits
@@ -422,7 +422,7 @@ fn scan_end(
     loop {
         *work = work
             .checked_add(1)
-            .filter(|&w| w <= limits.operations)
+            .filter(|&w| w <= limits.decode_work)
             .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
         let byte = data.get(offset).ok_or_else(|| {
             Error::syntax("missing JPEG scan terminator").at(Position::Buffer(offset))
@@ -433,7 +433,7 @@ fn scan_end(
                 offset += 1;
                 *work = work
                     .checked_add(1)
-                    .filter(|&w| w <= limits.operations)
+                    .filter(|&w| w <= limits.decode_work)
                     .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
             }
             let code = data.get(offset).ok_or_else(|| {
