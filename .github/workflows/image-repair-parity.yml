@@ -5,6 +5,8 @@ on:
       - 'crates/pagura-image/**'
       - 'crates/pagura/examples/image_repair_parity.rs'
       - 'tools/image_repair_parity.mjs'
+      - 'tools/image_repair_observe.mjs'
+      - 'benchmarks/probes/image-repair-cases.json'
       - 'tools/fixturegen/recovery.py'
       - '.github/workflows/image-repair-parity.yml'
   workflow_dispatch:
@@ -33,3 +35,9 @@ jobs:
           RUSTFLAGS: '-C target-feature=-simd128 -C overflow-checks=on'
       - name: Verify strict rejection and independent pixels on every runtime
         run: node tools/image_repair_parity.mjs
+      - name: Observe frozen public first pages on every runtime
+        run: node tools/image_repair_observe.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: image-repair-observations
+          path: image-repair-observations.json
