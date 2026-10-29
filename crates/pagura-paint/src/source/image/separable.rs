@@ -689,19 +689,23 @@ impl Separable {
     /// footprint weight their samples whole, and no footprint holds so
     /// many samples that `maximum` each could pass 32 bits.
     pub(super) fn complements_derive(&self, pixels: Pixels<'_>, maximum: u8) -> bool {
+        if !self.whole {
+            return false;
+        }
         let across = row(&self.geometry, self.taps, pixels.y);
+        if !across.whole() {
+            return false;
+        }
         let widest = self
             .feet(pixels)
             .iter()
             .map(|foot| foot.end.saturating_sub(foot.first))
             .max();
-        self.whole
-            && across.whole()
-            && fits(
-                widest.unwrap_or(0),
-                across.end.saturating_sub(across.first),
-                maximum,
-            )
+        fits(
+            widest.unwrap_or(0),
+            across.end.saturating_sub(across.first),
+            maximum,
+        )
     }
 
     /// [`Self::average`] of a one-component image's codes, each followed by
