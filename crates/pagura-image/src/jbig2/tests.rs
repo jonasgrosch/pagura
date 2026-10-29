@@ -15,7 +15,7 @@ fn contradictory_page_capabilities_are_reported_without_changing_samples() {
         ("refinement-t1-prediction-0", 34),
         ("refinement-page-t1-prediction-0", 2),
     ] {
-        let mut data = fixture("jbig2", &format!("{name}.jb2")).to_vec();
+        let mut data = fixture("jbig2", &format!("{name}.jb2"));
         *data.get_mut(PAGE_FLAGS).unwrap() &= !missing;
         let limits = Limits::default();
         let error = decode(&data, None, &limits).unwrap_err();

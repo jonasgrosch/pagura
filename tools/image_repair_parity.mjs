@@ -9,11 +9,11 @@ import { WASI } from 'node:wasi';
 
 if (process.argv[2] === '--wasi') {
   const [, , , module, input, output, mode] = process.argv;
-  const wasi = new WASI({version:'preview1', args:['image-repair', input, output, mode],
+  const wasi = new WASI({version:'preview1', returnOnExit:true, args:['image-repair', input, output, mode],
     preopens:{'/source':resolve('.'), '/scratch':process.env.IMAGE_REPAIR_SCRATCH}});
   const instance = await WebAssembly.instantiate(await WebAssembly.compile(readFileSync(module)),
     {wasi_snapshot_preview1:wasi.wasiImport});
-  wasi.start(instance);
+  process.exitCode = wasi.start(instance);
 } else {
   const root = resolve('.');
   const scratch = mkdtempSync(join(tmpdir(), 'pagura-image-repairs-'));
