@@ -194,5 +194,28 @@ impl MarkCoverage<'_> {
     }
 }
 
+/// Test coverage of a prepared shape using its compact inspection window.
+/// Coordinates and accumulation stay in device space, including large origins.
+#[cfg(test)]
+pub(crate) fn inspected_coverage(shape: &Shape, area: Area) -> Vec<u8> {
+    let scan = match &shape.body {
+        shape::Body::Edges(body) => body.scan,
+        shape::Body::Glyph(body) => body.scan,
+    };
+    let mut bytes = crate::testing::bytes();
+    let mut cells = cells::Cells::new(scan.1.saturating_sub(scan.0), &mut bytes).unwrap();
+    let region = area.region;
+    let width = region.width() as usize;
+    let mut coverage = vec![0; width * region.height() as usize];
+    raster::inspect(shape, &mut cells, |y, x0, x1, value, _| {
+        let row = (y - region.y0) as usize * width;
+        let first = row + x0 - region.x0 as usize;
+        let last = row + x1 - region.x0 as usize;
+        coverage[first..last].fill(crate::quantize_unit(value));
+    })
+    .unwrap();
+    coverage
+}
+
 #[cfg(test)]
 mod tests;
