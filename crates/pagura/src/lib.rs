@@ -100,6 +100,8 @@ pub use pagura_appearance as form_appearance;
 pub use pagura_document::{
     Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenOptions, Page, Rotation,
 };
+/// Reported viewing repair for unboxed JPEG 2000 with explicit PDF colour.
+pub use pagura_image::tags::JPX_CODESTREAM as JPX_CODESTREAM_REPAIR;
 pub use pagura_raster::{Pixmap, Point, Rgba8};
 pub use pagura_render::{
     Completion, OverprintPreview, RenderContext, RenderOptions, Scene, Tile, device_size,

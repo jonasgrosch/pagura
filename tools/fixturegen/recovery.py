@@ -280,6 +280,7 @@ def pattern_cases():
 
 
 def cases():
+    yield from raw_jpx_cases()
     yield from pattern_cases()
     yield type3_case()
     yield from sampled_cases()
@@ -288,6 +289,28 @@ def cases():
     yield from codec_cases()
     yield render('unclosed-graphics',b'q 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.graphics-unclosed',))
     yield from type3_empty_bounds_cases()
+
+
+def raw_jpx_cases():
+    """PDF 7.4.9 framing repair; colour is stated by the dictionary, never guessed."""
+    resources = b'<< /XObject << /X 5 0 R >> >>'
+    for name,planes,space in [
+        ('gray',[[0,64,128,255]],b'/DeviceGray'),
+        ('rgb',[[255,0,0,255],[0,255,0,255],[0,0,255,255]],b'/DeviceRGB'),
+    ]:
+        data = jpx.codestream(planes,4,1,levels=0)
+        params = b'/Type /XObject /Subtype /Image /Width 4 /Height 1 /ColorSpace '+space+b' /Filter /JPXDecode'
+        colors = [(v,)*3 for v in planes[0]] if len(planes)==1 else list(zip(*planes))
+        yield render('jpx-raw-'+name,b'4 0 0 1 0 0 cm /X Do',[stream(data,params)],resources,
+                     [((x,0,1,1),c) for x,c in enumerate(colors)],
+                     requirement='recovery-jpx-codestream',repairs=('jpx.raw-codestream',))
+        for suffix,extra in [('no-space',params.replace(b'/ColorSpace '+space,b'')),
+                             ('opacity',params+b' /SMaskInData 1'),
+                             ('truncated',params)]:
+            encoded = data[:-1] if suffix=='truncated' else data
+            yield Case('jpx-raw-'+name+'-'+suffix,page(b'4 0 0 1 0 0 cm /X Do',[stream(encoded,extra)],resources),
+                       OPEN,('recovery-jpx-codestream',),'Raw JPX without sufficient metadata or complete data remains rejected',
+                       extra={'render_error':'syntax'})
 
 
 def type3_empty_bounds_cases():
