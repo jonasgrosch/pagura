@@ -24,6 +24,10 @@ FEATURE_MATRIX = [
     for crate in ("pagura", "pagura-cli", "pagura-data")
     for features in ("--no-default-features", "--all-features")
     for step, tail in (("clippy", ["--", "-D", "warnings"]), ("test", []))
+] + [
+    # The CLI enables cjk-fonts by default, so the workspace runs unify it
+    # onto the facade; the facade's own defaults (no CJK data) run here.
+    (CARGO + ["test", *OFFLINE, "-p", "pagura", "--all-targets"], {}),
 ] if sys.platform.startswith("linux") else []
 COMMANDS = [
     ([sys.executable, "tools/policy.py"], {}),
