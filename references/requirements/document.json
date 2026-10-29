@@ -191,9 +191,10 @@
       ],
       "status": "implemented",
       "tests": [
-        "document/object-end-missing"
+        "document/object-end-missing",
+        "document/object-stray-delimiter"
       ],
-      "gaps": "requires a complete value and an immediately following object/xref/trailer boundary; EOF is insufficient"
+      "gaps": "requires a complete value and an immediately following object/xref/trailer boundary, or only unmatched closing delimiters before endobj; EOF is insufficient"
     },
     {
       "id": "page-type-recovery",
