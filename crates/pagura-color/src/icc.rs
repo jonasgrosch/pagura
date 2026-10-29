@@ -97,6 +97,16 @@ enum Pcs {
     Xyz,
     Lab,
 }
+
+impl Pcs {
+    /// The PCS XYZ of a gray model's curve value.
+    fn xyz(self, value: f64) -> [f64; 3] {
+        match self {
+            Self::Lab => cie::lab_to_xyz([value * 100.0, 0.0, 0.0], D50),
+            Self::Xyz => D50.map(|w| w * value),
+        }
+    }
+}
 #[derive(Debug, Clone, Copy)]
 enum Encoding {
     Xyz,
@@ -206,6 +216,47 @@ impl Profile {
         self.forward(intent).map_or([0.0; 3], |transform| {
             cie::linear_srgb(self.xyz(transform, inputs, intent, &mut Arithmetic::default()))
         })
+    }
+
+    /// The inputs the transform for `intent` reads where it is a gray (1) or
+    /// matrix/TRC (3) model of device inputs, whose first stage takes each
+    /// input on its own ([`Self::curve`]); `None` for other transforms.
+    pub(crate) fn curved_inputs(&self, intent: Intent) -> Option<usize> {
+        match self.forward(intent).ok()? {
+            _ if self.lab_input => None,
+            Forward::Gray { .. } => Some(1),
+            Forward::Matrix { .. } => Some(3),
+            _ => None,
+        }
+    }
+
+    /// The stage of [`Self::linear_total`] that takes each input on its
+    /// own, where the transform is a gray or matrix/TRC model of device
+    /// inputs: input `i` clamped to `0..=1` and through its curve, with
+    /// undefined curve arithmetic giving 0 as there. `None` for other
+    /// transforms, and for an input the transform does not read.
+    pub(crate) fn curve(&self, i: usize, input: f64, intent: Intent) -> Option<f64> {
+        if self.lab_input {
+            return None;
+        }
+        let curve = match self.forward(intent).ok()? {
+            Forward::Gray { curve, .. } if i == 0 => curve,
+            Forward::Matrix { curves, .. } => curves.get(i)?,
+            _ => return None,
+        };
+        Some(curve.evaluate(input.clamp(0.0, 1.0), &mut Arithmetic::default()))
+    }
+
+    /// [`Self::linear_total`] of inputs already through [`Self::curve`],
+    /// `curved` holding one value for each input the transform reads.
+    pub(crate) fn linear_curved(&self, curved: &[f64], intent: Intent) -> [f64; 3] {
+        let value = |i: usize| curved.get(i).copied().unwrap_or(0.0);
+        let xyz = match self.forward(intent) {
+            Ok(Forward::Gray { pcs, .. }) => pcs.xyz(value(0)),
+            Ok(Forward::Matrix { matrix, .. }) => cie::map(*matrix, [value(0), value(1), value(2)]),
+            _ => return [0.0; 3],
+        };
+        cie::linear_srgb(self.relative(xyz, intent))
     }
 
     /// [`Self::linear_total`] of several colours, `count` components each,
@@ -335,7 +386,11 @@ impl Profile {
                 }
             })
         });
-        let mut xyz = transform.evaluate(values, arithmetic);
+        self.relative(transform.evaluate(values, arithmetic), intent)
+    }
+
+    /// D65-relative XYZ from the transform's PCS XYZ.
+    fn relative(&self, mut xyz: [f64; 3], intent: Intent) -> [f64; 3] {
         if intent == Intent::Absolute {
             // ICC 6.3.2: recover media-absolute colorimetry from relative PCS.
             for (i, value) in xyz.iter_mut().enumerate() {
@@ -375,13 +430,7 @@ impl Forward {
     }
     fn evaluate(&self, values: [f64; 4], arithmetic: &mut Arithmetic) -> [f64; 3] {
         match self {
-            Self::Gray { curve, pcs } => {
-                let value = curve.evaluate(values[0], arithmetic);
-                match pcs {
-                    Pcs::Lab => cie::lab_to_xyz([value * 100.0, 0.0, 0.0], D50),
-                    Pcs::Xyz => D50.map(|w| w * value),
-                }
-            }
+            Self::Gray { curve, pcs } => pcs.xyz(curve.evaluate(values[0], arithmetic)),
             Self::Matrix { matrix, curves } => {
                 let linear = std::array::from_fn(|i| curves[i].evaluate(values[i], arithmetic));
                 cie::map(*matrix, linear)

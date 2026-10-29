@@ -20,6 +20,7 @@ use pagura_core::{Meter, Result};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
 use std::cell::RefCell;
 use std::num::NonZeroUsize;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// The most components an image has (DeviceN's 32 colorants).
 const MAX_COMPONENTS: usize = pagura_color::MAX_COMPONENTS;
@@ -124,6 +125,49 @@ pub(super) struct Colors {
     pub(super) matte: Option<Vec<f64>>,
     pub(super) alpha_is_shape: bool,
     pub(super) convert: Converter,
+    /// The decoded values of each component's codes through the
+    /// conversion's first stage, which takes each component on its own
+    /// ([`Converter::curve`]), where a code alone gives the value converted
+    /// (no lookup, premultiplied opacity or Matte).
+    pub(super) curved: Option<Curved>,
+}
+
+/// The codes of a component [`Colors::curved`] tabulates: those of at most
+/// eight bits.
+pub(super) const CURVED_CODES: usize = 256;
+
+/// [`CURVED_CODES`] values a component, each found the first time a texel
+/// needs it: an image takes no code through the first stage more often
+/// than converting its texels directly would, and none it never uses.
+/// Prepared images are shared between renders and threads; finding a value
+/// twice gives the same bits, so a race only repeats the work.
+#[derive(Debug)]
+pub(super) struct Curved {
+    values: Vec<AtomicU64>,
+}
+
+/// The bits of a value not found yet. A value found with these bits stays
+/// unfound and is found again: never wrong, only slower.
+const UNFOUND: u64 = u64::MAX;
+
+impl Curved {
+    /// `components` components' values, none found, in `values`, whose
+    /// capacity the caller has charged.
+    pub(super) fn new(components: usize, mut values: Vec<AtomicU64>) -> Self {
+        values.extend((0..components * CURVED_CODES).map(|_| AtomicU64::new(UNFOUND)));
+        Self { values }
+    }
+
+    pub(super) fn bytes(&self) -> usize {
+        self.values.capacity() * size_of::<AtomicU64>()
+    }
+
+    /// The bytes of `components` components' values.
+    pub(super) fn bytes_of(components: usize) -> usize {
+        components
+            .saturating_mul(CURVED_CODES)
+            .saturating_mul(size_of::<AtomicU64>())
+    }
 }
 
 /// How texels convert their colours.
@@ -164,6 +208,7 @@ impl Colors {
                 .matte
                 .as_ref()
                 .map_or(0, |matte| matte.capacity() * size_of::<f64>())
+            + self.curved.as_ref().map_or(0, Curved::bytes)
             + self.convert.owned_bytes()
     }
 
@@ -175,17 +220,26 @@ impl Colors {
     /// [`Self::texel`] by `mode`.
     fn texel_with(&self, codes: &[u16], extra: Extra, mode: TexelMode, out: &mut [f64]) {
         let mut values = [0.0; MAX_COMPONENTS];
-        for (((value, &code), &[low, high]), &maximum) in values
-            .iter_mut()
-            .zip(codes)
-            .zip(&self.decode)
-            .zip(&self.maxima)
-        {
-            *value = low + f64::from(code) / maximum * (high - low);
-        }
-        let count = match &self.lookup {
-            Some(lookup) => lookup.expand(&mut values),
-            None => codes.len(),
+        let count = if let Some(curved) = &self.curved {
+            // Through the conversion's first stage already: no lookup,
+            // premultiplied opacity or Matte changes them below.
+            for (i, (value, &code)) in values.iter_mut().zip(codes).enumerate() {
+                *value = self.curved_value(curved, i, code);
+            }
+            codes.len()
+        } else {
+            for (((value, &code), &[low, high]), &maximum) in values
+                .iter_mut()
+                .zip(codes)
+                .zip(&self.decode)
+                .zip(&self.maxima)
+            {
+                *value = low + f64::from(code) / maximum * (high - low);
+            }
+            match &self.lookup {
+                Some(lookup) => lookup.expand(&mut values),
+                None => codes.len(),
+            }
         };
         let mut shape = 1.0;
         let mut alpha = 1.0;
@@ -222,11 +276,13 @@ impl Colors {
         }
         let channels = self.convert.target().channels();
         let (color, rest) = out.split_at_mut(channels);
-        match mode {
-            TexelMode::Exact => self.convert.convert(&values[..count], color),
-            TexelMode::Rounded => self.convert.convert_rounded(&values[..count], color, |v| {
-                crate::kernel::level(v).to_bits()
-            }),
+        let level = |v| crate::kernel::level(v).to_bits();
+        let values = &values[..count];
+        match (mode, self.curved.is_some()) {
+            (TexelMode::Exact, false) => self.convert.convert(values, color),
+            (TexelMode::Rounded, false) => self.convert.convert_rounded(values, color, level),
+            (TexelMode::Exact, true) => self.convert.convert_curved(values, color),
+            (TexelMode::Rounded, true) => self.convert.convert_curved_rounded(values, color, level),
         };
         for value in color.iter_mut() {
             *value *= alpha;
@@ -235,6 +291,32 @@ impl Colors {
             *a = alpha;
             *s = shape;
         }
+    }
+
+    /// Component `i`'s code `code` through the conversion's first stage,
+    /// from `curved`, found there the first time.
+    #[inline]
+    fn curved_value(&self, curved: &Curved, i: usize, code: u16) -> f64 {
+        let Some(slot) = curved.values.get(i * CURVED_CODES + usize::from(code)) else {
+            return 0.0;
+        };
+        match slot.load(Ordering::Relaxed) {
+            UNFOUND => self.find_curved(slot, i, code),
+            bits => f64::from_bits(bits),
+        }
+    }
+
+    /// Finds and keeps a value [`Self::curved_value`] has not found yet,
+    /// decoding the code as [`Self::texel_with`] decodes a texel's codes.
+    #[cold]
+    fn find_curved(&self, slot: &AtomicU64, i: usize, code: u16) -> f64 {
+        let (Some(&[low, high]), Some(&maximum)) = (self.decode.get(i), self.maxima.get(i)) else {
+            return 0.0;
+        };
+        let value = low + f64::from(code) / maximum * (high - low);
+        let curved = self.convert.curve(i, value).unwrap_or(0.0);
+        slot.store(curved.to_bits(), Ordering::Relaxed);
+        curved
     }
 
     /// The texel of the one-component code `code`, for a table.

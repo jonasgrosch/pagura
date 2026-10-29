@@ -257,6 +257,35 @@ impl Converter {
         self.plan.rounds()
     }
 
+    /// The first stage of [`Self::convert`] where it takes each component
+    /// on its own (the curves of an ICC gray or matrix/TRC profile): the
+    /// value of component `component` through it, which
+    /// [`Self::convert_curved`] continues from; `None` where the conversion
+    /// has no such stage. A caller whose components take few values can
+    /// tabulate it.
+    pub fn curve(&self, component: usize, value: f64) -> Option<f64> {
+        self.plan.curve(component, value)
+    }
+
+    /// [`Self::convert`] of components already through [`Self::curve`],
+    /// bit for bit.
+    pub fn convert_curved(&self, curved: &[f64], output: &mut [f64]) -> Painted {
+        self.plan.convert_curved(curved, output);
+        self.plan.painted()
+    }
+
+    /// [`Self::convert_rounded`] of components already through
+    /// [`Self::curve`].
+    pub fn convert_curved_rounded(
+        &self,
+        curved: &[f64],
+        output: &mut [f64],
+        round: impl Fn(f64) -> u32,
+    ) -> Painted {
+        self.plan.convert_curved_rounded(curved, output, round);
+        self.plan.painted()
+    }
+
     /// Converts colours of `count` components each into `output`,
     /// [`Target::channels`] values each, as [`Self::convert`] does colour
     /// by colour.
