@@ -14,3 +14,5 @@ mod fills;
 mod glyphs;
 mod strokes;
 mod support;
+
+mod curved;

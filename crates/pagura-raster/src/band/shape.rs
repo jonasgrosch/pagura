@@ -29,8 +29,8 @@ pub(crate) const RENDER_BYTES: &str = "render memory budget exceeded";
 pub struct Shape {
     pub(crate) area: Area,
     pub(crate) bounds: DeviceRect,
-    work: usize,
-    retained: usize,
+    pub(super) work: usize,
+    pub(super) retained: usize,
     pub(crate) rule: FillRule,
     pub(crate) body: Body,
     pub(crate) clip: Option<ClipShape>,
@@ -122,6 +122,9 @@ pub(crate) enum Body {
     Edges(EdgeBody),
     /// Shared glyph geometry, translated as its edges accumulate.
     Glyph(GlyphBody),
+    /// Complete joint coverage runs certified during preparation, emitted
+    /// through the same row sink as clipping paths.
+    Certified(clip::Rows),
 }
 
 /// One translated placement of shared glyph geometry.
@@ -393,8 +396,8 @@ impl Shape {
         .bands()
     }
 
-    /// Work units its rasterization costs at most over all its bands, for
-    /// the render-work reservation.
+    /// Work admission for rasterization over every band, including cumulative
+    /// preparation proofs for inherited true-curve clips.
     pub fn work(&self) -> usize {
         self.work
     }
@@ -409,6 +412,7 @@ impl Shape {
         let own = match &self.body {
             Body::Edges(edges) => edges.lines.len() + edges.curves.len(),
             Body::Glyph(glyph) => glyph.boundaries,
+            Body::Certified(_) => 0,
         };
         own.saturating_add(self.resolved.len())
     }
@@ -436,6 +440,9 @@ impl Shape {
         shared: Option<(&std::sync::Arc<super::GlyphEdges>, crate::Point)>,
     ) -> Result<Option<Self>> {
         let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
+        if options.clip.is_some_and(ClipShape::curved) {
+            return super::curved::polygon(polygon, rule, options, bytes, &mut work);
+        }
         Self::polygon_metered(polygon, rule, winding, options, bytes, &mut work, shared)
     }
 
@@ -458,8 +465,7 @@ impl Shape {
         };
         frame.fit(hull);
         if let Some(paths) = frame.paths {
-            // A mark strictly inside every convex clipping path meets none
-            // of their boundaries.
+            // Strict containment meets none of the convex clip boundaries.
             work.charge(
                 paths
                     .convex()

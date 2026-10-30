@@ -145,18 +145,28 @@ coverage quantization; the result is not multiplied by the stencil coverage
 again. Shading stencils use the same geometry with existing shading sampling.
 Ordinary nested tiling painted by a fill or stroke propagates that mark's
 complete geometry and clip chain to its children at every nesting level.
-Linear glyph outlines propagate under their full device linear map and origin.
+Glyph outlines propagate under their full device linear map and origin.
+True-quadratic glyph sources retain their original controls separately from
+canonical path clips. Preparation refines joint localized area intervals for
+every curved ancestor and any curved leaf before composition; original-control
+bounds certify coverage under ADR 0004. Canonical general-cubic glyph geometry
+keeps its existing polygon contract. Proof work, source copies and retained
+coverage rows use the existing work/byte meters; unresolved intervals retain
+ordinary resource or numerical limits.
 The resulting pattern group has no second outer coverage factor: each leaf
 mark already integrates the stencil, all enclosing marks and its own clips
 jointly. Fill rules remain attached to each ancestor; strokes contribute the
-existing outlined stroke under its device transform. Nested patterned glyphs
-containing curves remain explicit refusals because replacing true quadratic glyph geometry
-with a flattened generic clip would change their coverage contract. An
+existing outlined stroke under its device transform. A generic flattened clip
+cannot replace a true-quadratic glyph source. An
 independent control packs 101 quadratic slivers of area 1/1000 pixel into one
 pixel: every control-point displacement is below the generic flattener's
 1/256-pixel tolerance, but dropping the curves into their chords would lose
-101/1000 pixel of ink. The solid-glyph control retains true-curve integration;
-its patterned twin remains refused before output.
+101/1000 pixel of ink. Both the solid-glyph control and its patterned twin
+retain true-curve integration with the original independently computed oracle.
+Independent analytic cap intersections additionally cover multiple differently
+mapped curved ancestors and leaves, fractional clipping, winding holes and
+transparency. The separate 100-sliver exact-byte-tie reference diagnostic
+remains external and is not counted as accuracy evidence.
 Nested image stencils propagate the same complete geometric intersection;
 transparency groups apply the inherited clip once through their children.
 Interpolated patterned masks remain unsupported. Inherited clip identities
