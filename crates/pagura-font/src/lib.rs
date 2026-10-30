@@ -58,6 +58,20 @@ pub enum FontFormat {
     OpenType,
 }
 
+/// Selects a face in an OpenType or TrueType collection (OpenType TTC Header).
+/// Standalone programs have index zero and ignore name hints.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum FontFace<'a> {
+    /// Zero-based collection index. Ordinary parsing selects index zero.
+    Index(u32),
+    /// Ordered PostScript name hints. The first hint matching any face must
+    /// identify exactly one; an ambiguous match does not fall back to a later
+    /// hint. Missing or ambiguous matches are errors. Names are compared
+    /// exactly with naming-table ID 6, independently of the CFF Name INDEX.
+    PostScriptNames(&'a [&'a [u8]]),
+}
+
 /// A glyph index within one font program.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GlyphId(pub u32);
@@ -210,8 +224,35 @@ impl FontProgram {
         limits: &Limits,
         diagnostics: &mut Diagnostics,
     ) -> Result<Self> {
+        Self::parse_with_face(data, format, FontFace::Index(0), limits, diagnostics)
+    }
+
+    /// Parses a selected collection face with explicit, reported recovery.
+    ///
+    /// The entire immutable input is retained once. Only the selected face's
+    /// font tables are parsed; name selection scans bounded directory and name
+    /// records without decoding the other faces' glyph programs. Standalone
+    /// programs ignore name hints, preserving their ordinary parsing behavior.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::parse_with_diagnostics`]. An out-of-range index is an
+    /// `InvalidArgument`; absent or ambiguous collection names are `Syntax`.
+    pub fn parse_with_face(
+        data: impl Into<FontBytes>,
+        format: FontFormat,
+        face: FontFace<'_>,
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Self> {
         let mut local = Diagnostics::new(diagnostics.mode());
-        let result = Self::parse_inner(data.into(), format, FontBudget::new(limits), &mut local);
+        let result = Self::parse_inner(
+            data.into(),
+            format,
+            face,
+            FontBudget::new(limits),
+            &mut local,
+        );
         diagnostics.absorb(local.take())?;
         result
     }
@@ -219,6 +260,7 @@ impl FontProgram {
     fn parse_inner(
         data: FontBytes,
         format: FontFormat,
+        face: FontFace<'_>,
         budget: FontBudget,
         diagnostics: &mut Diagnostics,
     ) -> Result<Self> {
@@ -226,10 +268,21 @@ impl FontProgram {
         let mut work = Work::new(budget, diagnostics);
         let parsed = match format {
             FontFormat::TrueType | FontFormat::OpenType => {
-                Program::Sfnt(sfnt::Sfnt::parse(&data, &mut work)?)
+                Program::Sfnt(sfnt::Sfnt::parse(&data, face, &mut work)?)
             }
-            FontFormat::Cff => Program::Cff(cff::Cff::parse(&data, 0..data.len(), &mut work)?),
-            FontFormat::Type1 => Program::Type1(type1::Type1::parse(&data, &mut work)?),
+            FontFormat::Cff | FontFormat::Type1 => {
+                if matches!(face, FontFace::Index(index) if index != 0) {
+                    return Err(Error::invalid_argument(
+                        "standalone font index must be zero",
+                    ));
+                }
+                match format {
+                    FontFormat::Cff => {
+                        Program::Cff(cff::Cff::parse(&data, 0..data.len(), &mut work)?)
+                    }
+                    _ => Program::Type1(type1::Type1::parse(&data, &mut work)?),
+                }
+            }
         };
         let retained_bytes = memory::estimate(&data, &parsed);
         Ok(Self {
@@ -276,6 +329,17 @@ impl FontProgram {
             Program::Sfnt(p) => p.glyph_count(),
             Program::Cff(p) => p.glyph_count(),
             Program::Type1(p) => p.glyph_count(),
+        }
+    }
+
+    /// Whether the selected program uses CFF/CFF2 charstrings, including
+    /// OpenType collection faces. This inspects the parsed outline family,
+    /// independently of the caller's container-format hint.
+    pub fn has_cff_outlines(&self) -> bool {
+        match self.parsed.as_ref() {
+            Program::Sfnt(program) => program.has_cff_outlines(),
+            Program::Cff(_) => true,
+            Program::Type1(_) => false,
         }
     }
 

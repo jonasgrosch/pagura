@@ -193,3 +193,57 @@ font, including the symbolic and collection rules.
 - The PDF's widths (`Widths`, `W`, `DW`) keep every advance.
 - Budget, cycle and other errors keep the program's error, and so do fonts
   for which no substitute exists.
+
+### Embedded font collections (amended 2026-10-30)
+
+TrueType/OpenType collections keep one immutable full-file owner. Table
+positions remain relative to that file, including tables shared by faces;
+selecting a face never extracts and rewrites a synthetic standalone font.
+The native font API accepts an explicit zero-based face index or ordered
+PostScript names. Its ordinary parse selects index zero. PDF bindings have
+no face index: they prefer the descriptor's FontName, then BaseFont, then
+those names with a valid six-uppercase-letter subset prefix removed. Each
+hint must uniquely match naming-table ID 6 at its priority. Missing or
+ambiguous names fail; no first-face fallback guesses the document's face.
+
+The bounded name scan validates TTC v1/v2 headers, candidate directories and
+name-table strings before parsing the selected program. Font work and string
+limits apply before traversal; input storage is charged once, and only the
+selected face's tables/glyph metadata are retained. Independent glyf/CFF
+rectangles check both faces, shared tables, late directories and PDF routes.
+PDF embedding uses the reported repair `font.collection-face`; Strict rejects
+this reader selection policy beyond Table 124. Native collection parsing
+remains valid in either mode. This does not claim PDF standardizes collections. Existing simple/CID mappings and PDF advances stay
+in force. Unknown collection versions, ambiguous names and malformed
+containers remain errors in Strict and Repair.
+
+The selected collection face must also match Table 124's outline family:
+TrueType and CIDFontType2 use glyf; Type1 uses non-CID CFF; CIDFontType0
+uses CFF with either charset CIDs or direct GIDs. A contradictory face is
+not loaded under the PDF's font subtype. This prevents a CID-CFF charset
+from bypassing an explicit CIDFontType2 CIDToGIDMap. Existing reported
+substitution remains the fallback for fonts eligible under the provider
+policy. The native collection API retains its format-independent face
+selection; parsed-family inspection is available separately.
+
+Contradictory standalone sfnt/font-family bindings remain a separate
+validation gap. Their existing selection policy is outside this collection
+admission change.
+
+### Contradictory CID program labels (amended 2026-10-30)
+
+A CIDFontType0 can carry an intact CFF1 or sfnt program under the wrong
+embedding key or stream subtype. Repair mode parses the complete original
+bytes according to a recognized CFF1, OTTO or TrueType signature, retaining
+CFF charset CIDs or defined program GIDs and the PDF's W/DW metrics. This is
+reported as `font.program-binding` only after successful program validation;
+Strict mode rejects it. Contradictory format-specific Length bookkeeping is
+not used to truncate the decoded program. No source dictionary is rewritten.
+
+The recovery applies only to CIDFontType0, where the existing glyph route
+already uses CFF charset CIDs or direct GIDs. A TrueType replacement requires
+absent/Identity CIDToGIDMap; a conflicting explicit map is not guessed away.
+Unrecognized signatures, malformed programs, exhausted budgets, and genuine
+Type 1 name dictionaries remain errors. Dictionary name order cannot supply
+a missing CID order. Independent repaired/control rectangle pairs exercise
+all admitted embedding routes; wrong Type 1 and damaged-CFF controls fail.
