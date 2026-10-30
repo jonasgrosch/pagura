@@ -16,7 +16,7 @@ use crate::pixel::{Blending, Elements, Source};
 use crate::request::{Overprint, Rendering, Request};
 use crate::shapes::{self, Coverage};
 use pagura_color::{Process, Target};
-use pagura_core::{Error, Limits, Result, ResultExt};
+use pagura_core::{Error, Limits, Meter, Result, ResultExt};
 use pagura_image::DecodedImage;
 use pagura_interpret::{
     Color, Composite, FillNode, GlyphsNode, GroupRole, ImageNode, MarkInfo, MaskId, Node, NodeId,
@@ -131,6 +131,8 @@ pub(crate) struct Renderer<'s> {
     pub(crate) colors: Colors,
     pub(crate) simulation: Simulation,
     pub(crate) transfers: Option<Transfers>,
+    /// Cumulative work for bounded alternatives to cell enumeration.
+    tiling_work: Meter,
     /// The crop box in device space.
     crop: crate::area::Region,
     masks: HashMap<MaskKey, Rc<Vec<f64>>>,
@@ -172,6 +174,7 @@ impl<'s> Renderer<'s> {
             colors: Colors::new(),
             simulation,
             transfers: Transfers::new(scene, request.region),
+            tiling_work: Meter::new(limits.render_work, "reference tiling work budget exceeded"),
             crop: shapes::rect(scene.page.crop, request.transform, limits)?,
             masks: HashMap::new(),
             glyph_references: HashMap::new(),

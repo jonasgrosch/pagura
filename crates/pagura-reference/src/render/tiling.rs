@@ -15,6 +15,8 @@ use pagura_core::{Error, Result};
 use pagura_interpret::{Composite, Tiling, TilingColors, TilingPaint, TilingSpacing};
 use pagura_raster::{Point, Transform};
 
+mod opaque;
+
 impl Renderer<'_> {
     /// Paints a tiling pattern over `coverage`.
     pub(super) fn tiling(
@@ -50,6 +52,15 @@ impl Renderer<'_> {
         );
         let count = (columns.1 - columns.0 + 1).saturating_mul(rows.1 - rows.0 + 1);
         if usize::try_from(count).map_or(true, |n| n > self.limits.display_commands) {
+            if let Some(contributions) = self.opaque_instances(
+                tiling,
+                (coverage, geometric),
+                to_device,
+                (columns, rows),
+                context,
+            )? {
+                return self.contribute(contributions, state, parent, context);
+            }
             return Err(Error::limit("tiling instance budget exceeded"));
         }
         let backdrop = if context.elements == Elements::Knockout {

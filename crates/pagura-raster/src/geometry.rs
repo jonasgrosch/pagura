@@ -26,6 +26,13 @@ impl Point {
         self.x.is_finite() && self.y.is_finite()
     }
 
+    /// Whether this point satisfies scan conversion's existing coordinate
+    /// working range. The same policy checks both stored path coordinates
+    /// and mapped vertices; this is independent of any viewport or clip.
+    pub fn within_working_range(self) -> bool {
+        crate::flatten::bounded(self).is_ok()
+    }
+
     /// The dot product of two vectors.
     pub fn dot(self, other: Self) -> f64 {
         self.x * other.x + self.y * other.y
@@ -347,6 +354,24 @@ mod tests {
         assert!((length / 5e200 - 1.0).abs() < 1e-15);
         let huge = Point::new(f64::MAX, -f64::MAX);
         assert_eq!(huge.midpoint(huge), huge);
+    }
+
+    #[test]
+    fn coordinate_query_keeps_the_scan_conversion_boundary() {
+        let limit = crate::flatten::MAX_COORDINATE;
+        for value in [0.0, limit.next_down(), limit, -limit, -limit.next_down()] {
+            assert!(Point::new(value, value).within_working_range());
+        }
+        for value in [
+            limit.next_up(),
+            -limit.next_up(),
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ] {
+            assert!(!Point::new(value, 0.0).within_working_range());
+            assert!(!Point::new(0.0, value).within_working_range());
+        }
     }
 
     #[test]
