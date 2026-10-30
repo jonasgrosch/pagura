@@ -143,9 +143,21 @@ geometric rectangles. A tiling child's clip includes the stencil and the
 outer mark's clip chain, so mask and child geometry are intersected before
 coverage quantization; the result is not multiplied by the stencil coverage
 again. Shading stencils use the same geometry with existing shading sampling.
-Ordinary nested tiling under an inherited stencil remains unsupported: its
-ordinary outer mark coverage would apply fractional mask coverage twice.
-Nested image stencils already propagate the complete geometric intersection;
+Ordinary nested tiling painted by a fill or stroke propagates that mark's
+complete geometry and clip chain to its children at every nesting level.
+Linear glyph outlines propagate under their full device linear map and origin.
+The resulting pattern group has no second outer coverage factor: each leaf
+mark already integrates the stencil, all enclosing marks and its own clips
+jointly. Fill rules remain attached to each ancestor; strokes contribute the
+existing outlined stroke under its device transform. Nested patterned glyphs
+containing curves remain explicit refusals because replacing true quadratic glyph geometry
+with a flattened generic clip would change their coverage contract. An
+independent control packs 101 quadratic slivers of area 1/1000 pixel into one
+pixel: every control-point displacement is below the generic flattener's
+1/256-pixel tolerance, but dropping the curves into their chords would lose
+101/1000 pixel of ink. The solid-glyph control retains true-curve integration;
+its patterned twin remains refused before output.
+Nested image stencils propagate the same complete geometric intersection;
 transparency groups apply the inherited clip once through their children.
 Interpolated patterned masks remain unsupported. Inherited clip identities
 include their stencil chain; source paths and capacities are metered and

@@ -141,9 +141,9 @@ def nested_tiling_cases():
     """A half-area sample distinguishes a mask applied once from twice.
 
     A red full-cell pattern is geometrically identical whether specified
-    directly or through another pattern. Ordinary nested tiling is refused
-    until its outer geometry can propagate without multiplying mask coverage
-    again. A nested image stencil has that geometric path already.
+    directly or through another pattern. Each nested mark propagates its
+    outer geometry so the inherited mask is intersected once, before
+    quantization, rather than multiplying its area average again.
     """
     common = b"/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 2 /BBox [0 0 16 16] /XStep 16 /YStep 16 "
     solid = stream(b"1 0 0 rg 0 0 16 16 re f", common+b"/Resources << >>")
@@ -156,9 +156,10 @@ def nested_tiling_cases():
                ("paint-image-masks",), "One opaque red stencil covers exactly half of two boundary pixels",
                oracle=expected, extra={"tolerance": 1})
     nested = stream(b"/Pattern cs /Q scn 0 0 16 16 re f", common+b"/Resources << /Pattern << /Q 7 0 R >> >>")
-    yield Case("tiling-nested-ordinary-refused", page(content, [nested, mask, solid], resources), UNSUPPORTED,
-               ("paint-image-masks",), "Valid ordinary nested tiling is explicitly unsupported under an inherited stencil",
-               feature="pattern.image-mask")
+    # Historical identifier retained to preserve the original reproducer bytes.
+    yield Case("tiling-nested-ordinary-refused", page(content, [nested, mask, solid], resources), RENDER,
+               ("paint-image-masks",), "Ordinary nested tiling integrates inherited stencil geometry once",
+               oracle=expected, extra={"tolerance": 1})
     nested_image = stream(b"/Pattern cs /Q scn 16 0 0 16 0 0 cm /J Do",
                           common+b"/Resources << /Pattern << /Q 7 0 R >> /XObject << /J 8 0 R >> >>")
     yield Case("tiling-nested-image-stencil", page(content, [nested_image, mask, solid, mask], resources), RENDER,

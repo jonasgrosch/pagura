@@ -153,6 +153,26 @@ impl Planner<'_> {
         path: &Path,
         budget: &mut Budget,
     ) -> Result<u32> {
+        self.pattern_clip(
+            scope,
+            clip,
+            path,
+            (FillRule::NonZero, scope.transform),
+            budget,
+        )
+    }
+
+    /// Adds a pattern-painted mark to the inherited device-space geometry.
+    /// Fill rules and the mark's own transform remain authoritative at
+    /// every nesting level; descendants integrate this full intersection.
+    pub(super) fn pattern_clip(
+        &mut self,
+        scope: &Scope,
+        clip: Option<ClipId>,
+        path: &Path,
+        (rule, transform): (FillRule, Transform),
+        budget: &mut Budget,
+    ) -> Result<u32> {
         let mut chain = self.chain(scope, (clip, None), &mut budget.bytes)?;
         if chain.len() >= self.limits.mask_sources {
             return Err(Error::limit("clip path budget exceeded"));
@@ -161,11 +181,11 @@ impl Planner<'_> {
         budget
             .bytes
             .charge(2 * size_of::<usize>() + size_of::<Path>())?;
-        let path = path.transformed_with_bytes(scope.transform, &mut budget.bytes)?;
+        let path = path.transformed_with_bytes(transform, &mut budget.bytes)?;
         let owned = 2 * size_of::<usize>() + size_of::<Path>() + path.retained_bytes();
         chain.push(Link {
             path: Arc::new(path),
-            rule: FillRule::NonZero,
+            rule,
             transform: Transform::IDENTITY,
             owned,
         });

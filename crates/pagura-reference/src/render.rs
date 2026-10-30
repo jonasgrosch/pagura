@@ -383,7 +383,8 @@ impl<'s> Renderer<'s> {
             }
             Paint::Tiling(tiling) => {
                 let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization)?;
-                self.tiling(tiling, (&coverage, None), state, buffer, context)
+                let inherited = (!context.inherited.is_empty()).then_some(regions.as_slice());
+                self.tiling(tiling, (&coverage, inherited), state, buffer, context)
             }
         }
     }
