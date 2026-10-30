@@ -754,25 +754,18 @@ fn line_coordinates_resolve_indirectly_and_reject_nonfinite_values() {
 }
 
 #[test]
-fn polyline_endings_follow_curve_derivatives_through_repeated_controls() {
-    let area = rect(0.0, 0.0, 32.0, 32.0);
+fn nonlinear_polyline_strokes_refuse_instead_of_returning_only_endings() {
     for path in [
         "[[8 8] [8 16 16 16 16 8]]",
         "[[8 8] [8 8] [8 8 8 16 12 16] [16 16 16 8 16 8] [16 8]]",
     ] {
-        let stream = generate(
+        let error = generate(
             format!("<< /Subtype /PolyLine /Path {path} /LE [/Butt /Butt] /BS << /W 1 >> >>")
                 .as_bytes(),
-            area,
+            rect(0.0, 0.0, 32.0, 32.0),
         )
-        .unwrap()
-        .unwrap();
-        // Both source derivatives point vertically away from the arch;
-        // the ending bars are horizontal regardless of their chord slopes.
-        assert!(
-            String::from_utf8_lossy(stream.content())
-                .ends_with("5 8 m\n11 8 l\n13 8 m\n19 8 l\nS\n")
-        );
+        .unwrap_err();
+        assert_eq!(error.feature(), Some(features::ANNOTATION_APPEARANCE));
     }
 }
 

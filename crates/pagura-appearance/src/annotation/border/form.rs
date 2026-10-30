@@ -26,6 +26,12 @@ impl Border {
             }
             return Ok(());
         }
+        if !self.radii.contains(&0.0) && !self.dash.is_empty() {
+            return Err(Error::unsupported(
+                crate::features::ANNOTATION_APPEARANCE,
+                "generated dashed rounded borders require source-curve accuracy qualification",
+            ));
+        }
         color.write(out, Paint::Stroke)?;
         let inset = (self.width / 2.0)
             .min(bbox.width() / 2.0)

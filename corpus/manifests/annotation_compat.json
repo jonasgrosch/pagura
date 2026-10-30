@@ -1,0 +1,264 @@
+{
+  "schema": 2,
+  "area": "annotation_compat",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "annotation_compat/popup-missing-rect",
+      "kind": "pdf",
+      "description": "Repair reports skipping an inert popup with no Rect or stored artwork; existing page paint is preserved",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/popup-missing-rect.pdf",
+      "sha256": "b87171338141ea040ea858c57cb54d13374b40b66bfcb5003e651d4288b5c9a1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.popup-missing-rect"
+      ],
+      "oracle": "corpus/generated/annotation_compat/popup-missing-rect.ppm",
+      "oracle_sha256": "6a0f75c650cfadb3758d72e9e26ca7c8c06c86f7b5e50e4bf4835891ca63ad5b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "annotation_compat/popup-null-rect",
+      "kind": "pdf",
+      "description": "Repair reports skipping an inert popup with no Rect or stored artwork; existing page paint is preserved",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/popup-null-rect.pdf",
+      "sha256": "7cfd08dff90c77731346ab2e77dedec3ee92f2e92d722500cf9c8b9a1cfd54c2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.popup-missing-rect"
+      ],
+      "oracle": "corpus/generated/annotation_compat/popup-null-rect.ppm",
+      "oracle_sha256": "6a0f75c650cfadb3758d72e9e26ca7c8c06c86f7b5e50e4bf4835891ca63ad5b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "annotation_compat/popup-indirect-null-rect",
+      "kind": "pdf",
+      "description": "Repair reports skipping an inert popup with no Rect or stored artwork; existing page paint is preserved",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/popup-indirect-null-rect.pdf",
+      "sha256": "7f49e3855f175f1a63566c291e4affc5fba563c5e1b2527a2970cb2ba8d2376d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.popup-missing-rect"
+      ],
+      "oracle": "corpus/generated/annotation_compat/popup-indirect-null-rect.ppm",
+      "oracle_sha256": "6a0f75c650cfadb3758d72e9e26ca7c8c06c86f7b5e50e4bf4835891ca63ad5b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "annotation_compat/popup-null-ap-missing-rect",
+      "kind": "pdf",
+      "description": "Repair reports skipping an inert popup with no Rect or stored artwork; existing page paint is preserved",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/popup-null-ap-missing-rect.pdf",
+      "sha256": "90b14fe8cd3af8b9b71d0bf89d0b7576361e15253056174ae0708c034f6de2b0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.popup-missing-rect"
+      ],
+      "oracle": "corpus/generated/annotation_compat/popup-null-ap-missing-rect.ppm",
+      "oracle_sha256": "6a0f75c650cfadb3758d72e9e26ca7c8c06c86f7b5e50e4bf4835891ca63ad5b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "annotation_compat/popup-undefined-rect",
+      "kind": "pdf",
+      "description": "Repair reports skipping an inert popup with no Rect or stored artwork; existing page paint is preserved",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/popup-undefined-rect.pdf",
+      "sha256": "a3c84094d0251b7cbe2b15334695ee11b46d12f702887bb21e60ce05ff9f8a1d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.popup-missing-rect"
+      ],
+      "oracle": "corpus/generated/annotation_compat/popup-undefined-rect.ppm",
+      "oracle_sha256": "6a0f75c650cfadb3758d72e9e26ca7c8c06c86f7b5e50e4bf4835891ca63ad5b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "annotation_compat/popup-stored-missing-rect",
+      "kind": "pdf",
+      "description": "Missing or malformed geometry, artwork, and failed object resolution remain explicit errors",
+      "expected": "open",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/popup-stored-missing-rect.pdf",
+      "sha256": "53fe307efa14cb49821626409fcccc6937a546d63f1affed40ff6a13b396a12b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_compat/popup-short-rect",
+      "kind": "pdf",
+      "description": "Missing or malformed geometry, artwork, and failed object resolution remain explicit errors",
+      "expected": "open",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/popup-short-rect.pdf",
+      "sha256": "42e6e6cd74c980511ce7922f42722cf06d65cb761175b9fef593eff3cd0645a9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_compat/popup-wrong-rect",
+      "kind": "pdf",
+      "description": "Missing or malformed geometry, artwork, and failed object resolution remain explicit errors",
+      "expected": "open",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/popup-wrong-rect.pdf",
+      "sha256": "a6bf4ddacd1fd6fc0e104e01d3c28c34bffb36ddb56cc433ccecfe6905c6b99b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_compat/square-missing-rect",
+      "kind": "pdf",
+      "description": "Missing or malformed geometry, artwork, and failed object resolution remain explicit errors",
+      "expected": "open",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/square-missing-rect.pdf",
+      "sha256": "4f2085d571629267574c06707d6415b2039b3c10e6ba3446f45f6a72df6992b2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_compat/popup-rect-cycle",
+      "kind": "pdf",
+      "description": "Missing or malformed geometry, artwork, and failed object resolution remain explicit errors",
+      "expected": "open",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/popup-rect-cycle.pdf",
+      "sha256": "e7728832ef66031ff409ce9f8f71d2d84aeb2f34f842202ce978080c7e4fd67b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "annotation_compat/link-direct-rect-72",
+      "kind": "pdf",
+      "description": "Rect scalar references resolve as ordinary PDF numbers; the stored red rectangle is independently specified",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/link-direct-rect-72.pdf",
+      "sha256": "9f6411a6c1120a7341b7b5bf88ac93fa9709a3072f83631c2ce1f08f738a46f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_compat/link-direct-rect-72.ppm",
+      "oracle_sha256": "a3fd90e9b6e65611d67fef817bcd2825eb72dd937cf8df4142ad4d6e10c792f8",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "annotation_compat/link-indirect-rect-72",
+      "kind": "pdf",
+      "description": "Rect scalar references resolve as ordinary PDF numbers; the stored red rectangle is independently specified",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/link-indirect-rect-72.pdf",
+      "sha256": "dc6357429e464868c1da533e3679bcaa88c9516a8c73b88cbbfe300d88c65331",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_compat/link-indirect-rect-72.ppm",
+      "oracle_sha256": "a3fd90e9b6e65611d67fef817bcd2825eb72dd937cf8df4142ad4d6e10c792f8",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "annotation_compat/link-direct-rect-144",
+      "kind": "pdf",
+      "description": "Rect scalar references resolve as ordinary PDF numbers; the stored red rectangle is independently specified",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/link-direct-rect-144.pdf",
+      "sha256": "9f6411a6c1120a7341b7b5bf88ac93fa9709a3072f83631c2ce1f08f738a46f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_compat/link-direct-rect-144.ppm",
+      "oracle_sha256": "980fd2e2966bb081232dcbc4e69b4766455832eb5bbb52c488dbc781c0f1ddb1",
+      "dpi": 144,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_compat/link-indirect-rect-144",
+      "kind": "pdf",
+      "description": "Rect scalar references resolve as ordinary PDF numbers; the stored red rectangle is independently specified",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-rectangle"
+      ],
+      "path": "corpus/generated/annotation_compat/link-indirect-rect-144.pdf",
+      "sha256": "dc6357429e464868c1da533e3679bcaa88c9516a8c73b88cbbfe300d88c65331",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_compat/link-indirect-rect-144.ppm",
+      "oracle_sha256": "980fd2e2966bb081232dcbc4e69b4766455832eb5bbb52c488dbc781c0f1ddb1",
+      "dpi": 144,
+      "width": 32,
+      "height": 32
+    }
+  ]
+}

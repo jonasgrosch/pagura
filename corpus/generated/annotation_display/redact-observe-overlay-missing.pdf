@@ -1,0 +1,58 @@
+%PDF-1.7
+%âãÏÓ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [] /DR << /Font << /F0 8 0 R >> >> >> >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 48] /Resources << >> /Contents 4 0 R /Annots [5 0 R]  >>
+endobj
+4 0 obj
+<< /Length 45 >>
+stream
+0 1 1 rg 12 12 32 20 re f 0 g 12 20 32 4 re f
+endstream
+endobj
+5 0 obj
+<< /Type /Annot /Subtype /Redact /Rect [12 12 44 32] /F 4    /OverlayText (R) /DA (/F0 8 Tf 0 g) /Q 1 >>
+endobj
+6 0 obj
+<< /Length 38 /Type /XObject /Subtype /Form /BBox [0 0 8 4] /Resources << >> >>
+stream
+0 g 0 0 4 4 re f 1 0 0 rg 4 0 4 4 re f
+endstream
+endobj
+7 0 obj
+<< /Length 4 /Type /Sound /R 8000 /C 1 /B 8 /E /Raw>>
+stream
+€€€€
+endstream
+endobj
+8 0 obj
+<< /Type /Font /Subtype /Type3 /FontBBox [0 0 600 800] /FontMatrix [.001 0 0 .001 0 0] /CharProcs << /R 9 0 R >> /Encoding << /Type /Encoding /Differences [82 /R] >> /FirstChar 82 /LastChar 82 /Widths [600] /Resources << >> >>
+endobj
+9 0 obj
+<< /Length 25 >>
+stream
+600 0 d0 0 0 400 800 re f
+endstream
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000015 00000 n 
+0000000123 00000 n 
+0000000180 00000 n 
+0000000299 00000 n 
+0000000394 00000 n 
+0000000514 00000 n 
+0000000665 00000 n 
+0000000756 00000 n 
+0000000998 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+1073
+%%EOF

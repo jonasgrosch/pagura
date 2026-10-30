@@ -160,6 +160,20 @@ impl Transform {
         Self::new(x, 0.0, 0.0, y, 0.0, 0.0)
     }
 
+    /// Maps default user space to the view of `box_`: its displayed upper
+    /// left is the origin, y grows downwards and `rotation` turns clockwise.
+    /// This is unscaled; callers apply `UserUnit` and device resolution
+    /// separately (ISO 32000-2, 8.3.2.3 and Table 31).
+    pub fn page_view(box_: pagura_core::Rect, rotation: pagura_core::Rotation) -> Self {
+        use pagura_core::Rotation;
+        match rotation {
+            Rotation::None => Self::new(1.0, 0.0, 0.0, -1.0, -box_.x0(), box_.y1()),
+            Rotation::Clockwise90 => Self::new(0.0, 1.0, 1.0, 0.0, -box_.y0(), -box_.x0()),
+            Rotation::Clockwise180 => Self::new(-1.0, 0.0, 0.0, 1.0, box_.x1(), -box_.y0()),
+            Rotation::Clockwise270 => Self::new(0.0, -1.0, -1.0, 0.0, box_.y1(), box_.x1()),
+        }
+    }
+
     /// The transform that applies `self` first and then `next`.
     ///
     /// PDF's `cm` operator computes `CTM' = M × CTM`, which is

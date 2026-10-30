@@ -210,6 +210,16 @@ impl<'a> Marks<'a> {
         {
             return Err(Error::syntax("invalid annotation dash pattern"));
         }
+        if path.iter().any(|subpath| match subpath {
+            Subpath::Operators { commands, .. } => nonlinear(commands),
+            Subpath::RoundedRect { radii, .. } => !radii.contains(&0.0) && !pen.dash.is_empty(),
+            _ => false,
+        }) {
+            return Err(Error::unsupported(
+                crate::features::ANNOTATION_APPEARANCE,
+                "generated curved-path strokes require source-curve accuracy qualification",
+            ));
+        }
         self.color(color, Paint::Stroke)?;
         self.numbers(&[pen.width])?;
         self.content.text("w\n[")?;
@@ -451,6 +461,42 @@ pub(super) fn scalar(
                 .ok_or(Error::syntax("annotation parameter must be numeric"))
         })
         .transpose()
+}
+
+/// Straight, ordered cubic controls retain the ordinary line-stroke path.
+/// Other cubic paths need the separately qualified source-tangent/dash work.
+fn nonlinear(commands: &[PathOperator]) -> bool {
+    let mut current = [0.0, 0.0];
+    for command in commands {
+        match *command {
+            PathOperator::Move(point) | PathOperator::Line(point) => current = point,
+            PathOperator::Cubic([x1, y1, x2, y2, x3, y3]) => {
+                let end = [x3, y3];
+                let delta = [x3 - current[0], y3 - current[1]];
+                let axis = usize::from(delta[1].abs() > delta[0].abs());
+                let mut previous = 0.0;
+                for control in [[x1, y1], [x2, y2]] {
+                    if delta == [0.0, 0.0] {
+                        if control != current {
+                            return true;
+                        }
+                    } else {
+                        let t = (control[axis] - current[axis]) / delta[axis];
+                        if !t.is_finite()
+                            || t < previous
+                            || t > 1.0
+                            || control[1 - axis] - current[1 - axis] != t * delta[1 - axis]
+                        {
+                            return true;
+                        }
+                        previous = t;
+                    }
+                }
+                current = end;
+            }
+        }
+    }
+    false
 }
 
 #[cfg(test)]

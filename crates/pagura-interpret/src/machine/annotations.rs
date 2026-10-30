@@ -99,6 +99,25 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         if !draws(self.needs()) {
             return Ok(());
         }
+        // Missing geometry must not hide supplied artwork. A Popup without
+        // an AP is already inert in the flat-page appearance policy; only
+        // that case can be skipped without inventing coordinates or paint.
+        if subtype == b"Popup"
+            && document.optional(d, b"AP")?.is_none()
+            && d.get(b"Rect")
+                .map(|value| document.resolve(value))
+                .transpose()?
+                .is_none_or(Value::is_null)
+        {
+            document.repair(
+                Diagnostic::new(
+                    pagura_appearance::repairs::POPUP_MISSING_RECT,
+                    "popup without Rect or appearance skipped in flat-page viewing",
+                )
+                .in_object_opt(value.as_reference()),
+            )?;
+            return Ok(());
+        }
         let rect = rectangle(document, d, b"Rect")?;
         let (rect, flags) = if subtype == b"Watermark"
             && let Some(rect) = fixed_print(document, d, rect, page)?

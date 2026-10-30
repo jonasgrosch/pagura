@@ -1,0 +1,688 @@
+{
+  "schema": 2,
+  "area": "caption_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "caption_annotations/inline-72",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/inline-72.pdf",
+      "sha256": "b208b57a38e721896c54c1363167bf5586d549687990f1934757ce83395b9e82",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/inline-72.ppm",
+      "oracle_sha256": "a810131e418095c1abb87eb9672740063d0d4bc982099260e17f74adb4804a74",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/top-72",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/top-72.pdf",
+      "sha256": "e5ad9f4aa1bd82c5af32b7e572a731b7771e08403beec337b02dccf4035b5027",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/top-72.ppm",
+      "oracle_sha256": "8a932046c339774f5ad8671098b79657082c95d1571a8ae818aae674d87f5965",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/multiline-72",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/multiline-72.pdf",
+      "sha256": "627c2a111a8fc9c0b0920c4ac07c9d7530084744ff263f2030b9117876712bad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/multiline-72.ppm",
+      "oracle_sha256": "2b0fa94a9f9b1af4f4b4114cc14933187d77ef7fbea8abe0f4e0dbfa6f260299",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/inline-144",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/inline-144.pdf",
+      "sha256": "b208b57a38e721896c54c1363167bf5586d549687990f1934757ce83395b9e82",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/inline-144.ppm",
+      "oracle_sha256": "086b0b5347fe5e899be9569bf5629c8c6661cd18b1eb4df497171f579492fdc2",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/top-144",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/top-144.pdf",
+      "sha256": "e5ad9f4aa1bd82c5af32b7e572a731b7771e08403beec337b02dccf4035b5027",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/top-144.ppm",
+      "oracle_sha256": "91ecf89b01d020c7864d5be437b8d5da28f81de5f4a246c21b82551c4b7560f2",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/multiline-144",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/multiline-144.pdf",
+      "sha256": "627c2a111a8fc9c0b0920c4ac07c9d7530084744ff263f2030b9117876712bad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/multiline-144.ppm",
+      "oracle_sha256": "3ce2af28a700e0b74ea50cf17b3f1257d95360b0478740936f5af54d7ed8af3c",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/offset",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/offset.pdf",
+      "sha256": "dac5b16a3e129a200489210d6785c1c408ba8a7526a0ed6f674a56a61bb10ea1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/offset.ppm",
+      "oracle_sha256": "7ef205f92bb72f04c773cd5bd8d9c694335dbefa73ffed05fcd3ebcc0366d91a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/above",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/above.pdf",
+      "sha256": "6f64f53e2be4a93c3a4dddfb503d28953185df9a10f187036c7762e274f5370c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/above.ppm",
+      "oracle_sha256": "21b57ee32c55b48ce6e18d90757365b1c73171e056ab132c482692a12e75a101",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/wide",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/wide.pdf",
+      "sha256": "a711aa68a39353f81997c12ea8166ce5e620d507b01bf83ffce37d97c76f1a10",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/wide.ppm",
+      "oracle_sha256": "266ebf6efef6ca8f62e0a909c1939aed5dd2d8559f3623051c182008518fa51a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/zero-width",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/zero-width.pdf",
+      "sha256": "2c5918a08787810e9e80a6e3338aee2aea7560f0638039eefd1581aca7ae3d26",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/zero-width.ppm",
+      "oracle_sha256": "9e024bdc03cdcb5f3a07bb9c254b72188e130377928b5049634424e05de1fe65",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/opacity",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/opacity.pdf",
+      "sha256": "499401e5b2ea12992696e98c07754ef60784e63cf8fd852447af860a6c6bd453",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/opacity.ppm",
+      "oracle_sha256": "d9342a4b8fd81396484a0d31d887e8bd18644282208bf309e31fe5596958178f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/separate-opacity",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/separate-opacity.pdf",
+      "sha256": "fe68e7b76371e258fcaf26f1eb36d158af99795b118ad5b9ba74bf14298305b3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/separate-opacity.ppm",
+      "oracle_sha256": "cd3ae9c534d4b4239b401db141f4b70b844b615f4461f472ddfe4fdffd8223d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/clipped",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/clipped.pdf",
+      "sha256": "1dd1384bb7214b14310107458cd9fc75ea3fd3dc36f2442cc8c25b9cb1232866",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/clipped.ppm",
+      "oracle_sha256": "cb12cacbb02554acb9dbc5216855edfa44c25300d209e53f0f1c007929ff39c1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/rotated",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/rotated.pdf",
+      "sha256": "a0710c9085df8463d6135a3afbe5aa1ed9dc7bce66cd47fe5f25ee09b7346c87",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/rotated.ppm",
+      "oracle_sha256": "ee40a9ca77e08415b7644918ac581ab63e408834e2de0cd8de083f577613ee49",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/reversed",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/reversed.pdf",
+      "sha256": "a37bac36132a8644952d2895f62cc5791bb31db3afa924149d637df617920a20",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/reversed.ppm",
+      "oracle_sha256": "337c9c0b8fe5004a83d0ac2f98176921fe2e0baafe7c0a8ad01b5486920da729",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/vertical",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/vertical.pdf",
+      "sha256": "a4de24b6a294443e0a938cd23cc99becea06d26e121f72faabea222597cd6d84",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/vertical.ppm",
+      "oracle_sha256": "639885da8951c6930f785a7ae679b0e9f54d8597e1ada54ac3bc95da04daeab8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/leaders",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/leaders.pdf",
+      "sha256": "a6ce8eb32103c3301f26669ae436b06a7299717d21a949f41b7a29c4f0f91bb7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/leaders.ppm",
+      "oracle_sha256": "29ce2df0848d0dc55e3dcd483e149fa5f23c1e470c3549ab870f265132b9c740",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/indirect",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/indirect.pdf",
+      "sha256": "badd84d3b8ccc947a0fae2fd32c38feea10fb94d24846741bc515de263ead681",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/indirect.ppm",
+      "oracle_sha256": "a810131e418095c1abb87eb9672740063d0d4bc982099260e17f74adb4804a74",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/utf16",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/utf16.pdf",
+      "sha256": "eb926b065dca981352a402f4fc36e7c5d6e2fa6e1de1ce01bc9f1136b28b0189",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/utf16.ppm",
+      "oracle_sha256": "a810131e418095c1abb87eb9672740063d0d4bc982099260e17f74adb4804a74",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/utf8",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/utf8.pdf",
+      "sha256": "4976303d722cca8f9b744245ce21c5e80d737c4480e46a25e9a65a6fd3b33da8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/utf8.ppm",
+      "oracle_sha256": "a810131e418095c1abb87eb9672740063d0d4bc982099260e17f74adb4804a74",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/crlf",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/crlf.pdf",
+      "sha256": "3b546aeee93d82ac4c08d253297f1fe3a703d87a34340d2dee454038f38ea7b5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/crlf.ppm",
+      "oracle_sha256": "2b0fa94a9f9b1af4f4b4114cc14933187d77ef7fbea8abe0f4e0dbfa6f260299",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/leading-empty-line",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/leading-empty-line.pdf",
+      "sha256": "d43c196c5d7e8db0db3e326ae518472f939a67684f72cac68ad16e365d27734b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/leading-empty-line.ppm",
+      "oracle_sha256": "ede1e83a9113005bbcdd6e4910a9fc824df8db0d3e18636cde8dfe7a78ad4113",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/trailing-empty-line",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/trailing-empty-line.pdf",
+      "sha256": "6953cf74e667e0f57dc0314b17f105b1936a786fcefe367dfa1d38ab324e85b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/trailing-empty-line.ppm",
+      "oracle_sha256": "f858448b164cda14ee4e1219e23e11e7a07935a94de47a6eb0456471af6a19bc",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/empty",
+      "kind": "pdf",
+      "description": "Literal line regions and independently decoded pinned glyph polygons verify caption placement",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/empty.pdf",
+      "sha256": "3ba6cca82c2ac3c54b8c273d5fe0a498313119d350d2f0e5bdfb41cce4754030",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caption_annotations/empty.ppm",
+      "oracle_sha256": "aaf7f0742c5ab2103a9cc53d022e13b7684e94dc7c5d858225749d6e87deec14",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/position-type",
+      "kind": "pdf",
+      "description": "Caption-only parameters validate even when the caption is empty",
+      "expected": "open",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/position-type.pdf",
+      "sha256": "7c7e60a60967bd500b1b0f8c96e09e92f7a64c536e4d83c63d3b6df4c2dafd53",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caption_annotations/offset-type",
+      "kind": "pdf",
+      "description": "Caption-only parameters validate even when the caption is empty",
+      "expected": "open",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/offset-type.pdf",
+      "sha256": "616b96f7843fc5e6a99b243f05c4771dad8c68d8fb4f9f39ba09dc6ada67059f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caption_annotations/offset-count",
+      "kind": "pdf",
+      "description": "Caption-only parameters validate even when the caption is empty",
+      "expected": "open",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/offset-count.pdf",
+      "sha256": "c95c8a93ead9b395156f615cec06bb10fcd23e9d4d1f07cbaf4777a4dd29e73e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caption_annotations/offset-number",
+      "kind": "pdf",
+      "description": "Caption-only parameters validate even when the caption is empty",
+      "expected": "open",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/offset-number.pdf",
+      "sha256": "43d93acca12f4b6bc9bee1ba5a6cf560591bf232970ae896284aafa129fe10c2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caption_annotations/contents-type",
+      "kind": "pdf",
+      "description": "Plain caption Contents must be a PDF text string",
+      "expected": "open",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/contents-type.pdf",
+      "sha256": "22b48cc71d2ae84062b432ad4ab5c7096c9f546c5fba23909c3451a9d52dac77",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caption_annotations/rich-text",
+      "kind": "pdf",
+      "description": "Rich caption uses the independently specified Helvetica baseline and literal line gap",
+      "expected": "render",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/rich-text.pdf",
+      "sha256": "03801026293c4426421ce1ea65c9b19b92fe58dcc3c03e35444af8771b99c4ee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/caption_annotations/rich-text.ppm",
+      "oracle_sha256": "312eb592d143de4103558fb427c12e6e4899121524e8ec1b1643e9e95e334c70",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caption_annotations/position-unknown",
+      "kind": "pdf",
+      "description": "Unimplemented rich text, positions and font encodings remain explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/position-unknown.pdf",
+      "sha256": "8b16e81cd26b776153954acb54dd76a2a191ac51963fcb8526240fbe3c08cd06",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "caption_annotations/unmapped",
+      "kind": "pdf",
+      "description": "Unimplemented rich text, positions and font encodings remain explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "content-line-captions"
+      ],
+      "path": "corpus/generated/caption_annotations/unmapped.pdf",
+      "sha256": "7a57de4286cc5efa4fbea0e3d21e082a46f51c13febf8763492d459f9f842274",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "feature": "appearance.font-encoding"
+    }
+  ]
+}
