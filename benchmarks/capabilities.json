@@ -163,7 +163,7 @@
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
-    "references/requirements/document.json": "fd4309bc8dbf5ef28329ede06859f31dbdea1c109612fe0da94d323da44144e9",
+    "references/requirements/document.json": "8de61bb16a282d321cba4073e1b67a9212071e943b159ff75de5648f978a48dd",
     "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",

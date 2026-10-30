@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "cases": [
+    "recovery_document/header-absent",
+    "recovery_document/header-absent-binary-comment",
+    "recovery_document/stream-length-crosses-next-object",
+    "recovery_document/stream-length-crosses-xref",
+    "recovery_document/stream-length-crosses-EOF"
+  ]
+}
