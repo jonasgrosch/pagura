@@ -633,9 +633,8 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     elements.get('viewport').dispatch('touchend');
     fakeWindow.dispatch('keydown', { key: '0' }); await waitFor(ready);
     assert.equal(view(0).style.width, '64px'); elements.get('viewport').clientHeight = 300;
-    // This pattern is unsupported only when its device lattice collapses at
-    // scale 1. At 25% zoom the bounded 4x backing density requests that scale;
-    // the normal 2x raster correctly makes this particular pattern renderable.
+    // A singular pattern matrix is unsupported at every scale, including the
+    // 25% zoom whose bounded 4x backing density requests scale 1.
     elements.get('zoom').value = '0.25';
     await pick(manifest.cases.find((entry) => entry.id === 'classic/pattern-unsupported'));
     await waitFor(() => !elements.get('error').hidden);

@@ -2,7 +2,8 @@
 //! instance that can meet the mark is painted with its own translation,
 //! together forming one non-isolated, non-knockout group over the mark's
 //! backdrop, whose result the mark's coverage, alpha and blend mode then
-//! composite once (11.6.7).
+//! composite once (11.6.7). Constant spacing places the instances a whole
+//! number of device pixels apart ([`lattice`]).
 
 use super::transfer::Selection;
 use super::{Context, Contribution, Crop, Renderer};
@@ -11,7 +12,7 @@ use crate::color::Channels;
 use crate::pixel::Elements;
 use crate::shapes::Coverage;
 use pagura_core::{Error, Result};
-use pagura_interpret::{Composite, TilingColors, TilingPaint};
+use pagura_interpret::{Composite, Tiling, TilingColors, TilingPaint, TilingSpacing};
 use pagura_raster::{Point, Transform};
 
 impl Renderer<'_> {
@@ -43,7 +44,7 @@ impl Renderer<'_> {
         if rect.is_empty() {
             return Ok(());
         }
-        let to_device = tiling.matrix.then(context.device);
+        let to_device = lattice(tiling.matrix.then(context.device), tiling)?;
         let inverse = to_device.inverse().ok_or(Error::invalid_argument(
             "the reference has no singular tiling pattern",
         ))?;
@@ -137,6 +138,72 @@ fn colors(cells: &Buffer, backdrop: &Initial<'_>, n: usize) -> Vec<(u32, u32, Ch
     results
 }
 
+/// The device transform that places a tiling pattern's instances, as ADR
+/// 0004 section 2 defines it for `TilingType` (8.7.3.1, Table 74): `m`
+/// itself for `TilingType 2`; for `TilingType 1` and `3`, the transform
+/// with `m`'s origin that takes `(XStep, 0)` and `(0, YStep)` to the device
+/// lattice vectors rounded to whole pixels. When the rounded vectors are
+/// parallel, or under `TilingType 1` would move a cell corner by more than a
+/// pixel, `m` itself, the exact lattice of `TilingType 2`. A singular `m` is
+/// refused.
+fn lattice(m: Transform, tiling: &Tiling) -> Result<Transform> {
+    if m.inverse().is_none() {
+        return Err(Error::invalid_argument(
+            "the reference has no singular tiling pattern",
+        ));
+    }
+    if tiling.spacing == TilingSpacing::NoDistortion {
+        return Ok(m);
+    }
+    let [x_step, y_step] = tiling.step;
+    let (u, v) = ([m.a * x_step, m.b * x_step], [m.c * y_step, m.d * y_step]);
+    let (u_whole, v_whole) = (whole_pixels(u), whole_pixels(v));
+    if u_whole[0] * v_whole[1] == u_whole[1] * v_whole[0] {
+        return Ok(m);
+    }
+    if tiling.spacing == TilingSpacing::Constant {
+        // The two transforms share an origin, so a pattern point `(x, y)`
+        // moves by `x/XStep` times the change of `u` plus `y/YStep` times
+        // the change of `v`.
+        let (du, dv) = (
+            [u_whole[0] - u[0], u_whole[1] - u[1]],
+            [v_whole[0] - v[0], v_whole[1] - v[1]],
+        );
+        let b = tiling.bbox;
+        for x in [b.x0(), b.x1()] {
+            for y in [b.y0(), b.y1()] {
+                let (s, t) = (x / x_step, y / y_step);
+                if (s * du[0] + t * dv[0]).hypot(s * du[1] + t * dv[1]) > 1.0 + 1e-12 {
+                    return Ok(m);
+                }
+            }
+        }
+    }
+    Ok(Transform::new(
+        u_whole[0] / x_step,
+        u_whole[1] / x_step,
+        v_whole[0] / y_step,
+        v_whole[1] / y_step,
+        m.e,
+        m.f,
+    ))
+}
+
+/// A device lattice vector in whole pixels: each component rounded to the
+/// nearest integer, halves away from zero; a vector rounding to zero
+/// becomes one pixel along its component of larger magnitude, the
+/// horizontal one on a tie.
+fn whole_pixels([x, y]: [f64; 2]) -> [f64; 2] {
+    let rounded = [x.round(), y.round()];
+    if rounded != [0.0, 0.0] {
+        rounded
+    } else if x.abs() >= y.abs() {
+        [1.0_f64.copysign(x), 0.0]
+    } else {
+        [0.0, 1.0_f64.copysign(y)]
+    }
+}
+
 /// The pattern-space bounding box of a device rectangle.
 fn envelope(rect: pagura_raster::DeviceRect, inverse: Transform) -> [f64; 4] {
     let (x0, y0, x1, y1) = (
@@ -176,4 +243,92 @@ fn instances(low: f64, high: f64, [b0, b1]: [f64; 2], step: f64) -> Result<(i64,
         reason = "integral values within ±4e15"
     )]
     Ok((start as i64, end as i64))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_core::Rect;
+    use pagura_interpret::GroupId;
+
+    /// An 8-unit page at 72 dpi, whose device transform flips `y`.
+    const PAGE: Transform = Transform::new(1.0, 0.0, 0.0, -1.0, 0.0, 8.0);
+
+    fn place(m: Transform, step: [f64; 2], size: f64, spacing: TilingSpacing) -> Result<Transform> {
+        let tiling = Tiling {
+            cell: GroupId(0),
+            bbox: Rect::from_corners(0.0, 0.0, size, size).unwrap(),
+            step,
+            matrix: Transform::IDENTITY,
+            colors: TilingColors::Colored,
+            spacing,
+        };
+        lattice(m, &tiling)
+    }
+
+    /// The device lattice vectors of `l`, to nine decimals.
+    fn vectors(l: Transform, [x_step, y_step]: [f64; 2]) -> [f64; 4] {
+        [l.a * x_step, l.b * x_step, l.c * y_step, l.d * y_step].map(|v| (v * 1e9).round() / 1e9)
+    }
+
+    #[test]
+    fn halves_round_away_from_zero() {
+        // `(2.5, 0)` and `(0, -2.5)` become `(3, 0)` and `(0, -3)`; rounding
+        // halves to even, or up, would give 2 or -2.
+        for spacing in [TilingSpacing::Constant, TilingSpacing::Faster] {
+            let l = place(PAGE, [2.5, 2.5], 2.5, spacing).unwrap();
+            assert_eq!(vectors(l, [2.5, 2.5]), [3.0, 0.0, 0.0, -3.0]);
+            assert_eq!((l.e, l.f), (0.0, 8.0));
+        }
+    }
+
+    #[test]
+    fn vanishing_vectors_step_one_pixel_along_their_larger_component() {
+        let m = Transform::new(0.4, -0.6, 0.3, 0.3, 0.0, 0.0);
+        let l = place(m, [1.0, 1.0], 1.0, TilingSpacing::Faster).unwrap();
+        assert_eq!(vectors(l, [1.0, 1.0]), [0.0, -1.0, 1.0, 0.0]);
+    }
+
+    #[test]
+    fn no_distortion_keeps_the_exact_transform() {
+        let l = place(PAGE, [1.6, 1.6], 1.6, TilingSpacing::NoDistortion).unwrap();
+        assert_eq!(l, PAGE);
+    }
+
+    #[test]
+    fn constant_spacing_admits_at_most_a_pixel_of_distortion() {
+        // A 1.5-unit step becomes 2 pixels, moving the corner `(s, s)` by
+        // `s / 3` pixels along each axis. Beyond a pixel, the exact lattice.
+        let corner = |s: f64| s / 3.0 * 2.0_f64.sqrt();
+        assert!(corner(2.1) <= 1.0 && corner(2.2) > 1.0);
+        let fitted = place(PAGE, [1.5, 1.5], 2.1, TilingSpacing::Constant).unwrap();
+        assert_eq!(vectors(fitted, [1.5, 1.5]), [2.0, 0.0, 0.0, -2.0]);
+        assert_eq!(
+            place(PAGE, [1.5, 1.5], 2.2, TilingSpacing::Constant).unwrap(),
+            PAGE
+        );
+        let faster = place(PAGE, [1.5, 1.5], 2.2, TilingSpacing::Faster).unwrap();
+        assert_eq!(vectors(faster, [1.5, 1.5]), [2.0, 0.0, 0.0, -2.0]);
+    }
+
+    #[test]
+    fn collapsed_lattices_keep_the_exact_transform() {
+        // `(0.6, -0.6)` and `(0.6, -0.8)` both round to `(1, -1)`.
+        let oblique = Transform::new(0.3, -0.3, 0.3, -0.4, 0.0, 64.0);
+        for spacing in [TilingSpacing::Constant, TilingSpacing::Faster] {
+            assert_eq!(place(oblique, [2.0, 2.0], 1.0, spacing).unwrap(), oblique);
+        }
+    }
+
+    #[test]
+    fn singular_patterns_are_refused() {
+        let singular = Transform::new(0.0, 0.0, 0.0, -1.0, 0.0, 8.0);
+        for spacing in [
+            TilingSpacing::Constant,
+            TilingSpacing::NoDistortion,
+            TilingSpacing::Faster,
+        ] {
+            assert!(place(singular, [2.0, 2.0], 1.0, spacing).is_err());
+        }
+    }
 }
