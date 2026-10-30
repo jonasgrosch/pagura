@@ -610,8 +610,8 @@
     {
       "id": "circle_annotations/cloudy",
       "kind": "pdf",
-      "description": "Cloudy synthesis renders; independent geometry controls are in cloud_annotations",
-      "expected": "open",
+      "description": "Curved-stroke synthesis explicitly refuses pending separate source-curve accuracy qualification",
+      "expected": "unsupported",
       "requirements": [
         "content-circle-appearances"
       ],
@@ -619,7 +619,8 @@
       "sha256": "43b74135f3173b9a3b7ae2c92633c996895240cca4a8a6c67aafe2e5b7e128ff",
       "pages": 1,
       "strict_valid": true,
-      "repairs": []
+      "repairs": [],
+      "feature": "annotation.appearance"
     }
   ]
 }

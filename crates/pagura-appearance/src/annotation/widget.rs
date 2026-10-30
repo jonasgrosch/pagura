@@ -62,7 +62,10 @@ fn source_dictionary<'a>(
     document: &'a Document,
     annotation: &'a Dictionary,
 ) -> Result<&'a Dictionary> {
-    if document.optional(annotation, b"T")?.is_none()
+    if document
+        .optional(document.catalog()?, b"AcroForm")?
+        .is_some()
+        && document.optional(annotation, b"T")?.is_none()
         && let Some(parent) = document.optional(annotation, b"Parent")?
     {
         return document.resolve_dictionary(parent);

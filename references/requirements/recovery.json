@@ -50,7 +50,8 @@
         "recovery/widget-rotated-border",
         "recovery/widget-invalid-rotation"
       ],
-      "rule": "Empty text and unsigned signature widgets paint only their specified MK background and border. Field types and values inherit through Parent; null means absent. Nonempty values remain explicit unsupported appearances. Rotated backgrounds are invariant; rotated borders remain unsupported. Rotation must be a multiple of 90 degrees."
+      "rule": "Empty text and unsigned signature widgets paint only their specified MK background and border. Field types and values inherit through Parent; null means absent. Nonempty values remain explicit unsupported appearances. Rotated backgrounds are invariant; rotated borders remain unsupported. Rotation must be a multiple of 90 degrees.",
+      "gaps": " The unchanged rotated-widget-border input now has an independent literal-strip oracle; standalone no-AcroForm value inheritance retains its original annotation.appearance refusal."
     },
     {
       "id": "recovery-transfer",

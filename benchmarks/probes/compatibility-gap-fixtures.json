@@ -1185,6 +1185,8 @@
     "annotation_empty_widgets/repeated-membership",
     "annotation_empty_widgets/parent-cycle",
     "annotation_empty_widgets/nonempty-xfa",
-    "annotation_empty_widgets/stored-precedence"
+    "annotation_empty_widgets/stored-precedence",
+    "circle_annotations/cloudy",
+    "recovery/widget-rotated-border"
   ]
 }
