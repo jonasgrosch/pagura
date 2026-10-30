@@ -201,3 +201,13 @@ is the project reading of 7.10.2. Transfer-region selection follows
 default transfer, including through indirect references. A fractional boundary involving a nondefault
 transfer still fails explicitly: averaging colour before region selection would
 lose the correlation needed for nonlinear transfer functions.
+
+- `content.graphics-unmatched`, `content.text-unmatched` (8.4.2, 9.4.1):
+  unmatched `Q` or `ET` leaves the current graphics and text states unchanged.
+  `content.text-unclosed` closes a final text object as `ET`, including its
+  accumulated clipping and knockout scope, without crossing a saved graphics
+  state. `content.path-unpainted` (8.5.3–8.5.4) ends a final unpainted path
+  without painting; a pending clip has no later mark to affect and is discarded.
+  These viewing policies report every deviation. Strict rejects them, and
+  incomplete operands, unknown operators, crossed boundaries and resource
+  limits remain errors. Readers may disagree on malformed state boundaries.

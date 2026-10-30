@@ -116,6 +116,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
 
     /// `Q`, which may not cross the start of a text object.
     pub(super) fn restore(&mut self, scope: &mut Scope) -> Result<()> {
+        if scope.saved.is_empty() {
+            return self.repair(
+                repairs::GRAPHICS_UNMATCHED,
+                "unmatched Q leaves the current graphics and text states unchanged",
+            );
+        }
         if scope
             .text
             .as_ref()
@@ -188,8 +194,13 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         Ok(())
     }
 
-    fn end_text(&mut self, scope: &mut Scope) -> Result<()> {
-        let mut object = scope.text.take().ok_or(Error::syntax("ET without BT"))?;
+    pub(super) fn end_text(&mut self, scope: &mut Scope) -> Result<()> {
+        let Some(mut object) = scope.text.take() else {
+            return self.repair(
+                repairs::TEXT_UNMATCHED,
+                "unmatched ET leaves the current graphics state unchanged",
+            );
+        };
         if object.saved_depth != scope.saved.len() {
             return Err(Error::syntax("ET crosses graphics state boundary"));
         }
