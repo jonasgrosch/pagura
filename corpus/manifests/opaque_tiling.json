@@ -817,7 +817,7 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "render_error": "limit"
+      "render_error": "syntax"
     },
     {
       "id": "opaque_tiling/inherited-stencil",
@@ -1073,6 +1073,21 @@
       "width": 16,
       "height": 16,
       "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/uncolored-cell-valid",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/uncolored-cell-valid.pdf",
+      "sha256": "bf3e377baecc2011fba99d8218a2cfbdf2c50573b9d70a348c07b604f6ae4dd9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
     }
   ]
 }

@@ -1,7 +1,7 @@
 """Independent opaque tiling controls, ISO32000-2 8.7.3.1/Table74 and11.6.7.
 
 Exact rational polygon/pixel intersections and compositing were authored outside
-Pagura before engine execution. These are59 project-authored controls; upstream
+Pagura before engine execution. These are60 project-authored controls; upstream
 PDFs remain external. RGB and input bytes match the frozen independent control
 set; the external set also retains independently derived premultiplied RGBA.
 No product renderer/reference, external package or machine-specific path is used.
@@ -63,7 +63,8 @@ def make_pdf(*, size=16, bbox=(0, 0, 10, 10), step=('0.001', '0.001'),
              matrix=(1, 0, 0, 1, 0, 0), tiling_type=1,
              body='q 0 g 0 0 10 10 re f Q', mark=None, clip=None,
              alpha=1, mask=None, backdrop=None, paint_type=1, repeat=1,
-             stroke=False, stencil=False, direct=False, inner_state=None):
+             stroke=False, stencil=False, direct=False, inner_state=None,
+             named_underlying=False):
     mark = mark or [(0, 0), (size, 0), (size, size), (0, size)]
     content = ''
     if backdrop is not None:
@@ -77,7 +78,8 @@ def make_pdf(*, size=16, bbox=(0, 0, 10, 10), step=('0.001', '0.001'),
     elif stroke:
         content += '/Pattern CS /P SCN\n'
     else:
-        content += '[/Pattern /DeviceGray] cs 0 /P scn\n' if paint_type == 2 else '/Pattern cs /P scn\n'
+        content += ('/StencilPattern cs 0 /P scn\n' if named_underlying else
+                    '[/Pattern /DeviceGray] cs 0 /P scn\n') if paint_type == 2 else '/Pattern cs /P scn\n'
     if stencil:
         content += 'q 15.5 0 0 15.5 0.25 0.25 cm /Stencil Do Q\n'
     else:
@@ -89,10 +91,11 @@ def make_pdf(*, size=16, bbox=(0, 0, 10, 10), step=('0.001', '0.001'),
         f'/BBox [{" ".join(map(number, bbox))}] /XStep {number(F(step[0]))} /YStep {number(F(step[1]))} '
         f'/Matrix [{" ".join(map(number, matrix))}] '
         '/Resources << /ExtGState << /Inner 10 0 R >> >>')
+    color_resource = ' /ColorSpace << /StencilPattern [/Pattern /DeviceGray] >>' if named_underlying else ''
     objects = [
         b'<< /Type /Catalog /Pages 2 0 R >>',
         b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-        f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {size} {size}] /Resources << /Pattern << /P 4 0 R >> /ExtGState << /Outer 6 0 R >> /XObject << /Stencil 11 0 R >> >> /Contents 5 0 R >>'.encode(),
+        f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {size} {size}] /Resources << /Pattern << /P 4 0 R >> /ExtGState << /Outer 6 0 R >> /XObject << /Stencil 11 0 R >>{color_resource} >> /Contents 5 0 R >>'.encode(),
         stream(body, pattern), stream(content),
         f'<< /ca {number(F(alpha))} {mask_dictionary} >>'.encode(),
         b'null',
@@ -238,7 +241,10 @@ def definitions():
         ('very-small-step', {'step': ('1e-300', '1e-300')}),
         ('huge-origin', {'step': ('0.000001', '0.000001'), 'matrix': (1, 0, 0, 1, '1000000000000', '1000000000000')}),
     ]:
-        yield label, changes, 'limit'
+        # cs takes a colour-space name (8.6.8), not an inline array. Preserve
+        # this original malformed input as a Syntax control; a separate named
+        # resource case below exercises valid uncoloured over-cap placement.
+        yield label, changes, 'syntax' if label == 'uncolored-cell' else 'limit'
     yield 'singular', {'matrix': (1, 0, 0, 0, 0, 0)}, 'unsupported'
     yield 'determinant-underflow', {'matrix': ('1e-200', 0, 0, '1e-200', 0, 0)}, 'unsupported'
     yield 'zero-step', {'step': (0, '0.001')}, 'syntax'
@@ -288,3 +294,4 @@ def cases():
     yield fixture('offset-local-clip', {'bbox': (0, 0, 1200, 1200),
         'matrix': (1, 0, 0, 1, -1100, -1100), 'tiling_type': 2,
         'body': 'q 1100 1100 100 100 re W n 0 g 0 0 1200 1200 re f Q'})
+    yield fixture('uncolored-cell-valid', {'paint_type': 2, 'named_underlying': True}, 'limit')

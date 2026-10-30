@@ -13,7 +13,7 @@
   "source_files": {
     ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e",
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "benchmarks/probes/compatibility-gap-fixtures.json": "4df76c95cb302a72d040944b842178f9af7f892b31d89bb0e84747bd8adb191d",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "ec6043c46c5550c49de50c6d7ce717a51b1ec3e7a7b81a4f9b6a7a22c28810d1",
     "corpus/manifests/annotation_compat.json": "91f6e05cb4d9ad220e2d6be0f41b7d86047b839ec46f27430562d15bc2cd6323",
     "corpus/manifests/annotation_display.json": "2b2418bd5a8f5be67188a57bde3beaa642d029f2f280b4f754fcb659bf73b0ab",
     "corpus/manifests/annotation_empty_widgets.json": "8b205c65420c3057eca24a4d9e23b7391f54c32eea4af25fa8d20a448ca7d02f",
@@ -243,7 +243,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "3c36c4faf02f871b146a1f2964fb8289874350c5f261e36c803b14956681e800",
+    "references/requirements/content.json": "716e84b309883d9b612ea1e46a18c186d240abce603489cf6be332fba6ea0946",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -363,14 +363,14 @@
     "tools/fixturegen/recovery_jbig2_tables.py": "fbb6298b31889911541b6d1153c01a4cc6ee130f73cf7d2b8bda169211c8edfb",
     "tools/image_repair_observe.mjs": "51159b6caf9945fb8367ca6aa6de610de05124462de176058b51eadc3b75185e",
     "tools/image_repair_parity.mjs": "118fb24047bbb90b646b87e2eef7a1f9f133e2a1702b4acc6b5c21d3ed26f0e1",
-    "corpus/manifests/opaque_tiling.json": "2f4b53f9f99e05e9902047cc99477026ff493ce72b695c62b313ec585983e78b",
+    "corpus/manifests/opaque_tiling.json": "cdfda91ead49c27eef96e3b4e91a5fc22ded655b8a9df375b970f5b84c994e0d",
     "crates/pagura-paint/src/prepare/planner/patterns/cover.rs": "8291f6d0fa249aa3f33a57a9247333bbf16cd7e354a470208938ea30660bd0f3",
     "crates/pagura-paint/src/prepare/planner/patterns/cover/interval.rs": "a46d7c74c088cd7a39f0b761c4d6747c9117256800d740359639ab1788554bf3",
     "crates/pagura-paint/src/prepare/tests/patterns.rs": "d6c65e2b343df02644e77bc2d2e70093f1650f768ffc0642aec5bf54e6cbf3d5",
     "crates/pagura-reference/src/render.rs": "f5c1b383fd33a7e6b8904536c18c100cb6fc128012c79c6dacb97f00140f5425",
     "crates/pagura-reference/src/render/tiling/opaque.rs": "6f080712d1d48c5e5e985d28494074fafdcb1d5d1902e760327cc164b21f9a81",
     "docs/adr/0004-rendering-pipeline.md": "67d4f25a9cc9e6ff4060faadaacfa410dfc501621c15ef5b9276b025b86af2ed",
-    "tools/fixturegen/opaque_tiling.py": "2887317ee48fcf7f0157c90cef99015eb0ba3e5f9a3477f2779b8287d9284db6"
+    "tools/fixturegen/opaque_tiling.py": "fd0bd2421e1ab083271bd72c789769a9e28b5245a9dae7da7bd6da11daaadb07"
   },
   "capabilities": [
     {
@@ -1455,7 +1455,8 @@
         "opaque_tiling/raw-fill-working-range",
         "opaque_tiling/raw-clip-working-range",
         "opaque_tiling/raw-bbox-parser-working-range",
-        "opaque_tiling/offset-local-clip"
+        "opaque_tiling/offset-local-clip",
+        "opaque_tiling/uncolored-cell-valid"
       ],
       "comparisons": {
         "pdfium": "unprobed",

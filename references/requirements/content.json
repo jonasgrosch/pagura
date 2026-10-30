@@ -530,7 +530,8 @@
         "opaque_tiling/raw-fill-working-range",
         "opaque_tiling/raw-clip-working-range",
         "opaque_tiling/raw-bbox-parser-working-range",
-        "opaque_tiling/offset-local-clip"
+        "opaque_tiling/offset-local-clip",
+        "opaque_tiling/uncolored-cell-valid"
       ],
       "gaps": "singular/collapsed device lattices remain explicit; ineligible over-cap cells and uncertain complete-pixel placement retain their existing limits. Inherited image-stencil clips and uncoloured overrides exclude only the opaque-field certificate."
     },
