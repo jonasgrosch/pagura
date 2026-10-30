@@ -300,9 +300,16 @@ fn entropy_bits<'a>(
         .iter()
         .any(|c| matches!(c.storage, Storage::Native(_)))
     {
-        let held: usize = frame.components.iter().map(|c| c.storage.bytes()).sum();
+        // Copied segments are working memory beside the planes and the
+        // conversion's rows (ADR 0016).
+        let held: usize = frame
+            .components
+            .iter()
+            .map(|c| c.storage.bytes())
+            .sum::<usize>()
+            + frame.width as usize * super::transform::ROW_BYTES;
         bits.limit_stream(
-            limits.decoded_bytes.saturating_sub(held),
+            limits.decode_bytes.saturating_sub(held),
             limits.decode_work.saturating_sub(work),
         );
     }
