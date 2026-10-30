@@ -175,7 +175,7 @@
     "references/requirements/paint.json": "76d93b9e6579b261f55a39730ced3d602f5dc677bd1f842c6b386806106b9bb8",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
-    "references/requirements/recovery.json": "d48e91633e0f96f66c42c842cb2598e7306c20c7b2898f697cfd0a7933cc5e74",
+    "references/requirements/recovery.json": "e43c02a67c4fa9d251b71090f6befd0e962f040e4a9c1f004076cfbf8a7e1fea",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "b486b86c6c94cf97d8e0bd704cd8fd08d2aabc68745f2c48fe965fda9a1c4f46",
@@ -189,7 +189,7 @@
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
-    "corpus/manifests/recovery.json": "bc7e6b2e5168b6a4b7a7c629daa6f07fbbb657282fda9913c5633dbb0805902b"
+    "corpus/manifests/recovery.json": "92f7eb7dca8cc762b84a43b5742e80e687cfcc66029aaf8881f081f883c625a1"
   },
   "capabilities": [
     {
@@ -585,7 +585,8 @@
         "recovery/jpx-raw-gray-opacity",
         "recovery/jpx-raw-rgb-opacity",
         "recovery/jpx-raw-gray-truncated",
-        "recovery/jpx-raw-rgb-truncated"
+        "recovery/jpx-raw-rgb-truncated",
+        "recovery/jpx-raw-rgb-subsampled"
       ],
       "comparisons": {
         "pdfium": "unprobed",

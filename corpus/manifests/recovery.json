@@ -139,6 +139,28 @@
       "render_error": "syntax"
     },
     {
+      "id": "recovery/jpx-raw-rgb-subsampled",
+      "kind": "pdf",
+      "description": "jpx raw rgb subsampled",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb-subsampled.pdf",
+      "sha256": "9ed158ca3447533b5d88dda145bdb66968e77e24fe2b8f90fc1e51d5cd6e8a78",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.raw-codestream"
+      ],
+      "oracle": "corpus/generated/recovery/jpx-raw-rgb-subsampled.ppm",
+      "oracle_sha256": "0a086379e71520a69daab6f18915bc34d79084dba6b1fef1064140285cf05340",
+      "dpi": 72,
+      "width": 4,
+      "height": 4,
+      "tolerance": 0
+    },
+    {
       "id": "recovery/pattern-coloured-base-no-operands",
       "kind": "pdf",
       "description": "pattern coloured base no operands",
