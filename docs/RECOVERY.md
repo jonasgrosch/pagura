@@ -24,6 +24,16 @@ older protocol diagnostic snapshots contain repairs only.
 
 Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
+- `jbig2.unused-aggregation-table` (T.88 7.4.2.1.1, bit 7): a Huffman
+  symbol dictionary with refinement/aggregation disabled may select an unused
+  aggregation table. Repair keeps that selector and still consumes, validates
+  and charges its custom table. Missing, extra, wrong-role or malformed tables,
+  other forbidden flag bits, active aggregation and arithmetic coding retain
+  their checks. The first occurrence in decoding order (Globals before page)
+  is reported; a reused diagnostic sink retains its first occurrence. PDF
+  diagnostics identify the actual Globals/image stream. Strict still rejects.
+  No partial bitmap is returned after any subsequent failure.
+
 - `jbig2.page-capabilities` (T.88 7.4.8.5, bits 1 and 5): complete
   auxiliary/refinement region segments override contradicting page capability
   declarations. This is a reported viewing policy, not conforming input.

@@ -9,7 +9,9 @@ use super::{
     symbol::{Dictionary, Retained, Settings},
     text::Config,
 };
-use pagura_core::{Error, Limits, Position, Result};
+use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Result};
+
+const AGGREGATION_TABLE_SELECTION: u16 = 1 << 7;
 use std::rc::Rc;
 
 struct Header {
@@ -24,12 +26,30 @@ struct Header {
     added: usize,
 }
 impl Header {
-    fn read(reader: &mut Reader<'_>, custom: &[Rc<Table>]) -> Result<Self> {
+    fn read(
+        reader: &mut Reader<'_>,
+        custom: &[Rc<Table>],
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Self> {
+        let position = reader.position();
         let flags = reader.u16()?;
         let aggregation = flags & 2 != 0;
-        if flags & 0xec00 != 0 || !aggregation && flags & 0x1380 != 0 {
+        if flags & 0xec00 != 0
+            || !aggregation && flags & (0x1380 & !AGGREGATION_TABLE_SELECTION) != 0
+        {
             return Err(Error::syntax("invalid JBIG2 Huffman dictionary flags"));
         }
+        if !aggregation && flags & AGGREGATION_TABLE_SELECTION != 0 {
+            diagnostics.repair_once(
+                Diagnostic::new(
+                    super::repairs::UNUSED_AGGREGATION_TABLE,
+                    "nonaggregating JBIG2 Huffman dictionary selects an unused aggregation table (T.88 7.4.2.1.1)",
+                )
+                .at(position),
+            )?;
+        }
+        // Keep the raw selector: its otherwise-unused table still consumes
+        // its ordinary reference, syntax checks, storage and work budget.
         let mut custom = custom.iter();
         let heights = huffman_text::select((flags >> 2) & 3, &[4, 5], &mut custom, false)?;
         let widths = huffman_text::select((flags >> 4) & 3, &[2, 3], &mut custom, true)?;
@@ -275,9 +295,10 @@ pub(super) fn decode(
     retained: Option<&Retained>,
     limits: &Limits,
     work: &mut Work,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Dictionary> {
     work.operations(super::huffman::STANDARD_ROWS, limits)?;
-    let header = Header::read(reader, custom)?;
+    let header = Header::read(reader, custom, diagnostics)?;
     let mut builder = Builder::new(header, imported, retained, limits)?;
     let base = match reader.position() {
         Position::Buffer(n) => n,

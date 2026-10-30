@@ -8,6 +8,9 @@ on:
       - 'tools/image_repair_observe.mjs'
       - 'benchmarks/probes/image-repair-cases.json'
       - 'tools/fixturegen/recovery.py'
+      - 'tools/fixturegen/recovery_jbig2_tables.py'
+      - 'corpus/generated/recovery_jbig2_tables/**'
+      - 'corpus/manifests/recovery_jbig2_tables.json'
       - '.github/workflows/image-repair-parity.yml'
   workflow_dispatch:
 permissions:

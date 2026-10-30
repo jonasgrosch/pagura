@@ -25,7 +25,7 @@ mod symbol;
 mod tests;
 mod text;
 
-use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Recovery, Result};
+use pagura_core::{Diagnostic, Diagnostics, Error, Limits, ObjectId, Position, Recovery, Result};
 use reader::Reader;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -72,7 +72,7 @@ pub mod tags {
     pub const UNKNOWN_LENGTH: Feature = Feature::new("jbig2.unknown-length");
 }
 
-/// Stable repairs of malformed JBIG2 page declarations (ADR 0003).
+/// Stable repairs of malformed JBIG2 metadata (ADR 0003).
 pub mod repairs {
     use pagura_core::Repair;
 
@@ -80,8 +80,13 @@ pub mod repairs {
     /// (T.88 7.4.8.5, bits 1 and 5). Actual region syntax stays authoritative.
     pub const PAGE_CAPABILITIES: Repair = Repair::new("jbig2.page-capabilities");
 
+    /// A Huffman dictionary without aggregation selects an unused custom
+    /// aggregation table (T.88 7.4.2.1.1, bit 7). The table is still parsed,
+    /// validated and charged; genuine aggregation keeps its selected table.
+    pub const UNUSED_AGGREGATION_TABLE: Repair = Repair::new("jbig2.unused-aggregation-table");
+
     /// Every repair owned by the JBIG2 decoder.
-    pub const ALL: &[Repair] = &[PAGE_CAPABILITIES];
+    pub const ALL: &[Repair] = &[PAGE_CAPABILITIES, UNUSED_AGGREGATION_TABLE];
 }
 
 /// A decoded page bitmap: 1-bit rows, MSB first, padded to bytes, 1 = black.
@@ -119,19 +124,34 @@ pub fn decode(data: &[u8], globals: Option<&[u8]>, limits: &Limits) -> Result<Bi
     )
 }
 
-/// Decodes PDF page 1 with reported page-capability repair (T.88 7.4.8.5).
+/// Decodes PDF page 1 with reported metadata repairs (T.88 7.4.8.5, 7.4.2.1.1).
 /// In repair mode, complete auxiliary/refinement regions may contradict the
-/// page's capability bits. Region data, referrals, combination operators,
+/// page's capability bits. A nonaggregating Huffman dictionary may select an
+/// unused aggregation table, which retains full validation and accounting.
+/// Region data, referrals, combination operators,
 /// framing and every work/memory limit retain their normal validation.
 ///
 /// # Errors
-/// As [`decode`]; strict diagnostics reject a capability mismatch. No partial
-/// bitmap is returned if any subsequent validation or decoding fails.
+/// As [`decode`]; strict diagnostics reject each reported deviation. No partial
+/// bitmap is returned if any subsequent validation or decoding fails. Each
+/// repair keeps its first occurrence in decoding order (Globals before page);
+/// reusing a diagnostic sink does not append that repair again.
 pub fn decode_with_diagnostics(
     data: &[u8],
     globals: Option<&[u8]>,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
+) -> Result<Bitmap> {
+    decode_with_globals_origin(data, globals, limits, diagnostics, None)
+}
+
+/// Preserves the optional PDF Globals object when placing nested diagnostics.
+pub(crate) fn decode_with_globals_origin(
+    data: &[u8],
+    globals: Option<&[u8]>,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+    globals_object: Option<ObjectId>,
 ) -> Result<Bitmap> {
     let total = data
         .len()
@@ -140,9 +160,10 @@ pub fn decode_with_diagnostics(
     if total > limits.stream_bytes || total > limits.file_bytes {
         return Err(Error::limit("JBIG2 input exceeds byte budget").at(Position::Buffer(0)));
     }
+    let mut globals_diagnostics = Diagnostics::new(diagnostics.mode());
     let mut state = State {
         limits,
-        diagnostics,
+        diagnostics: &mut globals_diagnostics,
         page: None,
         segments: BTreeMap::new(),
         bytes: 0,
@@ -156,12 +177,28 @@ pub fn decode_with_diagnostics(
         attached: None,
     };
     if let Some(globals) = globals {
-        state.stream(globals, true)?;
+        let position = globals_object.map_or(Position::Unknown, |object| Position::Stream {
+            object,
+            offset: 0,
+        });
+        let result = state.stream(globals, true);
+        let collected = state.diagnostics.take();
+        state.diagnostics = diagnostics;
+        // Preserve the caller's first occurrence when its sink is reused,
+        // just as the main stream's repair_once does for the same tag.
+        for diagnostic in collected {
+            state
+                .diagnostics
+                .repair_once(diagnostic.in_object_opt(globals_object).within(position))?;
+        }
+        result.map_err(|error| error.in_object_opt(globals_object).within(position))?;
         // PDF 7.4.7/Table 12 supplies globals independently of each page stream.
         // Their decoded resources remain available for every page using them;
         // retention still governs referrals within either individual stream.
         state.unavailable.clear();
         state.attached = None;
+    } else {
+        state.diagnostics = diagnostics;
     }
     state.stream(data, false)?;
     let page = state.page.ok_or_else(|| {
@@ -468,6 +505,7 @@ impl State<'_> {
                 retained,
                 &limits,
                 &mut self.work,
+                self.diagnostics,
             )?
         } else {
             if references

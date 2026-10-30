@@ -241,6 +241,63 @@
         "paint/text-end-without-begin"
       ],
       "rule": "Unmatched Q and ET leave state unchanged only under reported Repair permission. Unfinished operands, text objects, paths and compatibility sections, unknown operators, crossed state boundaries and resource limits still fail."
+    },
+    {
+      "id": "recovery-jbig2-unused-aggregation",
+      "reference": "itu-t88-2000",
+      "clauses": [
+        "7.4.2.1.1"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery_jbig2_tables/native-gray-valid",
+        "recovery_jbig2_tables/gray-valid",
+        "recovery_jbig2_tables/native-gray-unused",
+        "recovery_jbig2_tables/gray-unused",
+        "recovery_jbig2_tables/native-all-custom-valid",
+        "recovery_jbig2_tables/all-custom-valid",
+        "recovery_jbig2_tables/native-all-custom-unused",
+        "recovery_jbig2_tables/all-custom-unused",
+        "recovery_jbig2_tables/native-stencil-valid",
+        "recovery_jbig2_tables/stencil-valid",
+        "recovery_jbig2_tables/native-stencil-unused",
+        "recovery_jbig2_tables/stencil-unused",
+        "recovery_jbig2_tables/native-globals-valid",
+        "recovery_jbig2_tables/globals-valid",
+        "recovery_jbig2_tables/native-globals-unused",
+        "recovery_jbig2_tables/globals-unused",
+        "recovery_jbig2_tables/native-used-aggregation-custom",
+        "recovery_jbig2_tables/used-aggregation-custom",
+        "recovery_jbig2_tables/native-hostile-missing-table",
+        "recovery_jbig2_tables/hostile-missing-table",
+        "recovery_jbig2_tables/native-hostile-extra-table",
+        "recovery_jbig2_tables/hostile-extra-table",
+        "recovery_jbig2_tables/native-hostile-non-table-referral",
+        "recovery_jbig2_tables/hostile-non-table-referral",
+        "recovery_jbig2_tables/native-hostile-reserved-table",
+        "recovery_jbig2_tables/hostile-reserved-table",
+        "recovery_jbig2_tables/native-hostile-truncated-table",
+        "recovery_jbig2_tables/hostile-truncated-table",
+        "recovery_jbig2_tables/native-hostile-oob-unused-table",
+        "recovery_jbig2_tables/hostile-oob-unused-table",
+        "recovery_jbig2_tables/native-hostile-context-used",
+        "recovery_jbig2_tables/hostile-context-used",
+        "recovery_jbig2_tables/native-hostile-arithmetic-selector",
+        "recovery_jbig2_tables/hostile-arithmetic-selector",
+        "recovery_jbig2_tables/native-hostile-used-missing-table",
+        "recovery_jbig2_tables/hostile-used-missing-table",
+        "recovery_jbig2_tables/native-repeated-main-valid",
+        "recovery_jbig2_tables/repeated-main-valid",
+        "recovery_jbig2_tables/native-repeated-main-unused",
+        "recovery_jbig2_tables/repeated-main-unused",
+        "recovery_jbig2_tables/native-repeated-both-valid",
+        "recovery_jbig2_tables/repeated-both-valid",
+        "recovery_jbig2_tables/native-repeated-both-unused",
+        "recovery_jbig2_tables/repeated-both-unused",
+        "recovery_jbig2_tables/native-hostile-repeated-missing-table",
+        "recovery_jbig2_tables/hostile-repeated-missing-table"
+      ],
+      "rule": "Reported viewing policy: only Huffman symbol dictionaries with SDREFAGG=0 may retain the otherwise invalid, unused bit7 aggregation-table selector. Strict rejects it. Its raw selector still selects and validates a referenced custom table, including OOB eligibility, exact table counts and ordinary referral rules; parse, retained storage and work remain charged. Genuine aggregation and all other flag restrictions are unchanged. The first occurrence per diagnostics sink is reported in decode order (Globals before page); reuse coalesces the tag and preserves its first source location. Independent literal matrices cover main/Globals, repeated dictionaries, grayscale/stencils, genuine aggregation and malformed/limited controls."
     }
   ]
 }

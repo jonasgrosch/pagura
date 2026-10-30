@@ -1,6 +1,6 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
 use crate::{DecodedImage, Samples, dct, jbig2, parameters as p};
-use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
+use pagura_core::{Diagnostics, Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::Document;
 
 /// Samples of unfiltered image data. Whole bytes of exactly the declared
@@ -29,7 +29,7 @@ pub(crate) fn jbig2_globals<'a>(
     document: &'a Document,
     dict: &Dictionary,
     params: Option<&Dictionary>,
-) -> Result<Option<std::borrow::Cow<'a, [u8]>>> {
+) -> Result<Option<(std::borrow::Cow<'a, [u8]>, ObjectId)>> {
     // Preserve identity for stream-valued parameters using the original
     // dictionary; resolved filter parameters hold only object values.
     let original = dict
@@ -48,7 +48,9 @@ pub(crate) fn jbig2_globals<'a>(
             let id = v
                 .as_reference()
                 .ok_or(Error::syntax("JBIG2Globals must reference a stream"))?;
-            document.stream_data(document.object(id)?)
+            document
+                .stream_data(document.object(id)?)
+                .map(|data| (data, id))
         })
         .transpose()
 }
@@ -56,12 +58,14 @@ pub(crate) fn jbig2_globals<'a>(
 /// The samples of a JBIG2 image of `width` × `height` with `globals`.
 pub(crate) fn jbig2_samples(
     data: &[u8],
-    globals: Option<&[u8]>,
+    globals: Option<(&[u8], ObjectId)>,
     (width, height): (u32, u32),
     limits: &pagura_core::Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<Samples> {
-    let decoded = jbig2::decode_with_diagnostics(data, globals, limits, diagnostics)?;
+    let (globals, globals_object) = globals.unzip();
+    let decoded =
+        jbig2::decode_with_globals_origin(data, globals, limits, diagnostics, globals_object)?;
     if decoded.width != width || decoded.height != height {
         return Err(Error::syntax(
             "JBIG2 dimensions disagree with image dictionary",
