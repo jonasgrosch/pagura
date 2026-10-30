@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "b050b619ef61977e8d19f87c33213ca6bd0cb047",
+  "audited_revision": "9171917c8e9c5f67202d8dc8b3521a1ed3f90fa4",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -15,7 +15,7 @@
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
     "benchmarks/probes/compatibility-gap-fixtures.json": "4e472880ae540cbf6bd2f70c83c8686949d1d3d9d526f1062b3a1ff4816533da",
     "corpus/manifests/content.json": "e4d1691c56a0a34ef967f2e7d46fa42f70fb244198a50cf923c9273b838bf491",
-    "corpus/manifests/font_bindings.json": "a60a0fcad9897ba4cea5cbd4d4d72f1023e875031e34c1381dae2396a1bcee1a",
+    "corpus/manifests/font_bindings.json": "5a5314a80d9b9aae321b6031968ed1cd9097c8f8d63169fafcc3180dc78d58cc",
     "corpus/manifests/font_collections.json": "7ae986aa24565a9edaee17b94a15fdb3190a1bbcc28e5fc09a10eac1b0d3dc37",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
@@ -201,7 +201,7 @@
     "tools/check.py": "4c148dcbf9942c1c79f9e09308548a72bc1cf7d05aca7252a0d3b1a61916ce65",
     "tools/compatibility_gap_parity.mjs": "1e9426e693a13a523a931ab8aff8300e30cd21e274432f6be0cb986ee83e149c",
     "tools/fixturegen/font.py": "18b57cf5ceac3874d7f8641c0d361e857d3c21e2257353eadd51b08176fd9c5b",
-    "tools/fixturegen/font_bindings.py": "c3446adc9fd63897f1410d4fec3701e35fa20a0472469041f70b4569b7b5f86f",
+    "tools/fixturegen/font_bindings.py": "0ffc33d7db6e802aab012f0e5b13e182c87c16b0e53239375f25501c736a38a8",
     "tools/fixturegen/font_collections.py": "e4ef683ffdab5f862ea3e3c5bbfec838faf0be873984d14214347135cc3f4c48",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
     "web/client.mjs": "187b849419860bc64478a30fe7ddb0069e17b89f037528dda1454a1bf07d18f8",
