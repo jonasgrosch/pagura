@@ -5,47 +5,79 @@ use pagura::{Document, ErrorKind, OpenOptions, RenderOptions, Tile};
 use pagura_testkit::{Json, Manifest, assert_bytes_eq, fixture};
 
 #[test]
-fn nested_tiling_under_a_patterned_stencil_fails_before_any_output_in_both_modes() {
+fn nested_patterned_glyph_stays_explicit_before_any_output_in_both_modes() {
     use pagura::{Recovery, RenderContext};
     use std::sync::Arc;
 
-    for recovery in [Recovery::Strict, Recovery::Repair] {
-        let document = Arc::new(
-            Document::open(
-                fixture("paint_stencils", "tiling-nested-ordinary-refused.pdf"),
-                &OpenOptions {
-                    recovery,
-                    ..OpenOptions::default()
+    for name in ["glyph-quadratic-refused", "glyph-tiny-quadratics-refused"] {
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let document = Arc::new(
+                Document::open(
+                    fixture("paint_nested_stencils", &format!("{name}.pdf")),
+                    &OpenOptions {
+                        recovery,
+                        ..OpenOptions::default()
+                    },
+                )
+                .unwrap(),
+            );
+            let context = RenderContext::new(document);
+            let page = context.document().page(0).unwrap();
+            let scene = context.scene(page).unwrap();
+            let mut called = false;
+            let result = context.render_bands(
+                &scene,
+                &RenderOptions::default(),
+                None,
+                |_| false,
+                |_, _| {
+                    called = true;
+                    Ok::<(), ()>(())
                 },
-            )
-            .unwrap(),
-        );
-        let context = RenderContext::new(document);
-        let page = context.document().page(0).unwrap();
-        let scene = context.scene(page).unwrap();
-        let mut called = false;
-        let result = context.render_bands(
-            &scene,
-            &RenderOptions::default(),
-            None,
-            |_| false,
-            |_, _| {
-                called = true;
-                Ok::<(), ()>(())
+            );
+            let error = result.unwrap_err();
+            assert_eq!(
+                error.feature().map(pagura::Feature::as_str),
+                Some("pattern.image-mask")
+            );
+            assert!(!called, "unsupported geometry reached the output consumer");
+            assert_eq!(
+                context
+                    .render_page(page, &RenderOptions::default())
+                    .unwrap_err()
+                    .feature(),
+                error.feature()
+            );
+        }
+    }
+}
+
+#[test]
+fn nested_tiling_preserves_the_independent_half_area_in_both_modes() {
+    use pagura::Recovery;
+
+    let expected = fixture("paint_stencils", "tiling-flat-half-area.ppm");
+    for recovery in [Recovery::Strict, Recovery::Repair] {
+        let document = Document::open(
+            fixture("paint_stencils", "tiling-nested-ordinary-refused.pdf"),
+            &OpenOptions {
+                recovery,
+                ..OpenOptions::default()
             },
-        );
-        let error = result.unwrap_err();
-        assert_eq!(
-            error.feature().map(pagura::Feature::as_str),
-            Some("pattern.image-mask")
-        );
-        assert!(!called, "unsupported geometry reached the output consumer");
-        assert_eq!(
-            context
-                .render_page(page, &RenderOptions::default())
-                .unwrap_err()
-                .feature(),
-            error.feature()
+        )
+        .unwrap();
+        let actual = ppm(&pagura::render_page(
+            &document,
+            document.page(0).unwrap(),
+            &RenderOptions::default(),
+        )
+        .unwrap());
+        assert_eq!(actual.len(), expected.len());
+        assert!(
+            actual
+                .iter()
+                .zip(&expected)
+                .all(|(a, e)| a.abs_diff(*e) <= 1)
         );
     }
 }

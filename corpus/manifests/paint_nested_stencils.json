@@ -1,0 +1,438 @@
+{
+  "schema": 2,
+  "area": "paint_nested_stencils",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "paint_nested_stencils/fill-one-level",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-one-level.pdf",
+      "sha256": "2fcf9636bd77285c24a9321cb8734805a6fa1a32a14ebb73f6d093dc19715953",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-one-level.ppm",
+      "oracle_sha256": "38bb727b17282f89d3fda551e9675fc3f124eaf146994c84c86554c60e5e565f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-three-levels",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-three-levels.pdf",
+      "sha256": "2e7cffdf1a268980b9bb438c04579e0e024ff8cdccd6538a4d83d6c55506609d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-three-levels.ppm",
+      "oracle_sha256": "7d98d8a4d96e77572a5a8412310b7beb2671fa920601ee185547cb1e79cb99e1",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-eight-levels",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-eight-levels.pdf",
+      "sha256": "15db944e2adb9fd32a8ed995cab0a9fb44b0b01655149e5b82bb24f722744b09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-eight-levels.ppm",
+      "oracle_sha256": "7d98d8a4d96e77572a5a8412310b7beb2671fa920601ee185547cb1e79cb99e1",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-one-level-flat",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-one-level-flat.pdf",
+      "sha256": "ad1e59e848d42b7788d44e626caf6008d5336722aeb4d240ebbae1330ce9da9d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-one-level-flat.ppm",
+      "oracle_sha256": "38bb727b17282f89d3fda551e9675fc3f124eaf146994c84c86554c60e5e565f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-three-levels-flat",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-three-levels-flat.pdf",
+      "sha256": "d2670a66934822edb40258e8d8b31bbfdfaebdb5ca78ddadf0e2e2c5d7524392",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-three-levels-flat.ppm",
+      "oracle_sha256": "7d98d8a4d96e77572a5a8412310b7beb2671fa920601ee185547cb1e79cb99e1",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-eight-levels-flat",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-eight-levels-flat.pdf",
+      "sha256": "bfccf6e22e406492e03af89757e2755e1cddfbfee29146b7d35382b33af63a3e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-eight-levels-flat.ppm",
+      "oracle_sha256": "7d98d8a4d96e77572a5a8412310b7beb2671fa920601ee185547cb1e79cb99e1",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-triangle-clip",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-triangle-clip.pdf",
+      "sha256": "ffd24b51ce9ab112e97d2aa6b2e31132a1d94dfd3af12211ba6e81a52b372602",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-triangle-clip.ppm",
+      "oracle_sha256": "c35b35200e3017eea0f30d1f2d43fe071820a04ac26a75a3c172570316a5a004",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-evenodd",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-evenodd.pdf",
+      "sha256": "10d8957e9235007a8c3aa9668170d8412570ac5ee70bdeb6f023587e33f5a6d6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-evenodd.ppm",
+      "oracle_sha256": "5a132a8031d11ddb34e437880107b5f1a2c5bff8836434aa68b8952a23d32560",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-alpha",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-alpha.pdf",
+      "sha256": "b3bbee699ead64ce1155e875603b9cc6203edaf0f5cf277e4c9cadb2af72d2c6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-alpha.ppm",
+      "oracle_sha256": "4165ccca1b978a965cbe88e0308c1353d69ad6f7a72eeca85c5dc1d797adff49",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-isolated-group",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-isolated-group.pdf",
+      "sha256": "eeffeb07d203b1813f77be594151e2d11e36e437dd2633a8232d44095fd65afc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-isolated-group.ppm",
+      "oracle_sha256": "ed9378c0efcc2a67b4d6b07544e1b5a7acddc95259ecd72c90f2c4a74b33da2e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-soft-mask",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-soft-mask.pdf",
+      "sha256": "0b5df9fc4db845ecbdd58fe6c17f68f5854108e10aa5d7edd1082682f5b43889",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-soft-mask.ppm",
+      "oracle_sha256": "4165ccca1b978a965cbe88e0308c1353d69ad6f7a72eeca85c5dc1d797adff49",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-uncolored-leaf",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-uncolored-leaf.pdf",
+      "sha256": "36fbced9f3311e63d080b5b082c3619c16704b0422cea6c7831d987e32fe5336",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-uncolored-leaf.ppm",
+      "oracle_sha256": "8d0723f522840254ad50a66752b47eab8507996cf39aeef7f6f90fb5351be8b5",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-source-order",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-source-order.pdf",
+      "sha256": "e1805a080f24afde7075ae5a3260db8e903c8e4ebcabe3312ca0ce8725ddcc41",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-source-order.ppm",
+      "oracle_sha256": "f3c048702c106cc03d267f465e66536479fbaeffc80eb19cdddc5768cd4d5723",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/fill-source-order-alpha",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/fill-source-order-alpha.pdf",
+      "sha256": "a4ad31c30e51c7ca429e454c5bd59d8d37b8639a336af051f3df36f98a7739ee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/fill-source-order-alpha.ppm",
+      "oracle_sha256": "ee72f5a77e375e068a1ef71f688bfa892899e00ed368c57f706270b8f3330e64",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/stroke-butt",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/stroke-butt.pdf",
+      "sha256": "f03ce14dd3e874edd05fad1ba326f3617eec6b449ac6689ed1c8e17830ead686",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/stroke-butt.ppm",
+      "oracle_sha256": "37ad2c74dd1be0ee6c4df06f40fa02b51d762295a9fe58c85427f34a3b265281",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/stroke-hairline",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/stroke-hairline.pdf",
+      "sha256": "bbadff264c2c875af74253592c0796f029441c5157d765e7ed1d7834be33bd62",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/stroke-hairline.ppm",
+      "oracle_sha256": "b709af3f876a125697a25b196820712c053d6069faf2b5247c4a4c36fc57e08e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/stroke-butt-flat",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/stroke-butt-flat.pdf",
+      "sha256": "abdec57e72e243da74b36799866a1b0e1688aa3ee3c0d835417f47f0659e6653",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/stroke-butt-flat.ppm",
+      "oracle_sha256": "37ad2c74dd1be0ee6c4df06f40fa02b51d762295a9fe58c85427f34a3b265281",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/stroke-nonuniform-pen",
+      "kind": "pdf",
+      "description": "Joint inherited stencil, ancestor fill/stroke and clip geometry through ordinary tiling",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/stroke-nonuniform-pen.pdf",
+      "sha256": "0ac23c554bd743f0640a37c5256d18402157e30440ffcff6a3e8271e8e526f85",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/stroke-nonuniform-pen.ppm",
+      "oracle_sha256": "7e1471ab94c0df4d7bde8642103cb22845380486072607533f352fce76459a01",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/glyph-linear",
+      "kind": "pdf",
+      "description": "Curved patterned glyphs retain true quadratics; linear glyph outlines propagate their exact geometry",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/glyph-linear.pdf",
+      "sha256": "b3359a530734c58b59b9a5f516ef12bd4aefe0e1196e3c9a74cc9fccac653312",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/glyph-linear.ppm",
+      "oracle_sha256": "51cf3bd30fd1cff6b8853d28e112ada4935116d11e73e74ac6a08ff658f28ef6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/glyph-quadratic-refused",
+      "kind": "pdf",
+      "description": "Curved patterned glyphs retain true quadratics; linear glyph outlines propagate their exact geometry",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/glyph-quadratic-refused.pdf",
+      "sha256": "3891753f77527296efef4dae16929a23db2b8a32fed0a4c7b01dc937b8852bc2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.image-mask"
+    },
+    {
+      "id": "paint_nested_stencils/glyph-tiny-quadratics-control",
+      "kind": "pdf",
+      "description": "101 sub-flattener-tolerance quadratic glyph slivers have exact total area 101/1000 pixel; preserve true curves",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/glyph-tiny-quadratics-control.pdf",
+      "sha256": "9b8d83db9e0338c0070e3ac5c932d668596efbf8d727d3cc650b0b830c32451c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_nested_stencils/glyph-tiny-quadratics-control.ppm",
+      "oracle_sha256": "e12899e833fcfeeac99c61bee9ec251e3d96206ddd3581c9e0ac1f19308b4c55",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_nested_stencils/glyph-tiny-quadratics-refused",
+      "kind": "pdf",
+      "description": "101 sub-flattener-tolerance quadratic glyph slivers have exact total area 101/1000 pixel; preserve true curves",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_nested_stencils/glyph-tiny-quadratics-refused.pdf",
+      "sha256": "c4099110982d852509c50bdd1f4efcae0ad02f08465fec3813fe47f1349caa19",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.image-mask"
+    }
+  ]
+}

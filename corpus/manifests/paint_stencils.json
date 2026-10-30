@@ -512,8 +512,8 @@
     {
       "id": "paint_stencils/tiling-nested-ordinary-refused",
       "kind": "pdf",
-      "description": "Valid ordinary nested tiling is explicitly unsupported under an inherited stencil",
-      "expected": "unsupported",
+      "description": "Ordinary nested tiling integrates inherited stencil geometry once",
+      "expected": "render",
       "requirements": [
         "paint-image-masks"
       ],
@@ -522,7 +522,12 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "pattern.image-mask"
+      "oracle": "corpus/generated/paint_stencils/tiling-nested-ordinary-refused.ppm",
+      "oracle_sha256": "6ad651bb0821c59c0644e93e9ce723459a7d377aefed9bd5ef436dad341f6762",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
     },
     {
       "id": "paint_stencils/tiling-nested-image-stencil",
