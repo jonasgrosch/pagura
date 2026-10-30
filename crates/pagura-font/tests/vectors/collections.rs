@@ -51,6 +51,7 @@ fn indices_and_ordered_names_select_shared_glyf_and_cff_faces() {
                     FontFace::PostScriptNames(&[b"absent", name]),
                 ] {
                     let font = selected(bytes.clone(), format, face, &Limits::default()).unwrap();
+                    assert_eq!(font.has_cff_outlines(), kind == "cff");
                     assert_eq!(font.data().as_ptr(), bytes.as_ptr());
                     assert_eq!(font.data(), bytes.as_ref());
                     rectangle(&font, index);
@@ -157,4 +158,18 @@ fn collection_selection_and_input_limits_are_explicit() {
             "font collection name not found"
         )
     );
+}
+
+#[test]
+fn collection_outline_family_is_independent_of_the_container_hint() {
+    for kind in ["glyf", "cff"] {
+        let font = selected(
+            source(kind, "v1"),
+            FontFormat::TrueType,
+            FontFace::Index(0),
+            &Limits::default(),
+        )
+        .unwrap();
+        assert_eq!(font.has_cff_outlines(), kind == "cff");
+    }
 }

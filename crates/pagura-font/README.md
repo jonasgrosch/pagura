@@ -17,7 +17,8 @@ TN 5015 supplements such as Type 1 lenIV -1, and TN 5040 PFB packaging remain
 Type 1 book verifies binary/hex eexec, both ciphers, and lenIV 4/0/1.
 No external known-answer font dataset has been used.
 
-The public interface returns glyph-space paths, horizontal advances, font
+The public interface exposes the parsed CFF/glyf family independently of the
+container hint, and returns glyph-space paths, horizontal advances, font
 matrices, name and CID mappings, cmap selections, and built-in encodings.
 Bytes and parsed metadata are shared across clones; `FontBytes::Static` data,
 such as bundled `include_bytes!` fonts, is used in place without a copy.
@@ -45,7 +46,12 @@ Implemented formats:
   PostScript-name match, retaining shared tables at their original file-relative
   offsets. Missing/ambiguous names and unknown versions remain errors. PDF
   name-based selection is the reported `font.collection-face` reader policy
-  in ADR 0009; Strict PDF bindings reject that policy.
+  in ADR 0009; Strict PDF bindings reject that policy. PDF collection admission
+  validates the selected family/namespace against Table 124 before glyph
+  lookup: TrueType/CID2 use glyf, Type1 uses named CFF, and CID0 uses CFF
+  charset CIDs or direct GIDs. Explicit CID2 maps cannot be bypassed by a
+  selected CID-CFF face. Standalone contradictory-family validation is a
+  separate gap.
 - Bare CFF and OpenType CFF: checked INDEX/DICT data, ISOAdobe and explicit
   charsets, all 391 standard SIDs, Expert/ExpertSubset predefined charsets,
   StandardEncoding/ExpertEncoding and explicit encodings with supplements,

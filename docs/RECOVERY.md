@@ -107,7 +107,8 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
 - `font.collection-face` (PDF Table 124, ADR 0009): PDF supplies no collection
   face index. Repair selects one unique FontName/BaseFont PostScript-name
-  match from a valid TTC/OTC, including valid subset-tag removal. Strict
+  match from a valid TTC/OTC, including valid subset-tag removal, after
+  validating its selected outline family and glyph namespace (Table 124). Strict
   rejects the PDF reader policy; the native font API accepts valid collections.
 
 - `font.embedded-unusable` (9.9; ADR 0009): an embedded program that still

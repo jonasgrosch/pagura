@@ -80,3 +80,70 @@ fn collection_name_scan_budget_precedes_scene_preparation() {
     let error = context.scene(page).unwrap_err();
     assert_eq!(error.kind, pagura::ErrorKind::Limit);
 }
+
+#[test]
+fn collection_faces_preserve_pdf_outline_families_and_explicit_glyph_maps() {
+    let mut rendered = 0;
+    let mut refused = 0;
+    for case in Manifest::load("font_collection_families").cases() {
+        let name = case.name();
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let document = Document::open(
+                fixture("font_collection_families", &format!("{name}.pdf")),
+                &OpenOptions {
+                    recovery,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            let original = document
+                .object(pagura::ObjectId::new(6, 0))
+                .unwrap()
+                .value()
+                .clone();
+            let result = pagura::render_page(
+                &document,
+                document.page(0).unwrap(),
+                &RenderOptions::default(),
+            );
+            if case.string("expected") == Some("open") {
+                let error = result.unwrap_err();
+                assert_eq!(error.kind, pagura::ErrorKind::Syntax, "{name}: {error}");
+                assert_eq!(
+                    error.message, "font collection face disagrees with PDF font subtype",
+                    "{name}"
+                );
+                refused += 1;
+            } else if recovery == Recovery::Strict {
+                let error = result.unwrap_err();
+                assert_eq!(error.repair, Some(COLLECTION_FACE), "{name}: {error}");
+            } else {
+                let pixels = result.unwrap_or_else(|error| panic!("{name}: {error}"));
+                let actual = pagura_testkit::ppm(
+                    pixels.width(),
+                    pixels.height(),
+                    &pixels.to_rgb_over(pagura::Rgba8::WHITE),
+                );
+                assert_eq!(
+                    actual,
+                    fixture("font_collection_families", &format!("{name}.ppm")),
+                    "{name}"
+                );
+                rendered += 1;
+            }
+            assert_eq!(
+                document
+                    .object(pagura::ObjectId::new(6, 0))
+                    .unwrap()
+                    .value(),
+                &original
+            );
+        }
+    }
+    assert_eq!(rendered, 5);
+    assert_eq!(refused, 16);
+    assert_ne!(
+        fixture("font_collection_families", "glyf-cid2-map0.ppm"),
+        fixture("font_collection_families", "glyf-cid2-map1.ppm")
+    );
+}

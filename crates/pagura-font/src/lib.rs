@@ -332,6 +332,17 @@ impl FontProgram {
         }
     }
 
+    /// Whether the selected program uses CFF/CFF2 charstrings, including
+    /// OpenType collection faces. This inspects the parsed outline family,
+    /// independently of the caller's container-format hint.
+    pub fn has_cff_outlines(&self) -> bool {
+        match self.parsed.as_ref() {
+            Program::Sfnt(program) => program.has_cff_outlines(),
+            Program::Cff(_) => true,
+            Program::Type1(_) => false,
+        }
+    }
+
     /// Whether glyphs are selected by CID (CID-keyed CFF).
     pub fn is_cid_keyed(&self) -> bool {
         match self.parsed.as_ref() {
