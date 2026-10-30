@@ -93,6 +93,7 @@ impl Planner<'_> {
                         separated: scope.separated,
                         masked: scope.masked,
                         paint: override_paint.clone().or_else(|| scope.paint.clone()),
+                        stencil_clip: scope.stencil_clip,
                         depth: scope.depth + 1,
                     };
                     self.children(&inner, &cell.children, budget)?;
