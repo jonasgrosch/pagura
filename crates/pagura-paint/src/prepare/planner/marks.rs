@@ -216,10 +216,10 @@ impl Planner<'_> {
         if culling.is_empty() {
             return Ok(());
         }
-        let mask = state
-            .soft_mask
-            .map(|id| self.mask_use(scope, id, budget))
-            .transpose()?;
+        let mask = match state.soft_mask {
+            Some(id) => Some(self.mask_use(scope, id, budget)?),
+            None => scope.mask,
+        };
         let Some(mut covered) = self.coverage(scope, spec, (culling, extra), budget)? else {
             return Ok(());
         };

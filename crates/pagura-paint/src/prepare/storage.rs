@@ -226,6 +226,9 @@ struct Context {
     /// The alpha of a folded group, which its member's multiplies; 1
     /// elsewhere.
     alpha: f64,
+    /// The soft mask of a folded group, a buffer, which its member
+    /// composites through when it has none of its own.
+    mask: Option<usize>,
     /// Content space to device pixels.
     transform: Transform,
 }
@@ -237,6 +240,7 @@ impl Context {
             masked: false,
             knockout: false,
             alpha: 1.0,
+            mask: None,
             transform,
         }
     }
@@ -248,6 +252,7 @@ impl Context {
             masked: true,
             knockout: false,
             alpha: 1.0,
+            mask: None,
             ..self
         }
     }
@@ -454,22 +459,11 @@ impl Survey<'_> {
                     continue;
                 }
             };
-            let state = state(scene, mark.state)?;
-            // A folded group's member composites at the group's alpha times
-            // its own.
-            let folded;
-            let state = if context.alpha == 1.0 {
-                state
-            } else {
-                folded = Composite {
-                    alpha: state.alpha * context.alpha,
-                    ..state.clone()
-                };
-                &folded
-            };
+            let state = folded(state(scene, mark.state)?, context);
+            let state = &*state;
             // Footprints matter for dynamic stores, and the extent of a
             // group, whose result is a dynamic store of its parent.
-            let (hulls, extent) = if dynamic(kind, state) {
+            let (hulls, extent) = if dynamic(kind, state) || context.mask.is_some() {
                 let hulls = hulls(scene, node, context.transform, (&mut self.outlines, bytes))?;
                 let extent = hulls.iter().fold(None, |extent, &hull| unite(extent, hull));
                 (hulls, extent)
@@ -554,10 +548,7 @@ impl Survey<'_> {
     ) -> Result<()> {
         let (kind, count) = (stores.kind, stores.count);
         let layout = self.buffers[buffer].layout;
-        let mask = state
-            .soft_mask
-            .map(|id| self.mask(id, layout.process, (context, depth), bytes))
-            .transpose()?;
+        let mask = self.soft_mask(state, layout.process, (context, depth), bytes)?;
         let cell = match kind {
             Kind::Pattern(pattern) => Some(self.cell(pattern, layout, (context, depth), bytes)?),
             Kind::Constant | Kind::Varying => None,
@@ -661,7 +652,8 @@ impl Survey<'_> {
         if group.role != GroupRole::Transparency {
             return Ok(());
         }
-        let state = state(scene, group.mark.state)?;
+        let state = folded(state(scene, group.mark.state)?, context);
+        let state = &*state;
         let parent_layout = self.buffers[parent].layout;
         let layout = group_layout(group.attributes, parent_layout);
         let child = self.buffer(layout, group.attributes.knockout, bytes)?;
@@ -670,17 +662,23 @@ impl Survey<'_> {
             view_transform(context.transform, view, self.inputs.user_unit)
         })?;
         let fold = self.folds((group, state), (parent, layout), context)?;
+        // A folded group's soft mask, its own or the one it took, passes to
+        // its member.
+        let mask = if fold {
+            self.soft_mask(state, parent_layout.process, (context, depth), bytes)?
+        } else {
+            None
+        };
         let inner = Context {
             transform,
             knockout: context.knockout || parent_knockout,
             alpha: if fold { state.alpha } else { 1.0 },
+            mask,
             ..context
         };
         self.children(child, &group.children, inner, depth + 1, bytes)?;
         let facts = &self.buffers[child];
-        let plain =
-            state.alpha == 1.0 && state.blend == BlendMode::Normal && state.soft_mask.is_none();
-        let fits = plain
+        let fits = plain(state, context)
             && !facts.knockout()
             && layout == parent_layout
             && (!group.attributes.isolated || facts.normal_content());
@@ -716,10 +714,7 @@ impl Survey<'_> {
             Route::Flatten | Route::Fold => return self.merge(parent, child, bytes),
             Route::Buffer => {}
         }
-        let mask = state
-            .soft_mask
-            .map(|mask| self.mask(mask, parent_layout.process, (context, depth), bytes))
-            .transpose()?;
+        let mask = self.soft_mask(state, parent_layout.process, (context, depth), bytes)?;
         let buffer = &mut self.buffers[child];
         buffer.forced |= state.blend.amplifies() || knockout || !transparent;
         let rect = self.pixels(extent);
@@ -757,6 +752,21 @@ impl Survey<'_> {
         Ok(())
     }
 
+    /// The soft mask a group or store composites through: its own, or that
+    /// of the folded group it is the member of.
+    fn soft_mask(
+        &mut self,
+        state: &Composite,
+        process: Process,
+        (context, depth): (Context, usize),
+        bytes: &mut Meter,
+    ) -> Result<Option<usize>> {
+        match state.soft_mask {
+            Some(id) => Ok(Some(self.mask(id, process, (context, depth), bytes)?)),
+            None => Ok(context.mask),
+        }
+    }
+
     /// Records the facts of group `key`'s decision.
     fn record(
         &mut self,
@@ -771,10 +781,13 @@ impl Survey<'_> {
         Ok(())
     }
 
-    /// Whether a group of constant alpha paints as its one member does at
-    /// the group's alpha times its own: a single store of Normal blend, whose
-    /// source-over at opacity m a is the group's result composited at m
-    /// (11.4.8), with no knockout, mask, transfer or conversion between them.
+    /// Whether a group paints as its one member does at the group's alpha
+    /// times its own and through the group's soft mask: a single store or
+    /// group of Normal blend, whose source-over at opacity m a is the
+    /// group's result composited at m (11.4.8), with no knockout, transfer
+    /// or conversion between them and one soft mask at most. Alpha as shape
+    /// changes shape alone, which only a knockout reads, above or in a
+    /// pattern's instances.
     fn folds(
         &self,
         (group, state): (&Group, &Composite),
@@ -782,10 +795,10 @@ impl Survey<'_> {
         context: Context,
     ) -> Result<bool> {
         let target = &self.buffers[parent];
-        if state.alpha == 1.0
+        let masked = state.soft_mask.is_some() || context.mask.is_some();
+        if (state.alpha == 1.0 && !masked)
             || state.blend != BlendMode::Normal
-            || state.soft_mask.is_some()
-            || state.alpha_is_shape
+            || (state.alpha_is_shape && context.knockout)
             || state.transfer.is_some()
             || group.attributes.knockout
             || target.knockout_attribute
@@ -796,27 +809,36 @@ impl Survey<'_> {
         let [child] = group.children[..] else {
             return Ok(false);
         };
-        let mark = match self.scene.node(child) {
-            Some(Node::Fill(fill)) => &fill.mark,
-            Some(Node::Stroke(stroke)) => &stroke.mark,
-            Some(Node::Image(image)) => &image.mark,
-            Some(Node::Shading(shading)) => &shading.mark,
+        let (mark, store) = match self.scene.node(child) {
+            Some(Node::Fill(fill)) => (&fill.mark, true),
+            Some(Node::Stroke(stroke)) => (&stroke.mark, true),
+            Some(Node::Image(image)) => (&image.mark, true),
+            Some(Node::Shading(shading)) => (&shading.mark, true),
+            Some(Node::Group(id)) => match self.scene.group(*id) {
+                Some(member) if member.role == GroupRole::Transparency => (&member.mark, false),
+                _ => return Ok(false),
+            },
             _ => return Ok(false),
         };
         let member = self::state(self.scene, mark.state)?;
-        let keeps = Keeping {
-            separated: self.inputs.simulate,
-            policy: self.inputs.policy,
-        }
-        .keeps(
-            member,
-            Place {
-                masked: context.masked,
-                cmyk: layout.process == Process::Cmyk,
-                direct_cmyk: true,
-            },
-        );
-        Ok(member.blend == BlendMode::Normal && !member.alpha_is_shape && !keeps)
+        let keeps = store
+            && Keeping {
+                separated: self.inputs.simulate,
+                policy: self.inputs.policy,
+            }
+            .keeps(
+                member,
+                Place {
+                    masked: context.masked,
+                    cmyk: layout.process == Process::Cmyk,
+                    direct_cmyk: true,
+                },
+            );
+        Ok(member.blend == BlendMode::Normal
+            && !(member.alpha_is_shape && context.knockout)
+            && !(masked && member.soft_mask.is_some())
+            && (store || member.transfer.is_none())
+            && !keeps)
     }
 
     fn mask(
@@ -931,6 +953,28 @@ struct Stores<'h> {
 
 /// Whether a store of `kind` under `state` is dynamic (ADR 0004 §6): all
 /// but opaque constant colours that only coverage reduces.
+/// A group of alpha 1 and Normal blend through no soft mask, its own or a
+/// folded group's: its result composites as its content.
+fn plain(state: &Composite, context: Context) -> bool {
+    state.alpha == 1.0
+        && state.blend == BlendMode::Normal
+        && state.soft_mask.is_none()
+        && context.mask.is_none()
+}
+
+/// `state` of the member of a folded group: at the group's alpha times its
+/// own.
+fn folded(state: &Composite, context: Context) -> std::borrow::Cow<'_, Composite> {
+    if context.alpha == 1.0 {
+        std::borrow::Cow::Borrowed(state)
+    } else {
+        std::borrow::Cow::Owned(Composite {
+            alpha: state.alpha * context.alpha,
+            ..state.clone()
+        })
+    }
+}
+
 fn dynamic(kind: Kind, state: &Composite) -> bool {
     !(kind == Kind::Constant && state.soft_mask.is_none() && state.alpha == 1.0)
 }

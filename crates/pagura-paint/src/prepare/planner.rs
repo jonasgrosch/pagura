@@ -151,6 +151,9 @@ pub(crate) struct Scope {
     /// The opacity of a folded group, which its one member composites with
     /// times its own; 1 elsewhere.
     pub(crate) alpha: f64,
+    /// The soft mask of a folded group, which its member composites through
+    /// when it has none of its own.
+    pub(crate) mask: Option<u32>,
     /// Page content, which records transfer selections.
     pub(crate) records: bool,
     /// Colours keep spot colorants as channels (overprint simulation);
@@ -284,6 +287,7 @@ impl<'s> Planner<'s> {
             }),
             plain: true,
             alpha: 1.0,
+            mask: None,
             records: self.storage.transfers,
             separated: self.simulate,
             masked: false,
