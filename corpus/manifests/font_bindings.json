@@ -183,7 +183,7 @@
       "path": "corpus/generated/font_bindings/type1-cid-order.pdf",
       "sha256": "ce19336f45b7f58328e500d99244f6d261bd5499463fafe1507056bcef9ed9a3",
       "pages": 1,
-      "strict_valid": true,
+      "strict_valid": false,
       "repairs": [],
       "render_error": "Syntax"
     },
@@ -198,7 +198,7 @@
       "path": "corpus/generated/font_bindings/damaged-cff.pdf",
       "sha256": "993808578bf6a4fe9c71d1618dd0f5e3e4e112be6fe042619b19e5d2b8f71adf",
       "pages": 1,
-      "strict_valid": true,
+      "strict_valid": false,
       "repairs": [],
       "render_error": "Syntax"
     },
@@ -213,7 +213,7 @@
       "path": "corpus/generated/font_bindings/glyf-conflicting-map.pdf",
       "sha256": "e80ec4c2696a935b1d1c4c710d4b07a6179bdabd076da344b0f0222e05695f1d",
       "pages": 1,
-      "strict_valid": true,
+      "strict_valid": false,
       "repairs": [],
       "render_error": "Syntax"
     }

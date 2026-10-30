@@ -47,7 +47,7 @@ def cases():
                         requirement='text-embedded-fonts', size=64)
         yield Case(name, original.pdf, OPEN, original.requirements,
                    'No recoverable complete program with a defined CID/GID order',
-                   extra={'render_error': 'Syntax'})
+                   extra={'render_error': 'Syntax'}, strict_valid=False)
     damaged = objects(glyf, 'cff', True, NAMES[0])
     damaged[1] = damaged[1].replace(b'/DW 600', b'/CIDToGIDMap /Ambiguous /DW 600')
     damaged[-1] = stream(glyf, b'/Subtype /CIDFontType0C')
@@ -55,4 +55,4 @@ def cases():
                     requirement='text-embedded-fonts', size=64)
     yield Case('glyf-conflicting-map', original.pdf, OPEN, original.requirements,
                'A conflicting CID map cannot be discarded to reinterpret a program binding',
-               extra={'render_error': 'Syntax'})
+               extra={'render_error': 'Syntax'}, strict_valid=False)
