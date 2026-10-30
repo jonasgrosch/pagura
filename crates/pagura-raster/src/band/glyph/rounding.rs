@@ -10,7 +10,7 @@ use crate::band::clip::Paths;
 use crate::band::edges::{self, Bounds, Line};
 use crate::band::shape::{Body, Frame, GlyphGeometry, Shape, Winding};
 use crate::band::union::{Meters, Piece, Resolver};
-use crate::band::{Prep, RASTER_WORK, RENDER_BYTES, curve, raster};
+use crate::band::{Area, DeviceRect, Prep, RASTER_WORK, RENDER_BYTES, curve, raster};
 use crate::flatten::{Hull, Inspection};
 use crate::{FillRule, Path, Point, Segment, Transform, quantize_unit};
 use pagura_core::{Error, Meter, Result};
@@ -171,17 +171,33 @@ impl<'a> Source<'a> {
 pub(super) fn certify(
     edges: &GlyphEdges,
     origin: Point,
+    shape: Shape,
+    options: &Prep<'_>,
+) -> Result<Shape> {
+    let limit = options.limits.raster_work;
+    let mut work = Meter::new(limit, RASTER_WORK);
+    // Settling a doubtful byte from the placement's own parts is optional
+    // work with an allowance of its own, declined once that is spent. The
+    // certificate's work is what the intervals alone would charge, less the
+    // intervals it saves, so no placement needs more work than without it.
+    let mut spare = Meter::new(limit, RASTER_WORK);
+    settle(edges, origin, shape, options, (&mut work, &mut spare))
+}
+
+fn settle(
+    edges: &GlyphEdges,
+    origin: Point,
     mut shape: Shape,
     options: &Prep<'_>,
+    (work, spare): (&mut Meter, &mut Meter),
 ) -> Result<Shape> {
     if exact(edges, origin, &shape, options) {
         return Ok(shape);
     }
-    let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
     let Some(proof) = edges.source() else {
         return Ok(shape);
     };
-    let Some(source) = Source::of(edges, origin, &mut work)? else {
+    let Some(source) = Source::of(edges, origin, work)? else {
         return Ok(shape);
     };
     let Source {
@@ -221,10 +237,20 @@ pub(super) fn certify(
             },
             None => Bound::Whole(whole + placement + clip),
         };
-        let pending = ambiguous(&shape, &bound, (&mut work, &mut bytes))?;
+        let pending = ambiguous(&shape, &bound, (work, &mut bytes))?;
         let mut wrong = false;
         for pixel in pending {
-            let expected = true_byte(source, pixel, options, (&mut work, &mut bytes))?;
+            let local = local_byte(
+                &shape,
+                (outline, linear),
+                pixel,
+                options,
+                (spare, &mut bytes),
+            );
+            let expected = match local {
+                Some(byte) => byte,
+                None => true_byte(source, pixel, options, (work, &mut bytes))?,
+            };
             if expected != pixel.byte {
                 wrong = true;
                 let target = [
@@ -261,7 +287,7 @@ pub(super) fn certify(
             &targets,
             (options, round),
             Meters {
-                work: &mut work,
+                work,
                 bytes: &mut bytes,
             },
         )?;
@@ -527,6 +553,87 @@ fn ambiguous(
         return Err(error);
     }
     Ok(pending)
+}
+
+/// The byte of `pixel` from the placement's own closed-form parts, placed
+/// again with the pixel at the origin, where translation and cell
+/// arithmetic err by the glyph's extent instead of the page's. `None` where
+/// that leaves it in doubt, for any placement but a covered set or a
+/// certified spline translated whole without point cells, and where the
+/// `spare` work or the transient cells do not fit: the interval then
+/// decides the byte as it would without this attempt.
+fn local_byte(
+    shape: &Shape,
+    (outline, linear): (&Path, Transform),
+    pixel: Pixel,
+    options: &Prep<'_>,
+    (spare, bytes): (&mut Meter, &mut Meter),
+) -> Option<u8> {
+    let Body::Glyph(body) = &shape.body else {
+        return None;
+    };
+    let edges = &body.edges;
+    if body.geometry != GlyphGeometry::Relative
+        || !matches!(edges.kind, Kind::Curve { .. } | Kind::Union { .. })
+        || !edges.points().is_empty()
+    {
+        return None;
+    }
+    let relative = edges.relative()?;
+    // The origin less the pixel's corner, rounded, and the exact remainder
+    // by which every part then lies off.
+    let (x, dx) = subtract(body.origin.x, f64::from(pixel.x));
+    let (y, dy) = subtract(body.origin.y, f64::from(pixel.y));
+    let origin = Point::new(x, y);
+    // One pixel, unclipped: the placement translated whole meets no clip.
+    let local = Prep {
+        area: Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 1,
+                y1: 1,
+            },
+            band_height: 1,
+        },
+        clip: None,
+        ..*options
+    };
+    let mut frame = Frame::new(&local)?;
+    let hull = relative.placed_hull(origin, &[]).ok()?;
+    frame.fit(hull);
+    let moved = Shape::translated(edges, relative, origin, hull, &frame, &local).ok()??;
+    let Body::Glyph(moved_body) = &moved.body else {
+        return None;
+    };
+    // As for the placement itself, plus the remainder: by the per-edge
+    // homotopy bound, three times its two coordinates for every edge.
+    let pieces = f64::from(
+        u32::try_from(outline.segments().len().max(moved.boundaries())).unwrap_or(u32::MAX),
+    );
+    let bound = outward(
+        curve::reduction_area(outline, linear)
+            + allowance(edges)
+            + placement_error(outline, linear, origin, &moved)
+            + 3.0 * (dx.abs() + dy.abs()) * pieces,
+    );
+    spare.charge(moved.work()).ok()?;
+    let mut cells = Cells::new(moved_body.scan.1.saturating_sub(moved_body.scan.0), bytes).ok()?;
+    let cell_bytes = cells.retained_bytes();
+    let mut byte = None;
+    let inspected = raster::inspect(&moved, &mut cells, |y, x0, x1, area, arithmetic| {
+        if y == 0 && x0 == 0 && x1 > 0 {
+            let center = area.clamp(0.0, 1.0);
+            let error = outward(bound + arithmetic);
+            let lo = quantize_unit(center - error);
+            if area.is_finite() && error.is_finite() && lo == quantize_unit(center + error) {
+                byte = Some(lo);
+            }
+        }
+    });
+    drop(cells);
+    bytes.refund(cell_bytes);
+    inspected.ok().and(byte)
 }
 
 fn true_byte(
@@ -1296,6 +1403,199 @@ mod tests {
         let pending = ambiguous(&shape, &Bound::Whole(AREA), (&mut work, &mut tight)).unwrap();
         assert_eq!(pending.len(), 1);
         assert_eq!(tight.used(), shape.retained_bytes() + size_of::<Pixel>());
+    }
+
+    /// Circles of four quadratics: one alone, a certified spline, or two
+    /// crossing, a covered set; with a geometric point when `dotted`.
+    fn circles(crossing: bool, dotted: bool) -> Path {
+        let mut path = PathBuilder::new();
+        let centers: &[(f64, f64)] = if crossing {
+            &[(4.0, 4.0), (6.5, 7.5)]
+        } else {
+            &[(4.0, 4.0)]
+        };
+        for &(cx, cy) in centers {
+            let p = |x: f64, y: f64| Point::new(cx + 3.0 * x, cy + 3.0 * y);
+            path.move_to(p(1.0, 0.0));
+            for [control, end] in [
+                [(1.0, 1.0), (0.0, 1.0)],
+                [(-1.0, 1.0), (-1.0, 0.0)],
+                [(-1.0, -1.0), (0.0, -1.0)],
+                [(1.0, -1.0), (1.0, 0.0)],
+            ] {
+                path.quad_to(p(control.0, control.1), p(end.0, end.1))
+                    .unwrap();
+            }
+            path.close();
+        }
+        if dotted {
+            path.move_to(Point::new(4.25, 4.5));
+            path.close();
+        }
+        path.finish()
+    }
+
+    #[test]
+    fn local_bytes_are_the_true_bytes_of_pixels_far_from_the_origin() {
+        let limits = Limits::default();
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 4096,
+                y1: 512,
+            },
+            band_height: 64,
+        };
+        let shape_options = ShapeOptions {
+            area,
+            limits: &limits,
+        };
+        let options = Prep::new(&shape_options, None);
+        for (crossing, linear) in [
+            (false, [1.0, 0.0, 0.0, 1.0]),
+            (true, [1.0, 0.0, 0.0, 1.0]),
+            (true, [1.5, 0.0, 0.25, 1.25]),
+        ] {
+            let edges =
+                Arc::new(GlyphEdges::new(&circles(crossing, false), linear, &limits).unwrap());
+            assert_eq!(matches!(edges.kind, Kind::Union { .. }), crossing);
+            for origin in [Point::new(2340.37, 61.81), Point::new(3071.9, 300.125)] {
+                let shape = super::super::placed(&edges, origin, &options)
+                    .unwrap()
+                    .unwrap();
+                let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+                let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+                let source = Source::of(&edges, origin, &mut work).unwrap().unwrap();
+                let (outline, linear) = (source.outline, source.linear);
+                // A wide bound leaves many pixels in doubt.
+                let pending =
+                    ambiguous(&shape, &Bound::Whole(1e-3), (&mut work, &mut bytes)).unwrap();
+                assert!(pending.len() > 8, "{}", pending.len());
+                let mut local = 0;
+                for pixel in pending {
+                    let meters = (&mut work, &mut bytes);
+                    let Some(byte) = local_byte(&shape, (outline, linear), pixel, &options, meters)
+                    else {
+                        continue;
+                    };
+                    let meters = (&mut work, &mut bytes);
+                    assert_eq!(byte, true_byte(source, pixel, &options, meters).unwrap());
+                    local += 1;
+                }
+                assert!(local > 8, "{local}");
+            }
+        }
+    }
+
+    #[test]
+    fn local_bytes_leave_point_cells_and_clipped_placements_to_the_interval() {
+        let limits = Limits::default();
+        let edges =
+            Arc::new(GlyphEdges::new(&circles(true, true), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        assert_ne!(edges.points(), []);
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 64,
+                y1: 64,
+            },
+            band_height: 16,
+        };
+        let shape_options = ShapeOptions {
+            area,
+            limits: &limits,
+        };
+        let options = Prep::new(&shape_options, None);
+        let origin = Point::new(20.3, 10.6);
+        let shape = super::super::placed(&edges, origin, &options)
+            .unwrap()
+            .unwrap();
+        let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        let pixel = Pixel {
+            x: 24,
+            y: 14,
+            byte: 0,
+        };
+        let proof = edges.source().unwrap();
+        let source = (&proof.outline, proof.linear);
+        let meters = (&mut work, &mut bytes);
+        assert_eq!(local_byte(&shape, source, pixel, &options, meters), None);
+        // A rectangle cutting a certified spline places its clipped pieces.
+        let edges = Arc::new(
+            GlyphEdges::new(&circles(false, false), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+        );
+        let rectangle = Path::rect(pagura_core::Rect::from_corners(0.0, 0.0, 23.5, 64.0).unwrap());
+        let clip = ClipShape::new(
+            &[(&rectangle, FillRule::NonZero)],
+            Transform::IDENTITY,
+            &ShapeOptions {
+                area,
+                limits: &limits,
+            },
+        )
+        .unwrap();
+        let clipped = Prep {
+            clip: Some(&clip),
+            ..options
+        };
+        let shape = super::super::placed(&edges, origin, &clipped)
+            .unwrap()
+            .unwrap();
+        assert!(matches!(shape.body, Body::Edges(_)));
+        let proof = edges.source().unwrap();
+        let source = (&proof.outline, proof.linear);
+        let meters = (&mut work, &mut bytes);
+        assert_eq!(local_byte(&shape, source, pixel, &clipped, meters), None);
+    }
+
+    #[test]
+    fn settling_bytes_locally_never_raises_the_work_a_placement_needs() {
+        // Crossing circles far from the origin, placed where a boundary of
+        // the covered set meets a quantization boundary: a local miss there
+        // once added its work to the interval's.
+        let limits = Limits::default();
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 4096,
+                y1: 512,
+            },
+            band_height: 64,
+        };
+        let shape_options = ShapeOptions {
+            area,
+            limits: &limits,
+        };
+        let options = Prep::new(&shape_options, None);
+        let edges = Arc::new(
+            GlyphEdges::new(&circles(true, false), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+        );
+        let origin = Point::new(2_340.372_629_321_586, 61.81);
+        let certified = |work: usize, spare: usize| {
+            let shape = super::super::placed(&edges, origin, &options)
+                .unwrap()
+                .unwrap();
+            let (mut work, mut spare) = (
+                Meter::new(work, RASTER_WORK),
+                Meter::new(spare, RASTER_WORK),
+            );
+            let ready = settle(&edges, origin, shape, &options, (&mut work, &mut spare)).unwrap();
+            (
+                crate::testing::raster(&area, Some(&ready), None).0,
+                work.used(),
+                spare.used(),
+            )
+        };
+        // Without the attempts every doubtful byte takes its interval.
+        let (coverage, least, _) = certified(limits.raster_work, 0);
+        // With them, at exactly the least work the intervals needed.
+        let (settled, work, spare) = certified(least, limits.raster_work);
+        assert!(spare > 0 && work <= least, "{work} {least}");
+        assert_eq!(settled, coverage);
     }
 
     #[test]
