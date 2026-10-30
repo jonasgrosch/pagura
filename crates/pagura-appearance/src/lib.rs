@@ -25,13 +25,19 @@ mod fonts;
 mod form;
 pub mod information;
 mod program;
+pub mod repairs;
+mod rich;
 mod stream;
 mod values;
+mod widget_rotation;
 
-pub use annotation::annotation_appearance;
+pub use annotation::{annotation_appearance, annotation_appearance_with_fonts};
 pub use fonts::{FontSource, ProviderFonts};
 pub use form::{
     FilledWidgets, TextStyle, UpdatePolicy, WidgetAppearance, default_text_style, prepare,
-    prepare_widget, prepare_widget_with_policy,
+    prepare_button_states, prepare_widget, prepare_widget_with_policy, rich_text_value,
 };
-pub use stream::{Appearance, AppearanceStream};
+pub use stream::{
+    Appearance, AppearanceMode, AppearanceStream, appearance_bounds, appearance_placement,
+    form_geometry, stored_appearance,
+};

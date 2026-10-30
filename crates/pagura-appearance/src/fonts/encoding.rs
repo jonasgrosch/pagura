@@ -9,24 +9,24 @@ use pagura_text::{FontKind, FontUnicode, PdfFont, WritingMode};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-/// A field font's reversible single-byte codes, advances and vertical
+/// A font's reversible single-byte codes, advances and vertical
 /// extent in text space units.
-pub(super) struct Font {
+pub(crate) struct Encoding {
     codes: BTreeMap<char, Code>,
-    pub(super) ascent: f64,
-    pub(super) descent: f64,
+    pub(crate) ascent: f64,
+    pub(crate) descent: f64,
 }
 
 /// A character's code and horizontal advance in text space.
 #[derive(Clone, Copy)]
-pub(super) struct Code {
-    pub(super) code: u8,
-    pub(super) advance: f64,
+pub(crate) struct Code {
+    pub(crate) code: u8,
+    pub(crate) advance: f64,
 }
 
-impl Font {
+impl Encoding {
     /// Loads the DA font `name` of `resources` through `fonts`.
-    pub(super) fn load(
+    pub(crate) fn load(
         document: &Document,
         resources: &Dictionary,
         name: &[u8],
@@ -74,10 +74,10 @@ impl Font {
     }
 
     /// The code that shows `c`.
-    pub(super) fn encode(&self, c: char) -> Result<Code> {
+    pub(crate) fn encode(&self, c: char) -> Result<Code> {
         self.codes.get(&c).copied().ok_or(Error::unsupported(
             features::APPEARANCE_FONT_ENCODING,
-            "field character has no reversible font encoding",
+            "appearance character has no reversible font encoding",
         ))
     }
 }

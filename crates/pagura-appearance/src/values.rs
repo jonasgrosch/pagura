@@ -34,14 +34,15 @@ pub(crate) fn optional_dictionary<'a>(
 
 /// Resolves one finite number.
 pub(crate) fn number(document: &Document, value: &Value) -> Result<f64> {
-    let number = document
-        .resolve(value)?
-        .as_number()
-        .ok_or(Error::syntax("array entry must be a number"))?;
-    if !number.is_finite() {
+    let value = document.resolve(value)?;
+    // Value::as_number intentionally filters nonfinite Reals. Preserve the
+    // numeric-limit classification before its type-only projection.
+    if matches!(value, Value::Real(number) if !number.is_finite()) {
         return Err(Error::limit("number exceeds numeric working range"));
     }
-    Ok(number)
+    value
+        .as_number()
+        .ok_or(Error::syntax("array entry must be a number"))
 }
 
 /// Resolves an array of finite numbers of any length. The array's length

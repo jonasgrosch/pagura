@@ -51,7 +51,7 @@ pub(super) fn kind<'a>(
             password: flags.contains(FieldFlags::PASSWORD),
             comb: flags.contains(FieldFlags::COMB),
             rich_text: flags.contains(FieldFlags::RICH_TEXT),
-            rich_value: context.present(dictionary, b"RV", source)?,
+            rich_value: dictionary.get(b"RV").filter(|value| !value.is_null()),
         },
         b"Ch" => FieldKind::Choice {
             // Edit applies only to combo boxes (Table 233); a list ignores it.
@@ -182,4 +182,17 @@ pub(super) fn field_type<'a>(
                 .ok_or_else(|| source.error(Error::syntax("form FT must be a name")))
         })
         .transpose()
+}
+
+/// Missing-AP state policy: explicit AS wins; numeric Opt on states select only
+/// their own widget. A missing or mismatched V means Off, represented by None.
+pub(super) fn button_state<'a>(
+    value: Option<&FieldValue<'a>>,
+    state: Option<&'a Name>,
+    on: Option<&Name>,
+) -> Option<&'a Name> {
+    state.or_else(|| match value {
+        Some(FieldValue::Name(name)) if on.is_none_or(|on| on == *name) => Some(*name),
+        _ => None,
+    })
 }

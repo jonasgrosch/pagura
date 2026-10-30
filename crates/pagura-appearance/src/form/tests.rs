@@ -9,6 +9,68 @@ use pagura_testkit::{fixture, fixture_path};
 use std::collections::BTreeMap;
 
 #[test]
+fn shared_border_budgets_protect_filled_appearances() {
+    for (name, segments) in [("Tx-rounded-72.pdf", 23), ("Tx-B-72.pdf", 15)] {
+        let document = Document::open(
+            fixture("form_borders", name),
+            &OpenOptions {
+                limits: Limits {
+                    path_segments: segments,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let mut filler = document.form_filler().unwrap().unwrap();
+        filler.set(0, FillValue::Text("AB")).unwrap();
+        assert_eq!(
+            prepare(&filler, None).unwrap_err().kind,
+            ErrorKind::Limit,
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn style_reader_rejects_malformed_borders_and_rotations() {
+    let document = document_for_style();
+    for source in [
+        b"<< /BS << /S 42 >> >>".as_slice(),
+        b"<< /BS << /S /D /D [-1 2] >> >>",
+        b"<< /BS << /S /D /D [0 0] >> >>",
+        b"<< /Border [-1 2 1] >>",
+        b"<< /MK << /R 45 >> >>",
+        b"<< /MK << /R 90.0 >> >>",
+        b"<< /MK << /R (90) >> >>",
+        b"<< /MK << /R true >> >>",
+    ] {
+        let parsed = pagura_core::syntax::Parser::new(
+            source,
+            pagura_core::syntax::Origin::Buffer,
+            Limits::default(),
+        )
+        .parse()
+        .unwrap();
+        assert!(matches!(
+            Style::read(&document, parsed.as_dictionary().unwrap()),
+            Err(Error {
+                kind: ErrorKind::Syntax,
+                ..
+            })
+        ));
+    }
+}
+
+fn document_for_style() -> Document {
+    Document::open(
+        fixture("forms", "text-quadding-0.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap()
+}
+
+#[test]
 fn independent_appearance_programs_and_existing_states() {
     let mut count = 0;
     for entry in std::fs::read_dir(fixture_path("forms", "")).unwrap() {
@@ -287,11 +349,11 @@ fn compatibility_standard_font_fallback_is_narrow_and_preserves_resources() {
     )
     .unwrap();
     let mut resources = Dictionary::new();
-    assert!(compatibility::supply_font(&document, &mut resources, b"CustomFont").is_err());
+    assert!(supply_font(&document, &mut resources, b"CustomFont").is_err());
     assert!(resources.is_empty());
-    compatibility::supply_font(&document, &mut resources, b"Helvetica").unwrap();
+    supply_font(&document, &mut resources, b"Helvetica").unwrap();
     let before = resources.clone();
-    compatibility::supply_font(&document, &mut resources, b"Helvetica").unwrap();
+    supply_font(&document, &mut resources, b"Helvetica").unwrap();
     assert_eq!(resources, before);
     let fonts = resources.get(b"Font").unwrap().as_dictionary().unwrap();
     let font = fonts.get(b"Helvetica").unwrap().as_dictionary().unwrap();
@@ -313,18 +375,18 @@ fn an_invalid_widget_index_is_a_caller_error_without_widget_context() {
 }
 
 #[test]
-fn filled_widgets_regenerate_only_changed_or_requested_widgets() {
+fn filled_widgets_generate_missing_appearances_and_preserve_identity() {
     let document =
         Document::open(fixture("forms", "render-text.pdf"), &OpenOptions::default()).unwrap();
     let mut filler = document.form_filler().unwrap().unwrap();
     let dictionary = filler.form().widgets[0].dictionary;
     let rect = filler.form().widgets[0].rectangle;
     let fonts = ProviderFonts::new(None, &document.limits());
-    let never = |_: &Dictionary| -> Result<bool> { panic!("an untouched widget is not culled") };
+    let never = |_: &Dictionary| -> Result<bool> { panic!("a missing appearance is not culled") };
     let widgets = FilledWidgets::new(&filler).unwrap();
     assert_eq!(
         widgets.appearance(dictionary, rect, &fonts, never).unwrap(),
-        None
+        Some(prepare_widget(&filler, 0, None).unwrap())
     );
     // Identity, not equal content, selects the widget.
     let copy = dictionary.clone();
