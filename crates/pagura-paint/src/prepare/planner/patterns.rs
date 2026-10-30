@@ -170,9 +170,10 @@ fn instances(
 /// spacing rounds the lattice vectors `XStep·(a, b)` and `YStep·(c, d)` to
 /// whole pixels, a vanishing one to a unit step along its larger component;
 /// `TilingType 1` refuses a cell corner moved by more than a pixel, and
-/// `TilingType 2` keeps the exact transform.
+/// `TilingType 2` keeps the exact transform, as does a singular one, which
+/// has no lattice to fit (ADR 0004 section 2).
 fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
-    if tiling.spacing == TilingSpacing::NoDistortion {
+    if tiling.spacing == TilingSpacing::NoDistortion || t.inverse().is_none() {
         return Ok(t);
     }
     let vector = |x: f64, y: f64| {
