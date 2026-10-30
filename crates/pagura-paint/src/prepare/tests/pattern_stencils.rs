@@ -9,8 +9,12 @@ use pagura_testkit::{Manifest, fixture};
 use std::sync::Arc;
 
 fn scene(name: &str) -> Scene {
+    scene_in("paint_stencils", name)
+}
+
+fn scene_in(area: &str, name: &str) -> Scene {
     let document = Document::open(
-        fixture("paint_stencils", &format!("{name}.pdf")),
+        fixture(area, &format!("{name}.pdf")),
         &OpenOptions::default(),
     )
     .unwrap();
@@ -23,37 +27,39 @@ fn scene(name: &str) -> Scene {
 
 #[test]
 fn patterned_stencil_oracles_and_negative_controls() {
-    for case in Manifest::load("paint_stencils").cases() {
-        let name = case.name();
-        let scene = scene(name);
-        let request = RenderRequest::page(&scene.page, 1.0).unwrap();
-        let store = Store::new(1 << 20);
-        let prepared = crate::prepare(&scene, &request, &store, &Limits::default());
-        if case.string("expected") == Some("unsupported") {
-            assert_eq!(
-                prepared.unwrap_err().feature(),
-                Some(pagura_interpret::features::PATTERN_IMAGE_MASK)
-            );
-            continue;
+    for area in ["paint_stencils", "paint_nested_stencils"] {
+        for case in Manifest::load(area).cases() {
+            let name = case.name();
+            let scene = scene_in(area, name);
+            let request = RenderRequest::page(&scene.page, 1.0).unwrap();
+            let store = Store::new(1 << 20);
+            let prepared = crate::prepare(&scene, &request, &store, &Limits::default());
+            if case.string("expected") == Some("unsupported") {
+                assert_eq!(
+                    prepared.unwrap_err().feature(),
+                    Some(pagura_interpret::features::PATTERN_IMAGE_MASK)
+                );
+                continue;
+            }
+            let prepared = prepared.unwrap_or_else(|error| panic!("{name}: {error}"));
+            let expected = fixture(area, &format!("{name}.ppm"));
+            let expected = &expected[b"P6\n16 16\n255\n".len()..];
+            let mut scratch = Scratch::default();
+            let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
+            let mut actual = Vec::new();
+            rendering.render(&mut actual);
+            super::assert_within_charges(&rendering, prepared.charges());
+            let maximum = actual
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(expected.as_chunks::<3>().0.iter())
+                .flat_map(|(actual, expected)| actual[..3].iter().zip(expected))
+                .map(|(actual, expected)| actual.abs_diff(*expected))
+                .max()
+                .unwrap();
+            assert!(maximum <= 1, "{name}: maximum channel error {maximum}");
         }
-        let prepared = prepared.unwrap_or_else(|error| panic!("{name}: {error}"));
-        let expected = fixture("paint_stencils", &format!("{name}.ppm"));
-        let expected = &expected[b"P6\n16 16\n255\n".len()..];
-        let mut scratch = Scratch::default();
-        let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
-        let mut actual = Vec::new();
-        rendering.render(&mut actual);
-        super::assert_within_charges(&rendering, prepared.charges());
-        let maximum = actual
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .zip(expected.as_chunks::<3>().0.iter())
-            .flat_map(|(actual, expected)| actual[..3].iter().zip(expected))
-            .map(|(actual, expected)| actual.abs_diff(*expected))
-            .max()
-            .unwrap();
-        assert!(maximum <= 1, "{name}: maximum channel error {maximum}");
     }
 }
 
@@ -196,47 +202,82 @@ fn patterned_stencil_preserves_cmyk_zero_colorants_during_overprint() {
 
 #[test]
 fn stencil_clip_is_invariant_across_bands_regions_and_warm_stores() {
-    let scene = scene("colored-fractional-clip");
-    let whole = RenderRequest::page(&scene.page, 1.0).unwrap();
-    let mut expected = Vec::new();
-    let store = Store::new(1 << 20);
-    let prepared = crate::prepare(&scene, &whole, &store, &Limits::default()).unwrap();
-    prepared
-        .with_scratch(&mut Scratch::default())
-        .unwrap()
-        .render(&mut expected);
-    for capacity in [0, 1 << 20] {
-        let store = Store::new(capacity);
-        for height in [1, 3, 16, 256] {
-            for region in [
-                whole.region,
-                DeviceRect {
-                    x0: 3,
-                    y0: 4,
-                    x1: 13,
-                    y1: 12,
+    for (area, name) in [
+        ("paint_stencils", "colored-fractional-clip"),
+        ("paint_nested_stencils", "fill-eight-levels"),
+        ("paint_nested_stencils", "stroke-hairline"),
+    ] {
+        let scene = scene_in(area, name);
+        let whole = RenderRequest::page(&scene.page, 1.0).unwrap();
+        let mut expected = Vec::new();
+        let store = Store::new(1 << 20);
+        let prepared = crate::prepare(&scene, &whole, &store, &Limits::default()).unwrap();
+        prepared
+            .with_scratch(&mut Scratch::default())
+            .unwrap()
+            .render(&mut expected);
+        for capacity in [0, 1 << 20] {
+            let store = Store::new(capacity);
+            for height in [1, 3, 16, 256] {
+                for region in [
+                    whole.region,
+                    DeviceRect {
+                        x0: 3,
+                        y0: 4,
+                        x1: 13,
+                        y1: 12,
+                    },
+                ] {
+                    let mut request = whole;
+                    request.region = region;
+                    request.band_height = height;
+                    for _ in 0..2 {
+                        let prepared =
+                            crate::prepare(&scene, &request, &store, &Limits::default()).unwrap();
+                        let mut scratch = Scratch::default();
+                        let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
+                        let mut actual = Vec::new();
+                        rendering.render(&mut actual);
+                        super::assert_within_charges(&rendering, prepared.charges());
+                        let wanted: Vec<_> = (region.y0..region.y1)
+                            .flat_map(|y| {
+                                let start = usize::try_from((y * 16 + region.x0) * 4).unwrap();
+                                let end = start + usize::try_from(region.width() * 4).unwrap();
+                                expected[start..end].iter().copied()
+                            })
+                            .collect();
+                        assert_eq!(actual, wanted, "height {height}, region {region:?}");
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn nested_stencil_geometry_has_bounded_ancestor_chains() {
+    for name in ["fill-three-levels", "stroke-butt"] {
+        let scene = scene_in("paint_nested_stencils", name);
+        let request = RenderRequest::page(&scene.page, 1.0).unwrap();
+        for capacity in [0, 1 << 20] {
+            let store = Store::new(capacity);
+            crate::prepare(&scene, &request, &store, &Limits::default()).unwrap();
+            for limits in [
+                Limits {
+                    mask_sources: 2,
+                    ..Limits::default()
+                },
+                Limits {
+                    render_work: 0,
+                    ..Limits::default()
+                },
+                Limits {
+                    render_bytes: 0,
+                    ..Limits::default()
                 },
             ] {
-                let mut request = whole;
-                request.region = region;
-                request.band_height = height;
-                for _ in 0..2 {
-                    let prepared =
-                        crate::prepare(&scene, &request, &store, &Limits::default()).unwrap();
-                    let mut scratch = Scratch::default();
-                    let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
-                    let mut actual = Vec::new();
-                    rendering.render(&mut actual);
-                    super::assert_within_charges(&rendering, prepared.charges());
-                    let wanted: Vec<_> = (region.y0..region.y1)
-                        .flat_map(|y| {
-                            let start = usize::try_from((y * 16 + region.x0) * 4).unwrap();
-                            let end = start + usize::try_from(region.width() * 4).unwrap();
-                            expected[start..end].iter().copied()
-                        })
-                        .collect();
-                    assert_eq!(actual, wanted, "height {height}, region {region:?}");
-                }
+                let error = crate::prepare(&scene, &request, &store, &limits).unwrap_err();
+                assert_eq!(error.kind, ErrorKind::Limit, "{name}: {limits:?}: {error}");
             }
         }
     }

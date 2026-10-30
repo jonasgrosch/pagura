@@ -5,6 +5,7 @@
 //! own, gathered into its run's item where it can be (`runs`).
 
 mod glyphs;
+mod nested;
 mod paints;
 
 use super::clips::{Clipping, Extra};
@@ -411,18 +412,11 @@ impl Planner<'_> {
         (covered, compositing): (Covered, Compositing),
         budget: &mut Budget,
     ) -> Result<()> {
-        if scope.stencil_clip.is_some() && !spec.stencil {
-            return Err(Error::unsupported(
-                pagura_interpret::features::PATTERN_IMAGE_MASK,
-                "ordinary nested tiling under a patterned stencil is not implemented",
-            ));
-        }
+        let inherited = spec.stencil || scope.stencil_clip.is_some();
         let serial = self.serial;
         let mut inner = scope.clone();
-        if spec.stencil
-            && let Geometry::Fill(path, _) = &spec.geometry
-        {
-            inner.stencil_clip = Some(self.stencil_clip(scope, spec.info.clip, path, budget)?);
+        if inherited {
+            inner.stencil_clip = Some(self.pattern_geometry(scope, spec, budget)?);
         }
         let Some((group, content)) = self.pattern(&inner, tiling, covered.bounds, budget)? else {
             return Ok(());
@@ -437,7 +431,7 @@ impl Planner<'_> {
             work: covered.work,
             kind: ItemKind::Group(GroupUse {
                 group,
-                cover: (!spec.stencil).then_some(covered.cover),
+                cover: (!inherited).then_some(covered.cover),
                 compositing,
                 conversion: None,
             }),

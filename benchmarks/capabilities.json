@@ -16,7 +16,8 @@
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
-    "corpus/manifests/paint_stencils.json": "28ea0b3d05bf520f56871cd8fffacad0999263b05fcaddacfdf95e33aeb039b0",
+    "corpus/manifests/paint_nested_stencils.json": "8b24fb04ccd160c19593029a5689ba791e69532ba66017ccee05b0974db6414a",
+    "corpus/manifests/paint_stencils.json": "e7ee83fecaf54346d06050381df33f4df4420f9d6c684d094b9a420acdef02c2",
     "crates/pagura-appearance/src/annotation.rs": "bf896237ee3e3c448b16c0af372c706a8491e866dc78a6e32649b073d518e83d",
     "crates/pagura-appearance/src/annotation/border.rs": "4423feb6d972c20fccde3e8ad80ecc7a02540c94db1e2fa268601b29627e96e8",
     "crates/pagura-appearance/src/annotation/tests.rs": "9535a7eca8ad1a1ee5e315e2e7fe6e3a23e4add357db7588a373c10c61d83d0c",
@@ -118,13 +119,14 @@
     "crates/pagura-paint/src/execute.rs": "2c69ee1142e1201d8636a0bf4a1fb93d3fe0b6120cd5f4f40c4893a1614c943b",
     "crates/pagura-paint/src/execute/transfer.rs": "6dec2a2796f9c0260d076d11b04c070c8a3071adbce2a42b1efa7e5fd6308b50",
     "crates/pagura-paint/src/prepare/finish.rs": "45454e314d9464f56c2181df08fb519b580d853242eb9f6220520b16c417533d",
-    "crates/pagura-paint/src/prepare/planner/clips.rs": "a89614264809a85e4f75abb8560bab08a90839ab362394bbb6ba257223d76a2c",
-    "crates/pagura-paint/src/prepare/planner/marks.rs": "98f87f34d80eb2ff72c2ab1fe05d8a4d937fa5903882920142308547a00d99a7",
+    "crates/pagura-paint/src/prepare/planner/clips.rs": "7d665be185a71daa7e3011dd1a37c374f9f157e0028124b0947c2b747db741c6",
+    "crates/pagura-paint/src/prepare/planner/marks.rs": "ce29d8bc0db21915ce050ae0a55f3c862849e4dc27b16ef443bd989891df72f1",
+    "crates/pagura-paint/src/prepare/planner/marks/nested.rs": "577b5a4d700ce3b43f06c17cd2a35b233de2194da93739e24b8e274424123b6a",
     "crates/pagura-paint/src/prepare/planner/marks/paints.rs": "370a442ce611e7a87595ab00e15f0556cf2ced8cd1efe20a18eb9a9d3f5cac10",
     "crates/pagura-paint/src/prepare/planner/patterns.rs": "4484af6cb9856c0b1506bd6d1a02af1664a8c299d8d7a4baeea1742fc93de308",
     "crates/pagura-paint/src/prepare/storage.rs": "2e226baf892b7bc4ea7c897084c5090369f32c188ea8bddc23e2dc3f0b54aefd",
     "crates/pagura-paint/src/prepare/tests/formats.rs": "9ab17f8516b64a0da95c13480ce6157ad59575e09046e3693c92547e5fa74d1b",
-    "crates/pagura-paint/src/prepare/tests/pattern_stencils.rs": "abeb2cbc7b7fc2bb09c272333949c4838cf460ab13dd9629f36c11c24ebe069e",
+    "crates/pagura-paint/src/prepare/tests/pattern_stencils.rs": "28870b16a609c3335c2c3b7aaf50c626ddaae175293c678be01078211020acb4",
     "crates/pagura-paint/src/prepare/tests/streaming.rs": "4b0f2831d7045dd10be103fbc6a6bbb931b0cd837e6ce11dbcbbe2926649c0da",
     "crates/pagura-paint/src/source/image/stencil.rs": "c66fb1614cb560e6bfa9024e202dbded3f81ad9a78aef3489b384e38aec9f887",
     "crates/pagura-paint/src/source/image/tests.rs": "6bc466a49d6617ffb2b8a903282def5059c41e49fdf17dc05ae82466cb95f55d",
@@ -139,7 +141,7 @@
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
     "crates/pagura-raster/src/path.rs": "50d0af1ec03a45c884621c1fbebcd5ef410879172bdddaf081622576bcc35044",
     "crates/pagura-reference/src/render/stencil.rs": "00f6b96af281c1cf2cc565a4fcc2088fb33e2baed601395bd0f4055b32b1e41d",
-    "crates/pagura-reference/src/render/tiling.rs": "539d064d99b5dadee88c9d89d646f5cfc325a0377266283a46ecaa6f851082ff",
+    "crates/pagura-reference/src/render/tiling.rs": "ef2842af148617e3be5c27b4ebce0665478b395fb499f91fe7a62c09106bac10",
     "crates/pagura-reference/tests/harness/main.rs": "f2b25b8e1e6160e0ee0a5db5d95951d4cd1f04ecd50b4e31d1bb0163db834fc9",
     "crates/pagura-render/src/context.rs": "42c88fdd12f344678b745f19ac49df73c2b331dd1d75234f746eb9d178c165f2",
     "crates/pagura-render/src/options.rs": "131de2afe8e6ee17a96f3f1432f76861608b9558b5dad53ffed0e68779452c31",
@@ -160,7 +162,7 @@
     "crates/pagura/tests/api/document.rs": "e5ecf107fdb648e90faf90e13b5703aeb151afbd7ad1cb7ea6e59c8548a5a102",
     "crates/pagura/tests/api/editing.rs": "1775dd357ce924da4c3c5911aca4ee98f5204aa3bc48e6ef96fb6bf019f8a085",
     "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
-    "crates/pagura/tests/api/render.rs": "5da191fd50c790dc59644e8ead4b84573c4b8c7c172e59caa07e76243ade1d15",
+    "crates/pagura/tests/api/render.rs": "6017512e5972d9ccbe9c622e614c44e952f47c3b7622ff7bf342c57d91cc9135",
     "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
     "crates/pagura/tests/api/streaming.rs": "dc2a667034c4ea19818b0907a3a384b35617e54bd20372466ea7ef414f723f1e",
     "crates/pagura/tests/api/text.rs": "de81815b47c165743e9e225f1b4b52bd078fad0024b6ef9921e6db41c47eda59",
@@ -181,7 +183,7 @@
     "references/requirements/jbig2.json": "def477300de7cefde2764741ba4d1b8cad07b8c1e5ee8c5b1cfb9b858d25ef32",
     "references/requirements/jpx.json": "40bb3aa1149dba818966cf4b27168e44cd601a79536a99bcaa8d806208c9ce75",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
-    "references/requirements/paint.json": "5afe12d45359304f0e4235dd772ab849f7a0e6f477ce831ad036dc611892159f",
+    "references/requirements/paint.json": "2fd9a953e3c9e11418286b3d0187ce8fec23cae30d4c936a18b06186b08c1916",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
@@ -192,7 +194,8 @@
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "4c148dcbf9942c1c79f9e09308548a72bc1cf7d05aca7252a0d3b1a61916ce65",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
-    "tools/fixturegen/paint_stencils.py": "325e8fb7866c93431a4770188c2cfaff4f4da6a6bbbcaa91fdf6c5dfda1d9fc0",
+    "tools/fixturegen/paint_nested_stencils.py": "2921e1f8ae20021aed437cf5766fc158677def14bb80bf5e25348877078e48f8",
+    "tools/fixturegen/paint_stencils.py": "8761a58cae3e35bb9158ed9a0312b2a079c92707bbb90f03c6e73e4f819f3a60",
     "web/client.mjs": "187b849419860bc64478a30fe7ddb0069e17b89f037528dda1454a1bf07d18f8",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
@@ -804,8 +807,8 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "One interpreter, prepared scenes, per-buffer formats and one exact band executor; paths, clips, shadings and patterns. Non-interpolated pattern-coloured image stencils retain exact mask-cell geometry through tiling-child clipping and existing shading preparation.",
-      "remaining": "Ordinary nested tiling beneath an inherited stencil retains Unsupported(pattern.image-mask), avoiding double application of fractional coverage. Interpolated patterned stencils, unselected Pattern colour spaces, singular-transform/pattern compatibility cases and broader independent geometry evidence remain explicit. Tiling cells retain the existing per-pixel source-over model; shading retains its sampling policy.",
+      "implemented": "One interpreter, prepared scenes, per-buffer formats and one exact band executor; paths, clips, shadings and patterns. Non-interpolated pattern-coloured image stencils retain exact mask-cell geometry through tiling-child clipping and existing shading preparation. Ordinary nested tiling fills/strokes and linear glyphs carry every ancestor geometry and clip chain to their leaf marks; each pattern group applies coverage once.",
+      "remaining": "Curved patterned glyphs beneath an inherited stencil retain Unsupported(pattern.image-mask) to preserve the true-quadratic glyph coverage contract. Interpolated patterned stencils, unselected Pattern colour spaces, singular-transform/pattern compatibility cases and broader independent geometry evidence remain explicit. Tiling cells retain the existing per-pixel source-over model; shading retains its sampling policy.",
       "sources": [
         "crates/pagura-interpret/src/resources/pattern.rs",
         "crates/pagura-paint/src/prepare/planner/patterns.rs",
@@ -816,7 +819,8 @@
         "crates/pagura-paint/src/prepare/planner/marks.rs",
         "crates/pagura-paint/src/prepare/planner/clips.rs",
         "crates/pagura-paint/src/source/image/stencil.rs",
-        "crates/pagura-raster/src/path.rs"
+        "crates/pagura-raster/src/path.rs",
+        "crates/pagura-paint/src/prepare/planner/marks/nested.rs"
       ],
       "tests": [
         "crates/pagura-paint/src/prepare/tests/formats.rs",
@@ -825,7 +829,8 @@
         "crates/pagura-reference/src/render/stencil.rs",
         "crates/pagura-reference/tests/harness/main.rs",
         "crates/pagura/tests/api/render.rs",
-        "crates/pagura-reference/src/render/tiling.rs"
+        "crates/pagura-reference/src/render/tiling.rs",
+        "tools/fixturegen/paint_nested_stencils.py"
       ],
       "requirements": [
         "content-bounds",
@@ -906,7 +911,29 @@
         "paint_stencils/colored-different-masks",
         "paint_stencils/tiling-flat-half-area",
         "paint_stencils/tiling-nested-ordinary-refused",
-        "paint_stencils/tiling-nested-image-stencil"
+        "paint_stencils/tiling-nested-image-stencil",
+        "paint_nested_stencils/fill-one-level",
+        "paint_nested_stencils/fill-three-levels",
+        "paint_nested_stencils/fill-eight-levels",
+        "paint_nested_stencils/fill-one-level-flat",
+        "paint_nested_stencils/fill-three-levels-flat",
+        "paint_nested_stencils/fill-eight-levels-flat",
+        "paint_nested_stencils/fill-triangle-clip",
+        "paint_nested_stencils/fill-evenodd",
+        "paint_nested_stencils/fill-alpha",
+        "paint_nested_stencils/fill-isolated-group",
+        "paint_nested_stencils/fill-soft-mask",
+        "paint_nested_stencils/fill-uncolored-leaf",
+        "paint_nested_stencils/fill-source-order",
+        "paint_nested_stencils/fill-source-order-alpha",
+        "paint_nested_stencils/stroke-butt",
+        "paint_nested_stencils/stroke-hairline",
+        "paint_nested_stencils/stroke-butt-flat",
+        "paint_nested_stencils/stroke-nonuniform-pen",
+        "paint_nested_stencils/glyph-linear",
+        "paint_nested_stencils/glyph-quadratic-refused",
+        "paint_nested_stencils/glyph-tiny-quadratics-control",
+        "paint_nested_stencils/glyph-tiny-quadratics-refused"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -3350,7 +3377,7 @@
       ],
       "review": "mixed",
       "capability": "render.graphics",
-      "rationale": "Nearest one-bit mask cells support tiling/shading paint; ordinary nested tiling under an inherited stencil, interpolated patterned masks and unselected Pattern remain explicit refusals.",
+      "rationale": "Nearest one-bit mask cells support tiling/shading paint; nested tiling fills/strokes and linear glyphs propagate complete joint geometry. Curved patterned glyphs under inherited stencils, interpolated patterned masks and unselected Pattern remain explicit refusals.",
       "evidence": [
         {
           "path": "crates/pagura-paint/src/prepare/planner/marks/paints.rs",
@@ -3361,8 +3388,8 @@
           "needle": "interpolated pattern-coloured stencils are not implemented"
         },
         {
-          "path": "crates/pagura-paint/src/prepare/planner/marks.rs",
-          "needle": "ordinary nested tiling under a patterned stencil is not implemented"
+          "path": "crates/pagura-paint/src/prepare/planner/marks/nested.rs",
+          "needle": "curved patterned glyphs under an inherited stencil are not implemented"
         }
       ]
     },
