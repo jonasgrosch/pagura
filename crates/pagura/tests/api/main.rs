@@ -3,6 +3,7 @@
 //! so that the modules share `support` and one link of the engine.
 
 mod annotation_compat;
+mod annotation_empty_widgets;
 mod document;
 mod editing;
 mod facade;

@@ -42,3 +42,10 @@ their original tolerance-one bounds are retained in explicit accuracy-bound
 vectors or the qualification follow-up record. The ordinary-content isolated
 miter control is retained as a deferred vector for that raster follow-up; this annotation change
 does not alter general page-path admission.
+
+Empty text and unsigned signature widgets use their existing MK geometry after
+proving Parent/Fields/Kids membership. Text resources, XFA and text-fit policy
+are not selected for that geometric path. A separate unnamed widget cannot
+shadow the owning field's nonempty value with an empty local V. Nonempty source
+widgets keep the existing XFA boundary; complete field inspection still checks
+its selected metadata, and form edits still enforce DoNotScroll fit.

@@ -1,7 +1,7 @@
 //! Source text, choice, button and unsigned signature widgets (12.5.6.19, 12.7.5).
 //! AcroForm values use the document's requested-field view and shared form
-//! generator. Without an AcroForm, empty text/signature widgets retain the
-//! geometric fallback; inconsistent membership in a present AcroForm is an error.
+//! generator. Empty text/signature widgets retain the lazy geometric fallback
+//! after the shared AcroForm membership proof; inconsistent membership in a present AcroForm is an error.
 //! Appearance characteristics belong to the widget itself.
 
 use super::border::Border;
@@ -10,7 +10,7 @@ use crate::features;
 use crate::fonts::FontSource;
 use crate::stream::AppearanceStream;
 use crate::widget_rotation;
-use pagura_core::{Dictionary, Error, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Meter, Rect, Result, Value};
 use pagura_document::Document;
 
 /// Source Tx/Ch/Btn content, or empty-widget geometry after AcroForm membership checks.
@@ -20,38 +20,54 @@ pub(super) fn generate(
     rect: Rect,
     fonts: &dyn FontSource,
 ) -> Result<Option<AppearanceStream>> {
-    if let Some(field) = document.widget_field(annotation)? {
-        if rect.width() == 0.0 || rect.height() == 0.0 {
-            return Ok(None);
-        }
-        return crate::form::source_widget(document, annotation, rect, &field, fonts).map(Some);
-    }
     let unsupported = || {
         Error::unsupported(
             features::ANNOTATION_APPEARANCE,
             "widget value requires an explicit appearance or text layout",
         )
     };
-    let kind = inherited(document, annotation, b"FT")?
+    let field = source_dictionary(document, annotation)?;
+    let kind = inherited(document, field, b"FT")?
         .and_then(Value::as_name)
         .ok_or(Error::syntax("widget has no field type"))?;
-    let value = inherited(document, annotation, b"V")?;
+    let value = inherited(document, field, b"V")?;
     let empty = value.is_none_or(|v| v.is_null() || v.as_string().is_some_and(<[u8]>::is_empty));
-    if !matches!(kind.as_bytes(), b"Tx" | b"Sig") || !empty {
+    let geometry = matches!(kind.as_bytes(), b"Tx" | b"Sig")
+        && empty
+        && inherited(document, field, b"RV")?
+            .is_none_or(|value| value.is_null() || value.as_string() == Some(b""));
+    if !geometry {
+        if let Some(field) = document.widget_field(annotation)? {
+            if rect.width() == 0.0 || rect.height() == 0.0 {
+                return Ok(None);
+            }
+            return crate::form::source_widget(document, annotation, rect, &field, fonts).map(Some);
+        }
         return Err(unsupported());
     }
-    if let Some(rich) = inherited(document, annotation, b"RV")?
-        && !rich.is_null()
-        && rich.as_string() != Some(b"")
-    {
-        return Err(unsupported());
-    }
+    // Text is not selected for an empty widget. Keep the old MK-only display
+    // independent of XFA, DA/font parsing and edit-fit rules, but retain the
+    // same bounded ancestry/membership proof as nonempty source widgets.
+    document.widget_field_membership(annotation)?;
     let mut marks = Marks::new(document, annotation);
     if let Some(mk) = annotation.get(b"MK") {
         let mk = document.resolve_dictionary(mk)?;
         characteristics(&mut marks, document, annotation, mk, rect)?;
     }
     marks.finish(rect)
+}
+
+/// An unnamed separate widget does not shadow its owning field's V or FT.
+fn source_dictionary<'a>(
+    document: &'a Document,
+    annotation: &'a Dictionary,
+) -> Result<&'a Dictionary> {
+    if document.optional(annotation, b"T")?.is_none()
+        && let Some(parent) = document.optional(annotation, b"Parent")?
+    {
+        return document.resolve_dictionary(parent);
+    }
+    Ok(annotation)
 }
 
 /// Table 192: absent BG and BC mean no background and no border. DA's
@@ -121,8 +137,18 @@ fn inherited<'a>(
     mut dictionary: &'a Dictionary,
     key: &[u8],
 ) -> Result<Option<&'a Value>> {
+    let limits = document.limits();
+    let mut storage = Meter::new(
+        limits.document_bytes,
+        "widget ancestry storage budget exceeded",
+    );
+    let mut work = Meter::new(
+        limits.traversal_work,
+        "widget ancestry work budget exceeded",
+    );
     let mut visited = Vec::new();
-    for _ in 0..document.limits().depth {
+    for _ in 0..limits.depth {
+        work.charge(1)?;
         if let Some(value) = dictionary.get(key) {
             // A null entry is equivalent to absence (7.3.9), so inheritance
             // continues rather than concealing a parent's field value.
@@ -141,6 +167,7 @@ fn inherited<'a>(
             if visited.contains(&id) {
                 return Err(Error::cycle("cyclic widget field ancestry").in_object(id));
             }
+            storage.reserve_capacity(&mut visited, 1)?;
             visited.push(id);
         }
         dictionary = document.resolve_dictionary(parent)?;

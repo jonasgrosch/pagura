@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813.",
+  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries.",
   "cases": [
     "rich_annotations/plain-72",
     "rich_annotations/stored-72",
@@ -1171,6 +1171,20 @@
     "content/annotation-appearance-streams",
     "content/annotation-appearance-states",
     "content/annotation-appearance-null",
-    "content/annotation-appearance-null-state"
+    "content/annotation-appearance-null-state",
+    "annotation_empty_widgets/missing-font",
+    "annotation_empty_widgets/wrong-da",
+    "annotation_empty_widgets/unused-resources",
+    "annotation_empty_widgets/xfa",
+    "annotation_empty_widgets/no-scroll",
+    "annotation_empty_widgets/null-value",
+    "annotation_empty_widgets/empty-value",
+    "annotation_empty_widgets/signature",
+    "annotation_empty_widgets/parent-value-not-shadowed",
+    "annotation_empty_widgets/missing-membership",
+    "annotation_empty_widgets/repeated-membership",
+    "annotation_empty_widgets/parent-cycle",
+    "annotation_empty_widgets/nonempty-xfa",
+    "annotation_empty_widgets/stored-precedence"
   ]
 }

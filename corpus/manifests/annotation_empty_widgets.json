@@ -1,0 +1,258 @@
+{
+  "schema": 2,
+  "area": "annotation_empty_widgets",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "annotation_empty_widgets/missing-font",
+      "kind": "pdf",
+      "description": "Empty Tx/Sig paints only the explicit MK frame; unused field text resources are not selected",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/missing-font.pdf",
+      "sha256": "00af54a489064c38f483f0f2de9e4132312d5c09b03645c7f3290421c41ababd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/missing-font.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/wrong-da",
+      "kind": "pdf",
+      "description": "Empty Tx/Sig paints only the explicit MK frame; unused field text resources are not selected",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/wrong-da.pdf",
+      "sha256": "d00ecc5f67eb289bfabd636ccd51717f73f171f6f443c6ecba2b4a641ea57d76",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/wrong-da.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/unused-resources",
+      "kind": "pdf",
+      "description": "Empty Tx/Sig paints only the explicit MK frame; unused field text resources are not selected",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/unused-resources.pdf",
+      "sha256": "2e212c7562cd12f66ef8b23964dfc672f24e9b2e1120592376a685d0f24f6d9b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/unused-resources.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/xfa",
+      "kind": "pdf",
+      "description": "Empty Tx/Sig paints only the explicit MK frame; unused field text resources are not selected",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/xfa.pdf",
+      "sha256": "069270e8349e99e2950b2a68941ab27b8944c5d835c74db4733e9be8c67a0df8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/xfa.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/no-scroll",
+      "kind": "pdf",
+      "description": "Empty Tx/Sig paints only the explicit MK frame; unused field text resources are not selected",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/no-scroll.pdf",
+      "sha256": "1940b45bd7ef529d3b9a80bc0d882e51220de5d1572d73ea7537cd45b576b2a2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/no-scroll.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/null-value",
+      "kind": "pdf",
+      "description": "Empty Tx/Sig paints only the explicit MK frame; unused field text resources are not selected",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/null-value.pdf",
+      "sha256": "ad7c9036179e809a025cb796228123b7624ac8f75b664f07d19ac6f6ad698887",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/null-value.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/empty-value",
+      "kind": "pdf",
+      "description": "Empty Tx/Sig paints only the explicit MK frame; unused field text resources are not selected",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/empty-value.pdf",
+      "sha256": "d26c79b364bc9f8d4cf3256c7c9566618891bdcbb9aac3dd805669ccc7bdb328",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/empty-value.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/signature",
+      "kind": "pdf",
+      "description": "Empty Tx/Sig paints only the explicit MK frame; unused field text resources are not selected",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/signature.pdf",
+      "sha256": "45b46eddb8b05a5e0299b3f0b6a2048607fcdbf03bcd9dbc23708f6193fd1bbb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/signature.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/parent-value-not-shadowed",
+      "kind": "pdf",
+      "description": "Unnamed child V is ignored: owning AB paints two5x7 Type3 glyphs at x6/12,y11",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/parent-value-not-shadowed.pdf",
+      "sha256": "78141f58358583729b9936f372bb896747f2a630aa3e98d056dfce9d27778f54",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/parent-value-not-shadowed.ppm",
+      "oracle_sha256": "e80da7eee4b2803977215d79ab8ba0c64ecbe26779a7966858e4770c809b6207",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/missing-membership",
+      "kind": "pdf",
+      "description": "Empty content does not bypass missing/repeated membership or cyclic ancestry",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/missing-membership.pdf",
+      "sha256": "49ab8861e792c05e8082c6ff6cacf3c62f63733c9d9c66ffd1bee310a6641acf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_empty_widgets/repeated-membership",
+      "kind": "pdf",
+      "description": "Empty content does not bypass missing/repeated membership or cyclic ancestry",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/repeated-membership.pdf",
+      "sha256": "f471d4fefe10070886de77f6a7460f74db99ecf20201f0737c0fbee8f30e502a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "cycle"
+    },
+    {
+      "id": "annotation_empty_widgets/parent-cycle",
+      "kind": "pdf",
+      "description": "Empty content does not bypass missing/repeated membership or cyclic ancestry",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/parent-cycle.pdf",
+      "sha256": "b6b0d235116e0f34303279f6468617f25f5e7748d559bc0e5a544283a2a44add",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "cycle"
+    },
+    {
+      "id": "annotation_empty_widgets/nonempty-xfa",
+      "kind": "pdf",
+      "description": "A nonempty source value retains the existing XFA generation boundary",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/nonempty-xfa.pdf",
+      "sha256": "74da4e4d31077be9fbf3e3d4f619d76663584e32152211a184d7dcc2018a935f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "form.xfa"
+    },
+    {
+      "id": "annotation_empty_widgets/stored-precedence",
+      "kind": "pdf",
+      "description": "Stored AP paints blue before any source-field membership, DA, XFA or fit request",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/stored-precedence.pdf",
+      "sha256": "83c9643bc07c91877f2eac3a6c0d0f28826282e551d8471af6bd4a1558f8a340",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/stored-precedence.ppm",
+      "oracle_sha256": "73b62b389d8a656e758c876b5b029ef1475c4f495db17f17c4e0571d465582df",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    }
+  ]
+}

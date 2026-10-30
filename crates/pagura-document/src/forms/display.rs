@@ -18,6 +18,27 @@ struct Node<'a> {
     source: Source,
 }
 
+pub(super) fn membership(document: &Document, annotation: &Dictionary) -> Result<bool> {
+    let mut context = Context::new(document);
+    let (catalog, catalog_source) = context.catalog()?;
+    let Some(form) = context.present(catalog, b"AcroForm", catalog_source)? else {
+        return Ok(false);
+    };
+    let (form, source) = context.dictionary(form, catalog_source)?;
+    ancestry(
+        &mut context,
+        Node {
+            dictionary: annotation,
+            source: Source::default(),
+        },
+        Node {
+            dictionary: form,
+            source,
+        },
+    )?;
+    Ok(true)
+}
+
 pub(super) fn read<'a>(
     document: &'a Document,
     annotation: &'a Dictionary,

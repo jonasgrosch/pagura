@@ -2067,9 +2067,23 @@
         "pagura-interpret annotations::missing_appearance_generation_uses_the_existing_content_byte_budget",
         "pagura-interpret annotations::static_appearances_use_existing_reference_and_scene_budgets",
         "pagura api::editing::widget_display::source_widgets_untouched_previews_and_saved_reopens_share_layout",
-        "pagura api::editing::widget_display::explicitly_saving_source_values_persists_the_same_missing_appearance"
+        "pagura api::editing::widget_display::explicitly_saving_source_values_persists_the_same_missing_appearance",
+        "annotation_empty_widgets/missing-font",
+        "annotation_empty_widgets/wrong-da",
+        "annotation_empty_widgets/unused-resources",
+        "annotation_empty_widgets/xfa",
+        "annotation_empty_widgets/no-scroll",
+        "annotation_empty_widgets/null-value",
+        "annotation_empty_widgets/empty-value",
+        "annotation_empty_widgets/signature",
+        "annotation_empty_widgets/parent-value-not-shadowed",
+        "annotation_empty_widgets/missing-membership",
+        "annotation_empty_widgets/repeated-membership",
+        "annotation_empty_widgets/parent-cycle",
+        "annotation_empty_widgets/nonempty-xfa",
+        "annotation_empty_widgets/stored-precedence"
       ],
-      "gaps": "The 47 pixel controls and source/preview/save checks passed at retained 5321c0958 (hosted runs 40392132368, 40392132561 and 40392132510); the 28 raw adapter observations establish scoped reader behavior, not pixel truth or family support. Rich/CID/complex-script layout, actions and physical printing remain separate boundaries; normal button artwork is covered by content-normal-button-display. Source display does not execute the NeedAppearances request or normalize malformed field membership; full form inspection retains its existing repair contract. No whole-tree cache, timing claim or V01/V02 promotion is introduced. Hosted editing run 40389416478 exposed an incorrect new null-N pixel expectation; primary Table 170 adjudication reclassified that same PDF as Syntax. Product code and the previous 416 pixel controls are unchanged; 47 valid widget pixel controls remain."
+      "gaps": "The 47 pixel controls and source/preview/save checks passed at retained 5321c0958 (hosted runs 40392132368, 40392132561 and 40392132510); the 28 raw adapter observations establish scoped reader behavior, not pixel truth or family support. Rich/CID/complex-script layout, actions and physical printing remain separate boundaries; normal button artwork is covered by content-normal-button-display. Source display does not execute the NeedAppearances request or normalize malformed field membership; full form inspection retains its existing repair contract. No whole-tree cache, timing claim or V01/V02 promotion is introduced. Hosted editing run 40389416478 exposed an incorrect new null-N pixel expectation; primary Table 170 adjudication reclassified that same PDF as Syntax. Product code and the previous 416 pixel controls are unchanged; 47 valid widget pixel controls remain. Empty Tx/Sig geometry uses the shared ancestry/membership proof without selecting DA, DR, XFA or text-fit rules. Complete field inspection and form editing retain their original validation."
     },
     {
       "id": "content-stamp-appearances",
