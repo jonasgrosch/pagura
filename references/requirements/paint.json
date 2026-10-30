@@ -244,7 +244,8 @@
         "11.6.4.3",
         "8.7.3.2",
         "8.7.3.3",
-        "11.6.7"
+        "11.6.7",
+        "8.9.5.3"
       ],
       "status": "implemented subset",
       "tests": [
@@ -372,8 +373,8 @@
           "verdict": "verified against local primary text; device policy identified explicitly"
         },
         {
-          "locator": "8.7.3.2; 8.7.3.3; 8.9.6.2; 11.3.3; 11.6.7; ADR 0004 per-pixel sources",
-          "rule": "A non-interpolated one-bit stencil marks sample cells with the selected tiling/shading pattern, with Decode polarity and original pattern origin. Integrate mask, child geometry and clipping jointly before quantizing coverage, then composite cell marks per the pixel-source model. Row runs share geometry; no separately averaged stencil/pattern alpha product. Interpolate needs smoothed mask edges and remains unsupported.",
+          "locator": "8.7.3.2; 8.7.3.3; 8.9.6.2; 11.3.3; 11.6.7; ADR 0004 per-pixel sources; 8.9.5.3; ADR 0004 image sampling",
+          "rule": "A non-interpolated one-bit stencil marks sample cells with the selected tiling/shading pattern, with Decode polarity and original pattern origin. Integrate mask, child geometry and clipping jointly before quantizing coverage, then composite cell marks per the pixel-source model. Row runs share geometry; no separately averaged stencil/pattern alpha product. Magnified Interpolate masks use bilinear opacity between clamped sample centres (8.9.5.3) applied once to the completed pattern alpha and shape; image unit-square clipping remains joint geometry. Minified Interpolate placements retain exact sample-cell areas under the existing image sampling policy.",
           "verdict": "Primary clauses read in the licensed local ISO EC3 text. Independent rational joint-intersection and source-over fixtures; single-cell controls also equal the unambiguous continuous geometric union. Runtime qualification recorded separately."
         },
         {
