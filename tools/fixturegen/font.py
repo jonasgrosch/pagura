@@ -329,8 +329,12 @@ def type1_font(pfb=False, hex_eexec=False, len_iv=4, hostile=None, variant=None,
         plain += f"/lenIV {len_iv} def\n".encode()
     plain += f"/Subrs {len(subrs)} array\n".encode()
     for i, subroutine in enumerate(subrs):
+        if subroutine is None:
+            continue
         encrypted_subr = enc_char(subroutine)
-        plain += f"dup {i} {len(encrypted_subr)} RD ".encode()+encrypted_subr+b" NP\n"
+        index = 0 if variant == "subrs-duplicate" else len(subrs) if variant == "subrs-index" else i
+        length = len(encrypted_subr)+10000 if variant == "subrs-record" else len(encrypted_subr)
+        plain += f"dup {index} {length} RD ".encode()+encrypted_subr+b" NP\n"
     plain += b"/CharStrings 6 dict dup begin\n"
     for name, program in glyphs:
         program = enc_char(program)
@@ -528,6 +532,7 @@ def cases():
     yield from metadata_recovery_cases()
     yield from descriptor_flag_cases()
     yield from glyph_name_cases()
+    yield from sparse_subr_cases()
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
 
@@ -1239,3 +1244,49 @@ def glyph_name_cases():
                  "count 5\nglyph-name-none 0\nglyph-name-none 1\n",req,"cff")
     yield vector("glyph-names-cff2",cff_font(cff2=True,conforming=True),
                  "count 5\nglyph-name-none 0\nglyph-name-none 1\n",req,"cff")
+
+
+def sparse_subr_program(name, *, filled=False, malformed=None):
+    """Type 1 6/8: keep explicitly assigned indexes, never invent hole programs."""
+    width = operands(0,600)+b"\x0d"
+    move = operands(0,0)+b"\x15"
+    rectangle = operands(100,0)+b"\x05"+operands(0,200)+b"\x05"+operands(-100,0)+b"\x05"
+    end = b"\x09\x0e"
+    if name == "all-unused":
+        program, subrs = width+move+rectangle+end, [None]*4
+    elif name == "interior":
+        program, subrs = width+move+operands(2)+b"\x0a"+end, [None,b"\x0b",rectangle+b"\x0b",None]
+    elif name == "nested":
+        program = width+move+operands(2)+b"\x0a"+end
+        subrs = [None,rectangle+b"\x0b",operands(1)+b"\x0a\x0b",None]
+    elif name == "called":
+        program, subrs = width+move+operands(1)+b"\x0a"+end, [b"\x0b",None]
+    else:
+        assert name == "tail"
+        program, subrs = width+move+operands(0)+b"\x0a"+end, [rectangle+b"\x0b",None]
+    if filled:
+        subrs = [b"\x0b" if subr is None else subr for subr in subrs]
+    return type1_font(program=program,custom_subrs=subrs,conforming=True,variant=malformed)
+
+
+def sparse_subr_cases():
+    req = "font-type1-sparse-subrs"
+    expected = "count 6\nname A 1\nencoding 65 A\nadvance 1 600\noutline 1\n"+RECT
+    for name in ("tail","interior","nested","all-unused"):
+        for framing in ("pfa","pfb","hex"):
+            program = sparse_subr_program(name)
+            if framing != "pfa":
+                # Reframe only the independent writer's own cipher bytes.
+                marker = program.index(b"currentfile eexec\n")+len(b"currentfile eexec\n")
+                clear, cipher = program[:marker], program[marker:]
+                if framing == "hex":
+                    program = clear+cipher.hex().encode()+b"\n"
+                else:
+                    program = b"\x80\x01"+struct.pack("<I",len(clear))+clear+b"\x80\x02"+struct.pack("<I",len(cipher))+cipher+b"\x80\x03"
+            yield recovery_vector("type1-sparse-"+name+"-"+framing,program,expected,
+                                  "font.type1-sparse-subrs",fmt="type1",requirement=req)
+    yield vector("type1-sparse-called",sparse_subr_program("called"),"parse-error\n",req,"type1")
+    yield vector("type1-sparse-dense-twin",sparse_subr_program("interior",filled=True),expected,req,"type1")
+    for malformed in ("duplicate","index","record"):
+        yield vector("type1-sparse-invalid-"+malformed,sparse_subr_program("tail",filled=True,malformed="subrs-"+malformed),
+                     "parse-error\n",req,"type1")

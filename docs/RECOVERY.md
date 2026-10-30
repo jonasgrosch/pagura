@@ -126,7 +126,12 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   DICT operators are ignored with their operands; `font.cff-encoding-supplement`
   (CFF section 12): a supplement for a glyph absent from the main encoding is
   dropped; `font.type1-duplicate-glyph` (Type 1 chapters 6 and 10.3): the first
-  definition of a repeated glyph name is kept.
+  definition of a repeated glyph name is kept. `font.type1-sparse-subrs`
+  (Type 1 chapters 6 and 8) retains unassigned array entries as unavailable,
+  preserving declared indexes and original bytes. Strict rejects them. No
+  return program is invented; calling a hole remains malformed and follows
+  the existing reported `font.glyph-data` fallback in Repair mode. That
+  fallback does not reconstruct the missing outline.
 - Forms (7.9.2.2, 12.6.2, 12.7.3–12.7.4): `form.fields`, `form.name`,
   `form.duplicate-name`, `form.parent`, `form.cycle` and `form.structure` read a
   malformed field tree into a consistent model; equivalent duplicate names

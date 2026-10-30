@@ -1289,6 +1289,174 @@
       "render_error": "syntax"
     },
     {
+      "id": "recovery/type1-sparse-tail",
+      "kind": "pdf",
+      "description": "type1 sparse tail",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-tail.pdf",
+      "sha256": "de70f8ba57ebb34e88d98eb98de4cb164db9b1342494561f5d4cf0b7c8c694bd",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ],
+      "oracle": "corpus/generated/recovery/type1-sparse-tail.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-tail-valid",
+      "kind": "pdf",
+      "description": "type1 sparse tail valid",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-tail-valid.pdf",
+      "sha256": "52b2768cf352557e7b08c3ddfb517482e311f502d81573a5afc41cfde053bfad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/type1-sparse-tail-valid.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-interior",
+      "kind": "pdf",
+      "description": "type1 sparse interior",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-interior.pdf",
+      "sha256": "36011644962eb50af5304895d333af88fed8ae1541428859f3e75b8733f11923",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ],
+      "oracle": "corpus/generated/recovery/type1-sparse-interior.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-interior-valid",
+      "kind": "pdf",
+      "description": "type1 sparse interior valid",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-interior-valid.pdf",
+      "sha256": "2c92d76e3445a2232beddce79792cb08fc11e21439392899943dc385fdc9ce93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/type1-sparse-interior-valid.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-nested",
+      "kind": "pdf",
+      "description": "type1 sparse nested",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-nested.pdf",
+      "sha256": "36f1f307324c5cb3c2de41e667b00d81e217030cde6b029c180944a45b6b0920",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ],
+      "oracle": "corpus/generated/recovery/type1-sparse-nested.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-nested-valid",
+      "kind": "pdf",
+      "description": "type1 sparse nested valid",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-nested-valid.pdf",
+      "sha256": "9c8b986f825d70b576f752343211bc0247355741ba22384263e9d89b9b2dadf3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/type1-sparse-nested-valid.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-all-unused",
+      "kind": "pdf",
+      "description": "type1 sparse all unused",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-all-unused.pdf",
+      "sha256": "72153bcaf28ca9800d11fe6797d2471e04509c095bd3b266350a6c77ebdc541c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ],
+      "oracle": "corpus/generated/recovery/type1-sparse-all-unused.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-all-unused-valid",
+      "kind": "pdf",
+      "description": "type1 sparse all unused valid",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-all-unused-valid.pdf",
+      "sha256": "4134964041fb6c1f00c92ec9b2a08f7bfdbc1865d8122f88bbb0da636abe7191",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/type1-sparse-all-unused-valid.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
       "id": "recovery/unclosed-graphics",
       "kind": "pdf",
       "description": "unclosed graphics",

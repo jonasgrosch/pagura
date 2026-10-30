@@ -26,7 +26,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `document.structure` / R01 | PDF file structures and reported recovery | partial / partial / partial / partial | Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. | Current-corpus recovery classification; external resources require a host contract. |
 | `document.range-input` / D01 | Range and linearization-aware loading | missing / missing / missing / missing | Complete-buffer opening, lazy object caches and immutable source bytes are available. | Immutable range sources, missing-data state, scoped loading, linearization and resumable host jobs (ADR 0035 proposed). |
 | `security.passwords` / D03 | Password security and encoding | partial / partial / partial / partial | Standard security R2-R6, RC4/AES and R6 SASLprep; CLI supports legacy text conversion. | Public-key handlers, encrypted history and browser legacy text conversion; writing encryption is E01. |
-| `fonts.programs` / R04 | Embedded font programs | partial / partial / partial / partial | TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. | Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. |
+| `fonts.programs` / R04 | Embedded font programs | partial / partial / partial / partial | TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Reported sparse Type 1 Subrs retain original indexes and assigned charstrings. | Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. |
 | `fonts.cid-substitution` / R04 | CID font substitution | partial / partial / partial / partial | Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works. | Vertical substituted glyph forms/metrics and unavailable provider/collection coverage. |
 | `images.codecs` / R03 | PDF image codec variants | partial / partial / partial / partial | JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1. | Residual JPEG, CCITT, JBIG2 and JPX subvariants are enumerated in the tag dispositions; baseline-supported valid cases still need G01 fixtures. |
 | `images.jpx-alpha` / R02 | JPX embedded straight/premultiplied alpha | implemented / implemented / implemented / implemented | SMaskInData 1/2 decode and compositing, including alpha normalization/unpremultiplication; explicit PDF Indexed spaces retain direct index/opacity channels without a container palette, including first/last opacity order. | Opacity combined with an explicit PDF Indexed space and a JPX container palette still requires channel mapping; broader colour/layout interactions remain R02 work. |
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 335 registered requirement IDs map to capability rows in the ledger.
+All 336 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery
