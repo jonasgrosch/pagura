@@ -394,8 +394,8 @@ impl Shape {
         .bands()
     }
 
-    /// Work units its rasterization costs at most over all its bands, for
-    /// the render-work reservation.
+    /// Work admission for rasterization over every band, including cumulative
+    /// preparation proofs for inherited true-curve clips.
     pub fn work(&self) -> usize {
         self.work
     }

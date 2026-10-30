@@ -20,7 +20,8 @@ pub(crate) struct Prepared {
     pub(crate) key: u32,
     /// The pixels it can cover or keep.
     pub(crate) bounds: DeviceRect,
-    /// Rasterization work units at most (shapes only).
+    /// Rasterization admission; curved shapes/clips include cumulative
+    /// preparation proofs. Ordinary clips keep their existing zero value.
     pub(crate) work: usize,
 }
 

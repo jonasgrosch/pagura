@@ -419,7 +419,8 @@ impl ClipShape {
         self.inner.retained
     }
 
-    /// Work units rasterizing the clip alone over every band costs at most.
+    /// Work admission for emission over every band. True-curve clip chains
+    /// also include their cumulative preparation-proof work.
     pub fn work(&self) -> usize {
         self.inner.work
     }
