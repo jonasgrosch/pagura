@@ -15,6 +15,7 @@ mod geometry;
 mod sampling;
 mod scratch;
 mod separable;
+mod stencil;
 #[cfg(test)]
 mod tests;
 mod texels;

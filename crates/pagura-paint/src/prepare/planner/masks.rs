@@ -111,6 +111,7 @@ impl Planner<'_> {
             separated: false,
             masked: true,
             paint: None,
+            stencil_clip: None,
             depth: scope.depth + 1,
         };
         budget.bytes.reserve_capacity(&mut self.open, 1)?;
