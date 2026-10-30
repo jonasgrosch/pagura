@@ -228,7 +228,7 @@ impl Planner<'_> {
         }
         self.use_mask(mask, covered.bounds, budget)?;
         let compositing = Compositing {
-            alpha: state.alpha,
+            alpha: state.alpha * scope.alpha,
             blend: state.blend,
             alpha_is_shape: state.alpha_is_shape,
             mask,

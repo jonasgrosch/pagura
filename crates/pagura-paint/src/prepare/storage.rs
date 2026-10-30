@@ -23,8 +23,8 @@ use pagura_color::Process;
 use pagura_core::hash::FastMap;
 use pagura_core::{Error, Meter, Result};
 use pagura_interpret::{
-    BlendMode, Composite, GroupAttributes, GroupId, GroupRole, ImageMask, MaskId, Node, Paint,
-    PatternId, Scene,
+    BlendMode, Composite, Group, GroupAttributes, GroupId, GroupRole, ImageMask, MaskId, Node,
+    Paint, PatternId, Scene,
 };
 use pagura_raster::{DeviceRect, Transform};
 
@@ -35,6 +35,9 @@ pub(crate) enum Route {
     Buffer,
     /// Its members composite into the parent directly.
     Flatten,
+    /// Its one member composites into the parent directly, at the group's
+    /// alpha times its own.
+    Fold,
     /// Not at all: its result's alpha is 0 everywhere, which leaves the
     /// parent's colour and alpha as they are, and no buffer it reaches
     /// knocks out by its shape.
@@ -220,6 +223,9 @@ struct Context {
     /// A buffer enclosing the parent knocks out, or the content is a tiling
     /// cell's, whose shape reaches wherever the pattern paints.
     knockout: bool,
+    /// The alpha of a folded group, which its member's multiplies; 1
+    /// elsewhere.
+    alpha: f64,
     /// Content space to device pixels.
     transform: Transform,
 }
@@ -230,6 +236,7 @@ impl Context {
             selects: true,
             masked: false,
             knockout: false,
+            alpha: 1.0,
             transform,
         }
     }
@@ -240,6 +247,7 @@ impl Context {
             selects: false,
             masked: true,
             knockout: false,
+            alpha: 1.0,
             ..self
         }
     }
@@ -447,6 +455,18 @@ impl Survey<'_> {
                 }
             };
             let state = state(scene, mark.state)?;
+            // A folded group's member composites at the group's alpha times
+            // its own.
+            let folded;
+            let state = if context.alpha == 1.0 {
+                state
+            } else {
+                folded = Composite {
+                    alpha: state.alpha * context.alpha,
+                    ..state.clone()
+                };
+                &folded
+            };
             // Footprints matter for dynamic stores, and the extent of a
             // group, whose result is a dynamic store of its parent.
             let (hulls, extent) = if dynamic(kind, state) {
@@ -649,9 +669,11 @@ impl Survey<'_> {
         let transform = group.view.map_or(Ok(context.transform), |view| {
             view_transform(context.transform, view, self.inputs.user_unit)
         })?;
+        let fold = self.folds((group, state), (parent, layout), context)?;
         let inner = Context {
             transform,
             knockout: context.knockout || parent_knockout,
+            alpha: if fold { state.alpha } else { 1.0 },
             ..context
         };
         self.children(child, &group.children, inner, depth + 1, bytes)?;
@@ -666,6 +688,8 @@ impl Survey<'_> {
         // a knockout reads (11.4.6), above it or in a pattern's instances.
         let route = if self.skips && !inner.knockout && (!facts.visible || state.alpha == 0.0) {
             Route::Skip
+        } else if fold {
+            Route::Fold
         } else if fits && !parent_knockout {
             Route::Flatten
         } else {
@@ -680,22 +704,16 @@ impl Survey<'_> {
         let extent = facts.extent;
         let transfer = facts.transfer;
         let visible = facts.visible && state.alpha != 0.0;
-        let key = (id, parent_layout.process);
-        if !self.groups.contains_key(&key) {
-            bytes.reserve_map_capacity(&mut self.groups, 1)?;
-        }
-        self.groups.insert(
-            key,
-            GroupEntry {
-                buffer: child,
-                route,
-                transparent,
-                knockout,
-            },
-        );
+        let entry = GroupEntry {
+            buffer: child,
+            route,
+            transparent,
+            knockout,
+        };
+        self.record((id, parent_layout.process), entry, bytes)?;
         match route {
             Route::Skip => return Ok(()),
-            Route::Flatten => return self.merge(parent, child, bytes),
+            Route::Flatten | Route::Fold => return self.merge(parent, child, bytes),
             Route::Buffer => {}
         }
         let mask = state
@@ -737,6 +755,68 @@ impl Survey<'_> {
             target.forced = true;
         }
         Ok(())
+    }
+
+    /// Records the facts of group `key`'s decision.
+    fn record(
+        &mut self,
+        key: (GroupId, Process),
+        entry: GroupEntry,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        if !self.groups.contains_key(&key) {
+            bytes.reserve_map_capacity(&mut self.groups, 1)?;
+        }
+        self.groups.insert(key, entry);
+        Ok(())
+    }
+
+    /// Whether a group of constant alpha paints as its one member does at
+    /// the group's alpha times its own: a single store of Normal blend, whose
+    /// source-over at opacity m a is the group's result composited at m
+    /// (11.4.8), with no knockout, mask, transfer or conversion between them.
+    fn folds(
+        &self,
+        (group, state): (&Group, &Composite),
+        (parent, layout): (usize, Layout),
+        context: Context,
+    ) -> Result<bool> {
+        let target = &self.buffers[parent];
+        if state.alpha == 1.0
+            || state.blend != BlendMode::Normal
+            || state.soft_mask.is_some()
+            || state.alpha_is_shape
+            || state.transfer.is_some()
+            || group.attributes.knockout
+            || target.knockout_attribute
+            || layout != target.layout
+        {
+            return Ok(false);
+        }
+        let [child] = group.children[..] else {
+            return Ok(false);
+        };
+        let mark = match self.scene.node(child) {
+            Some(Node::Fill(fill)) => &fill.mark,
+            Some(Node::Stroke(stroke)) => &stroke.mark,
+            Some(Node::Image(image)) => &image.mark,
+            Some(Node::Shading(shading)) => &shading.mark,
+            _ => return Ok(false),
+        };
+        let member = self::state(self.scene, mark.state)?;
+        let keeps = Keeping {
+            separated: self.inputs.simulate,
+            policy: self.inputs.policy,
+        }
+        .keeps(
+            member,
+            Place {
+                masked: context.masked,
+                cmyk: layout.process == Process::Cmyk,
+                direct_cmyk: true,
+            },
+        );
+        Ok(member.blend == BlendMode::Normal && !member.alpha_is_shape && !keeps)
     }
 
     fn mask(
@@ -805,6 +885,7 @@ impl Survey<'_> {
         let inner = Context {
             selects: false,
             knockout: true,
+            alpha: 1.0,
             transform: tiling.matrix.then(context.transform),
             ..context
         };

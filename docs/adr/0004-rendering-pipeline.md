@@ -86,7 +86,13 @@ exact result.
   has alpha 0 at every pixel (alpha 0, or no member of positive alpha)
   leaves its parent's colour and alpha as they are and feeds nothing; it is
   left out unless a knockout above it reads its shape or a transfer function
-  is selected (11.7.5.2).
+  is selected (11.7.5.2). A group of constant alpha m < 1 whose one member
+  is a single store of Normal blend (a fill, stroke, image or shading) is
+  that member at m times its own opacity: the member's source-over at
+  opacity a, composited at m, is source-over at m a (11.4.8). Such a group
+  folds into its parent without a buffer, unless a knockout, a soft mask, a
+  transfer function, alpha as shape, another blending space or a kept
+  component stands between them.
 - **Sources** enter composition as f64 values from prepared converters,
   functions and samplers. The storage bounds of sections 5 and 6 include
   encoding them and reserve a margin for their f64 evaluation.
