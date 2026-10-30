@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "3e77019dff9eecdc2624eb16358fde308b7fd0de",
+  "audited_revision": "ebb059faccc402a5258f3809fe7c1994c701e18a",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -149,7 +149,7 @@
     "crates/pagura/src/lib.rs": "8957891da773217d57e291c1ea4e016fb865115d8e1ee7e16b9ff7173a38a5c2",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
-    "crates/pagura/tests/api/document.rs": "e5ecf107fdb648e90faf90e13b5703aeb151afbd7ad1cb7ea6e59c8548a5a102",
+    "crates/pagura/tests/api/document.rs": "6bff88b0c778bc4299c08d9db57cdc15a750b489c46d8fc3def47f4e07c5c1c2",
     "crates/pagura/tests/api/editing.rs": "1775dd357ce924da4c3c5911aca4ee98f5204aa3bc48e6ef96fb6bf019f8a085",
     "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
     "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
