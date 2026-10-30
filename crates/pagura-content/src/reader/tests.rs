@@ -113,18 +113,43 @@ fn inline_images_are_framed_by_the_caller_and_end_with_ei() {
             Ok(3)
         })
         .unwrap();
-    assert_eq!(data, b"\x00\xffx");
+    assert_eq!(
+        data,
+        InlineData {
+            data: b"\x00\xffx",
+            unspaced: false
+        }
+    );
     assert_eq!(reader.next(&mut tokens).unwrap().unwrap().op, Op::Restore);
     assert!(reader.next(&mut tokens).unwrap().is_none());
 
-    let content = Content::from_bytes(b"BI /W 1 ID \x00 Q".as_slice());
+    for bytes in [b"BI /W 1 ID \x00 Q".as_slice(), b"BI /W 1 ID \x00EIQ"] {
+        let content = Content::from_bytes(bytes);
+        let mut reader = Reader::new(&content, &Limits::default());
+        reader.next(&mut tokens).unwrap();
+        let error = reader.inline_image_data(|_| Ok(1)).unwrap_err();
+        assert_eq!(
+            (error.message, error.position),
+            ("inline image requires EI", Position::Buffer(0))
+        );
+    }
+}
+
+#[test]
+fn an_ei_directly_after_the_data_is_read_and_marked() {
+    let content = Content::from_bytes(b"BI /W 1 ID \xffEI Q".as_slice());
     let mut reader = Reader::new(&content, &Limits::default());
+    let mut tokens = meter();
     reader.next(&mut tokens).unwrap();
-    let error = reader.inline_image_data(|_| Ok(1)).unwrap_err();
+    let data = reader.inline_image_data(|_| Ok(1)).unwrap();
     assert_eq!(
-        (error.message, error.position),
-        ("inline image requires EI", Position::Buffer(0))
+        data,
+        InlineData {
+            data: b"\xff",
+            unspaced: true
+        }
     );
+    assert_eq!(reader.next(&mut tokens).unwrap().unwrap().op, Op::Restore);
 }
 
 #[test]
@@ -162,6 +187,23 @@ fn pending_operands_and_sections_leave_the_reader_unbalanced() {
         let mut tokens = meter();
         while reader.next(&mut tokens).unwrap().is_some() {}
         assert!(!reader.is_balanced());
+    }
+}
+
+#[test]
+fn only_pending_operands_are_discarded() {
+    for (bytes, pending) in [
+        (b"0 0".as_slice(), true),
+        (b"q 0 0 m", false),
+        (b"BX", false),
+    ] {
+        let content = Content::from_bytes(bytes);
+        let mut reader = Reader::new(&content, &Limits::default());
+        let mut tokens = meter();
+        while reader.next(&mut tokens).unwrap().is_some() {}
+        assert_eq!(reader.discard_operands(), pending, "{bytes:?}");
+        assert!(!reader.discard_operands());
+        assert_eq!(reader.is_balanced(), bytes != b"BX");
     }
 }
 

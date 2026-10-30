@@ -34,6 +34,20 @@ pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
 /// 14.6: close marked-content sequences left open at the end of a content
 /// sequence, after all painting and text objects have finished.
 pub const MARKED_UNCLOSED: Repair = Repair::new("content.marked-unclosed");
+/// 7.8.2; 8.4.2: ignore a `Q` with no saved graphics state in its content
+/// sequence. Every robust reader ignores it.
+pub const GRAPHICS_UNOPENED: Repair = Repair::new("content.graphics-unopened");
+/// 9.4.1: ignore an `ET` outside a text object.
+pub const TEXT_UNOPENED: Repair = Repair::new("content.text-unopened");
+/// 14.6: ignore an `EMC` with no marked-content sequence open in its content
+/// sequence.
+pub const MARKED_UNOPENED: Repair = Repair::new("content.marked-unopened");
+/// 7.8.2: discard operands that no operator takes at the end of a content
+/// sequence.
+pub const OPERANDS_UNUSED: Repair = Repair::new("content.operands-unused");
+/// 7.2.3; 8.9.7: accept an `EI` that follows the inline image data its
+/// header measures without white space between them.
+pub const INLINE_EI_SPACE: Repair = Repair::new("content.inline-ei-space");
 /// 9.6.4, Table 111: retain the horizontal Widths advance when d0/d1 disagrees.
 pub const TYPE3_WIDTH: Repair = Repair::new("font.type3-width");
 /// 8.7.3.2, Table 73: coloured patterns require only a name; discard extra
@@ -54,6 +68,11 @@ pub const ALL: &[Repair] = &[
     APPEARANCE_EMPTY,
     GRAPHICS_UNCLOSED,
     MARKED_UNCLOSED,
+    GRAPHICS_UNOPENED,
+    TEXT_UNOPENED,
+    MARKED_UNOPENED,
+    OPERANDS_UNUSED,
+    INLINE_EI_SPACE,
     TYPE3_WIDTH,
     PATTERN_UNDERLYING,
 ];

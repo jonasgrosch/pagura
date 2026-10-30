@@ -158,6 +158,18 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   end of an otherwise finished content sequence are closed there, so optional
   content stays hidden or visible until that end. Open sequences nest without
   a depth limit; each costs one operator of the content.
+- `content.graphics-unopened` (7.8.2, 8.4.2), `content.text-unopened` (9.4.1),
+  `content.marked-unopened` (14.6): a `Q`, `ET` or `EMC` with nothing open in
+  its content sequence to close is ignored, so a form's `Q` never restores
+  state saved outside the form. PDFium, MuPDF, Poppler and pdf.js all ignore
+  them.
+- `content.operands-unused` (7.8.2): operands that no operator takes at the
+  end of a content sequence are discarded. An open compatibility section,
+  path, clip or text object there still fails.
+- `content.inline-ei-space` (7.2.3, 8.9.7): an `EI` directly after inline
+  image data whose length its header and filters determine is accepted
+  without the white space that separates tokens; any other token there still
+  fails.
 - `font.type3-width` (9.6.4, Table 111): `Widths` controls the advance when a
   CharProc's `d0`/`d1` width disagrees or declares a nonzero vertical advance;
   glyph geometry is retained.

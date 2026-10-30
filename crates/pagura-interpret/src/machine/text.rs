@@ -114,8 +114,15 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         Ok(())
     }
 
-    /// `Q`, which may not cross the start of a text object.
+    /// `Q`, which may not cross the start of a text object. A `Q` without a
+    /// saved state in its content sequence is ignored, a reported repair.
     pub(super) fn restore(&mut self, scope: &mut Scope) -> Result<()> {
+        if scope.saved.is_empty() {
+            return self.repair(
+                repairs::GRAPHICS_UNOPENED,
+                "Q without matching q ignored (8.4.2)",
+            );
+        }
         if scope
             .text
             .as_ref()
@@ -188,8 +195,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         Ok(())
     }
 
+    /// `ET`; outside a text object it is ignored, a reported repair.
     fn end_text(&mut self, scope: &mut Scope) -> Result<()> {
-        let mut object = scope.text.take().ok_or(Error::syntax("ET without BT"))?;
+        let Some(mut object) = scope.text.take() else {
+            return self.repair(repairs::TEXT_UNOPENED, "ET without BT ignored (9.4.1)");
+        };
         if object.saved_depth != scope.saved.len() {
             return Err(Error::syntax("ET crosses graphics state boundary"));
         }

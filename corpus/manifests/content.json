@@ -7154,6 +7154,138 @@
       "api": "compile_page"
     },
     {
+      "id": "content/repair-unopened-Q",
+      "kind": "pdf",
+      "description": "Reported recovery: graphics-unopened",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-unopened-Q.pdf",
+      "sha256": "845814a81b7ad9bd8024f28606bf87e23783c7bceab6924895d7b0c4b459e38c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unopened"
+      ],
+      "oracle": "corpus/generated/content/repair-unopened-Q.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-unopened-ET",
+      "kind": "pdf",
+      "description": "Reported recovery: text-unopened",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-unopened-ET.pdf",
+      "sha256": "d759a29413f99eb5c6c88e500593b4383e079e97bd17fe0adc9d2d9c55a4fa3e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.text-unopened"
+      ],
+      "oracle": "corpus/generated/content/repair-unopened-ET.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-unopened-EMC",
+      "kind": "pdf",
+      "description": "Reported recovery: marked-unopened",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-unopened-EMC.pdf",
+      "sha256": "e553bc9862cb108d8c3567315a5b37b2d7b628bd812a8e4cddc212ab01e38ee6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unopened"
+      ],
+      "oracle": "corpus/generated/content/repair-unopened-EMC.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-unopened-Q-form",
+      "kind": "pdf",
+      "description": "Reported recovery: graphics-unopened",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-unopened-Q-form.pdf",
+      "sha256": "f2730bd38d83707d34ae89d706b5f7ec2319ded702325260dc4b8e3643a404a9",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unopened"
+      ],
+      "oracle": "corpus/generated/content/repair-unopened-Q-form.ppm",
+      "oracle_sha256": "c167e6888dedc4ca6b825be1b0ca0017b48b6ad18caffda3ba7e04f2f9b109a0",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-operands-unused",
+      "kind": "pdf",
+      "description": "Reported recovery: operands-unused",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-operands-unused.pdf",
+      "sha256": "64c789604bd1bb296ed1742d74c8a91e732d17ccb7f85c92e0fe06c3a468cfaa",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.operands-unused"
+      ],
+      "oracle": "corpus/generated/content/repair-operands-unused.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-inline-ei-unspaced",
+      "kind": "pdf",
+      "description": "Reported recovery: inline-ei-space",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-inline-ei-unspaced.pdf",
+      "sha256": "07bef938b484af7307f4b9198e4a8a9ad67167580f0824a7b3ead2c3c0213e95",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.inline-ei-space"
+      ],
+      "oracle": "corpus/generated/content/repair-inline-ei-unspaced.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
       "id": "content/icc-1-identity",
       "kind": "pdf",
       "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
@@ -9856,18 +9988,23 @@
     {
       "id": "content/syntax-Q",
       "kind": "pdf",
-      "description": "Valid file with malformed page content",
-      "expected": "open",
+      "description": "Q without q: strict mode fails; repair mode ignores it",
+      "expected": "render",
       "requirements": [
         "content-explicit-operators"
       ],
       "path": "corpus/generated/content/syntax-Q.pdf",
       "sha256": "8e9074ae7fab1dffeffb3c6e82a75c2cb1a28bcd8e8d2f9700b2e7d929e4ebc8",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "api": "compile_page",
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unopened"
+      ],
+      "oracle": "corpus/generated/content/syntax-Q.ppm",
+      "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
     },
     {
       "id": "content/syntax-q-unclosed",

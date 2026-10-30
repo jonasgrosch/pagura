@@ -134,7 +134,6 @@ def text_cases():
     for name,content,objects in [
         ("text-show-outside",b"(A) Tj",[]),
         ("text-nested",b"BT BT ET ET",[]),
-        ("text-end-without-begin",b"ET",[]),
         ("text-unfinished",b"BT",[]),
         ("text-mode-invalid",b"8 Tr",[]),
         ("text-q-crosses",b"q BT Q ET",[]),
@@ -145,6 +144,11 @@ def text_cases():
         ("type3-metrics-outside",b"400 0 d0",[]),
     ]:
         yield Case(name,page(content,objects,FONT if objects else b"<< >>"),OPEN,("paint-text-errors",),name.replace("-"," "),extra={"render_error":"syntax"})
+    # An ET outside a text object fails in strict mode and is ignored, with a
+    # report, in repair mode; the content after it still paints.
+    yield Case("text-end-without-begin",page(b"ET 4 4 8 8 re f"),RENDER,("paint-text-errors",),
+               "ET without BT: strict mode fails; repair mode ignores it",oracle=rects([((4,4,8,8),BLACK)]),
+               repairs=("content.text-unopened",),strict_valid=False)
 
 
 def image_case(name, data, dictionary, samples, width, height, *, matrix=None, masks=(), resources=b"", requirement="paint-images", tolerance=0, fill=b"", colors=None, alpha=None):

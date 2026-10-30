@@ -280,8 +280,8 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     /// # Errors
     ///
     /// Positioned errors of the operators, and `Syntax` for a sequence that
-    /// ends with pending operands, an open section, path, clip or text
-    /// object; open marked content and unmatched `q` are reported repairs.
+    /// ends with an open section, path, clip or text object; pending
+    /// operands, open marked content and unmatched `q` are reported repairs.
     pub(crate) fn run(
         &mut self,
         content: &Content<'_>,
@@ -312,6 +312,16 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 op => self.operation(op, resources, scope),
             };
             result.map_err(|error| content.locate(error, offset))?;
+        }
+        if reader.discard_operands() {
+            self.repair_at_end(
+                content,
+                Error::syntax("content sequence ends with pending operands"),
+                Diagnostic::new(
+                    repairs::OPERANDS_UNUSED,
+                    "operands without an operator discarded at end of content sequence (7.8.2)",
+                ),
+            )?;
         }
         if !reader.is_balanced()
             || !scope.path.is_empty()
@@ -394,12 +404,18 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             return Ok(());
         };
         let framing = image::framing(self.document(), dictionary, resources)?;
-        let data =
+        let image =
             reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
+        if image.unspaced {
+            self.repair(
+                repairs::INLINE_EI_SPACE,
+                "EI directly after inline image data accepted (7.2.3, 8.9.7)",
+            )?;
+        }
         if ignored {
             return Ok(());
         }
-        self.inline_image(dictionary, data, resources, scope)
+        self.inline_image(dictionary, image.data, resources, scope)
     }
 
     /// Whether the glyph procedure or uncoloured tiling cell `scope` runs
