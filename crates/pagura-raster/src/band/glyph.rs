@@ -65,9 +65,10 @@ pub(super) enum Kind {
     /// the winding changes between zero and not zero, turned so that it
     /// winds one, and the area by which they can miss it; with the
     /// geometric points whose floor cells a placement covers (8.5.3.3.1),
-    /// where they combine with the set exactly. Every placement certifies
-    /// its bytes against the outline; one a clip cuts takes the outline's
-    /// polygon.
+    /// where they combine with the set exactly. Placed whole, it is
+    /// admitted directly as a certified spline is, with the allowance
+    /// reserved, or certifies its bytes against the outline; one a clip
+    /// cuts takes the outline's polygon.
     Union {
         relative: Relative,
         allowance: f64,
@@ -313,7 +314,8 @@ impl GlyphEdges {
             // The certificate reads the curves the placements integrate.
             let relative = Relative::new(&spline, bytes)?;
             if spline_certified(&spline, &relative.curves, bytes)? {
-                let source = rounding::Proof::new(outline, transform, Some(&relative), bytes)?;
+                let source =
+                    rounding::Proof::new(outline, transform, Some((&relative, 0.0)), bytes)?;
                 return Ok(Kind::Curve {
                     spline,
                     relative,
@@ -321,8 +323,8 @@ impl GlyphEdges {
                     source,
                 });
             }
-            // Its covered set where every placement certifies its bytes
-            // against the outline's curves.
+            // Its covered set, whose placements are admitted directly or
+            // certify their bytes against the outline's curves.
             let union = if curves && curve::quadratic_outline(outline, transform) {
                 let mut points = Vec::new();
                 if let Some(point) = point {
@@ -357,7 +359,8 @@ impl GlyphEdges {
     }
 
     /// The covered set of `spline`, an uncertified spline whose placements
-    /// certify their bytes against `outline`, with the floor cells of
+    /// are admitted directly or certify their bytes against `outline`,
+    /// with the floor cells of
     /// `points`; `None` where the set or its storage cannot be kept.
     ///
     /// A floor cell winds as an upward chain's right, -1, over its whole
@@ -389,11 +392,21 @@ impl GlyphEdges {
                 return Ok(None);
             }
         };
+        // Placed like a certified spline's pieces, the parts are admitted
+        // directly where the allowance and arithmetic leave the same
+        // margin; other placements certify their bytes.
+        let relative = Relative::parts(union.lines, union.curves);
+        let source = rounding::Proof::new(
+            outline,
+            transform,
+            Some((&relative, union.allowance)),
+            bytes,
+        )?;
         Ok(Some(Kind::Union {
-            relative: Relative::parts(union.lines, union.curves),
+            relative,
             allowance: union.allowance,
             points,
-            source: rounding::Proof::new(outline, transform, None, bytes)?,
+            source,
         }))
     }
 
