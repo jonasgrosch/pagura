@@ -41,6 +41,11 @@ Implemented formats:
 - TrueType and OpenType `glyf`: short/long `loca`, simple contours, repeated
   point flags, implied quadratic points, affine composite components and
   point attachments; cmap formats 0, 2, 4, 6, 10, 12 and 13; post formats 1, 2 and 3.
+- TrueType/OpenType collections v1/v2: explicit face indexes or a unique ordered
+  PostScript-name match, retaining shared tables at their original file-relative
+  offsets. Missing/ambiguous names and unknown versions remain errors. PDF
+  name-based selection is the reported `font.collection-face` reader policy
+  in ADR 0009; Strict PDF bindings reject that policy.
 - Bare CFF and OpenType CFF: checked INDEX/DICT data, ISOAdobe and explicit
   charsets, all 391 standard SIDs, Expert/ExpertSubset predefined charsets,
   StandardEncoding/ExpertEncoding and explicit encodings with supplements,
@@ -95,7 +100,7 @@ Masks require stems and zero padding bits; declarations follow section 3.1's
 order. Composites cannot nest.
 
 Remaining coverage: nondefault variation instances, CFF2 Font DICT matrices,
-post formats other than 1/2/3, cmap format 8 and TrueType collections, and
+post formats other than 1/2/3, cmap format 8, unknown collection versions, and
 arbitrary PostScript evaluation, hybrid/synthetic Type 1 fonts, synthetic CFF,
 CFF CharstringType 1, standalone TN 5014 CIDFont programs or nonhorizontal
 Type 1 sbw advances. Unrecognized OtherSubrs use chapter 8’s required
