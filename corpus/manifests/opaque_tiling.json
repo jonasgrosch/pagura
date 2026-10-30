@@ -1,0 +1,1078 @@
+{
+  "schema": 2,
+  "area": "opaque_tiling",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "opaque_tiling/full-cell-default-black",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/full-cell-default-black.pdf",
+      "sha256": "fc505c1e7e2576b89fc90a7fce2d505e99aae6add305ee75427f184c69b71525",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/full-cell-default-black.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/direct-full-cell-default-black",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/direct-full-cell-default-black.pdf",
+      "sha256": "38f382504887cd744e97d425e397cb7b6a4de5e946aa5fa84d491af13952f2af",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/direct-full-cell-default-black.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/full-cell-evenodd",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/full-cell-evenodd.pdf",
+      "sha256": "a56cb60fa956e3f7d2cd399e9519bf1bea25044f195363ed8ab36837950f5ece",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/full-cell-evenodd.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/offset-ink",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/offset-ink.pdf",
+      "sha256": "46c60691cd9ff06c04fd71c5b9a669cee37302ef9877da7df2a84a7b9adaaf44",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/offset-ink.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/type-1",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/type-1.pdf",
+      "sha256": "612438a289a5d38d7a9e2e709901d4a565c861aeb40211e69ed671af20043d89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/type-1.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/type-2",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/type-2.pdf",
+      "sha256": "eb6fb7ef5eea8f1b5f643390548d7b5538b14b8d2af2b62ec3545baea9745e62",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/type-2.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/type-3",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/type-3.pdf",
+      "sha256": "edcb9aae760e6a18e8d2c0ea150cd20c561ee4a5d1400728c9844d82a17d39c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/type-3.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/shear",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/shear.pdf",
+      "sha256": "4c074f5e8b5c2be539968e455201bb5fd5d9cedbde90a8cbb23aaae434c70727",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/shear.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/shear-144dpi",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/shear-144dpi.pdf",
+      "sha256": "4c074f5e8b5c2be539968e455201bb5fd5d9cedbde90a8cbb23aaae434c70727",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/shear-144dpi.ppm",
+      "oracle_sha256": "3fcfd2f5260006cc7ededc8f831dddf3938a9fcd6711c694ebde6e1176fa7777",
+      "dpi": 144,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/reflection",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/reflection.pdf",
+      "sha256": "84f906cb7ce837af46091912f38f61631c2d89e9c478d738b9636da2891619e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/reflection.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/quarter-turn",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/quarter-turn.pdf",
+      "sha256": "1cb6393e73c93338f2da601818ea014e3c005952fb4404fa16113df82937c678",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/quarter-turn.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/fractional-origin",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/fractional-origin.pdf",
+      "sha256": "96b551be295abfdcfb2e51a319dbd0d1d3a55b484f7ee965c151b21295902cbb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/fractional-origin.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/large-origin",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/large-origin.pdf",
+      "sha256": "19353c8bec4b28f144539141f1cf7e93c6eb401be6f181af0151525cc738173d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/large-origin.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/negative-step-True-False",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/negative-step-True-False.pdf",
+      "sha256": "a45304baa6fb31083917df24f4610146f487ae50084c37cbfb48967d2620f310",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/negative-step-True-False.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/negative-step-False-True",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/negative-step-False-True.pdf",
+      "sha256": "d6c52b33946b1bc26824dd41482980bb2ec5383a1dbf06d48013c28d94960471",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/negative-step-False-True.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/negative-step-True-True",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/negative-step-True-True.pdf",
+      "sha256": "2c8164cffd4106ab46451b719695f19a6da2a3d335aa4e2e10d0bb94e1081694",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/negative-step-True-True.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/local-rectangular-clip",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/local-rectangular-clip.pdf",
+      "sha256": "bf8bdac1408cf8803e90f572cac1981900247bbeeeef2985d1070d038832ff72",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/local-rectangular-clip.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/local-rectangular-evenodd-clip",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/local-rectangular-evenodd-clip.pdf",
+      "sha256": "f7cd434ffc4f4d76f542efe5ba3f276667cc7bfe1e38dfca3833108986ffcb70",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/local-rectangular-evenodd-clip.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/local-reflection",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/local-reflection.pdf",
+      "sha256": "c677bd04b6b090d05f5b9260dfff98e90c4654d7bc81f47476f741e22133259a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/local-reflection.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/local-quarter-turn",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/local-quarter-turn.pdf",
+      "sha256": "f788cead7dd2b0c27d92f3543ed7d35290d8a6a634b6638276915364e10dc91e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/local-quarter-turn.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/outer-fractional-mark-and-clip",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-fractional-mark-and-clip.pdf",
+      "sha256": "afd36033271acf0de75d214d8f5c71745e22921f3aec83e1f56fbfc33d3e143a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-fractional-mark-and-clip.ppm",
+      "oracle_sha256": "fd21fa24ac5cbf411a7112d7eb31d49fa1ae037bb836aa8123493bb7022c5244",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/outer-fractional-mark-and-clip-144dpi",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-fractional-mark-and-clip-144dpi.pdf",
+      "sha256": "afd36033271acf0de75d214d8f5c71745e22921f3aec83e1f56fbfc33d3e143a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-fractional-mark-and-clip-144dpi.ppm",
+      "oracle_sha256": "2f376c8a3d52f6563bd5ce9d417ab4176b0eadeb0576c5cfaacbc0eacaf18217",
+      "dpi": 144,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/direct-outer-fractional-mark-and-clip",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/direct-outer-fractional-mark-and-clip.pdf",
+      "sha256": "2d9513cedc2b1be377da42a75ef6e131a403b6794ffd0278b571c4bc1a559cf1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/direct-outer-fractional-mark-and-clip.ppm",
+      "oracle_sha256": "fd21fa24ac5cbf411a7112d7eb31d49fa1ae037bb836aa8123493bb7022c5244",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/outer-triangle",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-triangle.pdf",
+      "sha256": "e8e0488802747b3f3250d22673f623b4d649c0dff40e08c9bb4383c505fffe6c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-triangle.ppm",
+      "oracle_sha256": "5cf18ef2baf87af3bb8aebdc80033d0610b628ec53d6d612e822c476b0530bfa",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/outer-triangle-144dpi",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-triangle-144dpi.pdf",
+      "sha256": "e8e0488802747b3f3250d22673f623b4d649c0dff40e08c9bb4383c505fffe6c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-triangle-144dpi.ppm",
+      "oracle_sha256": "cecbec9dac53d3bc1c68878a91e125b0a1e8faa157bedbb5641ce11335826848",
+      "dpi": 144,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/outer-stroke",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-stroke.pdf",
+      "sha256": "618af9ebfa68e2abfad8a92e51d8ac80f9433596b5f4dec6a3ea2d0a08b1c506",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-stroke.ppm",
+      "oracle_sha256": "0077a1b8cc9914dfab2a23a396281049e951fbb59b0b48cfcf83b50e6d8e3be4",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/outer-alpha",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-alpha.pdf",
+      "sha256": "4a7b80e59bbfdd23c152c7531bc6e0ee54e2fca380e42339c9d4141efdf59a39",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-alpha.ppm",
+      "oracle_sha256": "8607e6dc2ce16c2fa3b3cdffefa6082d5b7b579b4ef6eab363391a6dd841350d",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/direct-outer-alpha",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/direct-outer-alpha.pdf",
+      "sha256": "70031123927a9f8538c4539c3103b0ef8bf12b0b208f209aa8ab67167280d687",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/direct-outer-alpha.ppm",
+      "oracle_sha256": "8607e6dc2ce16c2fa3b3cdffefa6082d5b7b579b4ef6eab363391a6dd841350d",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/outer-alpha-backdrop",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-alpha-backdrop.pdf",
+      "sha256": "dcaead19bfdb75263b8b3b8cf9357306bdb7d14b3e7fc67f682aff9a49ac49f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-alpha-backdrop.ppm",
+      "oracle_sha256": "7f2d858bb36ae88f2da46e550e274edb26b3a88d941f0ab14271b4b6c12e2d01",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/outer-softmask",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-softmask.pdf",
+      "sha256": "f7a3b56106d0fffe048cab3d8104632b3c7d3ca389e6fac7cdab591a685ac181",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-softmask.ppm",
+      "oracle_sha256": "49d44ce5ca1241865863f740d86e623d6f7f6f0306b196a38299e9b73db1a1f8",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/outer-softmask-144dpi",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-softmask-144dpi.pdf",
+      "sha256": "f7a3b56106d0fffe048cab3d8104632b3c7d3ca389e6fac7cdab591a685ac181",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-softmask-144dpi.ppm",
+      "oracle_sha256": "bb5e6ea30ad0bb0dc761a480451b52bd9808ea85f8d4e1921cfee5729ba17f7c",
+      "dpi": 144,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/direct-outer-softmask",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/direct-outer-softmask.pdf",
+      "sha256": "c1e04a76d749c091227fae754e3e6308228ee5f0a824b685086ba343441b833c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/direct-outer-softmask.ppm",
+      "oracle_sha256": "49d44ce5ca1241865863f740d86e623d6f7f6f0306b196a38299e9b73db1a1f8",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/outer-softmask-zero",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/outer-softmask-zero.pdf",
+      "sha256": "aa295d901030351b0da826bff04c5ac3f6c7364b27a83897288b61a7ba1f49e8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/outer-softmask-zero.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "opaque_tiling/repeated-descendants",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/repeated-descendants.pdf",
+      "sha256": "982fe2eead47b74413dfbff0cc28029e6794566a780726b8086d1d0dd2db2627",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/repeated-descendants.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/sparse-cell-gap",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/sparse-cell-gap.pdf",
+      "sha256": "22b1ba82d5a7aee054f68373b369a2743736f9fc4e45b267c7b67014035fcdfc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/clipped-gap",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/clipped-gap.pdf",
+      "sha256": "354c151bed4e34fd0cd9066c49bbeefe107d82b7f71ef893383f8f5c85f30dde",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/inner-alpha",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/inner-alpha.pdf",
+      "sha256": "9050673e1ef7de8beec5a6625730b4c18daf7343d97644fd93df9286283306ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/stroke-only",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/stroke-only.pdf",
+      "sha256": "3f74c433574aec758043046a1beb14d74af6aa317b8cdc30a9eaa7f489a0c58d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/inner-nonblack",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/inner-nonblack.pdf",
+      "sha256": "834c05ce1bb87f67a3981612920450883d4a5917003059834319fa0a272c3936",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/inner-rgb-black",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/inner-rgb-black.pdf",
+      "sha256": "67d76dfd03da8235c1c9d269eb344fcf9b74d4a234a127f44be1d6b93f5e7bd8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/two-cell-fills",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/two-cell-fills.pdf",
+      "sha256": "9596f3f469d3d3091de56541ee6f2e3f9a2b5f62a2ae1826da7e3387076d35cf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/nonrectangular-clip",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/nonrectangular-clip.pdf",
+      "sha256": "41f25445404d929cf5eb4cd408da61e5edd5f09596c697e7a2c679529099c1fb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/uncolored-cell",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/uncolored-cell.pdf",
+      "sha256": "14f97edf4bc0c84a05f0173adc2691168c23f2fe35116afc1da2e8ad94789d8e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/inherited-stencil",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/inherited-stencil.pdf",
+      "sha256": "8365b6bed1f480ac8ad79abe0ae55c2a001aaaf3324c77e935635b8c056fe7e8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/insufficient-pixel-collar",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/insufficient-pixel-collar.pdf",
+      "sha256": "460d702fcac9c3c13a174cd04ac61cc6472ca418c362f42e3b665484677df891",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/near-singular",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/near-singular.pdf",
+      "sha256": "9dd81676688536244d8ef61ad45b9c692a0b54e6a70f6537c14dbc9eb8318b5c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/very-small-step",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/very-small-step.pdf",
+      "sha256": "a8641b61e9f85c6bb83be38566ab2182328b710d72222b4d31388a7a5e8e3016",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/huge-origin",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/huge-origin.pdf",
+      "sha256": "1a1bbb9c63fd80301fd7e8a7ef8ddd9b3f75a65db24b21b67c9ebbd21d039ff3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/singular",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "unsupported",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/singular.pdf",
+      "sha256": "189e7db16b8d39b418109a5200940fb0f5844925c5b605b1932425588a864746",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.tiling"
+    },
+    {
+      "id": "opaque_tiling/determinant-underflow",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "unsupported",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/determinant-underflow.pdf",
+      "sha256": "6f9fbefde930465b8798fc5562d6e538c00d0616b644687c2f3ff571f2dcb54d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.tiling"
+    },
+    {
+      "id": "opaque_tiling/zero-step",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/zero-step.pdf",
+      "sha256": "8e1fc322cc03c3f0732a9dd24662182f0d12d691d461d1a79e988aa65701f733",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "opaque_tiling/direct-public-200",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/direct-public-200.pdf",
+      "sha256": "db1ee14c3bf1159d05c1694f0faff2f0b17c495b482816f71d5e52a46056687d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/direct-public-200.ppm",
+      "oracle_sha256": "5962e6d503c3eeb108eac662477130a0de822bdcba9341aff20ef817c96ebc96",
+      "dpi": 72,
+      "width": 200,
+      "height": 200,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/direct-public-1200",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/direct-public-1200.pdf",
+      "sha256": "a0f4393a6b0a9bfec7c4bf867d8e8d87be54798ee4b04e4e7ea1ab1dbf797615",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/direct-public-1200.ppm",
+      "oracle_sha256": "78ec4f19cb153fe17d88cf400dcc81217d18c45a9c2bc0fa883bcbe689c8813c",
+      "dpi": 72,
+      "width": 1200,
+      "height": 1200,
+      "tolerance": 0
+    },
+    {
+      "id": "opaque_tiling/bg2-selected",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/bg2-selected.pdf",
+      "sha256": "099cdba7b7b315ca1dfb5a80a8613dc14c5ddd0fc6b77bfc1986d5aeeb4977d2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/ucr2-selected",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/ucr2-selected.pdf",
+      "sha256": "dbcbf8f743b967a3b4a886d9acb8b32162825e1eee91568b9c503b5ddc7f601e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/raw-fill-working-range",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/raw-fill-working-range.pdf",
+      "sha256": "45c61f4577e76fec1025cfe13c436aea865d3852c03fb69d11e5b38560e912ac",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/raw-clip-working-range",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/raw-clip-working-range.pdf",
+      "sha256": "dd52f4c40afe26dc2e3a4b8a406d219e87e53230459e879e3bbd70feed33bbd9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/raw-bbox-parser-working-range",
+      "kind": "pdf",
+      "description": "Ineligible cell geometry/state or uncertain numeric placement retains its explicit defensive outcome",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/raw-bbox-parser-working-range.pdf",
+      "sha256": "ea2ff5bd765f6de385a87b37dd55edb74fe2f6bb734578eb2ed8ef276ab0c956",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "opaque_tiling/offset-local-clip",
+      "kind": "pdf",
+      "description": "Single opaque black rectangle has a complete device-pixel interior instance; outer geometry, opacity and backdrop are independent exact-rational controls",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/opaque_tiling/offset-local-clip.pdf",
+      "sha256": "063097856851e7fe6fb13aab14797f2bec04fa2433234e2795b39f72f35c50dd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/opaque_tiling/offset-local-clip.ppm",
+      "oracle_sha256": "498fc6af35b825a3125e21b0e91fdd6eb8cf0dfb21e0f5d68ddc4edfca2efef9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    }
+  ]
+}
