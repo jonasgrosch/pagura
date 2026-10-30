@@ -427,7 +427,10 @@ impl Survey<'_> {
                     0.0,
                 ),
                 // A soft mask or embedded opacity gives an image alpha that
-                // is not its shape unless AIS.
+                // is not its shape unless AIS. Soft-mask content is surveyed
+                // once but planned once per transform it is used with, so
+                // its images sample exactly: a part proven under one
+                // transform bounds no other.
                 Node::Image(image) => (
                     &image.mark,
                     Kind::Varying,
@@ -436,10 +439,14 @@ impl Survey<'_> {
                         image.image.mask,
                         ImageMask::Soft { .. } | ImageMask::Embedded
                     ),
-                    ImageSampler::near_upright_part(
-                        &image.image,
-                        image.transform.then(context.transform),
-                    ),
+                    if context.masked {
+                        0.0
+                    } else {
+                        ImageSampler::near_upright_part(
+                            &image.image,
+                            image.transform.then(context.transform),
+                        )
+                    },
                 ),
                 Node::Shading(shading) => (&shading.mark, Kind::Varying, 1, true, 0.0),
                 Node::Group(group) => {
@@ -906,13 +913,8 @@ mod tests {
         assert_eq!(tight.used(), 0, "failed survey retained no allocation");
     }
 
-    /// Near-upright image sampling is charged to the buffer it paints into
-    /// and admitted with the narrowest format that holds it: N16 for a part
-    /// small enough, F32 for a larger one, and nowhere in a buffer that is
-    /// F64 (here for a blend mode outside the narrow bounds).
-    #[test]
-    fn near_upright_images_are_admitted_with_the_format_that_bounds_them() {
-        use pagura_interpret::{Image, ImageNode};
+    /// An RGB image of eight-bit samples, seven across.
+    fn rgb_image() -> std::sync::Arc<pagura_interpret::Image> {
         let document = pagura_document::Document::open(
             pagura_testkit::fixture("image", "samples-8-3-raw.pdf"),
             &pagura_document::OpenOptions::default(),
@@ -924,28 +926,47 @@ mod tests {
                 pagura_image::ImageSource::from_xobject(&document, document.object(id).ok()?).ok()
             })
             .unwrap();
-        let image = std::sync::Arc::new(Image {
+        std::sync::Arc::new(pagura_interpret::Image {
             source: std::sync::Arc::new(source),
             space: Some(std::sync::Arc::new(pagura_color::ColorSpace::DeviceRgb)),
             decode: std::sync::Arc::from([[0.0, 1.0]; 3]),
             interpolate: false,
             intent: None,
             mask: ImageMask::None,
-        });
+        })
+    }
+
+    /// `image` placed by `transform` in `parent` with `state`.
+    fn place(
+        build: &mut Build,
+        parent: GroupId,
+        image: &std::sync::Arc<pagura_interpret::Image>,
+        (transform, state): (Transform, StateId),
+    ) {
+        build.node(
+            parent,
+            Node::Image(pagura_interpret::ImageNode {
+                image: std::sync::Arc::clone(image),
+                transform,
+                stencil: None,
+                mark: mark(state),
+            }),
+        );
+    }
+
+    /// Near-upright image sampling is charged to the buffer it paints into
+    /// and admitted with the narrowest format that holds it: N16 for a part
+    /// small enough, F32 for a larger one, and nowhere in a buffer that is
+    /// F64 (here for a blend mode outside the narrow bounds).
+    #[test]
+    fn near_upright_images_are_admitted_with_the_format_that_bounds_them() {
+        let image = rgb_image();
         // Seven samples across 3.5 units: minified, so area averaged.
         let page = |skew: f64, blend: BlendMode| {
             let mut build = Build::new(8.0, 6.0);
             let state = build.state(|state| state.blend = blend);
             let transform = Transform::new(3.5, skew, 0.0, 1.5, 1.0, 1.0);
-            build.node(
-                GroupId(0),
-                Node::Image(ImageNode {
-                    image: std::sync::Arc::clone(&image),
-                    transform,
-                    stencil: None,
-                    mark: mark(state),
-                }),
-            );
+            place(&mut build, GroupId(0), &image, (transform, state));
             let part = ImageSampler::near_upright_part(&image, transform.then(build.transform()));
             let mut bytes = Meter::new(1 << 20, "survey memory");
             let storage = survey(&build.scene, inputs(&build), &mut bytes).unwrap();
@@ -961,6 +982,35 @@ mod tests {
         let (part, format, upright) = page(1e-5, BlendMode::Multiply);
         assert!(part > 0.0);
         assert_eq!((format, upright), (Format::F64, 0.0));
+    }
+
+    /// A soft mask is surveyed once but planned once per transform it is
+    /// used with, so no admitted part could bound all of its placements:
+    /// near-upright images inside it sample exactly, whatever transforms
+    /// reuse it, while the same placement on the page is admitted.
+    #[test]
+    fn soft_mask_content_samples_exactly_under_every_transform() {
+        let image = rgb_image();
+        let near = Transform::new(3.5, 1e-9, 0.0, 1.5, 1.0, 1.0);
+        let mut build = Build::new(8.0, 6.0);
+        let (mask, mask_group) = build.mask(MaskKind::Luminosity, GroupAttributes::default(), None);
+        for offset in [0.0, 2.0, 4.0] {
+            let at = Transform::new(near.a, near.b, near.c, near.d, near.e + offset, near.f);
+            place(&mut build, mask_group, &image, (at, StateId(0)));
+        }
+        let masked = build.state(|state| state.soft_mask = Some(mask));
+        let red = build.rgb([1.0, 0.0, 0.0]);
+        build.rect(GroupId(0), [0.0, 0.0, 8.0, 6.0], red, mark(masked));
+        let group = build.transparency(GroupId(0), GroupAttributes::default(), mark(masked));
+        build.rect(group, [1.0, 1.0, 7.0, 5.0], red, mark(StateId(0)));
+        place(&mut build, GroupId(0), &image, (near, StateId(0)));
+        let part = ImageSampler::near_upright_part(&image, near.then(build.transform()));
+        assert!(part > 0.0);
+        let mut bytes = Meter::new(1 << 20, "survey memory");
+        let storage = survey(&build.scene, inputs(&build), &mut bytes).unwrap();
+        assert_eq!(storage.masks.len(), 1);
+        assert!(storage.masks.values().all(|&(_, upright)| upright == 0.0));
+        assert_eq!(storage.page_upright, part);
     }
 
     #[test]

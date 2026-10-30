@@ -120,7 +120,7 @@
     "crates/pagura-paint/src/prepare/planner/marks.rs": "5f5c362e01e577a3e7b256805fca8a7289e8cc365610bc553a333ffc64eede8a",
     "crates/pagura-paint/src/prepare/planner/marks/paints.rs": "af481fad205e86d93fa1de2fd86d39718c6488f7c750e6cb8f03249f9e7df081",
     "crates/pagura-paint/src/prepare/planner/patterns.rs": "8f92283d584aed798b268aae1a13aaf26df80c8c6d5d523fe82c958a3e1028b5",
-    "crates/pagura-paint/src/prepare/storage.rs": "7bb24c835ba4be631f99b40fdedf4d128fafa7b1e5ba3b928f85f053a44b1027",
+    "crates/pagura-paint/src/prepare/storage.rs": "a41635b37244cc5b31966df6688ad32ca0a7d1860acf161ffa42ab71befcc454",
     "crates/pagura-paint/src/prepare/tests/formats.rs": "9ab17f8516b64a0da95c13480ce6157ad59575e09046e3693c92547e5fa74d1b",
     "crates/pagura-paint/src/prepare/tests/streaming.rs": "4b0f2831d7045dd10be103fbc6a6bbb931b0cd837e6ce11dbcbbe2926649c0da",
     "crates/pagura-paint/src/source/image/tests.rs": "68348b77b27ae762b7febdfc18125fee6a25631a720c42690dcd0ef0536b36f5",
