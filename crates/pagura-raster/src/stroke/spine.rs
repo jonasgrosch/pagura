@@ -101,9 +101,24 @@ struct Veto {
     bottom: f64,
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Leaves every spine out, for comparison.
+    static LEFT_OUT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Runs `f` with every spine left out, for comparison.
+#[cfg(test)]
+pub(crate) fn without<R>(f: impl FnOnce() -> R) -> R {
+    LEFT_OUT.with(|out| out.set(true));
+    let result = f();
+    LEFT_OUT.with(|out| out.set(false));
+    result
+}
+
 /// The capsules and vetoes of a stroke's runs, each by the top of what it
 /// spans.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub(crate) struct Spine {
     capsules: Vec<Capsule>,
     vetoes: Vec<Veto>,
@@ -124,6 +139,10 @@ impl Spine {
         limits: &Limits,
         bytes: &mut Meter,
     ) -> Option<Self> {
+        #[cfg(test)]
+        if LEFT_OUT.with(std::cell::Cell::get) {
+            return None;
+        }
         let scale = transform.a.hypot(transform.b);
         if !conformal(transform) || !scale.is_finite() || pen.radius * scale - MARGIN < LEAST_RADIUS
         {
@@ -448,7 +467,7 @@ impl Spine {
 
     /// The cells it proves covered, row by row from the top, within
     /// `within` where the shape's lines were clipped to it.
-    pub(crate) fn cover(&self, within: Option<Bounds>) -> Cover<'_> {
+    pub(crate) fn cover(self, within: Option<Bounds>) -> Cover {
         Cover {
             spine: self,
             within,
@@ -568,8 +587,8 @@ impl Veto {
 /// The cells a spine proves covered, row by row from the top: what it keeps
 /// between rows, and its scratch.
 #[derive(Debug)]
-pub(crate) struct Cover<'a> {
-    spine: &'a Spine,
+pub(crate) struct Cover {
+    spine: Spine,
     within: Option<Bounds>,
     /// The capsules and vetoes entered so far, and those still reaching.
     capsules: usize,
@@ -583,7 +602,24 @@ pub(crate) struct Cover<'a> {
     cells: Vec<(f64, f64)>,
 }
 
-impl Cover<'_> {
+impl Cover {
+    /// Bytes on the heap: its spine's and its scratch's.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        let indices = self
+            .reaching
+            .capacity()
+            .saturating_add(self.vetoing.capacity());
+        let cells = self
+            .round
+            .capacity()
+            .saturating_add(self.vetoed.capacity())
+            .saturating_add(self.cells.capacity());
+        self.spine
+            .heap_bytes()
+            .saturating_add(indices.saturating_mul(size_of::<u32>()))
+            .saturating_add(cells.saturating_mul(size_of::<(f64, f64)>()))
+    }
+
     /// Appends to `chunks` the column ranges of row `top..top + 1` that
     /// hold only proven cells, at most `most` of them: the runs of proven
     /// cells. Rows come from the top down.
@@ -606,7 +642,7 @@ impl Cover<'_> {
         {
             return Ok(());
         }
-        let Spine { capsules, vetoes } = self.spine;
+        let Spine { capsules, vetoes } = &self.spine;
         while let Some(c) = capsules.get(self.capsules)
             && c.top <= top
         {

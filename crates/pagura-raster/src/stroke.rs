@@ -13,7 +13,9 @@ mod convex;
 mod spine;
 mod tiling;
 
-pub(crate) use spine::Spine;
+#[cfg(test)]
+pub(crate) use spine::without as without_spines;
+pub(crate) use spine::{Cover, Spine};
 
 /// Line cap style (8.4.3.3). Exhaustive: Table 53 closes the set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

@@ -234,7 +234,7 @@ fn cover_rows_refuse_within_their_work_budget() {
     let mut chunks = Vec::new();
     let mut needed = 0;
     for budget in 0.. {
-        let mut cover = spine.cover(None);
+        let mut cover = spine.clone().cover(None);
         let mut work = Meter::new(budget, "work");
         chunks.clear();
         if cover

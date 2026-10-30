@@ -1,6 +1,6 @@
 use super::*;
 use crate::Point;
-use pagura_core::Limits;
+use pagura_core::{ErrorKind, Limits};
 
 #[test]
 fn retained_union_rows_charge_before_allocating() {
@@ -260,4 +260,125 @@ fn listed_rows_are_admitted_beside_their_strip_list() {
     assert_eq!(list(peak).unwrap(), (retained, retained));
     let error = list(peak - 1).unwrap_err();
     assert_eq!(error.message, RENDER_BYTES);
+}
+
+/// `stroke` of `path` in a 128 × 128 area under a render budget of
+/// `render_bytes`.
+fn stroked(path: &Path, stroke: &Stroke, render_bytes: usize) -> Result<Option<Shape>> {
+    let limits = Limits {
+        render_bytes,
+        ..Limits::default()
+    };
+    let options = ShapeOptions {
+        area: Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 128,
+                y1: 128,
+            },
+            band_height: 16,
+        },
+        limits: &limits,
+    };
+    Shape::stroke(
+        path,
+        stroke,
+        Transform::IDENTITY,
+        Transform::IDENTITY,
+        Adjustment::None,
+        &options,
+    )
+}
+
+/// Whether `stroke` of `path` renders in a 128 × 128 area under a render
+/// budget of `render_bytes`; a refusal is the budget's.
+fn renders(path: &Path, stroke: &Stroke, render_bytes: usize) -> bool {
+    match stroked(path, stroke, render_bytes) {
+        Ok(_) => true,
+        Err(error) => {
+            assert_eq!(error.kind, ErrorKind::Limit, "{error}");
+            false
+        }
+    }
+}
+
+/// A spine never turns a render into a refusal: twenty collinear segments
+/// under a 12 px round pen (the reviewed case), a loop of short segments and
+/// a mitred zigzag each render, with spines, in every budget they render in
+/// without. Success is not monotone in the budget, since capacities double
+/// only where that fits, so the budgets are scanned: 8 bytes apart around
+/// the least each renders in without spines, then 64 apart up to four times
+/// that. Nor does the shape keep more for the page's budget.
+#[test]
+fn spines_never_turn_a_render_into_a_refusal() {
+    let line = |points: &[(f64, f64)], closed: bool| {
+        let mut path = crate::PathBuilder::new();
+        for (i, &(x, y)) in points.iter().enumerate() {
+            if i == 0 {
+                path.move_to(Point::new(x, y));
+            } else {
+                path.line_to(Point::new(x, y)).unwrap();
+            }
+        }
+        if closed {
+            path.close();
+        }
+        path.finish()
+    };
+    let collinear: Vec<_> = (0..=20)
+        .map(|k| (20.0, 20.0 + 3.0 * f64::from(k)))
+        .collect();
+    let looped: Vec<_> = (0..48)
+        .map(|k| {
+            let t = std::f64::consts::TAU * f64::from(k) / 48.0;
+            (64.0 + 6.0 * t.cos(), 64.0 + 6.0 * t.sin())
+        })
+        .collect();
+    let zigzag: Vec<_> = (0..24)
+        .map(|k| (20.0 + 3.0 * f64::from(k), 40.0 + 2.0 * f64::from(k % 2)))
+        .collect();
+    let round = Stroke {
+        width: 12.0,
+        cap: crate::LineCap::Round,
+        join: crate::LineJoin::Round,
+        ..Stroke::default()
+    };
+    let mitred = Stroke {
+        width: 10.0,
+        ..Stroke::default()
+    };
+    for (path, stroke) in [
+        (line(&collinear, false), &round),
+        (line(&looped, true), &round),
+        (line(&zigzag, false), &mitred),
+    ] {
+        // Each has a spine to leave out.
+        let limits = Limits::default();
+        let (_, _, spine) = crate::stroke::polygon_pieces(
+            &path,
+            Transform::IDENTITY,
+            stroke,
+            &limits,
+            (Tiling::Unproven, crate::flatten::TOLERANCE),
+            &mut Meter::new(usize::MAX, RENDER_BYTES),
+        )
+        .unwrap();
+        assert!(spine.is_some(), "{stroke:?}");
+        let plain = |budget| crate::stroke::without_spines(|| renders(&path, stroke, budget));
+        let least = (0..).step_by(256).find(|&budget| plain(budget)).unwrap();
+        let near = (least.saturating_sub(2048)..least + 2048).step_by(8);
+        for budget in near.chain((least..4 * least).step_by(64)) {
+            if plain(budget) {
+                assert!(renders(&path, stroke, budget), "{stroke:?} at {budget}");
+            }
+        }
+        let retained = || {
+            stroked(&path, stroke, limits.render_bytes)
+                .unwrap()
+                .map_or(0, |shape| shape.retained_bytes())
+        };
+        let plain = crate::stroke::without_spines(retained);
+        assert!(retained() <= plain, "{stroke:?}: {} > {plain}", retained());
+    }
 }

@@ -694,7 +694,7 @@ fn proven_sides(pieces: &[Piece], top: f64, proven: &[(f64, f64)]) -> (Vec<Line>
             pieces,
             &[FillRule::NonZero],
             top,
-            proven,
+            (proven, &mut ()),
             (&mut out, meters),
         )
         .unwrap();

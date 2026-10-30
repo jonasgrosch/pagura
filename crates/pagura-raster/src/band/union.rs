@@ -232,6 +232,182 @@ pub(crate) fn room<T>(values: &mut Vec<T>, extra: usize, bytes: &mut Meter) -> R
     bytes.reserve_capacity(values, extra)
 }
 
+/// Empties `values` and makes room for `count`: what they held asks none.
+fn room_for<T>(values: &mut Vec<T>, count: usize, bytes: &mut Meter) -> Result<()> {
+    values.clear();
+    room(values, count, bytes)
+}
+
+/// The most bytes [`room`] for `extra` more values in `values` charges at
+/// once: the doubled capacity while the old one is still held.
+pub(crate) fn room_need<T>(values: &Vec<T>, extra: usize) -> usize {
+    let need = values.len().saturating_add(extra);
+    if need <= values.capacity() {
+        return 0;
+    }
+    need.max(values.capacity().saturating_mul(2))
+        .max(4)
+        .saturating_add(values.capacity())
+        .saturating_mul(size_of::<T>())
+}
+
+/// Optional storage that a caller of the resolver holds only to save work.
+/// The resolver gives it up before any of its own storage that the bytes
+/// left might not cover: an optional saving never makes a row fail.
+pub(crate) trait Spare {
+    /// The bytes it holds.
+    fn held(&self) -> usize;
+    /// Frees them; the bytes freed.
+    fn release(&mut self) -> usize;
+}
+
+/// No optional storage.
+impl Spare for () {
+    fn held(&self) -> usize {
+        0
+    }
+
+    fn release(&mut self) -> usize {
+        0
+    }
+}
+
+/// Gives up `spare` where `bytes` has less left than `need`.
+pub(crate) fn give_up(spare: &mut dyn Spare, need: usize, bytes: &mut Meter) {
+    if spare.held() > 0 && bytes.remaining() < need {
+        bytes.refund(spare.release());
+    }
+}
+
+/// An upper bound of the bytes a sweep of `pieces` pieces, or a pass over
+/// them, charges at its peak: with `breaks` heights carried in under
+/// `groups` groups, appending to `lines` sides already listed. Every pair of pieces crosses once
+/// and is doubtful; a piece's side changes at each height where a piece
+/// ends or a winding is carried in, and at each of its crossings; and each
+/// buffer doubles while its old allocation is still held.
+pub(crate) fn sweep_bound(pieces: usize, breaks: usize, groups: usize, lines: usize) -> usize {
+    let pairs = pieces.saturating_mul(pieces.saturating_sub(1)) / 2;
+    let heights = pieces
+        .saturating_mul(2)
+        .saturating_add(2)
+        .saturating_add(breaks)
+        .saturating_add(pairs);
+    let sides = pieces.saturating_mul(
+        pieces
+            .saturating_mul(3)
+            .saturating_add(breaks)
+            .saturating_add(2),
+    );
+    let piece = 3 * size_of::<Span>()
+        + size_of::<(f64, f64)>()
+        + size_of::<Lane>()
+        + size_of::<u128>()
+        + 2 * size_of::<Place>()
+        + 2 * size_of::<Open>()
+        + size_of::<(u32, i32)>()
+        + size_of::<Slot>()
+        + size_of::<i64>()
+        + size_of::<usize>();
+    let height = 3 * size_of::<f64>() + 2 * size_of::<i64>() * groups.max(1);
+    let pair = size_of::<u128>()
+        + size_of::<(f64, f64, u32, u32)>()
+        + size_of::<(usize, usize, u32, u32)>()
+        + size_of::<(usize, u32, u32)>();
+    let lines = lines
+        .saturating_add(sides)
+        .saturating_add(pieces.saturating_mul(2));
+    pieces
+        .saturating_mul(piece)
+        .saturating_add(heights.saturating_mul(height))
+        .saturating_add(pairs.saturating_mul(pair))
+        .saturating_add(groups.saturating_mul(size_of::<i64>()))
+        .saturating_add(lines.saturating_mul(size_of::<Line>()))
+        .saturating_mul(3)
+}
+
+/// What a sweep or pass started from, to check it against its bound in
+/// debug builds.
+#[cfg(debug_assertions)]
+struct Bounded {
+    used: usize,
+    bound: usize,
+    lines: usize,
+    sides: usize,
+    of: (usize, usize, usize),
+}
+
+#[cfg(debug_assertions)]
+impl Bounded {
+    fn new(
+        pieces: usize,
+        (breaks, groups): (usize, usize),
+        (out, bytes): (&[Line], &Meter),
+    ) -> Self {
+        let sides = pieces.saturating_mul(
+            pieces
+                .saturating_mul(3)
+                .saturating_add(breaks)
+                .saturating_add(2),
+        );
+        let lines = out.len();
+        let bound = sweep_bound(pieces, breaks, groups, lines);
+        Self {
+            used: bytes.used(),
+            bound,
+            lines,
+            sides,
+            of: (pieces, breaks, groups),
+        }
+    }
+
+    fn check(&self, out: &[Line], bytes: &Meter) {
+        debug_assert!(
+            bytes.used() <= self.used.saturating_add(self.bound),
+            "a sweep of (pieces, breaks, groups) {:?} after {} sides charged {} bytes over its bound of {}",
+            self.of,
+            self.lines,
+            bytes.used() - self.used,
+            self.bound
+        );
+        debug_assert!(
+            out.len() - self.lines <= self.sides,
+            "a sweep appended {} sides over its bound of {}",
+            out.len() - self.lines,
+            self.sides
+        );
+    }
+}
+
+#[cfg(not(debug_assertions))]
+struct Bounded;
+
+#[cfg(not(debug_assertions))]
+impl Bounded {
+    fn new(_: usize, _: (usize, usize), _: (&[Line], &Meter)) -> Self {
+        Self
+    }
+
+    #[expect(clippy::unused_self, reason = "only debug builds check the bound")]
+    fn check(&self, _: &[Line], _: &Meter) {}
+}
+
+/// An upper bound of the bytes a row of `pieces` pieces charges for its
+/// cuts and chunks, with `proven` ranges passed over, beside its sweeps.
+fn chunks_bound(pieces: usize, proven: usize) -> usize {
+    let piece = 2 * size_of::<Span>()
+        + size_of::<f64>()
+        + size_of::<(f64, f64)>()
+        + size_of::<u128>()
+        + size_of::<u64>()
+        + 2 * size_of::<f64>()
+        + size_of::<u32>()
+        + size_of::<Piece>();
+    pieces
+        .saturating_mul(piece)
+        .saturating_add(proven.saturating_mul(4 * size_of::<f64>()))
+        .saturating_mul(3)
+}
+
 impl Resolver {
     /// Appends to `out` the sides of the covered set of row `top..top + 1`
     /// of `pieces`, where group `g` is inside under `rules[g]` and a point
@@ -254,12 +430,14 @@ impl Resolver {
         top: f64,
         (out, meters): (&mut Vec<Line>, Meters<'_>),
     ) -> Result<()> {
-        self.row_proven(pieces, rules, top, &[], (out, meters))
+        self.row_proven(pieces, rules, top, (&[], &mut ()), (out, meters))
     }
 
     /// [`Self::row`], where under one group `proven` lists column ranges,
     /// ascending and apart, in which every cell of the row is known covered:
     /// their chunks are passed over, at the sorts of their pieces' ends.
+    /// `spare` is given up before any storage of the row the bytes left
+    /// might not cover with it.
     ///
     /// # Errors
     ///
@@ -269,21 +447,30 @@ impl Resolver {
         pieces: &[Piece],
         rules: &[FillRule],
         top: f64,
-        proven: &[(f64, f64)],
+        (proven, spare): (&[(f64, f64)], &mut dyn Spare),
         (out, meters): (&mut Vec<Line>, Meters<'_>),
     ) -> Result<()> {
         let Meters { work, bytes } = meters;
         u32::try_from(pieces.len()).map_err(|_| Error::limit("row resolver pieces exceed u32"))?;
         self.carry.clear();
         self.carried.clear();
+        let carried =
+            room_need(&self.carry, 1).saturating_add(room_need(&self.carried, rules.len()));
+        give_up(spare, carried, bytes);
         room(&mut self.carry, 1, bytes)?;
         room(&mut self.carried, rules.len(), bytes)?;
         self.carry.push(top);
         self.carried.resize(rules.len(), 0);
         let proven = if rules.len() == 1 { proven } else { &[] };
         if pieces.len() <= CHUNK && proven.is_empty() {
+            give_up(
+                spare,
+                sweep_bound(pieces.len(), self.carry.len(), rules.len(), out.len()),
+                bytes,
+            );
             return self.sweep(pieces, (rules, top), (out, work, bytes), false);
         }
+        give_up(spare, chunks_bound(pieces.len(), proven.len()), bytes);
         self.cut(pieces, (work, bytes))?;
         self.prove(proven, (work, bytes))?;
         let mut live = std::mem::take(&mut self.live);
@@ -291,7 +478,7 @@ impl Resolver {
         let result = self.chunks(
             pieces,
             (rules, top),
-            (&mut live, &mut local),
+            (&mut live, &mut local, spare),
             (out, work, bytes),
         );
         self.live = live;
@@ -306,12 +493,9 @@ impl Resolver {
     fn cut(&mut self, pieces: &[Piece], (work, bytes): (&mut Meter, &mut Meter)) -> Result<()> {
         let count = pieces.len();
         work.charge_product(sort_work(count), 3)?;
-        room(&mut self.spans, count, bytes)?;
-        room(&mut self.lasts, count, bytes)?;
-        room(&mut self.row_ends, count, bytes)?;
-        self.spans.clear();
-        self.lasts.clear();
-        self.row_ends.clear();
+        room_for(&mut self.spans, count, bytes)?;
+        room_for(&mut self.lasts, count, bytes)?;
+        room_for(&mut self.row_ends, count, bytes)?;
         for (i, p) in (0_u32..).zip(pieces) {
             let (top, bottom) = p.ends();
             self.row_ends.push((top, bottom));
@@ -319,9 +503,9 @@ impl Resolver {
             self.spans.push((first, last, i));
             self.lasts.push(last);
         }
-        room(&mut self.span_keys, count, bytes)?;
-        room(&mut self.sorted, count, bytes)?;
-        room(&mut self.height_keys, count, bytes)?;
+        room_for(&mut self.span_keys, count, bytes)?;
+        room_for(&mut self.sorted, count, bytes)?;
+        room_for(&mut self.height_keys, count, bytes)?;
         sort_spans(&mut self.spans, (&mut self.span_keys, &mut self.sorted));
         sort_values(&mut self.lasts, &mut self.height_keys);
         self.cuts.clear();
@@ -356,8 +540,7 @@ impl Resolver {
         }
         work.charge(self.cuts.len().saturating_add(proven.len()))?;
         room(&mut self.skips, proven.len(), bytes)?;
-        room(&mut self.merged, self.cuts.len() + 2 * proven.len(), bytes)?;
-        self.merged.clear();
+        room_for(&mut self.merged, self.cuts.len() + 2 * proven.len(), bytes)?;
         let mut cuts = self.cuts.iter().copied().peekable();
         for &(left, right) in proven {
             while let Some(c) = cuts.next_if(|&c| c < left) {
@@ -379,7 +562,7 @@ impl Resolver {
         &mut self,
         pieces: &[Piece],
         (rules, top): (&[FillRule], f64),
-        (live, local): (&mut Vec<u32>, &mut Vec<Piece>),
+        (live, local, spare): (&mut Vec<u32>, &mut Vec<Piece>, &mut dyn Spare),
         (out, work, bytes): (&mut Vec<Line>, &mut Meter, &mut Meter),
     ) -> Result<()> {
         live.clear();
@@ -409,6 +592,8 @@ impl Resolver {
                 let owned = (!skipped, owns_right);
                 local.extend(clip(pieces[i], self.row_ends[i], (left, right), owned));
             }
+            let bound = sweep_bound(local.len(), self.carry.len(), rules.len(), out.len());
+            give_up(spare, bound, bytes);
             // A chunk passed over always has one after it.
             if skipped {
                 skip += 1;
@@ -474,6 +659,7 @@ impl Resolver {
         (work, bytes): (&mut Meter, &mut Meter),
     ) -> Result<()> {
         let count = pieces.len();
+        let bounded = Bounded::new(count, (self.carry.len(), rules.len()), (&[], bytes));
         let heights = 2 * count + 2 + self.carry.len().saturating_sub(1);
         let groups = rules.len();
         // The heights' sort, two searches per piece among them, and a pass
@@ -481,11 +667,10 @@ impl Resolver {
         work.charge(sort_work(heights))?;
         work.charge_product(count, 2 * (heights.max(1).ilog2() as usize + 1))?;
         work.charge(heights.saturating_mul(groups))?;
-        room(&mut self.heights, heights, bytes)?;
-        room(&mut self.height_keys, heights, bytes)?;
-        room(&mut self.spanning, heights.saturating_mul(groups), bytes)?;
-        room(&mut self.windings, groups, bytes)?;
-        self.heights.clear();
+        room_for(&mut self.heights, heights, bytes)?;
+        room_for(&mut self.height_keys, heights, bytes)?;
+        room_for(&mut self.spanning, heights.saturating_mul(groups), bytes)?;
+        room_for(&mut self.windings, groups, bytes)?;
         self.heights.extend([top, top + 1.0]);
         self.heights.extend_from_slice(&self.carry[1..]);
         for p in pieces {
@@ -530,6 +715,7 @@ impl Resolver {
         }
         std::mem::swap(&mut self.carry, &mut self.after);
         std::mem::swap(&mut self.carried, &mut self.carried_after);
+        bounded.check(&[], bytes);
         Ok(())
     }
 
@@ -546,13 +732,13 @@ impl Resolver {
         let total = u32::try_from(pieces.len())
             .map_err(|_| Error::limit("row resolver pieces exceed u32"))?;
         let count = pieces.len();
+        let bounded = Bounded::new(pieces.len(), (self.carry.len(), rules.len()), (out, bytes));
         work.charge_product(sort_work(count), 4)?;
-        room(&mut self.columns, count, bytes)?;
-        room(&mut self.rows, count, bytes)?;
-        room(&mut self.ends, count, bytes)?;
+        room_for(&mut self.columns, count, bytes)?;
+        room_for(&mut self.rows, count, bytes)?;
+        room_for(&mut self.ends, count, bytes)?;
         let breaks = self.carry.len().saturating_sub(1);
-        room(&mut self.heights, 2 * count + 2 + breaks, bytes)?;
-        self.heights.clear();
+        room_for(&mut self.heights, 2 * count + 2 + breaks, bytes)?;
         self.heights.extend([top, top + 1.0]);
         self.heights.extend_from_slice(&self.carry[1..]);
         for p in pieces {
@@ -579,7 +765,7 @@ impl Resolver {
             swaps && self.crosses.len() >= count && self.doubtful.len() <= self.heights.len();
         // The crossings are among the heights the charge sorts.
         work.charge(sort_work(self.heights.len()))?;
-        room(&mut self.height_keys, self.heights.len(), bytes)?;
+        room_for(&mut self.height_keys, self.heights.len(), bytes)?;
         sort_values(&mut self.heights, &mut self.height_keys);
         self.heights.dedup();
         self.keep = swaps;
@@ -647,6 +833,7 @@ impl Resolver {
             std::mem::swap(&mut self.carry, &mut self.after);
             std::mem::swap(&mut self.carried, &mut self.carried_after);
         }
+        bounded.check(out, bytes);
         Ok(())
     }
 
@@ -720,8 +907,8 @@ impl Resolver {
             .fold(1.0, |m, &(t, b)| greater(m, t.abs().max(b.abs())));
         let error = 16.0 * f64::EPSILON * (1.0 + reach);
         self.doubtful.clear();
-        room(&mut self.span_keys, pieces.len(), bytes)?;
-        room(&mut self.sorted, pieces.len(), bytes)?;
+        room_for(&mut self.span_keys, pieces.len(), bytes)?;
+        room_for(&mut self.sorted, pieces.len(), bytes)?;
         sort_spans(&mut self.columns, (&mut self.span_keys, &mut self.sorted));
         sort_spans(&mut self.rows, (&mut self.span_keys, &mut self.sorted));
         let (across, down) = (overlapping(&self.columns), overlapping(&self.rows));
