@@ -9,7 +9,7 @@
 //! nothing.
 
 use crate::flatten::{bounded, flatten};
-use crate::{FillRegion, FillRule, Path, PathBuilder, Point, Segment, Stroke, Transform};
+use crate::{FillRegion, FillRule, LineJoin, Path, PathBuilder, Point, Segment, Stroke, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 
 /// Classify in construction space once; affine device placement must not
@@ -266,7 +266,10 @@ fn noncollinear(a: Point, b: Point, c: Point) -> bool {
 
 /// Constructs a device-space outline for an empty polygon filling region
 /// with nonempty extent (ISO 32000-2, 10.7.4). Its boundary uses the solid
-/// one-device-pixel hairline policy of 8.4.3.2, independently of stroke state.
+/// one-device-pixel hairline policy of 8.4.3.2, independently of stroke state,
+/// with bevel joins: a filling region paints the pixels its boundary passes
+/// through (10.7.4, note 1), and the outline stays within half a pixel of the
+/// boundary, where a miter would reach past a sharp corner by five.
 /// Fill the returned outline with [`FillRule::NonZero`]. Point contours retain
 /// their floor cells. Returns `None` for point-only paths, ordinary fills or geometry whose
 /// emptiness cannot be certified; positive-area slivers are never widened.
@@ -398,6 +401,7 @@ fn boundary(
         Transform::IDENTITY,
         &Stroke {
             width: 0.0,
+            join: LineJoin::Bevel,
             ..Stroke::default()
         },
         limits,

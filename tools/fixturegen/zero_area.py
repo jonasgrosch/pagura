@@ -66,10 +66,14 @@ def cases():
     yield case("paint-before-clip", b"3.5 1 0 6 re W f 0 0 8 8 re f", vertical)
     yield case("hairline-clipped-geometrically", b"3.5 0 4.5 8 re W n 3.5 1 0 6 re f",
                [rectangle(F(7, 2), 1, 4, 7)])
-    # Retracing a box cancels its interior under the selected fill rule.
-    # Mitered hairline union = outer box minus inner box, expressed as strips.
-    ring = [rectangle(F(3, 2), F(3, 2), F(13, 2), F(5, 2)),
-            rectangle(F(3, 2), F(11, 2), F(13, 2), F(13, 2)),
+    # Retracing a box cancels its interior under the selected fill rule. The
+    # hairline union keeps within half a pixel of the boundary (bevel joins):
+    # outer box minus inner box, without the outer corners' half-pixel
+    # triangles, expressed as strips.
+    ring = [[(2, F(3, 2)), (6, F(3, 2)), (F(13, 2), 2), (F(13, 2), F(5, 2)),
+             (F(3, 2), F(5, 2)), (F(3, 2), 2)],
+            [(F(3, 2), F(11, 2)), (F(13, 2), F(11, 2)), (F(13, 2), 6), (6, F(13, 2)),
+             (2, F(13, 2)), (F(3, 2), 6)],
             rectangle(F(3, 2), F(5, 2), F(5, 2), F(11, 2)),
             rectangle(F(11, 2), F(5, 2), F(13, 2), F(11, 2))]
     yield case("cancelled-evenodd", b"2 2 4 4 re 2 2 4 4 re f*", ring)

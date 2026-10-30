@@ -200,7 +200,10 @@ horizontal sides are tested separately.
 
 A subpath whose points all coincide covers the pixel under them
 (8.5.3.3.1), and a fill whose region is empty with a boundary paints that
-boundary's hairline outline (10.7.4).
+boundary's hairline outline (10.7.4). The outline joins its segments with
+bevels, so it keeps within half a pixel of the boundary, whose pixels are the
+ones a filling region meets (10.7.4, note 1); a miter would reach up to five
+pixels past a sharp corner.
 
 **Exactness of accumulation.** Accumulation and resolution are f64 throughout.
 For the geometry preparation admits, a cell's integral errs by about 1e-12 of
