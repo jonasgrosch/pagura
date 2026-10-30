@@ -39,8 +39,7 @@ pub(super) fn generate(
                 // empty encodings; malformed or nonempty data stays selected.
                 // Sig V is a dictionary, so keep its legacy raw-empty boundary.
                 bytes.is_empty()
-                    || kind == b"Tx"
-                        && matches!(bytes, [0xfe, 0xff] | [0xef, 0xbb, 0xbf])
+                    || kind == b"Tx" && matches!(bytes, [0xfe, 0xff] | [0xef, 0xbb, 0xbf])
             })
     };
     let geometry = matches!(kind.as_bytes(), b"Tx" | b"Sig")
