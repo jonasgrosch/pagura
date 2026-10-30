@@ -49,6 +49,7 @@ def ordinary(*, unused=False, all_custom=False, global_dictionary=False,
         refs = tuple(range(1,len(tables)+1)) if unused else ()
     if bad_table == 'reserved': tables[0] = bytes([tables[0][0]|0x80])+tables[0][1:]
     if bad_table == 'truncated': tables[0] = tables[0][:-1]
+    if bad_table == 'oob': tables[0] = custom_table(True)
     if missing: refs = ()
     if non_table: refs = (0,)
     width,height = 8,6
@@ -69,6 +70,32 @@ def ordinary(*, unused=False, all_custom=False, global_dictionary=False,
     data = prefix+jbig2._segment(dictionary,0,1,body,refs=refs)
     data += jbig2._segment(dictionary+1,6,1,text,refs=(dictionary,))
     return data,b'',expected,'main',offset
+
+
+def repeated(*, unused=False, both_streams=False, late_missing=False):
+    second = [[1,1,1],[0,1,0],[1,0,1]]
+    first_body,_ = jbig2.huffman_dictionary([GLYPH])
+    second_body,_ = jbig2.huffman_dictionary([second])
+    flags = 1+0x80*unused
+    first_body = struct.pack('>H',flags)+first_body[2:]
+    second_body = struct.pack('>H',flags)+second_body[2:]
+    text,_ = jbig2._text_region([second],[(2,1,0)],8,6)
+    rows = placed([second],[(2,1,0)],8,6)
+    if both_streams:
+        prefix = jbig2._segment(0,53,0,custom_table())
+        refs = (0,) if unused else ()
+        offset = len(prefix)+len(jbig2._segment(1,0,0,b'',refs=refs))
+        globals = prefix+jbig2._segment(1,0,0,first_body,refs=refs)
+        data = jbig2._segment(2,48,1,jbig2._page_info(8,6))
+        data += jbig2._segment(3,0,1,second_body,refs=() if late_missing else refs)
+        data += jbig2._segment(4,6,1,text,refs=(3,))
+        return data,globals,rows,'globals',offset
+    prefix = jbig2._segment(0,48,1,jbig2._page_info(8,6))+jbig2._segment(1,53,1,custom_table())
+    refs = (1,) if unused else ()
+    offset = len(prefix)+len(jbig2._segment(2,0,1,b'',refs=refs))
+    data = prefix+jbig2._segment(2,0,1,first_body,refs=refs)
+    data += jbig2._segment(3,0,1,second_body,refs=refs)+jbig2._segment(4,6,1,text,refs=(3,))
+    return data,b'',rows,'main',offset
 
 
 def used_aggregation(missing=False):
@@ -99,12 +126,13 @@ def used_aggregation(missing=False):
     return data,globals,placed(glyphs,positions,13,11),'globals',0
 
 
-def records(name, encoded, *, repair=False, error=False, stencil=False, before_error=False):
+def records(name, encoded, *, repair=False, error=False, stencil=False, before_error=False, first_repair=False):
     data,globals,rows,origin,offset = encoded
     width,height = len(rows[0]),len(rows)
     params = f'outcome={"syntax" if repair or error else "valid"}\nwidth={width}\nheight={height}\n'
     if repair:params += f'repair={REPAIR}\norigin={origin}\noffset={offset}\n'
     params += f'repair_before_error={int(before_error)}\n'
+    if first_repair:params += f'first_repair_origin={origin}\nfirst_repair_offset={offset}\n'
     yield Vector('native-'+name,{'.jb2':data,'.globals':globals,'.out':b'' if error else jbig2.packed(rows),'.params':params.encode()},
                  (REQUIREMENT,),'Independent literal matrices and T.88 Huffman words; Strict outcome retained')
     dictionary = b'/Type /XObject /Subtype /Image /Width %d /Height %d /BitsPerComponent 1 /Filter /JBIG2Decode'%(width,height)
@@ -113,8 +141,9 @@ def records(name, encoded, *, repair=False, error=False, stencil=False, before_e
     objects = [stream(data,dictionary)]+([stream(globals)] if globals else [])
     content = (b'1 0 0 rg ' if stencil else b'')+b'q %d 0 0 %d 2 2 cm /X Do Q'%(width,height)
     pdf = page(content,objects,b'<< /XObject << /X 5 0 R >> >>',size=16)
-    extra = {'tolerance':0,'native_case':'native-'+name,'repair_before_error':before_error}
+    extra = {'tolerance':0,'native_case':'native-'+name,'repair_before_error':before_error,'stencil':stencil}
     if repair:extra.update(repair_object=6 if origin=='globals' else 5,repair_offset=offset)
+    if first_repair:extra.update(first_repair_object=6 if origin=='globals' else 5,first_repair_offset=offset)
     if error:
         yield Case(name,pdf,OPEN,(REQUIREMENT,),'Malformed table/reference/flags remain errors',strict_valid=False,extra={**extra,'render_error':'syntax'})
     else:
@@ -135,8 +164,13 @@ def cases():
         ('non-table-referral',{'non_table':True},False),
         ('reserved-table',{'bad_table':'reserved'},False),
         ('truncated-table',{'bad_table':'truncated'},False),
+        ('oob-unused-table',{'bad_table':'oob'},True),
         ('context-used',{'flag_extra':0x100},False),
         ('arithmetic-selector',{'flag_extra':-1},False),
     ]:
         yield from records('hostile-'+name,ordinary(unused=True,**options),error=True,before_error=before)
     yield from records('hostile-used-missing-table',used_aggregation(missing=True),error=True)
+    for label,both in [('main',False),('both',True)]:
+        yield from records('repeated-'+label+'-valid',repeated(both_streams=both))
+        yield from records('repeated-'+label+'-unused',repeated(unused=True,both_streams=both),repair=True)
+    yield from records('hostile-repeated-missing-table',repeated(unused=True,both_streams=True,late_missing=True),error=True,before_error=True,first_repair=True)

@@ -6,7 +6,8 @@ import {tmpdir} from 'node:os';
 import {resolve,join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-const repairs = new Set(JSON.parse(readFileSync('corpus/manifests/recovery.json')).cases.flatMap(c=>c.repairs));
+const repairs = new Set(['recovery','recovery_jbig2_tables'].flatMap(area=>
+  JSON.parse(readFileSync(`corpus/manifests/${area}.json`)).cases.flatMap(c=>c.repairs??[])));
 const cases = JSON.parse(readFileSync('benchmarks/probes/image-repair-cases.json')).cases.filter(c=>repairs.has(c.repair));
 const scratch=mkdtempSync(join(tmpdir(),'pagura-repair-observe-'));
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -32,17 +33,36 @@ try {
       const input=runtime==='native'?join(scratch,`input-${index}.pdf`):`/scratch/input-${index}.pdf`;
       const stem=`output-${index}-${runtime}.ppm`;
       const output=runtime==='native'?join(scratch,stem):`/scratch/${stem}`;
+      if(c.strict_error){
+        const strictStem=`strict-${index}-${runtime}.ppm`,strictPath=join(scratch,strictStem);
+        const strictOut=runtime==='native'?strictPath:`/scratch/${strictStem}`;
+        const strict=spawnSync(command[0],[...command.slice(1),input,strictOut,'strict'],{
+          encoding:'utf8',timeout:10000,env:{...process.env,IMAGE_REPAIR_SCRATCH:scratch}});
+        assert(!strict.error&&strict.signal===null&&strict.status===1,`${c.id}: expected earlier Strict refusal`);
+        assert([strictPath,strictPath+'.rgba',strictPath+'.transparent.rgba'].every(p=>!existsSync(p)),`${c.id}: Strict partial output`);
+        const errors=strict.stderr.split('\n').filter(line=>line.startsWith('Error:'));
+        assert.deepEqual(errors,[c.strict_error],`${c.id}: frozen baseline first error`);
+        results.push({id:c.id,sha256:c.sha256,runtime,mode:'strict',exit_code:strict.status,rasterized:false,
+          pixel_sha256:null,error:errors[0],baseline_revision:c.strict_error_baseline_revision});
+      }
       const run=spawnSync(command[0],[...command.slice(1),input,output,'repair'],{
         encoding:'utf8',timeout:10000,env:{...process.env,IMAGE_REPAIR_SCRATCH:scratch}});
       assert(!run.error && run.signal===null,`${c.id}: ${runtime} timeout/signal: ${run.error??run.signal}`);
       const pixels=existsSync(join(scratch,stem))?readFileSync(join(scratch,stem)):null;
-      assert(run.status===0 || pixels===null,`${c.id}: partial output after failure`);
-      const row={id:c.id,sha256:c.sha256,runtime,exit_code:run.status,
-        rasterized:run.status===0,pixel_sha256:pixels?hash(pixels):null,
+      const rgbaPath=join(scratch,stem+'.rgba'),alphaPath=join(scratch,stem+'.transparent.rgba');
+      const rgba=existsSync(rgbaPath)?readFileSync(rgbaPath):null,alpha=existsSync(alphaPath)?readFileSync(alphaPath):null;
+      assert(run.status===0 || (pixels===null&&rgba===null&&alpha===null),`${c.id}: partial output after failure`);
+      if(run.status===0)assert(pixels&&rgba&&alpha,`${c.id}: missing full output`);
+      const row={id:c.id,sha256:c.sha256,runtime,mode:'repair',exit_code:run.status,
+        rasterized:run.status===0,pixel_sha256:pixels?hash(pixels):null,rgba_sha256:rgba?hash(rgba):null,transparent_rgba_sha256:alpha?hash(alpha):null,
         diagnostics:run.stdout.trim().split('\n').filter(Boolean),error:run.stderr.slice(0,2000)};
+      if(c.expected_render){
+        assert.equal(run.status,0,`${c.id}: required public admission`);
+        assert(row.diagnostics.includes(c.repair),`${c.id}: required reported repair`);
+      }
       results.push(row);current.push(row);
     }
-    assert(current.every(r=>r.exit_code===current[0].exit_code && r.pixel_sha256===current[0].pixel_sha256),`${c.id}: runtime outcome/pixel disagreement`);
+    assert(current.every(r=>r.exit_code===current[0].exit_code && r.pixel_sha256===current[0].pixel_sha256&&r.rgba_sha256===current[0].rgba_sha256&&r.transparent_rgba_sha256===current[0].transparent_rgba_sha256),`${c.id}: runtime outcome/pixel disagreement`);
   }
 } finally {rmSync(scratch,{recursive:true,force:true});}
 const report={scope:'Public first-page outcomes only; successful rendering is not an accuracy claim',

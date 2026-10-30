@@ -50,7 +50,8 @@
       "height": 16,
       "tolerance": 0,
       "native_case": "native-gray-valid",
-      "repair_before_error": false
+      "repair_before_error": false,
+      "stencil": false
     },
     {
       "id": "recovery_jbig2_tables/native-gray-unused",
@@ -101,6 +102,7 @@
       "tolerance": 0,
       "native_case": "native-gray-unused",
       "repair_before_error": false,
+      "stencil": false,
       "repair_object": 5,
       "repair_offset": 64
     },
@@ -150,7 +152,8 @@
       "height": 16,
       "tolerance": 0,
       "native_case": "native-all-custom-valid",
-      "repair_before_error": false
+      "repair_before_error": false,
+      "stencil": false
     },
     {
       "id": "recovery_jbig2_tables/native-all-custom-unused",
@@ -201,6 +204,7 @@
       "tolerance": 0,
       "native_case": "native-all-custom-unused",
       "repair_before_error": false,
+      "stencil": false,
       "repair_object": 5,
       "repair_offset": 133
     },
@@ -250,7 +254,8 @@
       "height": 16,
       "tolerance": 0,
       "native_case": "native-stencil-valid",
-      "repair_before_error": false
+      "repair_before_error": false,
+      "stencil": true
     },
     {
       "id": "recovery_jbig2_tables/native-stencil-unused",
@@ -301,6 +306,7 @@
       "tolerance": 0,
       "native_case": "native-stencil-unused",
       "repair_before_error": false,
+      "stencil": true,
       "repair_object": 5,
       "repair_offset": 64
     },
@@ -350,7 +356,8 @@
       "height": 16,
       "tolerance": 0,
       "native_case": "native-globals-valid",
-      "repair_before_error": false
+      "repair_before_error": false,
+      "stencil": false
     },
     {
       "id": "recovery_jbig2_tables/native-globals-unused",
@@ -401,6 +408,7 @@
       "tolerance": 0,
       "native_case": "native-globals-unused",
       "repair_before_error": false,
+      "stencil": false,
       "repair_object": 6,
       "repair_offset": 34
     },
@@ -450,7 +458,8 @@
       "height": 16,
       "tolerance": 0,
       "native_case": "native-used-aggregation-custom",
-      "repair_before_error": false
+      "repair_before_error": false,
+      "stencil": false
     },
     {
       "id": "recovery_jbig2_tables/native-hostile-missing-table",
@@ -494,6 +503,7 @@
       "tolerance": 0,
       "native_case": "native-hostile-missing-table",
       "repair_before_error": true,
+      "stencil": false,
       "render_error": "syntax"
     },
     {
@@ -538,6 +548,7 @@
       "tolerance": 0,
       "native_case": "native-hostile-extra-table",
       "repair_before_error": true,
+      "stencil": false,
       "render_error": "syntax"
     },
     {
@@ -582,6 +593,7 @@
       "tolerance": 0,
       "native_case": "native-hostile-non-table-referral",
       "repair_before_error": false,
+      "stencil": false,
       "render_error": "syntax"
     },
     {
@@ -626,6 +638,7 @@
       "tolerance": 0,
       "native_case": "native-hostile-reserved-table",
       "repair_before_error": false,
+      "stencil": false,
       "render_error": "syntax"
     },
     {
@@ -670,6 +683,52 @@
       "tolerance": 0,
       "native_case": "native-hostile-truncated-table",
       "repair_before_error": false,
+      "stencil": false,
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_tables/native-hostile-oob-unused-table",
+      "kind": "vector",
+      "description": "Independent literal matrices and T.88 Huffman words; Strict outcome retained",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-hostile-oob-unused-table.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-hostile-oob-unused-table.jb2",
+          "sha256": "0ea5e41e80d07dc4e7d0120b49b0c90159f4f1a12287b7f71cef7190c71cc77d"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-hostile-oob-unused-table.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-hostile-oob-unused-table.params",
+          "sha256": "f67964ff34b76d564314166aefaab3c1755d7738c0d0c3fd2e335d201dce5d5c"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_tables/hostile-oob-unused-table",
+      "kind": "pdf",
+      "description": "Malformed table/reference/flags remain errors",
+      "expected": "open",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "path": "corpus/generated/recovery_jbig2_tables/hostile-oob-unused-table.pdf",
+      "sha256": "6ed11e36c044e23a3a4e50ccdce922412bafd7f4c988ce7103df53ad3dcdd65c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-oob-unused-table",
+      "repair_before_error": true,
+      "stencil": false,
       "render_error": "syntax"
     },
     {
@@ -714,6 +773,7 @@
       "tolerance": 0,
       "native_case": "native-hostile-context-used",
       "repair_before_error": false,
+      "stencil": false,
       "render_error": "syntax"
     },
     {
@@ -758,6 +818,7 @@
       "tolerance": 0,
       "native_case": "native-hostile-arithmetic-selector",
       "repair_before_error": false,
+      "stencil": false,
       "render_error": "syntax"
     },
     {
@@ -802,6 +863,258 @@
       "tolerance": 0,
       "native_case": "native-hostile-used-missing-table",
       "repair_before_error": false,
+      "stencil": false,
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_tables/native-repeated-main-valid",
+      "kind": "vector",
+      "description": "Independent literal matrices and T.88 Huffman words; Strict outcome retained",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-main-valid.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-main-valid.jb2",
+          "sha256": "4285e81a8e168041b729a9e9714d26a4e3bd730785c3557b8e66caafec8782a0"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-main-valid.out",
+          "sha256": "9e47344b8d48e8442f394463a72a4450805c9e406caaf746b3a530c8bf19f645"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-main-valid.params",
+          "sha256": "16f819d110be52f137c3c72610b6c95ed791e95dbaed86703d501200b3f5b836"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_tables/repeated-main-valid",
+      "kind": "pdf",
+      "description": "Exact literal matrix; unused selector is separately reported",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "path": "corpus/generated/recovery_jbig2_tables/repeated-main-valid.pdf",
+      "sha256": "b4a449b11aaa5aa42bedb04f98cd04abb70c8b06a81c22f586df5cbf4406d074",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_jbig2_tables/repeated-main-valid.ppm",
+      "oracle_sha256": "a474242b94d0a2b4100e1cb364f610ddb469cd8e71ed2e46a9f53c92985b7d7a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-repeated-main-valid",
+      "repair_before_error": false,
+      "stencil": false
+    },
+    {
+      "id": "recovery_jbig2_tables/native-repeated-main-unused",
+      "kind": "vector",
+      "description": "Independent literal matrices and T.88 Huffman words; Strict outcome retained",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-main-unused.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-main-unused.jb2",
+          "sha256": "1b1047463fabdf502c49ac5d6108eb035752be0a00ad5574325fc489275dd86e"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-main-unused.out",
+          "sha256": "9e47344b8d48e8442f394463a72a4450805c9e406caaf746b3a530c8bf19f645"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-main-unused.params",
+          "sha256": "4fb8fb3eda72e7255648f44186402506aba40a742f0affbe359648006641c079"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_tables/repeated-main-unused",
+      "kind": "pdf",
+      "description": "Exact literal matrix; unused selector is separately reported",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "path": "corpus/generated/recovery_jbig2_tables/repeated-main-unused.pdf",
+      "sha256": "e4b708f55298221ac341f81a8ed25e5dcb9eff51f540c4dee2629c1115394fa7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.unused-aggregation-table"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_tables/repeated-main-unused.ppm",
+      "oracle_sha256": "a474242b94d0a2b4100e1cb364f610ddb469cd8e71ed2e46a9f53c92985b7d7a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-repeated-main-unused",
+      "repair_before_error": false,
+      "stencil": false,
+      "repair_object": 5,
+      "repair_offset": 64
+    },
+    {
+      "id": "recovery_jbig2_tables/native-repeated-both-valid",
+      "kind": "vector",
+      "description": "Independent literal matrices and T.88 Huffman words; Strict outcome retained",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-both-valid.globals",
+          "sha256": "24928170ea4656d7711ac09b9acd822a9d0bc8896ec4aece676f994a22e8a422"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-both-valid.jb2",
+          "sha256": "9175dc6ad41b63e8122666d7306027bfa777dbdf28da75ab4e23fcaa48787bf3"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-both-valid.out",
+          "sha256": "9e47344b8d48e8442f394463a72a4450805c9e406caaf746b3a530c8bf19f645"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-both-valid.params",
+          "sha256": "16f819d110be52f137c3c72610b6c95ed791e95dbaed86703d501200b3f5b836"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_tables/repeated-both-valid",
+      "kind": "pdf",
+      "description": "Exact literal matrix; unused selector is separately reported",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "path": "corpus/generated/recovery_jbig2_tables/repeated-both-valid.pdf",
+      "sha256": "009326dcaee44724d287f84fb9b407615f41ae044e786164e09e1f1088800303",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_jbig2_tables/repeated-both-valid.ppm",
+      "oracle_sha256": "a474242b94d0a2b4100e1cb364f610ddb469cd8e71ed2e46a9f53c92985b7d7a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-repeated-both-valid",
+      "repair_before_error": false,
+      "stencil": false
+    },
+    {
+      "id": "recovery_jbig2_tables/native-repeated-both-unused",
+      "kind": "vector",
+      "description": "Independent literal matrices and T.88 Huffman words; Strict outcome retained",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-both-unused.globals",
+          "sha256": "b6ca0f9fa5f4bcb9646538cec3fe999a6b878b96c52a89ddd07848d6bd119412"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-both-unused.jb2",
+          "sha256": "ca7357549715e9992df522eed7f4873327e14038cd7982364654abf5cbd6c682"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-both-unused.out",
+          "sha256": "9e47344b8d48e8442f394463a72a4450805c9e406caaf746b3a530c8bf19f645"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-repeated-both-unused.params",
+          "sha256": "e914b9690ee7ffd57a69f93da09fe464fd9ac883db7ac717467bae969119f0e6"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_tables/repeated-both-unused",
+      "kind": "pdf",
+      "description": "Exact literal matrix; unused selector is separately reported",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "path": "corpus/generated/recovery_jbig2_tables/repeated-both-unused.pdf",
+      "sha256": "9feb25d45496d01edfbb5677d79285de57e017ac33ac2751b18e06ce6c883944",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.unused-aggregation-table"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_tables/repeated-both-unused.ppm",
+      "oracle_sha256": "a474242b94d0a2b4100e1cb364f610ddb469cd8e71ed2e46a9f53c92985b7d7a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-repeated-both-unused",
+      "repair_before_error": false,
+      "stencil": false,
+      "repair_object": 6,
+      "repair_offset": 34
+    },
+    {
+      "id": "recovery_jbig2_tables/native-hostile-repeated-missing-table",
+      "kind": "vector",
+      "description": "Independent literal matrices and T.88 Huffman words; Strict outcome retained",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-hostile-repeated-missing-table.globals",
+          "sha256": "b6ca0f9fa5f4bcb9646538cec3fe999a6b878b96c52a89ddd07848d6bd119412"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-hostile-repeated-missing-table.jb2",
+          "sha256": "f7676c8adfda512728f033f5365ac230564b7c8fc28078fcd3ce3ee0e0fa02da"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-hostile-repeated-missing-table.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_tables/native-hostile-repeated-missing-table.params",
+          "sha256": "b47edf9dab0fde7b2762f41ac30c86854982ce369a9809480cda20b2aaaa5e4d"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_tables/hostile-repeated-missing-table",
+      "kind": "pdf",
+      "description": "Malformed table/reference/flags remain errors",
+      "expected": "open",
+      "requirements": [
+        "recovery-jbig2-unused-aggregation"
+      ],
+      "path": "corpus/generated/recovery_jbig2_tables/hostile-repeated-missing-table.pdf",
+      "sha256": "2dcddb6af8670aed403a2dac3b94da8fc511a830d3f574e1ea34a5552aaa6644",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-repeated-missing-table",
+      "repair_before_error": true,
+      "stencil": false,
+      "first_repair_object": 6,
+      "first_repair_offset": 34,
       "render_error": "syntax"
     }
   ]

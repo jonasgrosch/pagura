@@ -77,7 +77,7 @@ pub(crate) fn decode(
         Codec::Jbig2(globals) => {
             image.samples = dispatch::jbig2_samples(
                 data,
-                globals.as_deref(),
+                globals.as_ref().map(|(data, id)| (data.as_ref(), *id)),
                 (width, height),
                 limits,
                 diagnostics,

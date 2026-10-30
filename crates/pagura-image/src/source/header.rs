@@ -6,7 +6,9 @@ use super::SourceMask;
 use crate::jpx_image::Jpx;
 use crate::{ImageKind, MaskKind, dispatch, filter_rules, inline, mask, parameters as p, stream};
 use pagura_codec::{Filter, FilterChain, ImageCodec};
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Name, Position, Result, Value};
+use pagura_core::{
+    Diagnostic, Diagnostics, Dictionary, Error, Name, ObjectId, Position, Result, Value,
+};
 use pagura_document::{Document, IndirectObject};
 use std::borrow::Cow;
 use std::sync::Arc;
@@ -20,8 +22,8 @@ pub(crate) enum Codec {
     Dct(Option<Dictionary>),
     /// `CCITTFaxDecode` with its parameters.
     Ccitt(Option<Dictionary>),
-    /// `JBIG2Decode` with the data of its `JBIG2Globals`.
-    Jbig2(Option<Arc<[u8]>>),
+    /// `JBIG2Decode` with its shared Globals data and original stream identity.
+    Jbig2(Option<(Arc<[u8]>, ObjectId)>),
     /// `JPXDecode`.
     Jpx(Jpx),
 }
@@ -266,7 +268,7 @@ fn codec_of(
             }
             let globals = match original {
                 Some(original) => dispatch::jbig2_globals(document, original, params.as_ref())?
-                    .map(|data| Arc::from(data.into_owned())),
+                    .map(|(data, id)| (Arc::from(data.into_owned()), id)),
                 None => None,
             };
             Codec::Jbig2(globals)

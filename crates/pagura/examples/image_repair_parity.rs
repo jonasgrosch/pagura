@@ -25,6 +25,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         ..RenderOptions::default()
     };
     let pixels = context.render_page(document.page(0)?, &options)?;
+    let transparent = context.render_page(
+        document.page(0)?,
+        &RenderOptions {
+            background: Rgba8::TRANSPARENT,
+            ..options
+        },
+    )?;
     let mut bytes = format!("P6\n{} {}\n255\n", pixels.width(), pixels.height()).into_bytes();
     bytes.extend(pixels.to_rgb_over(Rgba8::WHITE));
     // These are fresh hosted scratch paths, never document-selected paths.
@@ -32,9 +39,21 @@ fn main() -> Result<(), Box<dyn Error>> {
         &mut fs::OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(output)?,
+            .open(&output)?,
         &bytes,
     )?;
+    for (suffix, data) in [
+        (".rgba", pixels.data()),
+        (".transparent.rgba", transparent.data()),
+    ] {
+        std::io::Write::write_all(
+            &mut fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(format!("{output}{suffix}"))?,
+            data,
+        )?;
+    }
     for diagnostic in document.diagnostics() {
         println!("{}", diagnostic.tag());
     }
