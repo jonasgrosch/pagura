@@ -36,9 +36,10 @@ agreed.
    open of a maximum file and password (`file_bytes + string_bytes + 14`), a
    maximum generated tile (`pixels * 4 + 18`) and a full reading response
    (`reading_response_bytes + 5`), at least 1,024 bytes for a structured
-   error and at most `u32::MAX`. Under the defaults this is the value the
-   viewer hard-codes, 544 MiB + 14 bytes; `decoded_bytes` no longer takes
-   part.
+   error and at most `u32::MAX`. Under the defaults this is a maximum
+   generated tile, 1 GiB + 18 bytes, since `pixels` became 256 Mi (ADR
+   0016, 2026-10-27); it was a maximum open, 544 MiB + 14 bytes, before.
+   `decoded_bytes` no longer takes part.
 3. **One registry owns what a document retains.** Open documents, their
    viewport generations and both page caches live in one place, so closing
    a handle releases all of them together.

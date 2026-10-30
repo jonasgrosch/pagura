@@ -77,7 +77,7 @@ mod tests {
     fn source_grid_budget_precedes_decoding_and_cropping() {
         let mut reports = Diagnostics::new(Recovery::Repair);
         let limits = Limits {
-            pixels: 8,
+            image: pagura_core::ImageLimits { pixels: 8 },
             ..Limits::default()
         };
         let error = decode(

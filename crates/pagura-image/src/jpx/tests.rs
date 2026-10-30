@@ -150,7 +150,7 @@ fn truncation_and_mutation_never_panic() {
     let limits = Limits {
         decode_work: 100_000,
         decoded_bytes: 1_000_000,
-        pixels: 4096,
+        image: pagura_core::ImageLimits { pixels: 4096 },
         ..Limits::default()
     };
     for index in 0..data.len() {
@@ -171,7 +171,7 @@ fn limits_bound_input_pixels_allocations_and_work() {
             ..Limits::default()
         },
         Limits {
-            pixels: 63,
+            image: pagura_core::ImageLimits { pixels: 63 },
             ..Limits::default()
         },
         Limits {
@@ -231,7 +231,7 @@ fn reserved_coding_modes_are_rejected() -> Result<(), Box<dyn std::error::Error>
 #[test]
 fn packed_and_progression_boundaries_never_panic() {
     let limits = Limits {
-        pixels: 4096,
+        image: pagura_core::ImageLimits { pixels: 4096 },
         decoded_bytes: 2_000_000,
         decode_work: 200_000,
         objects: 256,

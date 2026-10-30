@@ -39,7 +39,7 @@ mod value;
 pub use diagnostic::{Diagnostic, DiagnosticKind, Diagnostics, Recovery, Repair};
 pub use dictionary::{Dictionary, DictionaryIter};
 pub use error::{Error, ErrorKind, Feature, Position, Result, ResultExt};
-pub use limits::{Limits, SignatureLimits};
+pub use limits::{ImageLimits, Limits, SignatureLimits};
 pub use meter::Meter;
 pub use name::Name;
 pub use rect::Rect;

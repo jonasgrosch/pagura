@@ -1,8 +1,9 @@
 # ADR 0016: One meaning per `Limits` field; domain budgets
 
 Status: accepted, 2026-10-18. Amended 2026-10-19 (signature, function and
-traversal budgets) and 2026-10-21 (render budgets, ADR 0034). Refines
-invariant 3 of `docs/ARCHITECTURE.md` and ADR 0012.
+traversal budgets), 2026-10-21 (render budgets, ADR 0034) and 2026-10-26
+(`function_work` scales with the pixel cap). Refines invariant 3 of
+`docs/ARCHITECTURE.md` and ADR 0012.
 
 ## Context
 
@@ -206,3 +207,36 @@ refusal of one more. Newly admitted renders must match the unchanged
 renderer with only `function_work` raised; a prior refusal is not a
 performance baseline. Rendering arithmetic and per-sample charging are
 unchanged.
+
+## Amendment, 2026-10-30: separate size caps, and render work of 2 Gi
+
+PDFium, MuPDF, Poppler and hayro render pages that `pixels` refused: six
+corpus pages at 300 dpi need 69.7 to 139.5 million pixels, and a scanned page
+holds one image of 66.4 Mi pixels. Every other budget of those renders stayed
+far from its limit.
+
+1. **Two size caps, each with one meaning.** `pixels` caps one rendered
+   surface; `image.pixels` caps the samples one image declares. Both are
+   256 Mi (268,435,456). `pixels` held both meanings before, against
+   decision 1. `image.pixels` opens the nested group of `u32` fields that
+   decision 5 of the 2026-10-21 amendment reserves for the next field.
+   With banded rendering the render cap limits only the output a caller
+   asks for: a render's working memory is bounded by `render_bytes`, and
+   decoding by `decode_work`, `decode_bytes` and `decoded_bytes`, so an 8-bit
+   RGB image still stops at the 89 million pixels whose samples
+   `decoded_bytes` holds.
+2. **`render_work` is 2 Gi units,** as `decode_work` and `function_work`
+   are (amendment of 2026-10-29): 32 units per pixel of a 64 Mi-pixel
+   render (2,147,483,648 units), decoupled from the size caps. It was
+   2,000,000,000. The same rate at 256 Mi would not fit a 32-bit `usize`
+   (decision 3: 32 × 2^28 = 2^33), and tying work to the caps would raise
+   every render's worst case with them. Worst cases at the default, measured
+   on an M3 Pro (cold renders, profiles of builds with the budgets lifted):
+
+   | Budget | Per unit | Worst case at 2 Gi |
+   |---|---|---|
+   | `render_work` | 0.4–2 ns (ordinary pages) | 0.9–4.3 s |
+   | `decode_work` | 1.65–4.32 ns (JPEG 2000) | 3.5–9.3 s |
+   | `function_work` | 3.35 ns (Type 4 functions of a full-page shading) | 7.2 s |
+3. **The host's frame cap follows** (ADR 0032): a maximum generated tile is
+   now 1 GiB + 18 bytes, more than a maximum open, so it sets the default.

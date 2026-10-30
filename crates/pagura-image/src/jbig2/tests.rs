@@ -41,7 +41,9 @@ fn independent_bitmaps_and_hostile_vectors() {
                     failures.push(format!("{name}: bitmap mismatch"));
                 }
                 let capped = Limits {
-                    pixels: (bitmap.width * bitmap.height) as usize - 1,
+                    image: pagura_core::ImageLimits {
+                        pixels: u32::try_from((bitmap.width * bitmap.height) as usize - 1).unwrap(),
+                    },
                     ..limits
                 };
                 assert_eq!(
@@ -87,7 +89,7 @@ fn exact_generic_budgets_are_enforced_before_work() {
     let bytes = expected.len() * 2 + 1024 * size_of::<super::arithmetic::Context>();
     let work = 19 * 9 * 18 * 2;
     let limits = Limits {
-        pixels: 19 * 9,
+        image: pagura_core::ImageLimits { pixels: 19 * 9 },
         decoded_bytes: bytes,
         decode_work: work + 2,
         objects: 2,
@@ -102,7 +104,7 @@ fn exact_generic_budgets_are_enforced_before_work() {
             ..limits
         },
         Limits {
-            pixels: 19 * 9 - 1,
+            image: pagura_core::ImageLimits { pixels: 19 * 9 - 1 },
             ..limits
         },
         Limits {
@@ -132,7 +134,7 @@ fn exact_generic_budgets_are_enforced_before_work() {
 #[test]
 fn truncations_and_mutations_remain_bounded() {
     let limits = Limits {
-        pixels: 4096,
+        image: pagura_core::ImageLimits { pixels: 4096 },
         decoded_bytes: 160_000,
         objects: 64,
         value_nodes: 64,
@@ -180,7 +182,8 @@ fn truncations_and_mutations_remain_bounded() {
                 if let Ok(bitmap) = decode(&changed, Some(&globals), &limits) {
                     assert!(bitmap.data.len() <= limits.decoded_bytes);
                     assert!(
-                        u64::from(bitmap.width) * u64::from(bitmap.height) <= limits.pixels as u64
+                        u64::from(bitmap.width) * u64::from(bitmap.height)
+                            <= u64::from(limits.image.pixels)
                     );
                 }
             }
@@ -266,7 +269,7 @@ fn unknown_length_allocates_actual_rows_and_keeps_following_segment() {
     let bytes = 5 + 3 + 1024 * size_of::<super::arithmetic::Context>();
     let work = (25 + 15 + 5) * 18;
     let limits = Limits {
-        pixels: 25,
+        image: pagura_core::ImageLimits { pixels: 25 },
         decoded_bytes: bytes,
         decode_work: work + 3,
         objects: 3,

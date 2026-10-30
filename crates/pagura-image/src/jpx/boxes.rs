@@ -300,7 +300,7 @@ fn read_dimensions(fields: &mut Reader<'_>, budget: &Budget<'_>) -> Result<(u32,
     {
         return Err(syntax("invalid JP2 image header", fields.base));
     }
-    if area(width, height)? > budget.limits.pixels {
+    if area(width, height)? > pagura_core::convert::u32_to_usize(budget.limits.image.pixels) {
         return Err(Error::limit("JP2 pixel budget exceeded"));
     }
     Ok((width, height, components, depth))

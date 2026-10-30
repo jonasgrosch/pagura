@@ -144,11 +144,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_frame_cap_fits_the_largest_open_and_is_independent_of_decoded_bytes() {
-        // 512 MiB file + 32 MiB password + 14 header bytes, as web/protocol.mjs
-        // hard-coded before it imported the generated constant.
+    fn default_frame_cap_fits_the_largest_tile_and_is_independent_of_decoded_bytes() {
+        // A 256 Mi-pixel generated tile and its 18 header bytes, beyond the
+        // largest open: 512 MiB file + 32 MiB password + 14 header bytes.
         let defaults = SessionLimits::default();
-        assert_eq!(defaults.max_frame_bytes, 512 * MIB + 32 * MIB + 14);
+        assert_eq!(defaults.max_frame_bytes, 256 * MIB * 4 + 18);
+        assert!(defaults.max_frame_bytes > 512 * MIB + 32 * MIB + 14);
         let engine = Limits {
             decoded_bytes: usize::MAX,
             ..Limits::default()

@@ -15,7 +15,9 @@ pub(super) fn layout(width: u32, height: u32, limits: &Limits) -> Result<(usize,
     let bytes = stride
         .checked_mul(height)
         .ok_or_else(|| Error::limit("JBIG2 bitmap size overflow"))?;
-    if pixels > limits.pixels || bytes > limits.decoded_bytes {
+    if pixels > pagura_core::convert::u32_to_usize(limits.image.pixels)
+        || bytes > limits.decoded_bytes
+    {
         return Err(Error::limit("JBIG2 bitmap exceeds limits"));
     }
     Ok((stride, bytes))
@@ -225,7 +227,7 @@ mod tests {
         let x = (1_u32 << 31) + 3;
         let width = x + 9;
         let limits = Limits {
-            pixels: width as usize,
+            image: pagura_core::ImageLimits { pixels: width },
             decoded_bytes: width.div_ceil(8) as usize,
             ..Limits::default()
         };
