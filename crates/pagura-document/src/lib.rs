@@ -366,7 +366,7 @@ impl Document {
         object: &IndirectObject,
         parameters: Option<&Value>,
     ) -> Result<ImageStream<'a>> {
-        stream::image(self, object, parameters, 0)
+        stream::image(self, object, parameters, 0, false)
     }
 
     /// As [`Document::image_stream_with_parameters`], allocating for an
@@ -382,7 +382,25 @@ impl Document {
         parameters: Option<&Value>,
         size: usize,
     ) -> Result<ImageStream<'a>> {
-        stream::image(self, object, parameters, size)
+        stream::image(self, object, parameters, size, false)
+    }
+
+    /// As [`Document::image_stream_sized`], but data that damaged filter
+    /// input cut short is returned with [`ImageStream::damaged`] set and the
+    /// `filter.corrupt` repair reported, instead of failing. The image methods
+    /// above fail on such data, carrying that repair, so callers can try
+    /// another reading of the stream first.
+    ///
+    /// # Errors
+    ///
+    /// As [`Document::image_stream_with_parameters`].
+    pub fn image_stream_damaged<'a>(
+        &'a self,
+        object: &IndirectObject,
+        parameters: Option<&Value>,
+        size: usize,
+    ) -> Result<ImageStream<'a>> {
+        stream::image(self, object, parameters, size, true)
     }
 
     /// All pages in document order. The page tree is walked once and cached.

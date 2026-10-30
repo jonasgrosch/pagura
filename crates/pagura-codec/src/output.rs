@@ -2,7 +2,7 @@
 //! PNG arithmetic: Second Edition 9.2, Table 9.1, 9.3 and 9.4. TIFF sample
 //! arithmetic: TIFF 6.0 section 14, pp.64-65; PDF supplies high-bit-first packing.
 use crate::{Predictor, PredictorKind, syntax};
-use pagura_core::Result;
+use pagura_core::{Diagnostics, Result};
 
 pub(crate) struct Output {
     bytes: Vec<u8>,
@@ -236,11 +236,24 @@ impl Output {
         }
     }
 
-    pub(crate) fn finish(self, offset: usize) -> Result<Vec<u8>> {
+    /// The output, whose last predictor row must be complete; an incomplete
+    /// one is damaged data (`filter.corrupt`) and is discarded.
+    pub(crate) fn finish(self, offset: usize, diagnostics: &mut Diagnostics) -> Result<Vec<u8>> {
         if self.row_offset != 0 || self.png_filter.is_some() {
-            return Err(syntax("incomplete predictor row", offset));
+            return crate::damaged(
+                syntax("incomplete predictor row", offset),
+                diagnostics,
+                || self.complete(),
+            );
         }
         Ok(self.bytes)
+    }
+
+    /// The whole predictor rows written so far.
+    pub(crate) fn complete(mut self) -> Vec<u8> {
+        let whole = self.bytes.len() - self.row_offset;
+        self.bytes.truncate(whole);
+        self.bytes
     }
 }
 

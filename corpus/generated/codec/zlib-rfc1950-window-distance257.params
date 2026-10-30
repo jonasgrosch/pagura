@@ -1,4 +1,4 @@
 filter=FlateDecode
-outcome=syntax
-repair=none
-cap=260
+outcome=valid
+repair=filter.corrupt
+cap=4096

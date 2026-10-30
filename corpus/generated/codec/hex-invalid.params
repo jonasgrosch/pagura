@@ -1,4 +1,4 @@
 filter=ASCIIHexDecode
-outcome=syntax
-repair=none
+outcome=valid
+repair=filter.corrupt
 cap=4096

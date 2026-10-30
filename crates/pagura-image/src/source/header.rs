@@ -51,6 +51,9 @@ pub(crate) struct Header {
     pub(crate) codec: Codec,
     /// Whether a stencil's precision is known only after decoding.
     pub(crate) stencil_after_decode: bool,
+    /// Whether damaged filter data cut the samples short (`filter.corrupt`):
+    /// decoding shows the whole rows and leaves the rest transparent.
+    pub(crate) damaged: bool,
 }
 
 impl Header {
@@ -113,13 +116,14 @@ pub(crate) fn xobject<'a>(
     let (width, height) = p::dimensions(&dict)?;
     p::budget(width, height, 1, 1, &document.limits())?;
     let stream = stream::read(document, image, diagnostics)?;
-    let header = read(
+    let mut header = read(
         document,
         &dict,
         &stream.data,
         stream.codec,
         Some(dictionary),
     )?;
+    header.damaged = stream.damaged;
     Ok((header, stream.data))
 }
 
@@ -168,8 +172,13 @@ pub(crate) fn inline<'a>(
         return Err(Error::syntax("filter is forbidden in inline images"));
     }
     let codec = chain.split_image();
+    let before = diagnostics.as_slice().len();
     let data = chain.decode(data, document.limits().decoded_bytes, diagnostics)?;
-    let header = read(document, &dict, &data, codec, None)?;
+    let damaged = diagnostics.as_slice()[before..]
+        .iter()
+        .any(|diagnostic| diagnostic.repair() == Some(pagura_codec::tags::CORRUPT));
+    let mut header = read(document, &dict, &data, codec, None)?;
+    header.damaged = damaged;
     Ok((header, data))
 }
 
@@ -229,6 +238,7 @@ fn read(
         intent: None,
         codec: Codec::None,
         stencil_after_decode: false,
+        damaged: false,
     };
     header.codec = codec_of(document, dict, data, codec, original, &mut header)?;
     finish(document, dict, &mut header)?;

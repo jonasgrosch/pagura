@@ -1108,16 +1108,106 @@
     {
       "id": "recovery/predictor-retry-invalid-tag",
       "kind": "pdf",
-      "description": "A failed predictor retry leaves the original error and diagnostics",
-      "expected": "open",
+      "description": "predictor retry invalid tag",
+      "expected": "render",
       "requirements": [
         "recovery-codecs"
       ],
       "path": "corpus/generated/recovery/predictor-retry-invalid-tag.pdf",
       "sha256": "2bc71277c39c6e6d0a0f3fe5fda018f3a05ccefd883468cec0cf75e6b6b7c891",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "filter.corrupt",
+        "image.data-excess"
+      ],
+      "oracle": "corpus/generated/recovery/predictor-retry-invalid-tag.ppm",
+      "oracle_sha256": "32f1ca2566116c91729335786f297b9ed872cd5da352776b8426553ca7774ad3",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/filter-corrupt-content",
+      "kind": "pdf",
+      "description": "Content decoded before damaged Flate data runs; the rest is discarded",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/filter-corrupt-content.pdf",
+      "sha256": "c5672a2ead8a628395a3a5eeff3e5a2f73d98937a4def31b6b1ec2274f9bedb8",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.corrupt"
+      ],
+      "oracle": "corpus/generated/recovery/filter-corrupt-content.ppm",
+      "oracle_sha256": "d78b2107958870c53d828ef93cf9f47ce93d04cd30fac69036f2a8a51c73ecd3",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "recovery/filter-corrupt-image-rows",
+      "kind": "pdf",
+      "description": "filter corrupt image rows",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/filter-corrupt-image-rows.pdf",
+      "sha256": "773c0d4c5e75be5f8d0724b92c2c6532d9db3b3c28a33d31fefba866311df039",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.corrupt"
+      ],
+      "oracle": "corpus/generated/recovery/filter-corrupt-image-rows.ppm",
+      "oracle_sha256": "b74440e984585198c349021b257ae559b7ef0842d3a477ac6028eb5f6e417604",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/filter-corrupt-stencil-rows",
+      "kind": "pdf",
+      "description": "filter corrupt stencil rows",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/filter-corrupt-stencil-rows.pdf",
+      "sha256": "1c343537f12ddcdf513d93c868d9b42608200ef4d61121b87ebddee90ee810ee",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.corrupt"
+      ],
+      "oracle": "corpus/generated/recovery/filter-corrupt-stencil-rows.ppm",
+      "oracle_sha256": "b745079f0bdcd3000430496f6366f6efd791711322ec2befc4ac01cdc248f399",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/filter-corrupt-masked-image",
+      "kind": "pdf",
+      "description": "Damaged data under a mask of its own stays an error",
+      "expected": "open",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/filter-corrupt-masked-image.pdf",
+      "sha256": "13d359f5cfe17b6f7f481748b4aff16a8612c4cd13e04c3d226c42097124477f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.corrupt"
+      ],
       "render_error": "syntax"
     },
     {

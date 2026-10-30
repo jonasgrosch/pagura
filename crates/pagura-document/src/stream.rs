@@ -44,6 +44,20 @@ pub(crate) fn decode<'a>(
     chain: &FilterChain,
     size: usize,
 ) -> Result<Cow<'a, [u8]>> {
+    decode_checked(document, id, data, chain, size, true).map(|(data, _)| data)
+}
+
+/// As [`decode`], and whether damaged filter data cut the output short
+/// (`filter.corrupt`). Without `damage`, such output is an error carrying
+/// that repair, and the decode reports nothing.
+fn decode_checked<'a>(
+    document: &Document,
+    id: ObjectId,
+    data: Cow<'a, [u8]>,
+    chain: &FilterChain,
+    size: usize,
+    damage: bool,
+) -> Result<(Cow<'a, [u8]>, bool)> {
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
         .decode_sized(
@@ -53,16 +67,32 @@ pub(crate) fn decode<'a>(
             &mut diagnostics,
         )
         .map_err(|error| error.in_object(id))?;
+    let damage_at = diagnostics
+        .as_slice()
+        .iter()
+        .find(|diagnostic| diagnostic.repair() == Some(pagura_codec::tags::CORRUPT))
+        .map(|diagnostic| diagnostic.position);
+    if let Some(position) = damage_at
+        && !damage
+    {
+        let mut error = Error::syntax("damaged filter data")
+            .at(position)
+            .in_object(id);
+        error.repair = Some(pagura_codec::tags::CORRUPT);
+        return Err(error);
+    }
+    let damaged = damage_at.is_some();
     document.report(
         diagnostics
             .take()
             .into_iter()
             .map(|diagnostic| diagnostic.in_object(id)),
     );
-    Ok(match decoded {
+    let decoded = match decoded {
         Cow::Owned(bytes) => Cow::Owned(bytes),
         Cow::Borrowed(_) => data,
-    })
+    };
+    Ok((decoded, damaged))
 }
 
 /// Encoded image data with every filter except a trailing image codec
@@ -74,22 +104,32 @@ pub struct ImageStream<'a> {
     pub data: Cow<'a, [u8]>,
     /// The trailing image codec and its `/DecodeParms`, if the stream has one.
     pub codec: Option<(ImageCodec, Option<Dictionary>)>,
+    /// Whether damaged filter data cut `data` short (`filter.corrupt`): its
+    /// whole rows are the image's, and the rest is absent rather than zero.
+    pub damaged: bool,
 }
 
 /// `size` is the expected length after the non-image filters, an
 /// allocation hint only.
+/// Without `damage`, data that damaged filter input cut short is an error
+/// carrying `filter.corrupt`, so callers can try another reading first.
 pub(crate) fn image<'a>(
     document: &'a Document,
     object: &IndirectObject,
     parameters: Option<&Value>,
     size: usize,
+    damage: bool,
 ) -> Result<ImageStream<'a>> {
     let (data, mut chain) =
         document.prepare_stream_with_parameters(object, parameters, &mut Vec::new())?;
     let codec = chain.split_image();
     let size = if codec.is_some() { 0 } else { size };
-    let data = decode(document, object.id(), data, &chain, size)?;
-    Ok(ImageStream { data, codec })
+    let (data, damaged) = decode_checked(document, object.id(), data, &chain, size, damage)?;
+    Ok(ImageStream {
+        data,
+        codec,
+        damaged,
+    })
 }
 
 impl Document {

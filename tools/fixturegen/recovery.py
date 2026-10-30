@@ -215,10 +215,14 @@ def codec_cases():
     # Six bytes make complete rows at the declared predictor precision. The
     # resulting four sample bytes already match the image, so no retry applies.
     yield render('predictor-unusual-valid',b'4 0 0 1 0 0 cm /X Do',[stream(zlib.compress(bytes([0,0,64,0,128,255])),predictor_params)],resources,[((i,0,1,1),(v,)*3) for i,v in enumerate([0,64,128,255])],requirement='recovery-codecs')
-    # Original framing is incomplete; the alternate precision exposes an
-    # invalid PNG tag. Preserve the original failure without a stale repair.
+    # At the image's precision a tag 5 is invalid, so the retry reports no
+    # repair. At the declared precision (rows of two bytes) the last row is
+    # incomplete: the three whole None-filtered rows [0 0] [0 5] [0 0] are kept
+    # (filter.corrupt), and their first four bytes are the image's samples,
+    # the rest excess. Strict mode keeps the error.
     failed=bytes(5)+b'\x05'+bytes(4)
-    yield Case('predictor-retry-invalid-tag',page(b'4 0 0 1 0 0 cm /X Do',[stream(zlib.compress(failed),predictor_params)],resources),OPEN,('recovery-codecs',),'A failed predictor retry leaves the original error and diagnostics',extra={'render_error':'syntax'})
+    yield render('predictor-retry-invalid-tag',b'4 0 0 1 0 0 cm /X Do',[stream(zlib.compress(failed),predictor_params)],resources,[((0,0,3,1),BLACK),((3,0,1,1),(5,)*3)],repairs=('filter.corrupt','image.data-excess'),requirement='recovery-codecs')
+    yield from damaged_filter_cases()
     values=[x*16+y*8 for y in range(4) for x in range(4)]
     code=jpx.codestream([values],4,4,levels=1,tile_parts=True)
     # Length-delimited parts have a consistent zero-based order, but the writer
@@ -255,6 +259,57 @@ def codec_cases():
         ('predictor',encoded,parameters.replace(b'/Columns 4',b'/Columns 2')),
     ]:
         yield Case('image-mislabeled-invalid-'+name,page(b'4 0 0 1 0 0 cm /X Do',[stream(data,params)],resources),OPEN,('recovery-codecs',),'Unproven alternate image encoding remains a syntax error',extra={'render_error':'syntax'})
+
+
+def zlib_blocks(*blocks):
+    """A zlib stream of raw DEFLATE blocks; the checksum covers nothing, as
+    damaged data ends decoding before it."""
+    return b'\x78\x01' + b''.join(blocks)
+
+
+def stored(data, final=False):
+    """An RFC 1951 3.2.4 stored block."""
+    return bytes([int(final)]) + struct.pack('<HH', len(data), len(data) ^ 0xFFFF) + data
+
+
+# RFC 1951 3.2.3: BFINAL=1 with the reserved block type 11 is no block.
+INVALID_BLOCK = b'\x07'
+
+
+def damaged_filter_cases():
+    """filter.corrupt: what decodes before damaged data is kept in whole rows;
+    content runs that far, and an image's missing rows are absent (7.4)."""
+    # Content: the operators before the damaged block run.
+    content = zlib_blocks(stored(b'0 g 0 0 8 8 re f\n'), INVALID_BLOCK, b'junk')
+    yield Case('filter-corrupt-content', document([
+        b'<< /Type /Catalog /Pages 2 0 R >>', b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 16 16] /Resources << >> /Contents 4 0 R >>',
+        stream(content, b'/Filter /FlateDecode')]), RENDER, ('recovery-codecs',),
+        'Content decoded before damaged Flate data runs; the rest is discarded',
+        oracle=opaque_rectangles(16, 16, [((0, 0, 8, 8), BLACK)]), repairs=('filter.corrupt',), strict_valid=False)
+    resources = b'<< /XObject << /X 5 0 R >> >>'
+    png = b'/Filter /FlateDecode /DecodeParms << /Predictor 15 /Columns 4 /Colors 1 /BitsPerComponent %d >>'
+    # Image: two whole rows, then an invalid PNG tag; rows 2 and 3 are absent
+    # (transparent), not zero-filled black. Image row 0 is the top row.
+    rows = bytes([0, 64, 64, 64, 64, 0, 128, 128, 128, 128, 9, 0, 0, 0, 0])
+    gray = b'/Type /XObject /Subtype /Image /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceGray '
+    yield render('filter-corrupt-image-rows', b'4 0 0 4 0 0 cm /X Do',
+                 [stream(zlib.compress(rows), gray + png % 8)], resources,
+                 [((0, 3, 4, 1), (64,) * 3), ((0, 2, 4, 1), (128,) * 3)],
+                 repairs=('filter.corrupt',), requirement='recovery-codecs')
+    # Stencil: missing rows do not paint.
+    stencil = b'/Type /XObject /Subtype /Image /Width 4 /Height 4 /BitsPerComponent 1 /ImageMask true '
+    yield render('filter-corrupt-stencil-rows', b'1 0 0 rg 4 0 0 4 0 0 cm /X Do',
+                 [stream(zlib.compress(bytes([0, 0x0F, 0, 0x0F, 9, 0])), stencil + png % 1)], resources,
+                 [((0, 2, 4, 2), (255, 0, 0))], repairs=('filter.corrupt',), requirement='recovery-codecs')
+    # An image with a soft mask of its own keeps the error: combining the two
+    # would invent a mask.
+    smask = b'/Type /XObject /Subtype /Image /Width 4 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceGray'
+    yield Case('filter-corrupt-masked-image', page(b'4 0 0 4 0 0 cm /X Do',
+               [stream(zlib.compress(rows), gray + png % 8 + b' /SMask 6 0 R'), stream(bytes([255] * 16), smask)],
+               resources), OPEN, ('recovery-codecs',),
+               'Damaged data under a mask of its own stays an error', repairs=('filter.corrupt',),
+               strict_valid=False, extra={'render_error': 'syntax'})
 
 
 def type3_case():

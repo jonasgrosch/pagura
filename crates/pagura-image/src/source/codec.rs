@@ -3,7 +3,9 @@
 
 use super::header::{Codec, Header};
 use super::{Layout, Orientation};
-use crate::{DecodedImage, MaskKind, Samples, dispatch, fax_image, parameters as p};
+use crate::{
+    DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, dispatch, fax_image, parameters as p,
+};
 use pagura_core::{Diagnostics, Error, Limits, Result};
 use std::borrow::Cow;
 
@@ -20,6 +22,15 @@ pub(crate) fn decode(
     let deferred = layout == Layout::Native;
     let (width, height) = (header.width, header.height);
     let (components, bits) = (header.declared_components, header.declared_bits);
+    // Rows that damaged filter data left out are absent, not zero: decoding
+    // does not report them as short data, and `absent_rows` hides them.
+    let present = present_rows(header, data);
+    let mut quiet = Diagnostics::new(pagura_core::Recovery::Repair);
+    let diagnostics = if present.is_some() {
+        &mut quiet
+    } else {
+        diagnostics
+    };
     let mut image = DecodedImage {
         width,
         height,
@@ -80,10 +91,76 @@ pub(crate) fn decode(
         }
         Codec::Jpx(jpx) => jpx.decode(data, &mut image, limits, diagnostics)?,
     }
-    let image = finish(header, image)?;
+    let mut image = finish(header, image)?;
+    if let Some(rows) = present {
+        image = absent_rows(header, image, rows, limits)?;
+    }
     if transposed && !exchanged {
         return image.transposed(limits);
     }
+    Ok(image)
+}
+
+/// The whole rows of unfiltered `data` when damaged filter data cut it short
+/// of the declared samples (`filter.corrupt`); `None` when no row is missing.
+fn present_rows(header: &Header, data: &[u8]) -> Option<usize> {
+    if !header.damaged || !matches!(header.codec, Codec::None) {
+        return None;
+    }
+    let row_bits = u64::from(header.width)
+        * u64::from(header.declared_components)
+        * u64::from(header.declared_bits);
+    let row_bytes = usize::try_from(row_bits.div_ceil(8)).ok()?;
+    let rows = data.len().checked_div(row_bytes)?;
+    (rows < usize::try_from(header.height).ok()?).then_some(rows)
+}
+
+/// Leaves the rows from `rows` on absent rather than zero-filled: a stencil
+/// does not paint them, and a colour image gets an opacity plane that makes
+/// them transparent. An image with a mask of its own keeps an error, as
+/// combining the two would invent a mask.
+fn absent_rows(
+    header: &Header,
+    mut image: DecodedImage,
+    rows: usize,
+    limits: &Limits,
+) -> Result<DecodedImage> {
+    let width = usize::try_from(image.width).map_err(|_| Error::limit("image row overflow"))?;
+    if header.stencil() {
+        // The sample that does not paint is 1, or 0 under `/Decode [1 0]`,
+        // which zero-filling already left.
+        if !matches!(image.kind, ImageKind::Stencil { inverted: true }) {
+            match &mut image.samples {
+                Samples::Packed(packed) => {
+                    let start = rows.saturating_mul(packed.stride).min(packed.bytes.len());
+                    packed.bytes[start..].fill(0xFF);
+                }
+                Samples::Bytes(values) => {
+                    let start = rows.saturating_mul(width).min(values.len());
+                    values[start..].fill(1);
+                }
+                _ => return Err(Error::syntax("damaged stencil samples")),
+            }
+        }
+        return Ok(image);
+    }
+    if image.mask != MaskKind::None {
+        return Err(Error::syntax(
+            "damaged image data under a mask of its own cannot be shown",
+        ));
+    }
+    let count = p::budget(image.width, image.height, 1, 1, limits)?;
+    let mut alpha = Vec::new();
+    alpha
+        .try_reserve_exact(count)
+        .map_err(|_| Error::limit("image opacity allocation failed"))?;
+    alpha.resize(rows.saturating_mul(width).min(count), 1);
+    alpha.resize(count, 0);
+    image.mask = MaskKind::Embedded(ImageAlpha {
+        bits_per_component: 1,
+        samples: Samples::Bytes(alpha),
+        premultiplied: false,
+    });
     Ok(image)
 }
 
