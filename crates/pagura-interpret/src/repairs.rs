@@ -31,6 +31,9 @@ pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
 /// 7.8.2; 8.4.2: discard unmatched saved graphics states at the end of a
 /// content sequence, after all painting and text objects have finished.
 pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
+/// 14.6: an unmatched EMC has no sequence to close; retain visibility and
+/// the structure device's current marked-content stack.
+pub const MARKED_UNMATCHED: Repair = Repair::new("content.marked-unmatched");
 /// 14.6: close marked-content sequences left open at the end of a content
 /// sequence, after all painting and text objects have finished.
 pub const MARKED_UNCLOSED: Repair = Repair::new("content.marked-unclosed");
@@ -54,6 +57,7 @@ pub const ALL: &[Repair] = &[
     APPEARANCE_EMPTY,
     GRAPHICS_UNCLOSED,
     MARKED_UNCLOSED,
+    MARKED_UNMATCHED,
     TYPE3_WIDTH,
     PATTERN_UNDERLYING,
 ];

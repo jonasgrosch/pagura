@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "3e77019dff9eecdc2624eb16358fde308b7fd0de",
+  "audited_revision": "cc99e5762028eae8af3ea020cf493a929b2af3de",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -175,7 +175,7 @@
     "references/requirements/paint.json": "76d93b9e6579b261f55a39730ced3d602f5dc677bd1f842c6b386806106b9bb8",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
-    "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
+    "references/requirements/recovery.json": "d2712fdad97510390d71ed6dea7f2b5dbfc343d88c3b8eeea730059eb55c836a",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "b486b86c6c94cf97d8e0bd704cd8fd08d2aabc68745f2c48fe965fda9a1c4f46",
@@ -188,7 +188,18 @@
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
+    ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "c4bf90d87c7a08f360bc06eff67e90b6745b17ee7e6d756b69cf3479b23d29fe",
+    "corpus/manifests/recovery_marked.json": "659bc7801bac1042b04db89f34426da036b8aaacde353de18906ac3470d07e34",
+    "crates/pagura-interpret/src/machine/marked.rs": "3461d7422ab18e896365179f8a7c2b2f5ddf6ab3f1ef73b5c17679c3c3492918",
+    "crates/pagura-interpret/src/repairs.rs": "8dd08c600a1fc5e02033f882e939929680ad421841625789856eebf7d98b3ac0",
+    "crates/pagura-interpret/tests/recovery_marked.rs": "7a5fb2ce0f3fda04482f25b0d6aa4e024a899e0094c880ebf165a0faaead0ef1",
+    "crates/pagura/examples/compatibility_gap_parity.rs": "6d18cdb9b86cab85572566701948f0caa8d24c932c22783adfab38c0909c9f31",
+    "docs/RECOVERY.md": "5ee1d2373e49ae693de26cb3437ee475370cbb471197822b52e0917700ff8a70",
+    "docs/STATUS.md": "c06a9dc124a0a34f8c9490e999c0ed397ac9fb1376e28424f3abf79999653877",
+    "tools/compatibility_gap_parity.mjs": "76720250a0789b749837dafeebc214a13669b4868c2943fe597c631c7ad2b6a9",
+    "tools/fixturegen/recovery_marked.py": "33e2241f9c99bb764429cde3da8bc69e2e0766568c3fd670cf070cd85dd9d369"
   },
   "capabilities": [
     {
@@ -2174,17 +2185,28 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy.",
-      "remaining": "Current cross-platform/corpus runtime comparison, complete feature denominator and release-qualified performance evidence.",
+      "implemented": "Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy. Unmatched EMC is a positioned reported no-op only for an empty current marked-content scope; Strict rejects while visibility, device structure, required content and budgets remain authoritative.",
+      "remaining": "Current cross-platform/corpus runtime comparison, complete feature denominator and release-qualified performance evidence. Incomplete state, undefined required resources and required-content cycles remain explicit failures after a repair.",
       "sources": [
         "benchmarks/policy.json",
         "tools/check.py",
         "crates/pagura-core/src/lib.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-interpret/src/machine/marked.rs",
+        "crates/pagura-interpret/src/repairs.rs",
+        "docs/RECOVERY.md",
+        "docs/STATUS.md"
       ],
-      "tests": [],
+      "tests": [
+        "crates/pagura-interpret/tests/recovery_marked.rs",
+        "tools/fixturegen/recovery_marked.py",
+        "crates/pagura/examples/compatibility_gap_parity.rs",
+        "tools/compatibility_gap_parity.mjs",
+        ".github/workflows/compatibility-gap-parity.yml",
+        "benchmarks/probes/compatibility-gap-fixtures.json"
+      ],
       "requirements": [
         "bench-corpus-verification",
         "bench-document-conversion",
@@ -2207,9 +2229,34 @@
         "recovery-transfer",
         "recovery-type3",
         "recovery-widgets",
-        "unsupported-is-explicit"
+        "unsupported-is-explicit",
+        "recovery-marked-closure"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "recovery_marked/balanced-control",
+        "recovery_marked/unmatched-prefix",
+        "recovery_marked/unmatched-suffix",
+        "recovery_marked/repeated-before-paint",
+        "recovery_marked/within-text",
+        "recovery_marked/within-save",
+        "recovery_marked/retains-path",
+        "recovery_marked/retains-pending-clip",
+        "recovery_marked/retains-state",
+        "recovery_marked/after-balanced",
+        "recovery_marked/after-nested",
+        "recovery_marked/actual-text",
+        "recovery_marked/form-keeps-caller-marked",
+        "recovery_marked/hidden-form-keeps-visibility",
+        "recovery_marked/split-content-sequence",
+        "recovery_marked/unfinished-text",
+        "recovery_marked/unfinished-path",
+        "recovery_marked/unfinished-clip",
+        "recovery_marked/unfinished-operands",
+        "recovery_marked/unfinished-compatibility",
+        "recovery_marked/unknown-operator",
+        "recovery_marked/undefined-resource",
+        "recovery_marked/required-cycle"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",

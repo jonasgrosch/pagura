@@ -1,0 +1,753 @@
+{
+  "schema": 2,
+  "area": "recovery_marked",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "recovery_marked/balanced-control",
+      "kind": "pdf",
+      "description": "balanced control",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/balanced-control.pdf",
+      "sha256": "a954d298361c3ddc7d0d0ab8ed4e40de8dd4c81f41ed4657546d8df9aded0b1a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_marked/balanced-control.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/unmatched-prefix",
+      "kind": "pdf",
+      "description": "unmatched prefix",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/unmatched-prefix.pdf",
+      "sha256": "9f98b8551a577674d6b73cb31461ee9926f9eff55b447cea48b9f0b14b221c6d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/unmatched-prefix.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/unmatched-suffix",
+      "kind": "pdf",
+      "description": "unmatched suffix",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/unmatched-suffix.pdf",
+      "sha256": "baa72e881ae07b00489e2a61ff58819daa08301673b51e0575ed7bd7caf61f5a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched",
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/unmatched-suffix.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/repeated-before-paint",
+      "kind": "pdf",
+      "description": "repeated before paint",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/repeated-before-paint.pdf",
+      "sha256": "512f6e40e2613482671f06fd06c6ef2abce2f71b9455f6e26c7f01847be72c90",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched",
+        "content.marked-unmatched",
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/repeated-before-paint.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/within-text",
+      "kind": "pdf",
+      "description": "within text",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/within-text.pdf",
+      "sha256": "23ab3f94ccb7969963b272fa5b4f0f3a522c8442155fdc3b0c776cff1744a3a5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/within-text.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/within-save",
+      "kind": "pdf",
+      "description": "within save",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/within-save.pdf",
+      "sha256": "d705fc873edf31b06bbca85e93ebaf44f9f9a92d851409f69defea08af345460",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/within-save.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/retains-path",
+      "kind": "pdf",
+      "description": "retains path",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/retains-path.pdf",
+      "sha256": "eac748a555394705e0b4be966e58a26d4ccf75b4622953d37321c89d1942ceeb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/retains-path.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/retains-pending-clip",
+      "kind": "pdf",
+      "description": "retains pending clip",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/retains-pending-clip.pdf",
+      "sha256": "0ebbcd7f01d2af3b14fb835c93750a4c308dd56dfb2686360e06ecbee4ac8f05",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/retains-pending-clip.ppm",
+      "oracle_sha256": "0b66520e274d36e4a3f3b15370688d9f4e475a28fd124d82dc8b63d4085bef61",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            2,
+            2,
+            4,
+            4
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/retains-state",
+      "kind": "pdf",
+      "description": "retains state",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/retains-state.pdf",
+      "sha256": "779b55318970159d2ade02464f5d802406bdeee2faf151839520af6b7275dd7b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/retains-state.ppm",
+      "oracle_sha256": "0b66520e274d36e4a3f3b15370688d9f4e475a28fd124d82dc8b63d4085bef61",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            2,
+            2,
+            4,
+            4
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/after-balanced",
+      "kind": "pdf",
+      "description": "after balanced",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/after-balanced.pdf",
+      "sha256": "e0c8621d05b2e729fd333336f0a7a6c641edcbce8755e6c774c193e0fa543b30",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/after-balanced.ppm",
+      "oracle_sha256": "fbf7013f74353965583b2fe789aab4c5ca3d2ae3d2617318e9d3080d1701ab1e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            8,
+            8,
+            4,
+            4
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/after-nested",
+      "kind": "pdf",
+      "description": "after nested",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/after-nested.pdf",
+      "sha256": "5a6b025e2bc6f111e7273ea78c826d1cb9bf48904dadc54e3cce8ea4feb6c8d8",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/after-nested.ppm",
+      "oracle_sha256": "fbf7013f74353965583b2fe789aab4c5ca3d2ae3d2617318e9d3080d1701ab1e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            8,
+            8,
+            4,
+            4
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/actual-text",
+      "kind": "pdf",
+      "description": "actual text",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/actual-text.pdf",
+      "sha256": "ad0bd4905056b9566512618e93bf74c46af16ac782ec85c0c6548656c7fe5944",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched",
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/actual-text.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/form-keeps-caller-marked",
+      "kind": "pdf",
+      "description": "form keeps caller marked",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/form-keeps-caller-marked.pdf",
+      "sha256": "6a5f27beb6507d47cca7807b635ecfe0e3f5f284929327dce47a6e8511c089ba",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/form-keeps-caller-marked.ppm",
+      "oracle_sha256": "fbf7013f74353965583b2fe789aab4c5ca3d2ae3d2617318e9d3080d1701ab1e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            8,
+            8,
+            4,
+            4
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/hidden-form-keeps-visibility",
+      "kind": "pdf",
+      "description": "hidden form keeps visibility",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/hidden-form-keeps-visibility.pdf",
+      "sha256": "06e4112249228c847526061e5cf54e72e6c0a21d968a19f4c256fd0a74b70f3c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/hidden-form-keeps-visibility.ppm",
+      "oracle_sha256": "fc59de33313f7d615627bd758576724f481927e8d48d688cd86aea82d94190c6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            8,
+            8,
+            4,
+            4
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/split-content-sequence",
+      "kind": "pdf",
+      "description": "split content sequence",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/split-content-sequence.pdf",
+      "sha256": "2a27a82bb7c9f0bf12aa8333523f6c665a14c85913bbeb01dbc8b8f57668d702",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_marked/split-content-sequence.ppm",
+      "oracle_sha256": "fbf7013f74353965583b2fe789aab4c5ca3d2ae3d2617318e9d3080d1701ab1e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            8,
+            8,
+            4,
+            4
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "recovery_marked/unfinished-text",
+      "kind": "pdf",
+      "description": "Later syntax or resource failure remains an error after the reported ending",
+      "expected": "open",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/unfinished-text.pdf",
+      "sha256": "aad2725d0a5a6744e1011eba0de6a05da779266590668f14b03dab7dbfb728bd",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "recovery_marked/unfinished-path",
+      "kind": "pdf",
+      "description": "Later syntax or resource failure remains an error after the reported ending",
+      "expected": "open",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/unfinished-path.pdf",
+      "sha256": "bbe62cea5daf48f9bffdb246412604132121eafe4f065753ad4a80badb47f16d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "recovery_marked/unfinished-clip",
+      "kind": "pdf",
+      "description": "Later syntax or resource failure remains an error after the reported ending",
+      "expected": "open",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/unfinished-clip.pdf",
+      "sha256": "c30a76e97ca30c80881ec7dde967b0fb34dff143608bf69a7c07ddfae52f294c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "recovery_marked/unfinished-operands",
+      "kind": "pdf",
+      "description": "Later syntax or resource failure remains an error after the reported ending",
+      "expected": "open",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/unfinished-operands.pdf",
+      "sha256": "4bfa53a9f699a293824b21aeae8a9926ff8e2bdb67902de78c27606bd232431c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "recovery_marked/unfinished-compatibility",
+      "kind": "pdf",
+      "description": "Later syntax or resource failure remains an error after the reported ending",
+      "expected": "open",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/unfinished-compatibility.pdf",
+      "sha256": "eca26b374d342cb74c2b3ecc52fcd2a0c842588163ca9b9ec343c205daeae138",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "recovery_marked/unknown-operator",
+      "kind": "pdf",
+      "description": "Later syntax or resource failure remains an error after the reported ending",
+      "expected": "open",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/unknown-operator.pdf",
+      "sha256": "74f51a1313cdaa50f13207cf201c48c954aea22126a6a19231d9884ea094d338",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "recovery_marked/undefined-resource",
+      "kind": "pdf",
+      "description": "Later syntax or resource failure remains an error after the reported ending",
+      "expected": "open",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/undefined-resource.pdf",
+      "sha256": "31ddfb8c5a06447849d4bc8a64e31b12494534cfb990956eac9985d00b3f3dd7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "recovery_marked/required-cycle",
+      "kind": "pdf",
+      "description": "Required recursive form remains a Cycle after the reported ending; no successful partial page",
+      "expected": "open",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/required-cycle.pdf",
+      "sha256": "309d4c6a5e2f220355f6abdb4b87191c2e29bfdf58be05ce34033cd8dde6a0b3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Cycle"
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 Generated from [capabilities.json](../benchmarks/capabilities.json) by
 `uv run --locked --offline python tools/capabilities.py`. Edit the ledger, not this file.
 
-Source audit: `3e77019dff9eecdc2624eb16358fde308b7fd0de`. G00 source inventory is complete for this revision.
+Source audit: `cc99e5762028eae8af3ea020cf493a929b2af3de`. G00 source inventory is complete for this revision.
 These are scoped source observations, not executed feature tests or a proof of full PDF coverage.
 Library includes lower-level crate APIs; each row states its remaining public integration.
 Linked tests/fixtures exist; listing them does not claim a fresh pass.
@@ -65,7 +65,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `interaction.media-3d` / V03 | Sound, movie, rich media and 3D interaction | missing / missing / missing / missing | Static annotation appearance painting is independent of media playback. | Runtime/API probes and explicit host contracts for media/3D; appearance display is not activation. |
 | `profiles.extensions` / C01 | PDF/E, PDF/VT and vendor/PDF 2.0 extensions | partial / partial / partial / partial | Shared PDF syntax/content paths can open some profile-labelled documents. | Feature-by-feature profile inventory, actual baseline API/build applicability, validation and authoring contracts. |
 | `runtime.host` / D01 | Native/WASI transport, caches, cancellation and scheduling | partial / partial / partial / partial | Bounded session protocol, native/WASI adapters, viewport generations, browser deadlines and queued-work cancellation. | Within-request cancellation, persistent jobs, fair scheduling and broader device/transport evidence. |
-| `quality.robustness` / C02 | Recovery, limits, fuzzing, parity and performance evidence | partial / partial / partial / partial | Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy. | Current cross-platform/corpus runtime comparison, complete feature denominator and release-qualified performance evidence. |
+| `quality.robustness` / C02 | Recovery, limits, fuzzing, parity and performance evidence | partial / partial / partial / partial | Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy. Unmatched EMC is a positioned reported no-op only for an empty current marked-content scope; Strict rejects while visibility, device structure, required content and budgets remain authoritative. | Current cross-platform/corpus runtime comparison, complete feature denominator and release-qualified performance evidence. Incomplete state, undefined required resources and required-content cycles remain explicit failures after a repair. |
 
 ## Baseline probes
 
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 335 registered requirement IDs map to capability rows in the ledger.
+All 336 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery

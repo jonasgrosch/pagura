@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "scope": "15 independently authored integral render controls and8 later-error controls for reported unmatched EMC; native/SIMD/scalar, Strict/Repair. No corpus or release-performance claim.",
+  "cases": [
+    "recovery_marked/balanced-control",
+    "recovery_marked/unmatched-prefix",
+    "recovery_marked/unmatched-suffix",
+    "recovery_marked/repeated-before-paint",
+    "recovery_marked/within-text",
+    "recovery_marked/within-save",
+    "recovery_marked/retains-path",
+    "recovery_marked/retains-pending-clip",
+    "recovery_marked/retains-state",
+    "recovery_marked/after-balanced",
+    "recovery_marked/after-nested",
+    "recovery_marked/actual-text",
+    "recovery_marked/form-keeps-caller-marked",
+    "recovery_marked/hidden-form-keeps-visibility",
+    "recovery_marked/split-content-sequence",
+    "recovery_marked/unfinished-text",
+    "recovery_marked/unfinished-path",
+    "recovery_marked/unfinished-clip",
+    "recovery_marked/unfinished-operands",
+    "recovery_marked/unfinished-compatibility",
+    "recovery_marked/unknown-operator",
+    "recovery_marked/undefined-resource",
+    "recovery_marked/required-cycle"
+  ]
+}
