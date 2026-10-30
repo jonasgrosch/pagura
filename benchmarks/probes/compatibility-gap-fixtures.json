@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "cases": [
+    "recovery/type1-sparse-tail",
+    "recovery/type1-sparse-tail-valid",
+    "recovery/type1-sparse-interior",
+    "recovery/type1-sparse-interior-valid",
+    "recovery/type1-sparse-nested",
+    "recovery/type1-sparse-nested-valid",
+    "recovery/type1-sparse-all-unused",
+    "recovery/type1-sparse-all-unused-valid"
+  ]
+}

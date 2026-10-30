@@ -290,6 +290,7 @@ def cases():
     yield from widget_cases()
     yield from transfer_cases()
     yield from codec_cases()
+    yield from type1_sparse_subr_cases()
     yield render('unclosed-graphics',b'q 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.graphics-unclosed',))
     yield render('unclosed-marked',b'/P <</MCID 0>> BDC 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.marked-unclosed',))
     # Printer PCLm output opens a sequence per strip and never closes one.
@@ -409,3 +410,21 @@ def type3_empty_bounds_cases():
                    OPEN, ('recovery-type3',),
                    'Reversed bounds do not hide painting or later procedure errors',
                    extra={'render_error': 'syntax'})
+
+
+def type1_sparse_subr_cases():
+    """PDF9.9/Type1 6/8: unchanged rectangle outlines despite unused Subrs slots."""
+    from .font import sparse_subr_program
+    font = (b'<< /Type /Font /Subtype /Type1 /BaseFont /Fixture /FirstChar 65 /LastChar 65 '
+            b'/Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>')
+    descriptor = (b'<< /Type /FontDescriptor /FontName /Fixture /Flags 32 /FontBBox [0 0 100 200] '
+                  b'/ItalicAngle 0 /Ascent 200 /Descent 0 /CapHeight 200 /StemV 50 /FontFile 7 0 R >>')
+    resources = b'<< /Font << /F 5 0 R >> >>'
+    for name in ('tail','interior','nested','all-unused'):
+        for filled in (False,True):
+            program = sparse_subr_program(name,filled=filled)
+            marker = program.index(b'currentfile eexec\n')+len(b'currentfile eexec\n')
+            params = b'/Length1 %d /Length2 %d /Length3 0' % (marker,len(program)-marker)
+            yield render('type1-sparse-'+name+('-valid' if filled else ''),b'BT /F 20 Tf 4 4 Td (A) Tj ET',
+                         [font,descriptor,stream(program,params)],resources,[((4,4,2,4),BLACK)],
+                         requirement='font-type1-sparse-subrs',repairs=() if filled else ('font.type1-sparse-subrs',))
