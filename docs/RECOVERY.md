@@ -201,3 +201,12 @@ is the project reading of 7.10.2. Transfer-region selection follows
 default transfer, including through indirect references. A fractional boundary involving a nondefault
 transfer still fails explicitly: averaging colour before region selection would
 lose the correlation needed for nonlinear transfer functions.
+
+- `file.header-absent` (7.5.2): a complete explicitly typed Catalog with a
+  Pages reference in the first 1024 bytes can identify a headerless body.
+  No PDF version is inferred. Explicit unknown/truncated PDF declarations
+  remain errors, and normal page-tree, cross-reference and security validation
+  still applies. Strict rejects the absence. `stream.length-corrected` may
+  also correct an overlong declaration crossing a following object, but its
+  repaired extent must end at one unambiguous complete terminator before the
+  next physical object/revision boundary; it never consumes that object.
