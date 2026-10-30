@@ -57,11 +57,11 @@ fn arithmetic_work_and_coefficient_storage_use_existing_limits() {
 
 #[test]
 fn arithmetic_and_huffman_twins_share_a_pixel_scaled_work_budget() {
-    // Default Limits admit `decode_work / pixels` units per pixel: keep the
-    // same ratio for this 128×64 image.
+    // Default Limits admit 32 units per pixel of a 64 Mi-pixel image: keep
+    // the same rate for this 128×64 image.
     let defaults = Limits::default();
     let limits = Limits {
-        decode_work: defaults.decode_work / defaults.pixels * (128 * 64),
+        decode_work: defaults.decode_work / (64 << 20) * (128 * 64),
         ..defaults
     };
     let huffman = fixture("image", "jpeg-budget-huffman.in");

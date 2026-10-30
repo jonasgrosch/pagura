@@ -227,7 +227,7 @@ mod tests {
         let x = (1_u32 << 31) + 3;
         let width = x + 9;
         let limits = Limits {
-            pixels: width as usize,
+            image: pagura_core::ImageLimits { pixels: width },
             decoded_bytes: width.div_ceil(8) as usize,
             ..Limits::default()
         };
