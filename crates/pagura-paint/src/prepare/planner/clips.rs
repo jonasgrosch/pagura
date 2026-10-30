@@ -22,6 +22,7 @@ pub(crate) struct Key {
     crop: bool,
     transform: [u64; 6],
     extra: Option<(u32, [u64; 6])>,
+    stencil: Option<u32>,
 }
 
 /// A path that clips a mark besides its clipping path chain: a shading
@@ -49,7 +50,7 @@ pub(crate) struct Link {
 }
 
 /// The paths of a clip state, outermost first.
-type Chain = Vec<Link>;
+pub(super) type Chain = Vec<Link>;
 
 /// Prepared clips by the hash of their chains. Content often sets the same
 /// clipping path again as a new clip; clip states with equal chains share
@@ -82,6 +83,7 @@ impl Planner<'_> {
             crop: scope.crop,
             transform: scope.transform_bits(),
             extra: extra.map(|e| (e.paint, bits(e.transform))),
+            stencil: scope.stencil_clip,
         }
     }
 
@@ -94,7 +96,20 @@ impl Planner<'_> {
         extra: bool,
         mut visit: impl FnMut(Link) -> Result<()>,
     ) -> Result<()> {
-        let mut count = usize::from(extra);
+        let inherited = scope
+            .stencil_clip
+            .and_then(|id| self.stencil_clips.get(index(id)))
+            .map_or(&[][..], Vec::as_slice);
+        let mut count = usize::from(extra).saturating_add(inherited.len());
+        if count > self.limits.mask_sources {
+            return Err(Error::limit("clip path budget exceeded"));
+        }
+        for link in inherited {
+            visit(Link {
+                owned: 0,
+                ..link.clone()
+            })?;
+        }
         let mut current = clip;
         while let Some(id) = current {
             if count >= self.limits.mask_sources {
@@ -126,6 +141,39 @@ impl Planner<'_> {
             })?;
         }
         Ok(())
+    }
+
+    /// Keeps the mask and the mark's complete clip chain for pattern cell
+    /// children. Both are intersected with the children's geometry before
+    /// coverage is quantized, rather than multiplying area averages.
+    pub(super) fn stencil_clip(
+        &mut self,
+        scope: &Scope,
+        clip: Option<ClipId>,
+        path: &Path,
+        budget: &mut Budget,
+    ) -> Result<u32> {
+        let mut chain = self.chain(scope, (clip, None), &mut budget.bytes)?;
+        if chain.len() >= self.limits.mask_sources {
+            return Err(Error::limit("clip path budget exceeded"));
+        }
+        budget.bytes.reserve_capacity(&mut chain, 1)?;
+        budget
+            .bytes
+            .charge(2 * size_of::<usize>() + size_of::<Path>())?;
+        let path = path.transformed_with_bytes(scope.transform, &mut budget.bytes)?;
+        let owned = 2 * size_of::<usize>() + size_of::<Path>() + path.retained_bytes();
+        chain.push(Link {
+            path: Arc::new(path),
+            rule: FillRule::NonZero,
+            transform: Transform::IDENTITY,
+            owned,
+        });
+        let id = u32::try_from(self.stencil_clips.len())
+            .map_err(|_| Error::limit("stencil clip count exceeds u32"))?;
+        budget.bytes.reserve_capacity(&mut self.stencil_clips, 1)?;
+        self.stencil_clips.push(chain);
+        Ok(id)
     }
 
     /// Conservative bounds of the pixels `clip` keeps in `scope`.
@@ -390,6 +438,11 @@ fn chain_bytes(chain: &Chain) -> usize {
     chain.capacity() * size_of::<Link>() + chain.iter().map(|link| link.owned).sum::<usize>()
 }
 
+/// Unique ownership retained by inherited stencil clips.
+pub(super) fn stencil_bytes(chains: &Vec<Chain>) -> usize {
+    chains.capacity() * size_of::<Chain>() + chains.iter().map(chain_bytes).sum::<usize>()
+}
+
 /// The bits of `t`.
 fn bits(t: Transform) -> [u64; 6] {
     [t.a, t.b, t.c, t.d, t.e, t.f].map(f64::to_bits)
@@ -485,6 +538,7 @@ mod tests {
             separated: false,
             masked: false,
             paint: None,
+            stencil_clip: None,
             depth: 0,
         };
         test(planner, scope, budget);

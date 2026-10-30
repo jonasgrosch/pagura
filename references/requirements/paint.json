@@ -241,7 +241,10 @@
         "8.9.6.2",
         "8.9.6.3",
         "8.9.6.4",
-        "11.6.4.3"
+        "11.6.4.3",
+        "8.7.3.2",
+        "8.7.3.3",
+        "11.6.7"
       ],
       "status": "implemented subset",
       "tests": [
@@ -250,14 +253,38 @@
         "paint/image-colour-key",
         "paint/image-explicit-mask",
         "paint/image-mask-resolution",
-        "paint/image-rgb-colour-key"
+        "paint/image-rgb-colour-key",
+        "paint_stencils/colored-aligned",
+        "paint_stencils/colored-fractional-clip",
+        "paint_stencils/colored-single-cell",
+        "paint_stencils/colored-reversed",
+        "paint_stencils/uncolored-fractional-clip",
+        "paint_stencils/shading-fractional-clip",
+        "paint_stencils/colored-empty",
+        "paint_stencils/colored-alpha",
+        "paint_stencils/colored-different-masks",
+        "paint_stencils/colored-nested-soft-mask",
+        "paint_stencils/colored-interpolate",
+        "pagura-paint prepare::tests::pattern_stencils::stencil_geometry_obeys_path_clip_work_and_memory_caps",
+        "pagura-paint prepare::tests::pattern_stencils::stencil_clip_is_invariant_across_bands_regions_and_warm_stores",
+        "pagura-paint prepare::tests::pattern_stencils::patterned_stencil_preserves_cmyk_zero_colorants_during_overprint",
+        "pagura-reference harness: patterned stencil differential, independent oracle and band/region/cache invariance gates",
+        "paint_stencils/tiling-flat-half-area",
+        "paint_stencils/tiling-nested-ordinary-refused",
+        "paint_stencils/tiling-nested-image-stencil",
+        "pagura API render::nested_tiling_under_a_patterned_stencil_fails_before_any_output_in_both_modes"
       ],
-      "gaps": "Pattern-coloured stencils fail with pattern.image-mask.",
+      "gaps": "Ordinary nested tiling beneath an inherited patterned stencil retains Unsupported(pattern.image-mask): multiplying its already clipped cell result by the outer mark coverage would apply fractional stencil coverage twice. Nested image stencils and transparency groups retain joint geometric clipping. Interpolated pattern-coloured stencils and an unselected Pattern colour space retain Unsupported(pattern.image-mask). Shading retains the existing pixel-centre / 2x2 AntiAlias sampling policy. Cell marks use the existing per-pixel source-over model; no continuous union integration or whole-family accuracy claim.",
       "review": [
         {
           "locator": "8.9.6.2; 8.9.6.3; 8.9.6.4; 11.6.4.3",
           "rule": "Stencils use the current fill colour. Colour keys compare raw samples inclusively across all components. Explicit masks independently map their dimensions to the same unit square. Image-local masks override the current soft mask.",
           "verdict": "verified against local primary text; device policy identified explicitly"
+        },
+        {
+          "locator": "8.7.3.2; 8.7.3.3; 8.9.6.2; 11.3.3; 11.6.7; ADR 0004 per-pixel sources",
+          "rule": "A non-interpolated one-bit stencil marks sample cells with the selected tiling/shading pattern, with Decode polarity and original pattern origin. Integrate mask, child geometry and clipping jointly before quantizing coverage, then composite cell marks per the pixel-source model. Row runs share geometry; no separately averaged stencil/pattern alpha product. Interpolate needs smoothed mask edges and remains unsupported.",
+          "verdict": "Primary clauses read in the licensed local ISO EC3 text. Independent rational joint-intersection and source-over fixtures; single-cell controls also equal the unambiguous continuous geometric union. Runtime qualification recorded separately."
         }
       ]
     },

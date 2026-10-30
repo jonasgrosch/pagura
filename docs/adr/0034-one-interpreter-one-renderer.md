@@ -137,8 +137,21 @@ Prepared paint is a closed set chosen once per paint and render: solid,
 shading (axial, radial, function-based, mesh) and image sampler; a shading
 that paints one opaque colour is a solid. It fills a span of working
 colours or reports a constant. A tiling pattern is a group of its instances
-composited through the painted mark's coverage. Colour conversion is a
-prepared converter; functions are total after preparation.
+composited through the painted mark's coverage. For a non-interpolated
+patterned image stencil, preparation turns painted sample row runs into
+geometric rectangles. A tiling child's clip includes the stencil and the
+outer mark's clip chain, so mask and child geometry are intersected before
+coverage quantization; the result is not multiplied by the stencil coverage
+again. Shading stencils use the same geometry with existing shading sampling.
+Ordinary nested tiling under an inherited stencil remains unsupported: its
+ordinary outer mark coverage would apply fractional mask coverage twice.
+Nested image stencils already propagate the complete geometric intersection;
+transparency groups apply the inherited clip once through their children.
+Interpolated patterned masks remain unsupported. Inherited clip identities
+include their stencil chain; source paths and capacities are metered and
+released after planning. Cell marks retain ADR 0004's per-pixel compositing
+contract, rather than claiming continuous union integration across cell marks.
+Colour conversion is a prepared converter; functions are total after preparation.
 
 ### 5. Precision and storage
 

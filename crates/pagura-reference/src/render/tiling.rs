@@ -19,11 +19,17 @@ impl Renderer<'_> {
     pub(super) fn tiling(
         &mut self,
         paint: &TilingPaint,
-        coverage: &Coverage,
+        (coverage, geometric): (&Coverage, Option<&[crate::area::Region]>),
         state: &Composite,
         parent: &mut Buffer,
         context: &Context<'_>,
     ) -> Result<()> {
+        if geometric.is_none() && !context.inherited.is_empty() {
+            return Err(Error::unsupported(
+                pagura_interpret::features::PATTERN_IMAGE_MASK,
+                "ordinary nested tiling under a patterned stencil is not implemented",
+            ));
+        }
         let tiling = self
             .scene
             .tilings
@@ -85,6 +91,7 @@ impl Renderer<'_> {
                     initial: backdrop,
                     selection: Selection::Off,
                     stencil,
+                    inherited: geometric.unwrap_or(context.inherited),
                     depth: context.depth + 1,
                     crop: Crop::Free,
                 };
@@ -95,7 +102,10 @@ impl Renderer<'_> {
         let contributions = results
             .into_iter()
             .filter_map(|(x, y, color, group, shape)| {
-                let factor = coverage.get(x, y);
+                // A stencil is already part of each mark's geometric
+                // intersection. Applying its sampled coverage again would
+                // square fractional edges and lose mask/ink correlation.
+                let factor = geometric.map_or_else(|| coverage.get(x, y), |_| 1.0);
                 (factor > 0.0).then_some(Contribution {
                     x,
                     y,

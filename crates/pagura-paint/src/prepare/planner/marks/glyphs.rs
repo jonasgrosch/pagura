@@ -112,6 +112,7 @@ impl Planner<'_> {
                 hull,
                 geometry: Geometry::Glyph(source, found.linear, origin, &found.edges),
                 colour: Colour::Paint(node.paint),
+                stencil: false,
             };
             if let Some(memo) = self.memo.filter(|_| self.gathering == Some(scope.group)) {
                 self.serial += 1;

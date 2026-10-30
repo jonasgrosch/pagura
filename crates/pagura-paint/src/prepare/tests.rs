@@ -8,6 +8,7 @@ mod functions;
 mod images;
 mod invariance;
 mod mixed;
+mod pattern_stencils;
 mod patterns;
 mod runs;
 mod streaming;

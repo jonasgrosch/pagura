@@ -66,6 +66,7 @@ impl Planner<'_> {
             separated: scope.separated,
             masked: scope.masked,
             paint: scope.paint.clone(),
+            stencil_clip: scope.stencil_clip,
             depth: scope.depth + 1,
         };
         if decision.flatten {

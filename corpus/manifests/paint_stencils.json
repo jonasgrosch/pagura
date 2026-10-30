@@ -1,0 +1,548 @@
+{
+  "schema": 2,
+  "area": "paint_stencils",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "paint_stencils/colored-aligned",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-aligned.pdf",
+      "sha256": "34cf3b59b3b577467ee5bde883bd70fbc791c8aef91b3aeb3a43517772d5191d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-aligned.ppm",
+      "oracle_sha256": "00167155d89cee71694e573708603d2a8c877fc8769a2df1937c16f7a06faf38",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-fractional-clip",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-fractional-clip.pdf",
+      "sha256": "f448bb777babf821d65e69e3f7b514cf9de261b44512f52056628a62618c9a1c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-fractional-clip.ppm",
+      "oracle_sha256": "85db4d22a2d3ab803fcd5816b83a5ba0134c58315975f36aa71033dae871017e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-reversed",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-reversed.pdf",
+      "sha256": "777b9380ef5e4822d60823f92fbb0656f95e907b6db6ab89fa01ed5814e7a57e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-reversed.ppm",
+      "oracle_sha256": "9a9742b64155e4e0ca1398a66d53aae0ae558adbcec60b46a5d8909b784bd712",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-single-cell",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-single-cell.pdf",
+      "sha256": "c99c5aec9c4bad2eefe9cf11b3fc26db502359f655efe6c0c16e3e9c8f916e49",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-single-cell.ppm",
+      "oracle_sha256": "9ea31506f321419d851b9fa63f68d5880c8be7947e3c4ae690a84f8d181d1eac",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate.pdf",
+      "sha256": "404a6057052b1f57f467adcbd92be9e77808e0a92c7912aa6ba0dab11d9ee94e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.image-mask"
+    },
+    {
+      "id": "paint_stencils/colored-matched-stencil",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-matched-stencil.pdf",
+      "sha256": "6f83bcb92774053f7d18faf966d43986a4dccefb1f54481fef855779c8ded97d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-matched-stencil.ppm",
+      "oracle_sha256": "999f69fdd9bfb453c4f28ad5b5bb57678db301dfa747442b6a6d2dd4a445e1a1",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-matched-path",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-matched-path.pdf",
+      "sha256": "c0cb622beaf2d8ab4ba472a44a2d2f369c2d87d7ff407761fe18ea9c32266cad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-matched-path.ppm",
+      "oracle_sha256": "999f69fdd9bfb453c4f28ad5b5bb57678db301dfa747442b6a6d2dd4a445e1a1",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-aligned",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-aligned.pdf",
+      "sha256": "622b4e5794df1d8f856abcad1a511e484b382c6e11dd873f40a3da3c9d70e26e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-aligned.ppm",
+      "oracle_sha256": "2b182cc0e9968bb849f58e6cba8c6291ba3ffb1687d8195bfb3ffd3ea6b1244e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-fractional-clip",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-fractional-clip.pdf",
+      "sha256": "d1750147645f848f60f40177b34700ab8c147570a95c41eeb1fd1a059d84bd9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-fractional-clip.ppm",
+      "oracle_sha256": "db9ae539d84498f00f4aa07fd965e96d45be4318c83bd9b8c9811f992cc355c4",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-reversed",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-reversed.pdf",
+      "sha256": "6a7e347cea9df0d4cde5b847267d88e274d1752c422e81ab0d6e1a917425f424",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-reversed.ppm",
+      "oracle_sha256": "1e4716f093e5f84daed2430f14aaf778fde3685ffad7c48d125e993cbd8763f0",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-single-cell",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-single-cell.pdf",
+      "sha256": "dca9e6acc2a9b51ab88b9beefb8f3a628f0ed6066a162b1c15fdbdba57bb3501",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-single-cell.ppm",
+      "oracle_sha256": "eb8400005e48439ce7c13802189d89d76503a69789a660908007fc8781ab8a57",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-interpolate",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-interpolate.pdf",
+      "sha256": "3f279facb3c749969abe09de6baf12f40a9ff77b4f3b3c5c5fac3a103ec898e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.image-mask"
+    },
+    {
+      "id": "paint_stencils/uncolored-matched-stencil",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-matched-stencil.pdf",
+      "sha256": "1de30c1bf771d7ddd596cd2566ef316ef3a3978e2956b1f4589b8bfa52c91a63",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-matched-stencil.ppm",
+      "oracle_sha256": "30600de4e021a0657f3f64d7941877a0a5b0e86565e6321f367bcb88b6c3e393",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-matched-path",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-matched-path.pdf",
+      "sha256": "a0340635229820644f1c1b15769a3c5367df9ee00251e088f7b397e29e5e209f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-matched-path.ppm",
+      "oracle_sha256": "30600de4e021a0657f3f64d7941877a0a5b0e86565e6321f367bcb88b6c3e393",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-aligned",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-aligned.pdf",
+      "sha256": "fa4e8b056641b3cbcd36e6e15c29787a75b2d7b8679967fc5ec21b2681fe06fc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-aligned.ppm",
+      "oracle_sha256": "e80d0062da268f5864402bed4b159ebd970a3ca52ee34a1d5aaf42b43e78b0c0",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-fractional-clip",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-fractional-clip.pdf",
+      "sha256": "382555ac199c82daf31aea08dd2671c73277c0b437abb815d3396546d1070e1f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-fractional-clip.ppm",
+      "oracle_sha256": "82264ea1cbd78a381bbd7762819550b5eea1274ac003067dd2d308067756dfa9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-reversed",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-reversed.pdf",
+      "sha256": "d8b9e3e208f21a0b97eefd9ccd2008a78232a9c9fabb40c1ed5dda2bb00c55f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-reversed.ppm",
+      "oracle_sha256": "972c85d79df9f96f55c43568e7b575c969349df6922f9bca14a0715cb8e16216",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-single-cell",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-single-cell.pdf",
+      "sha256": "aed2e8cb4ed1ffa127757cf00a554623823b5fe19d0be902fb82b0a082cd73bb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-single-cell.ppm",
+      "oracle_sha256": "7c7e9dbd14079fec854ba4f3c712669361304ea2fcaac106a7f8dd56dd09d070",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate.pdf",
+      "sha256": "a8b758e8f6bd6b8147fdbcf0dfe1ef9169ec26d466030b075f3332d4fca97881",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.image-mask"
+    },
+    {
+      "id": "paint_stencils/shading-matched-stencil",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-matched-stencil.pdf",
+      "sha256": "fa4e8b056641b3cbcd36e6e15c29787a75b2d7b8679967fc5ec21b2681fe06fc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-matched-stencil.ppm",
+      "oracle_sha256": "e80d0062da268f5864402bed4b159ebd970a3ca52ee34a1d5aaf42b43e78b0c0",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-matched-path",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-matched-path.pdf",
+      "sha256": "81f8c1c63b2e35718231d64a01c5670ab15201f536ef253213a669ed58be3ea2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-matched-path.ppm",
+      "oracle_sha256": "e80d0062da268f5864402bed4b159ebd970a3ca52ee34a1d5aaf42b43e78b0c0",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-empty",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-empty.pdf",
+      "sha256": "f06dccaab99ead836963d5c462153ea822b53d2340c9cdb26c7cfcb597d1ec58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-empty.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-alpha",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-alpha.pdf",
+      "sha256": "d86531ebbbb578f9f43eae82d603448ec38f1b81203d95d80f1e6751381df9ef",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-alpha.ppm",
+      "oracle_sha256": "9cc8b2efb3bfd352658c6febe1348e61f58c763b8d7ff2a5a59e52b68c564845",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-nested-soft-mask",
+      "kind": "pdf",
+      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-nested-soft-mask.pdf",
+      "sha256": "c29a6d57d75c200415b71ead968a142b0a858f920556afb9f92f6e14a0118c36",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-nested-soft-mask.ppm",
+      "oracle_sha256": "9cc8b2efb3bfd352658c6febe1348e61f58c763b8d7ff2a5a59e52b68c564845",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-different-masks",
+      "kind": "pdf",
+      "description": "Separate geometric clipping identities for two masks sharing one pattern",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-different-masks.pdf",
+      "sha256": "e267efb2788254d1d5ae48500f2103a0cc745db39723f40ea288cb25b6055c48",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-different-masks.ppm",
+      "oracle_sha256": "ede3f64a0e7d45fce2d891298847d9ed3c819159f85affe66f399de3b2f0e187",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-flat-half-area",
+      "kind": "pdf",
+      "description": "One opaque red stencil covers exactly half of two boundary pixels",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-flat-half-area.pdf",
+      "sha256": "30478211423f5aba28c0acbb269ca3cc8d7bb3aa3409303c6bda3b1c3d247373",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-flat-half-area.ppm",
+      "oracle_sha256": "6ad651bb0821c59c0644e93e9ce723459a7d377aefed9bd5ef436dad341f6762",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-nested-ordinary-refused",
+      "kind": "pdf",
+      "description": "Valid ordinary nested tiling is explicitly unsupported under an inherited stencil",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-nested-ordinary-refused.pdf",
+      "sha256": "69f7e3a1b9bfe6e715ba39773f08a8bc82505610c3b50823e8ca47349db0c559",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.image-mask"
+    },
+    {
+      "id": "paint_stencils/tiling-nested-image-stencil",
+      "kind": "pdf",
+      "description": "Nested image stencils preserve the full inherited geometric intersection",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-nested-image-stencil.pdf",
+      "sha256": "eae593f7481b79dd1cd8df0c08cb06f198a5524ff2dbc19974e8d868538cbda8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-nested-image-stencil.ppm",
+      "oracle_sha256": "6ad651bb0821c59c0644e93e9ce723459a7d377aefed9bd5ef436dad341f6762",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    }
+  ]
+}

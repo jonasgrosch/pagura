@@ -284,7 +284,12 @@ impl PathBuilder {
 
     /// Makes room for the next preparation output before its infallible
     /// construction methods append the already budgeted segments.
-    pub(crate) fn reserve(&mut self, count: usize, bytes: &mut Meter) -> Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns the meter's `Limit` error when the additional capacity cannot
+    /// be reserved within its remaining allowance.
+    pub fn reserve(&mut self, count: usize, bytes: &mut Meter) -> Result<()> {
         bytes.reserve_capacity(&mut self.segments, count)
     }
 
