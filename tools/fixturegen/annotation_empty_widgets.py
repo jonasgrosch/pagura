@@ -22,11 +22,13 @@ def objects():
     return o
 
 
-def pdf(o):
+def pdf(o, *, version='1.7'):
+    assert version in ('1.7', '2.0')
     b = Builder()
     for n, body in sorted(o.items()):
         b.obj(n, body if isinstance(body, bytes) else navigation_value(body))
-    return b.classic()[0]
+    # Both supported header spellings have equal length, retaining xref offsets.
+    return b.classic()[0].replace(b'%PDF-1.7', b'%PDF-'+version.encode('ascii'), 1)
 
 
 def frame():
@@ -51,6 +53,32 @@ def cases():
         yield Case(label, pdf(o), RENDER, (REQUIREMENT,),
                    'Empty Tx/Sig paints only the explicit MK frame; unused field text resources are not selected',
                    oracle=frame())
+    for encoding, empty in [('utf16be', b'\xfe\xff'), ('utf8', b'\xef\xbb\xbf')]:
+        version = '2.0' if encoding == 'utf8' else '1.7'
+        for key in ['V', 'RV']:
+            for label, change in [
+                ('wrong-da', lambda o: o[11].update(DA=name('Wrong'))),
+                ('missing-font', lambda o: (o[10].pop('DR'), o[11].update(DA=b'/Missing 10 Tf'))),
+                ('xfa', lambda o: o[10].update(XFA=b'inert XFA data')),
+            ]:
+                o = objects(); o[11][key] = empty; change(o)
+                yield Case(f'text-{key.lower()}-{encoding}-{label}', pdf(o, version=version), RENDER, (REQUIREMENT,),
+                           'Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA',
+                           oracle=frame())
+        for key in ['V', 'RV']:
+            o = objects(); o[11].update(FT=name('Sig')); o[11][key] = empty
+            yield Case(f'signature-{key.lower()}-{encoding}', pdf(o, version=version), UNSUPPORTED, (REQUIREMENT,),
+                       'Signature V is not text: BOM strings do not broaden its existing absent/null/raw-empty display boundary',
+                       feature='annotation.appearance')
+    for key in ['V', 'RV']:
+        for label, value in [('nonempty', b'\xfe\xff\x00A'), ('odd-utf16', b'\xfe\xff\x00'),
+                             ('le-prefix', b'\xff\xfe'), ('double-bom', b'\xfe\xff\xfe\xff')]:
+            o = objects(); o[11][key] = value; o[11]['DA'] = name('Wrong')
+            yield Case(f'text-{key.lower()}-{label}-selected', pdf(o), OPEN, (REQUIREMENT,),
+                       'Malformed or nonempty text/RV is not an empty-encoding shortcut; full selected metadata still fails',
+                       strict_valid=not (key == 'V' and label == 'odd-utf16'),
+                       repairs=('string.invalid-text',) if key == 'V' and label == 'odd-utf16' else (),
+                       extra={'render_error':'syntax'})
     o=objects();o[11].pop('MK');o[11].pop('BS');o[11].pop('T');o[11].pop('FT')
     o[11]|={'Parent':ref(12),'V':''};o[10]['Fields']=[ref(12)]
     o[12]={'T':'owner','FT':name('Tx'),'V':'AB','Kids':[ref(11)]}

@@ -157,6 +157,416 @@
       "height": 32
     },
     {
+      "id": "annotation_empty_widgets/text-v-utf16be-wrong-da",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-utf16be-wrong-da.pdf",
+      "sha256": "39d8bb2265da387efb9b918f604d9ccf8abf12cfe6ef3212c5ae50654af75055",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-v-utf16be-wrong-da.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-v-utf16be-missing-font",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-utf16be-missing-font.pdf",
+      "sha256": "51102308fe4672318cd6f2d9720054fd75da2270bae0385689e8e26ac98252e4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-v-utf16be-missing-font.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-v-utf16be-xfa",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-utf16be-xfa.pdf",
+      "sha256": "ca721cb41a82f1899134b07a946be7c21e574f03039c951617066e94770ecfb7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-v-utf16be-xfa.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-utf16be-wrong-da",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-utf16be-wrong-da.pdf",
+      "sha256": "a557c15c3f68372e4c4992f7a62f40ba0718503726c6d6445d0af9ddf3365305",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-rv-utf16be-wrong-da.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-utf16be-missing-font",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-utf16be-missing-font.pdf",
+      "sha256": "cd79eea416ae317048a327d77a9e66cc85654529aac8d61d38cd42e9183905b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-rv-utf16be-missing-font.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-utf16be-xfa",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-utf16be-xfa.pdf",
+      "sha256": "daf8176a8bff0d12148d520de96a43610dc83e9d2a33c3d0ab66a3d5c795b884",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-rv-utf16be-xfa.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/signature-v-utf16be",
+      "kind": "pdf",
+      "description": "Signature V is not text: BOM strings do not broaden its existing absent/null/raw-empty display boundary",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/signature-v-utf16be.pdf",
+      "sha256": "5c5344fbbe98d8005011ff1dc8d0309c4030011fe53ff527be793c1d3b649f9e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_empty_widgets/signature-rv-utf16be",
+      "kind": "pdf",
+      "description": "Signature V is not text: BOM strings do not broaden its existing absent/null/raw-empty display boundary",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/signature-rv-utf16be.pdf",
+      "sha256": "27e0df3e65f5d375f5d872ac71a1ddc79731e41b328baf4f6ffe5e3542d02b48",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_empty_widgets/text-v-utf8-wrong-da",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-utf8-wrong-da.pdf",
+      "sha256": "eec2d2972fd2af38c48805ed803b85c20e1c2adbdfd2f2791b4c095edc56f976",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-v-utf8-wrong-da.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-v-utf8-missing-font",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-utf8-missing-font.pdf",
+      "sha256": "9681e86cff8b970d414472c58a00406a1b9fbcf6d58a1e92f756c20607811e8e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-v-utf8-missing-font.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-v-utf8-xfa",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-utf8-xfa.pdf",
+      "sha256": "75939bc56a769839672f4768ace386bd6dc9cae52c5962a206ddae28ed6e2d61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-v-utf8-xfa.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-utf8-wrong-da",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-utf8-wrong-da.pdf",
+      "sha256": "dd44cdc4a1b02438bce78801210ca5ffc73c138ed956072f30f6b0ea6f6f675e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-rv-utf8-wrong-da.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-utf8-missing-font",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-utf8-missing-font.pdf",
+      "sha256": "c001988598ee50c9bbac82fc6b75ec4e4486011eb06e054dbbeab2dd15851fe4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-rv-utf8-missing-font.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-utf8-xfa",
+      "kind": "pdf",
+      "description": "Exact BOM-only text value/rich value is empty; independent MK frame remains separate from unused DA/font/XFA",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-utf8-xfa.pdf",
+      "sha256": "09d9750f6aac384e4118c046e1f27a3a0e60d5b6cd3f449599c0060caad1b649",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/text-rv-utf8-xfa.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "annotation_empty_widgets/signature-v-utf8",
+      "kind": "pdf",
+      "description": "Signature V is not text: BOM strings do not broaden its existing absent/null/raw-empty display boundary",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/signature-v-utf8.pdf",
+      "sha256": "bd503ba8c4f0b247dcdc8a0494ebd82ccc3e402ce050843f6838f4ae16f27f63",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_empty_widgets/signature-rv-utf8",
+      "kind": "pdf",
+      "description": "Signature V is not text: BOM strings do not broaden its existing absent/null/raw-empty display boundary",
+      "expected": "unsupported",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/signature-rv-utf8.pdf",
+      "sha256": "22ef15707b5b579a573c71d36c02ea8a4eeb8164994b486c89f5f667845a7f4e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "annotation_empty_widgets/text-v-nonempty-selected",
+      "kind": "pdf",
+      "description": "Malformed or nonempty text/RV is not an empty-encoding shortcut; full selected metadata still fails",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-nonempty-selected.pdf",
+      "sha256": "3ef87d6b140acb6f0eec8d06e320f3bd9a7da198563e428affa33ead0470b293",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_empty_widgets/text-v-odd-utf16-selected",
+      "kind": "pdf",
+      "description": "Malformed or nonempty text/RV is not an empty-encoding shortcut; full selected metadata still fails",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-odd-utf16-selected.pdf",
+      "sha256": "9b7254013eaf745208ab08609e5942bb755b407cd9efc92cc04454e44dc84e27",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "string.invalid-text"
+      ],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_empty_widgets/text-v-le-prefix-selected",
+      "kind": "pdf",
+      "description": "Malformed or nonempty text/RV is not an empty-encoding shortcut; full selected metadata still fails",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-le-prefix-selected.pdf",
+      "sha256": "8f05550b3810ce071e5f006f3888853d57225643bc4e807bd539ce6a942be715",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_empty_widgets/text-v-double-bom-selected",
+      "kind": "pdf",
+      "description": "Malformed or nonempty text/RV is not an empty-encoding shortcut; full selected metadata still fails",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-v-double-bom-selected.pdf",
+      "sha256": "1da92bf8a7a744ecdcc54b2ce4892c2f83e6bac74aa038689938205659640024",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-nonempty-selected",
+      "kind": "pdf",
+      "description": "Malformed or nonempty text/RV is not an empty-encoding shortcut; full selected metadata still fails",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-nonempty-selected.pdf",
+      "sha256": "21c5047eee3611489ca04d031535dd141224c75af79dbadb5c418fb823c16510",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-odd-utf16-selected",
+      "kind": "pdf",
+      "description": "Malformed or nonempty text/RV is not an empty-encoding shortcut; full selected metadata still fails",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-odd-utf16-selected.pdf",
+      "sha256": "96957190fc4d8a507277952613afd293ee4055344052e9b6e01521ee0427bc14",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-le-prefix-selected",
+      "kind": "pdf",
+      "description": "Malformed or nonempty text/RV is not an empty-encoding shortcut; full selected metadata still fails",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-le-prefix-selected.pdf",
+      "sha256": "980b21adf146d53e5eb6d85bf83379f41b041c9d2a33b9f8058c8317ae60f13b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "annotation_empty_widgets/text-rv-double-bom-selected",
+      "kind": "pdf",
+      "description": "Malformed or nonempty text/RV is not an empty-encoding shortcut; full selected metadata still fails",
+      "expected": "open",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/text-rv-double-bom-selected.pdf",
+      "sha256": "49ea5702b3907a1ae6f9931cb99562a01e08931b04083dfa0e0f4751518b2c13",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
       "id": "annotation_empty_widgets/parent-value-not-shadowed",
       "kind": "pdf",
       "description": "Unnamed child V is ignored: owning AB paints two5x7 Type3 glyphs at x6/12,y11",

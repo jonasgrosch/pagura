@@ -50,21 +50,30 @@ fn empty_widget_geometry_and_stored_artwork_keep_their_lazy_boundaries() {
 #[test]
 fn complete_field_inspection_and_form_editing_keep_their_existing_validation() {
     use pagura::forms::FillValue;
-    let document = Document::open(
-        fixture("annotation_empty_widgets", "wrong-da.pdf"),
-        &OpenOptions::default(),
-    )
-    .unwrap();
-    let widget = document
-        .object(ObjectId::new(11, 0))
-        .unwrap()
-        .dictionary()
+    for name in [
+        "wrong-da",
+        "text-v-utf16be-wrong-da",
+        "text-v-utf8-wrong-da",
+        "text-rv-utf16be-wrong-da",
+        "text-rv-utf8-wrong-da",
+    ] {
+        let document = Document::open(
+            fixture("annotation_empty_widgets", &format!("{name}.pdf")),
+            &OpenOptions::default(),
+        )
         .unwrap();
-    assert!(document.widget_field_membership(widget).unwrap());
-    assert_eq!(
-        document.widget_field(widget).unwrap_err().kind,
-        ErrorKind::Syntax
-    );
+        let widget = document
+            .object(ObjectId::new(11, 0))
+            .unwrap()
+            .dictionary()
+            .unwrap();
+        assert!(document.widget_field_membership(widget).unwrap());
+        assert_eq!(
+            document.widget_field(widget).unwrap_err().kind,
+            ErrorKind::Syntax,
+            "{name}"
+        );
+    }
     let document = Document::open(
         fixture("annotation_empty_widgets", "no-scroll.pdf"),
         &OpenOptions::default(),
