@@ -201,3 +201,10 @@ is the project reading of 7.10.2. Transfer-region selection follows
 default transfer, including through indirect references. A fractional boundary involving a nondefault
 transfer still fails explicitly: averaging colour before region selection would
 lose the correlation needed for nonlinear transfer functions.
+
+- `content.marked-unmatched` (14.6): an `EMC` with no open marked-content
+  sequence in the current scope is a reported no-op in Repair. Visibility,
+  text/graphics/path/clip state and the structure device stack are retained;
+  no synthetic begin or device end is emitted. A form cannot close its
+  caller's sequence. Strict rejects, and later syntax/resource/cycle/limit
+  failures remain errors without successful partial output.
