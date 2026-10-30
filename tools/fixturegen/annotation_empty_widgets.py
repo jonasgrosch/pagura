@@ -39,7 +39,7 @@ def frame():
 def cases():
     for label, change in [
         ('missing-font', lambda o: (o[10].pop('DR'), o[11].update(DA=b'/Missing 10 Tf'))),
-        ('wrong-da', lambda o: o[11].update(DA=name('Helv 10 Tf'))),
+        ('wrong-da', lambda o: o[11].update(DA=name('Helv#2010#20Tf'))),
         ('unused-resources', lambda o: (o[10].update(DR=ref(90)), o.update({90:ref(90)}))),
         ('xfa', lambda o: o[10].update(XFA=b'inert XFA data')),
         ('no-scroll', lambda o: o[11].update(Ff=1<<23, DA=b'/F1 32 Tf')),
