@@ -31,3 +31,15 @@ management as the next crate.
 ICC parsing can be fuzzed and tested from profile bytes alone, and another
 crate can adopt it without depending on the renderer. `pagura-render` no
 longer depends on `pagura-crypto`.
+
+
+### Calibrated diffuse-black metadata
+
+ISO 32000-2 Tables 62–64 permit nonnegative diffuse-black XYZ metadata without
+requiring it to be below the white point. It is retained in `Calibrated` and
+available through `black_point()`. The tables' component-to-XYZ equations
+remain unchanged. Conversion continues to use the existing disabled BPC
+policy for `UseBlackPtComp /OFF` and processor `Default` (8.6.5.9); `ON` remains
+an explicit refusal. No ad hoc rescaling by `WhitePoint - BlackPoint` is
+introduced. This admission is independent of implementing ISO 18619
+compensation or destination ICC transforms.
