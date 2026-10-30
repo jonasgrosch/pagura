@@ -679,9 +679,29 @@ fn interval(
     if rules.is_empty() {
         return Ok((1.0, 0.0));
     }
+    let evaluation = if active_curve {
+        Evaluation::Curved(error)
+    } else {
+        Evaluation::Canonical
+    };
+    integrate(&pieces, &rules, evaluation, Meters { work, bytes })
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Evaluation {
+    Canonical,
+    Curved(f64),
+}
+
+fn integrate(
+    pieces: &[Piece],
+    rules: &[FillRule],
+    evaluation: Evaluation,
+    Meters { work, bytes }: Meters<'_>,
+) -> Result<(f64, f64)> {
     work.charge(pieces.len())?;
     let mut sides = Vec::new();
-    Resolver::default().row(&pieces, &rules, 0.0, (&mut sides, Meters { work, bytes }))?;
+    Resolver::default().row(pieces, rules, 0.0, (&mut sides, Meters { work, bytes }))?;
     let mut cells = Cells::new(1, bytes)?;
     if !cells.open((0, 1), 0..1) {
         return Err(Error::limit("curve interval cells exceed allocation"));
@@ -694,10 +714,9 @@ fn interval(
     cells.inspect(0, |_, _, value| area = value.abs());
     Ok((
         area,
-        if active_curve {
-            rounding::outward(error + cells.arithmetic_error())
-        } else {
-            0.0
+        match evaluation {
+            Evaluation::Curved(error) => rounding::outward(error + cells.arithmetic_error()),
+            Evaluation::Canonical => 0.0,
         },
     ))
 }
