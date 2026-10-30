@@ -59,8 +59,9 @@ pub(crate) fn jbig2_samples(
     globals: Option<&[u8]>,
     (width, height): (u32, u32),
     limits: &pagura_core::Limits,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Samples> {
-    let decoded = jbig2::decode(data, globals, limits)?;
+    let decoded = jbig2::decode_with_diagnostics(data, globals, limits, diagnostics)?;
     if decoded.width != width || decoded.height != height {
         return Err(Error::syntax(
             "JBIG2 dimensions disagree with image dictionary",

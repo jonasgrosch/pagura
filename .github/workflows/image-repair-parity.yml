@@ -1,0 +1,43 @@
+name: image-repair-parity
+on:
+  pull_request:
+    paths:
+      - 'crates/pagura-image/**'
+      - 'crates/pagura/examples/image_repair_parity.rs'
+      - 'tools/image_repair_parity.mjs'
+      - 'tools/image_repair_observe.mjs'
+      - 'benchmarks/probes/image-repair-cases.json'
+      - 'tools/fixturegen/recovery.py'
+      - '.github/workflows/image-repair-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: image-repair-parity-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+jobs:
+  oracle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install pinned toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --target wasm32-wasip1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 26.8.1
+      - name: Build native and SIMD controls
+        run: |
+          cargo build --release --locked -p pagura --example image_repair_parity
+          cargo build --release --locked -p pagura --example image_repair_parity --target wasm32-wasip1
+      - name: Build scalar control with overflow checks
+        run: cargo build --release --locked -p pagura --example image_repair_parity --target wasm32-wasip1 --target-dir target/scalar
+        env:
+          RUSTFLAGS: '-C target-feature=-simd128 -C overflow-checks=on'
+      - name: Verify strict rejection and independent pixels on every runtime
+        run: node tools/image_repair_parity.mjs
+      - name: Observe frozen public first pages on every runtime
+        run: node tools/image_repair_observe.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: image-repair-observations
+          path: image-repair-observations.json

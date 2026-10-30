@@ -28,6 +28,13 @@ impl Parameters {
         Ok(Self { kind, adaptive })
     }
 
+    fn typical_context(self) -> usize {
+        // T.88 6.3.5.6, Figures 14–15: only the reference-centre pixel
+        // is one. In context() that pixel owns bit 8 or bit 7, not the
+        // numerals used by a different permitted template bit assignment.
+        if self.kind == 0 { 1 << 8 } else { 1 << 7 }
+    }
+
     pub(super) fn context_bytes(self) -> usize {
         self.context_count() * size_of::<Context>()
     }
@@ -131,7 +138,7 @@ impl Model {
             .ok_or_else(|| Error::limit("JBIG2 refinement contexts exceed byte budget"))?;
         let mut bitmap = Bitmap::new(width, height, false, &bitmap_limits)?;
         let mut typical = 0;
-        let typical_context = if self.parameters.kind == 0 { 0x10 } else { 8 };
+        let typical_context = self.parameters.typical_context();
         for y in 0..height {
             if prediction {
                 typical ^= decoder.bit(&mut self.contexts[typical_context])?;
@@ -245,4 +252,32 @@ fn uniform(reference: &Reference<'_>, x: i64, y: i64) -> Option<u8> {
         }
     }
     Some(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Bitmap, Model, Parameters, Reference};
+    use pagura_core::Limits;
+
+    #[test]
+    fn line_prediction_reuses_the_reference_centre_pixel_context() {
+        // The symbolic contexts in T.88 Figures 14 and 15 contain just
+        // the central reference pixel. All target neighbours are zero.
+        let limits = Limits::default();
+        let mut reference = Bitmap::new(5, 5, false, &limits).unwrap();
+        reference.set(2, 2, 1);
+        let target = Bitmap::new(5, 5, false, &limits).unwrap();
+        for kind in [0, 1] {
+            let parameters = Parameters {
+                kind,
+                adaptive: [(-1, -1); 2],
+            };
+            let model = Model::new(parameters, None, &limits).unwrap();
+            assert_eq!(
+                parameters.typical_context(),
+                model.context(&target, &Reference::whole(&reference), 2, 2, 2, 2),
+                "template {kind}"
+            );
+        }
+    }
 }

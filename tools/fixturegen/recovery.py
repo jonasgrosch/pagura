@@ -8,7 +8,7 @@ import struct
 import zlib
 from .model import Case, RENDER, OPEN, UNSUPPORTED
 from .pdf import document, stream, opaque_rectangles
-from . import image, jpx
+from . import image, jpx, jbig2
 
 AREA = "recovery"
 WHITE = (255, 255, 255)
@@ -280,6 +280,7 @@ def pattern_cases():
 
 
 def cases():
+    yield from jbig2_capability_cases()
     yield from pattern_cases()
     yield type3_case()
     yield from sampled_cases()
@@ -291,6 +292,34 @@ def cases():
     # Printer PCLm output opens a sequence per strip and never closes one.
     yield render('unclosed-marked-deep',b'/P BMC '*400+b'1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.marked-unclosed',))
     yield from type3_empty_bounds_cases()
+
+
+def jbig2_capability_cases():
+    """T.88 7.4.8.5: only the capability promises contradict complete data."""
+    reference = [[int(x == y or x == 7-y) for x in range(8)] for y in range(4)]
+    target = [[int(1 <= x <= 6 and 1 <= y <= 2) for x in range(8)] for y in range(4)]
+    first = jbig2._segment(2,36,1,jbig2.region(reference,jbig2.arithmetic(reference,2)))
+    refinement = jbig2._segment(3,42,1,jbig2.region(target,jbig2.refinement_payload(target,reference,1)),refs=(2,))
+    rectangles = [((x,3-y,1,1),BLACK) for y,row in enumerate(target) for x,value in enumerate(row) if value]
+    for name,flags in [('auxiliary',66),('refinement',96),('both',64)]:
+        data = jbig2._segment(1,48,1,jbig2._page_info(8,4,flags))+first+refinement
+        image_dict = b'/Type /XObject /Subtype /Image /Width 8 /Height 4 /BitsPerComponent 1 /ColorSpace /DeviceGray /Filter /JBIG2Decode'
+        yield render('jbig2-page-capabilities-'+name,b'8 0 0 4 0 0 cm /X Do',
+                     [stream(data,image_dict)],b'<< /XObject << /X 5 0 R >> >>',rectangles,
+                     requirement='recovery-jbig2-page-capabilities',repairs=('jbig2.page-capabilities',))
+
+    # T.88 Figures 14–15: SLTP shares the state whose reference centre
+    # alone is one. A later explicit dot exposes an incorrectly reused state.
+    centre = [[int(x==2 and y==2) for x in range(5)] for y in range(5)]
+    dot = [[int(x==4 and y==4) for x in range(5)] for y in range(5)]
+    prior = jbig2._segment(2,36,1,jbig2.region(centre,jbig2.arithmetic(centre,2)))
+    for template in (0,1):
+        refinement = jbig2._segment(3,42,1,jbig2.region(dot,jbig2.refinement_payload(dot,centre,template,typical=True)),refs=(2,))
+        data = jbig2._segment(1,48,1,jbig2._page_info(5,5,64))+prior+refinement
+        image_dict = b'/Type /XObject /Subtype /Image /Width 5 /Height 5 /BitsPerComponent 1 /ColorSpace /DeviceGray /Filter /JBIG2Decode'
+        yield render(f'jbig2-page-capabilities-prediction-centre-t{template}',b'5 0 0 5 0 0 cm /X Do',
+                     [stream(data,image_dict)],b'<< /XObject << /X 5 0 R >> >>',[((4,0,1,1),BLACK)],
+                     requirement='recovery-jbig2-page-capabilities',repairs=('jbig2.page-capabilities',))
 
 
 def type3_empty_bounds_cases():
