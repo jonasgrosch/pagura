@@ -125,6 +125,34 @@ per strip of 16 rows; the kernel accumulates them in their own order into
 reusable f64 cells, tracks touched cells, and emits partial cells and solid
 spans. A rectangle is two vertical edges in that same kernel.
 
+**Inherited glyph clipping.** Ordinary tiling below an image stencil retains
+patterned glyph outlines with their original linear map and exact origin.
+Every descendant intersects the entire source chain geometrically. True
+quadratic glyph boundaries, including multiple curved ancestors and a curved
+leaf, use the existing localized subdivision, outward control hulls, row
+resolver and cell integrator. The symmetric difference of an intersection is
+bounded by the sum of its sources' symmetric differences; both endpoints of
+each joint area interval must quantize to the same coverage byte before any
+blend, transfer, group or mask sees it. General cubic and singular glyphs
+keep the same canonical polygon and geometric point semantics as ordinary
+glyph placements.
+
+Preparation retains complete certified coverage runs in the same row
+representation as clipping paths. Execution emits those runs through the
+ordinary row sink; it does not correct pixels or perform fallible geometry.
+Candidate pixels come from conservative original controls, points and outward
+hull bounds, including pixels whose initial chords cover no area. A true
+boundary hull that misses a pixel permits the existing polygon clip
+classification to prove a constant covered state there. Removing such constant
+sources leaves ordinary canonical path semantics, preserving straight-edge
+rounding ties. Unresolved true-curve intervals remain explicit numerical
+`Limit` errors. All retained sources, hull indices, runs, scans, interval
+scratch and failed refinement work are charged before allocation or work to
+the existing render-byte and raster-work meters. New curved sources also
+carry their cumulative proof and emission work into the aggregate render-work
+admission, including a clip whose certified intersection is empty; no cross-render cache or
+additional rendering mode is introduced (8.5.4, 8.7.3, 8.9.6.2, 9.3.6).
+
 **Certification and row union.** Each contour splits into y-monotone chains.
 The certificate proves that neighbouring chains keep their order between
 successive chain ends and alternate in direction from one common sign, so

@@ -21,8 +21,8 @@ mod quantize;
 mod stroke;
 
 pub use band::{
-    Adjustment, Area, BandCoverage, BandRasterizer, Capacity, ClipShape, CoverageRow, DeviceRect,
-    GlyphEdges, MarkCoverage, RowOut, Shape, ShapeOptions, Span, StrokeTemplates,
+    Adjustment, Area, BandCoverage, BandRasterizer, Capacity, ClipShape, ClipSource, CoverageRow,
+    DeviceRect, GlyphEdges, MarkCoverage, RowOut, Shape, ShapeOptions, Span, StrokeTemplates,
 };
 pub use empty_fill::empty_fill_outline;
 pub use geometry::{Point, Transform};

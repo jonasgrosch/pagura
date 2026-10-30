@@ -5,11 +5,11 @@ use pagura::{Document, ErrorKind, OpenOptions, RenderOptions, Tile};
 use pagura_testkit::{Json, Manifest, assert_bytes_eq, fixture};
 
 #[test]
-fn nested_patterned_glyph_stays_explicit_before_any_output_in_both_modes() {
+fn nested_patterned_glyphs_preserve_true_curves_in_both_modes() {
     use pagura::{Recovery, RenderContext};
     use std::sync::Arc;
-
     for name in ["glyph-quadratic-refused", "glyph-tiny-quadratics-refused"] {
+        let expected = fixture("paint_nested_stencils", &format!("{name}.ppm"));
         for recovery in [Recovery::Strict, Recovery::Repair] {
             let document = Arc::new(
                 Document::open(
@@ -24,30 +24,24 @@ fn nested_patterned_glyph_stays_explicit_before_any_output_in_both_modes() {
             let context = RenderContext::new(document);
             let page = context.document().page(0).unwrap();
             let scene = context.scene(page).unwrap();
+            let rendered = context
+                .render_page(page, &RenderOptions::default())
+                .unwrap();
+            assert_eq!(ppm(&rendered), expected);
             let mut called = false;
-            let result = context.render_bands(
-                &scene,
-                &RenderOptions::default(),
-                None,
-                |_| false,
-                |_, _| {
-                    called = true;
-                    Ok::<(), ()>(())
-                },
-            );
-            let error = result.unwrap_err();
-            assert_eq!(
-                error.feature().map(pagura::Feature::as_str),
-                Some("pattern.image-mask")
-            );
-            assert!(!called, "unsupported geometry reached the output consumer");
-            assert_eq!(
-                context
-                    .render_page(page, &RenderOptions::default())
-                    .unwrap_err()
-                    .feature(),
-                error.feature()
-            );
+            context
+                .render_bands(
+                    &scene,
+                    &RenderOptions::default(),
+                    None,
+                    |_| false,
+                    |_, _| {
+                        called = true;
+                        Ok::<(), ()>(())
+                    },
+                )
+                .unwrap();
+            assert!(called);
         }
     }
 }

@@ -41,6 +41,8 @@ struct Inner {
     paths: Option<Paths>,
     work: usize,
     retained: usize,
+    sources: Vec<super::curved::Source>,
+    certified: Option<Rows>,
 }
 
 /// The clip's paths other than rectangles: their edges, clipped to the
@@ -67,6 +69,10 @@ pub(crate) struct Paths {
 }
 
 impl Paths {
+    pub(super) fn lines(&self) -> &[Line] {
+        &self.lines
+    }
+
     /// The paths' chains, when every path is convex.
     pub(crate) fn convex(&self) -> Option<&[Convex]> {
         (!self.convex.is_empty()).then_some(self.convex.as_slice())
@@ -151,7 +157,7 @@ impl Paths {
         Ok(())
     }
 
-    fn retained_bytes(&self) -> usize {
+    pub(super) fn retained_bytes(&self) -> usize {
         (self.lines.capacity() * size_of::<Line>())
             .saturating_add(self.ends.capacity() * size_of::<(u32, FillRule)>())
             .saturating_add(self.strips.retained_bytes())
@@ -217,12 +223,12 @@ impl Rows {
         self.segments.len()
     }
 
-    fn retained_bytes(&self) -> usize {
+    pub(super) fn retained_bytes(&self) -> usize {
         (self.index.capacity() * size_of::<(u32, u32)>())
             .saturating_add(self.segments.capacity() * size_of::<Segment>())
     }
 
-    fn push(&mut self, y: u32, segment: Segment, bytes: &mut Meter) -> Result<()> {
+    pub(super) fn push(&mut self, y: u32, segment: Segment, bytes: &mut Meter) -> Result<()> {
         if let Some(last) = self.segments.last_mut()
             && self.index.last().is_some_and(|&(row, _)| row == y)
             && last.x1 == segment.x0
@@ -330,6 +336,8 @@ impl ClipShape {
             paths: None,
             work: (bounds.height() as usize).saturating_mul(words + 24),
             retained: size_of::<Inner>(),
+            sources: Vec::new(),
+            certified: None,
         };
         if !groups.is_empty() && !bounds.is_empty() {
             let paths = classify(&groups, rect, bounds, options, &mut bytes)?;
@@ -343,6 +351,65 @@ impl ClipShape {
         Ok(Self {
             inner: Arc::new(inner),
         })
+    }
+
+    /// Prepares a clip chain containing true-curve glyph sources. All sources
+    /// are intersected geometrically before their common coverage quantization.
+    ///
+    /// # Errors
+    /// As [`Self::new`], including bounded interval refinement.
+    pub fn from_sources(
+        sources: &[super::curved::ClipSource<'_>],
+        options: &ShapeOptions<'_>,
+    ) -> Result<Self> {
+        if sources.is_empty() {
+            return Self::new(&[], Transform::IDENTITY, options);
+        }
+        let options = Prep::new(options, None);
+        if sources.len() > options.limits.mask_sources {
+            return Err(Error::limit("mask source budget exceeded"));
+        }
+        let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
+        let mut work = Meter::new(options.limits.raster_work, CLIP_WORK);
+        bytes.charge(size_of::<Inner>())?;
+        let mut owned = Vec::new();
+        bytes.reserve_capacity(&mut owned, sources.len())?;
+        for &source in sources {
+            owned.push(super::curved::Source::new(
+                source, &options, &mut bytes, &mut work,
+            )?);
+        }
+        let (bounds, rows) = super::curved::rows(&owned, &options, &mut work, &mut bytes)?;
+        let retained = size_of::<Inner>()
+            + owned.capacity() * size_of::<super::curved::Source>()
+            + owned
+                .iter()
+                .map(super::curved::Source::retained_bytes)
+                .sum::<usize>()
+            + rows.retained_bytes();
+        let emitted = rows
+            .len()
+            .saturating_add((bounds.height() as usize).saturating_mul(2));
+        work.charge(emitted)?;
+        Ok(Self {
+            inner: Arc::new(Inner {
+                bounds,
+                rect: None,
+                paths: None,
+                work: work.used(),
+                retained,
+                sources: owned,
+                certified: Some(rows),
+            }),
+        })
+    }
+
+    pub(super) fn sources(&self) -> &[super::curved::Source] {
+        &self.inner.sources
+    }
+
+    pub(super) fn curved(&self) -> bool {
+        !self.inner.sources.is_empty()
     }
 
     /// The pixels the clip can keep within the area; empty when it removes
@@ -370,7 +437,10 @@ impl ClipShape {
     }
 
     pub(crate) fn rows(&self) -> Option<&Rows> {
-        self.inner.paths.as_ref().map(|p| &p.rows)
+        self.inner
+            .certified
+            .as_ref()
+            .or_else(|| self.inner.paths.as_ref().map(|p| &p.rows))
     }
 
     pub(crate) fn same(&self, other: &Self) -> bool {
@@ -435,13 +505,22 @@ fn classify(
     options: &Prep<'_>,
     bytes: &mut Meter,
 ) -> Result<Paths> {
-    let limits = options.limits;
-    let mut meter = Meter::new(limits.raster_work, CLIP_WORK);
+    let mut meter = Meter::new(options.limits.raster_work, CLIP_WORK);
+    classify_metered(groups, rect, bounds, bytes, &mut meter)
+}
+
+pub(super) fn classify_metered(
+    groups: &[(Polygon, FillRule)],
+    rect: Option<Bounds>,
+    bounds: DeviceRect,
+    bytes: &mut Meter,
+    meter: &mut Meter,
+) -> Result<Paths> {
     let Boundaries {
         lines,
         ends,
         doubtful,
-    } = boundaries(groups, rect, &mut meter, bytes)?;
+    } = boundaries(groups, rect, meter, bytes)?;
     let rows_of = |l: &Line| edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds);
     let strips_list = StripList::new(
         (bounds.y0, bounds.y1),
@@ -453,7 +532,7 @@ fn classify(
         bytes,
     )?;
     meter.charge(strips_list.len())?;
-    let (convex, chains) = convex_chains(groups, &mut meter, bytes)?;
+    let (convex, chains) = convex_chains(groups, meter, bytes)?;
     let mut paths = Paths {
         lines,
         ends,
@@ -483,7 +562,7 @@ fn classify(
             .as_ref()
             .is_some_and(|slabs| !slabs.iter().any(|&[lo, hi]| lo < top + 1.0 && hi > top));
         pieces.clear();
-        paths.pieces(y, 0, (&mut pieces, bytes), &mut meter)?;
+        paths.pieces(y, 0, (&mut pieces, bytes), meter)?;
         meter.charge(pieces.len().saturating_add(2))?;
         if !cells.open(scan, y..y + 1) {
             return Err(Error::limit(CLIP_WORK));
@@ -496,10 +575,7 @@ fn classify(
             }
         } else {
             sides.clear();
-            let meters = Meters {
-                work: &mut meter,
-                bytes,
-            };
+            let meters = Meters { work: meter, bytes };
             resolver.row(&pieces, &rules, top, (&mut sides, meters))?;
             for &line in &sides {
                 whole &= line.a.y.min(line.b.y) <= top && line.a.y.max(line.b.y) >= top + 1.0;
