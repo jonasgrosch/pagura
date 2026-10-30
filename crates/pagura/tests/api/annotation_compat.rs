@@ -130,12 +130,29 @@ fn annotation_display_matches_authored_geometry_and_text_oracles() {
             )
             .unwrap();
             let dpi = case.get("dpi").and_then(Json::as_f64).unwrap();
-            let actual = pagura::render_page(
+            let result = pagura::render_page(
                 &document,
                 document.page(0).unwrap(),
                 &RenderOptions::from_dpi(dpi),
-            )
-            .unwrap_or_else(|e| panic!("{area}/{name}: {e}"));
+            );
+            if !pagura::provider::BUNDLED
+                && case
+                    .get("information")
+                    .and_then(Json::as_array)
+                    .is_some_and(|tags| {
+                        tags.iter()
+                            .any(|tag| tag.as_str() == Some("font.substituted"))
+                    })
+            {
+                let error = result.unwrap_err();
+                assert_eq!(
+                    error.feature().map(pagura::Feature::as_str),
+                    Some("font.non-embedded"),
+                    "{area}/{name}: {error}"
+                );
+                continue;
+            }
+            let actual = result.unwrap_or_else(|e| panic!("{area}/{name}: {e}"));
             assert_eq!(
                 u64::from(actual.width()),
                 case.get("width").and_then(Json::as_u64).unwrap(),
