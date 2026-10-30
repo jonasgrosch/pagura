@@ -31,7 +31,7 @@ impl Planner<'_> {
         let cell = scene
             .group(tiling.cell)
             .ok_or(Error::invalid_argument("scene group out of range"))?;
-        let transform = fit(tiling.matrix.then(scope.transform), tiling)?;
+        let transform = fit(tiling.matrix.then(scope.transform), tiling);
         let inverse = transform.inverse().ok_or(Error::unsupported(
             pagura_interpret::features::PATTERN_TILING,
             "singular tiling transform",
@@ -168,13 +168,14 @@ fn instances(
 
 /// The device transform of a tiling pattern's cells (Table 74): constant
 /// spacing rounds the lattice vectors `XStep·(a, b)` and `YStep·(c, d)` to
-/// whole pixels, a vanishing one to a unit step along its larger component;
-/// `TilingType 1` refuses a cell corner moved by more than a pixel, and
-/// `TilingType 2` keeps the exact transform, as does a singular one, which
-/// has no lattice to fit (ADR 0004 section 2).
-fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
+/// whole pixels, a vanishing one to a unit step along its larger component.
+/// `TilingType 2` keeps the exact transform, as do a singular one, which has
+/// no lattice to fit, rounded vectors that are parallel, and under
+/// `TilingType 1` a cell corner the rounding would move by more than a pixel
+/// (ADR 0004 section 2).
+fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Transform {
     if tiling.spacing == TilingSpacing::NoDistortion || t.inverse().is_none() {
-        return Ok(t);
+        return t;
     }
     let vector = |x: f64, y: f64| {
         let (mut a, mut b) = (x.round(), y.round());
@@ -191,11 +192,10 @@ fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
     let (a, b) = vector(t.a * x_step, t.b * x_step);
     let (c, d) = vector(t.c * y_step, t.d * y_step);
     let fitted = Transform::new(a / x_step, b / x_step, c / y_step, d / y_step, t.e, t.f);
+    // Without a whole-pixel lattice that serves, the exact TilingType 2
+    // lattice places the cells (ADR 0004 section 2).
     if fitted.inverse().is_none() {
-        return Err(Error::unsupported(
-            pagura_interpret::features::PATTERN_TILING,
-            "device lattice collapses the pattern",
-        ));
+        return t;
     }
     if tiling.spacing == TilingSpacing::Constant {
         let b = tiling.bbox;
@@ -208,14 +208,11 @@ fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
             let p = pagura_raster::Point::new(x, y);
             let (exact, moved) = (t.apply(p), fitted.apply(p));
             if (exact.x - moved.x).hypot(exact.y - moved.y) > 1.0 + 1e-12 {
-                return Err(Error::unsupported(
-                    pagura_interpret::features::PATTERN_TILING,
-                    "constant spacing requires excessive cell distortion",
-                ));
+                return t;
             }
         }
     }
-    Ok(fitted)
+    fitted
 }
 
 /// The integers `k` for which `[b0, b1] + k·step` meets `[lo, hi]`.

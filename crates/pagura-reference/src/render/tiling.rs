@@ -142,9 +142,10 @@ fn colors(cells: &Buffer, backdrop: &Initial<'_>, n: usize) -> Vec<(u32, u32, Ch
 /// 0004 section 2 defines it for `TilingType` (8.7.3.1, Table 74): `m`
 /// itself for `TilingType 2`; for `TilingType 1` and `3`, the transform
 /// with `m`'s origin that takes `(XStep, 0)` and `(0, YStep)` to the device
-/// lattice vectors rounded to whole pixels. A singular `m`, a collapsed
-/// lattice and, under `TilingType 1`, a cell corner moved by more than a
-/// pixel are refused.
+/// lattice vectors rounded to whole pixels. When the rounded vectors are
+/// parallel, or under `TilingType 1` would move a cell corner by more than a
+/// pixel, `m` itself, the exact lattice of `TilingType 2`. A singular `m` is
+/// refused.
 fn lattice(m: Transform, tiling: &Tiling) -> Result<Transform> {
     if m.inverse().is_none() {
         return Err(Error::invalid_argument(
@@ -158,9 +159,7 @@ fn lattice(m: Transform, tiling: &Tiling) -> Result<Transform> {
     let (u, v) = ([m.a * x_step, m.b * x_step], [m.c * y_step, m.d * y_step]);
     let (u_whole, v_whole) = (whole_pixels(u), whole_pixels(v));
     if u_whole[0] * v_whole[1] == u_whole[1] * v_whole[0] {
-        return Err(Error::invalid_argument(
-            "the reference has no collapsed tiling lattice",
-        ));
+        return Ok(m);
     }
     if tiling.spacing == TilingSpacing::Constant {
         // The two transforms share an origin, so a pattern point `(x, y)`
@@ -175,9 +174,7 @@ fn lattice(m: Transform, tiling: &Tiling) -> Result<Transform> {
             for y in [b.y0(), b.y1()] {
                 let (s, t) = (x / x_step, y / y_step);
                 if (s * du[0] + t * dv[0]).hypot(s * du[1] + t * dv[1]) > 1.0 + 1e-12 {
-                    return Err(Error::invalid_argument(
-                        "the reference has no tiling cell distorted by more than a pixel",
-                    ));
+                    return Ok(m);
                 }
             }
         }
@@ -301,16 +298,30 @@ mod tests {
     #[test]
     fn constant_spacing_admits_at_most_a_pixel_of_distortion() {
         // A 1.5-unit step becomes 2 pixels, moving the corner `(s, s)` by
-        // `s / 3` pixels along each axis.
+        // `s / 3` pixels along each axis. Beyond a pixel, the exact lattice.
         let corner = |s: f64| s / 3.0 * 2.0_f64.sqrt();
         assert!(corner(2.1) <= 1.0 && corner(2.2) > 1.0);
-        assert!(place(PAGE, [1.5, 1.5], 2.1, TilingSpacing::Constant).is_ok());
-        assert!(place(PAGE, [1.5, 1.5], 2.2, TilingSpacing::Constant).is_err());
-        assert!(place(PAGE, [1.5, 1.5], 2.2, TilingSpacing::Faster).is_ok());
+        let fitted = place(PAGE, [1.5, 1.5], 2.1, TilingSpacing::Constant).unwrap();
+        assert_eq!(vectors(fitted, [1.5, 1.5]), [2.0, 0.0, 0.0, -2.0]);
+        assert_eq!(
+            place(PAGE, [1.5, 1.5], 2.2, TilingSpacing::Constant).unwrap(),
+            PAGE
+        );
+        let faster = place(PAGE, [1.5, 1.5], 2.2, TilingSpacing::Faster).unwrap();
+        assert_eq!(vectors(faster, [1.5, 1.5]), [2.0, 0.0, 0.0, -2.0]);
     }
 
     #[test]
-    fn singular_patterns_and_collapsed_lattices_are_refused() {
+    fn collapsed_lattices_keep_the_exact_transform() {
+        // `(0.6, -0.6)` and `(0.6, -0.8)` both round to `(1, -1)`.
+        let oblique = Transform::new(0.3, -0.3, 0.3, -0.4, 0.0, 64.0);
+        for spacing in [TilingSpacing::Constant, TilingSpacing::Faster] {
+            assert_eq!(place(oblique, [2.0, 2.0], 1.0, spacing).unwrap(), oblique);
+        }
+    }
+
+    #[test]
+    fn singular_patterns_are_refused() {
         let singular = Transform::new(0.0, 0.0, 0.0, -1.0, 0.0, 8.0);
         for spacing in [
             TilingSpacing::Constant,
@@ -319,8 +330,5 @@ mod tests {
         ] {
             assert!(place(singular, [2.0, 2.0], 1.0, spacing).is_err());
         }
-        // `(0.6, -0.6)` and `(0.6, -0.8)` both round to `(1, -1)`.
-        let oblique = Transform::new(0.3, -0.3, 0.3, -0.4, 0.0, 64.0);
-        assert!(place(oblique, [2.0, 2.0], 1.0, TilingSpacing::Faster).is_err());
     }
 }
