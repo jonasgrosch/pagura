@@ -142,6 +142,8 @@
     "crates/pagura-raster/src/band/shape.rs": "734b39282d161803f448de24304410cd1aa28a9196bc8d1a5452610ff32c013f",
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
     "crates/pagura-raster/src/path.rs": "50d0af1ec03a45c884621c1fbebcd5ef410879172bdddaf081622576bcc35044",
+    "crates/pagura-reference/src/render/stencil.rs": "00f6b96af281c1cf2cc565a4fcc2088fb33e2baed601395bd0f4055b32b1e41d",
+    "crates/pagura-reference/tests/harness/main.rs": "f2b25b8e1e6160e0ee0a5db5d95951d4cd1f04ecd50b4e31d1bb0163db834fc9",
     "crates/pagura-render/src/context.rs": "42c88fdd12f344678b745f19ac49df73c2b331dd1d75234f746eb9d178c165f2",
     "crates/pagura-render/src/options.rs": "131de2afe8e6ee17a96f3f1432f76861608b9558b5dad53ffed0e68779452c31",
     "crates/pagura-text/src/cmap.rs": "74684da05e8e13c4fae27e8bd9272aa57fd9bdc982645e407ca73e5756bfa8b4",
@@ -181,7 +183,7 @@
     "references/requirements/jbig2.json": "931bf599d918af4899a2285230513574a8d3a4d6ee557bf8bc0024c70b6f4798",
     "references/requirements/jpx.json": "40bb3aa1149dba818966cf4b27168e44cd601a79536a99bcaa8d806208c9ce75",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
-    "references/requirements/paint.json": "7e6df951a97c515b189d84d6b0ce4757ad61be2bba50e84750204c085f1e2ac8",
+    "references/requirements/paint.json": "655c6eff915c6a9427c3e3f7795add0a10f5acf361af2f89e253c57b571a370c",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "d8e60f48e3a276d136107528928a12d5cfc84d78ecc9e0a141e8cf3e3e1c73e9",
@@ -871,7 +873,9 @@
       "tests": [
         "crates/pagura-paint/src/prepare/tests/formats.rs",
         "crates/pagura-paint/src/prepare/tests/pattern_stencils.rs",
-        "tools/fixturegen/paint_stencils.py"
+        "tools/fixturegen/paint_stencils.py",
+        "crates/pagura-reference/src/render/stencil.rs",
+        "crates/pagura-reference/tests/harness/main.rs"
       ],
       "requirements": [
         "content-bounds",

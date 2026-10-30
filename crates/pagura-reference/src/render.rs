@@ -5,6 +5,7 @@
 mod group;
 mod output;
 mod sources;
+mod stencil;
 mod tiling;
 pub(crate) mod transfer;
 
@@ -35,8 +36,8 @@ use transfer::{Selection, Transfers};
 /// Returns the errors of the inputs the reference depends on (colour
 /// conversion, image decoding, stroking), `Limit` errors for budgets, and
 /// `InvalidArgument` for scenes the reference does not model: a partial
-/// transfer boundary, a singular pen or shading matrix, pattern-coloured
-/// stencil masks, and malformed scene ids.
+/// transfer boundary, a singular pen or shading matrix, interpolated
+/// pattern-coloured stencil masks, and malformed scene ids.
 pub fn render(scene: &Scene, request: &Request, limits: &Limits) -> Result<Rendering> {
     let mut renderer = Renderer::new(scene, request, limits)?;
     let root = scene
@@ -68,6 +69,7 @@ pub fn render(scene: &Scene, request: &Request, limits: &Limits) -> Result<Rende
         initial: Initial::Transparent,
         selection: Selection::Opaque,
         stencil: None,
+        inherited: &[],
         depth: 0,
         crop: Crop::Page,
     };
@@ -91,6 +93,10 @@ pub(crate) struct Context<'b> {
     /// The colour of an uncoloured tiling pattern, which replaces its
     /// cell's paints.
     pub(crate) stencil: Option<&'b Color>,
+    /// Device-space geometric restrictions inherited from a patterned
+    /// image stencil. They are intersected with each cell mark before its
+    /// coverage is quantized and do not move with the cell's transform.
+    pub(crate) inherited: &'b [crate::area::Region],
     /// Nesting depth.
     pub(crate) depth: usize,
     /// Whether marks are clipped to the page's crop box.
@@ -214,6 +220,7 @@ impl<'s> Renderer<'s> {
         if context.crop == Crop::Page {
             regions.push(self.crop.clone());
         }
+        regions.extend(context.inherited.iter().cloned());
         Ok(regions)
     }
 
@@ -376,7 +383,7 @@ impl<'s> Renderer<'s> {
             }
             Paint::Tiling(tiling) => {
                 let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization)?;
-                self.tiling(tiling, &coverage, state, buffer, context)
+                self.tiling(tiling, (&coverage, None), state, buffer, context)
             }
         }
     }
@@ -408,6 +415,11 @@ impl<'s> Renderer<'s> {
         }
         if to_device.inverse().is_none() {
             return Ok(());
+        }
+        if node.image.space.is_none()
+            && let Some(paint @ (Paint::Tiling(_) | Paint::Shading(_))) = &stencil
+        {
+            return self.pattern_stencil(node, paint, state, buffer, context);
         }
         let mut regions = vec![shapes::unit_square(to_device, self.limits)?];
         regions.extend(self.clips(node.mark.clip, context)?);

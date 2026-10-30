@@ -14,6 +14,9 @@
 //!   blend modes, constant alpha, alpha-is-shape, soft masks, isolated,
 //!   non-isolated and knockout groups, transfer functions, overprint with
 //!   spot channels, tiling instances by exact geometry;
+//! - non-interpolated patterned stencils are unions of independently
+//!   constructed sample quadrilaterals; tiling marks intersect those regions
+//!   before coverage quantization, without using product stencil paths;
 //! - colours, shadings and images go through `pagura-color`'s definitions
 //!   and the contract's sampling definitions (ADR 0004);
 //! - the output is composited onto the background and quantized once.
