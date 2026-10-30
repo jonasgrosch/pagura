@@ -764,7 +764,10 @@ def icc_cases():
     yield Case('icc-rgb-columns',pdf(profile,command=command),RENDER,('content-icc-matrix',),'Independent unequal per-channel TRCs and PCS matrix columns',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
     yield Case('icc-initial-zero',pdf(icc_profile(4,version=5),4,b'/C cs 0 0 8 8 re f',b'/DeviceCMYK'),RENDER,('content-icc-matrix',),'Later-version fallback retains ICCBased all-zero initialization, rather than DeviceCMYK black',oracle=opaque_rectangles(8,8,[]))
     yield repaired('icc-simple-operator',pdf(icc_profile(),command=b'/C cs .5 .5 .5 sc'),'color-operator',requirements=('content-icc-matrix',))
-    yield Case('icc-invalid-data',pdf(b'not a profile'),OPEN,('content-icc-matrix',),'Non-profile data cannot establish ICC fallback',extra={'render_error':'Syntax'})
+    # 8.6.5.5: data that is no profile is unusable; the Alternate draws, reported.
+    yield Case('icc-invalid-data',pdf(b'not a profile',command=b'/C cs 1 0 0 scn 0 0 8 8 re f'),RENDER,('content-icc-matrix',),'Unusable ICC data falls back to the Alternate space as a reported repair',oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
+    no_alternate=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/ICCBased 5 0 R] >> >> /Contents 4 0 R >>',stream(b'/C cs 0 1 1 0 scn 0 0 8 8 re f'),stream(b'not a profile',b'/N 4')])
+    yield Case('icc-invalid-data-default',no_alternate,RENDER,('content-icc-matrix',),'Unusable ICC data without an Alternate falls back to the N default',oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
     yield from icc_validation_cases()
     yield from icc_lut_cases()
 
@@ -1251,8 +1254,16 @@ def icc_validation_cases():
     for name,alternate in [('alternate-wrong-n',b'/DeviceGray'),('alternate-pattern',b'/Pattern')]:bad.append((name,icc_profile(),{'alternate':alternate}))
     bad.append(('range-rgb-mismatch',icc_profile(),{'extra':b'/Range [0 2 0 1 0 1]'}))
     for name,raw,options in bad:
-        yield Case('icc-'+name,icc_pdf(raw,**options),OPEN,('content-icc-admission',),
-            'ICC.1:2010 7.2–7.4, 8.2–8.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field',extra={'render_error':'Syntax'})
+        if options:
+            # PDF-level faults (Alternate, Range) stay errors.
+            yield Case('icc-'+name,icc_pdf(raw,**options),OPEN,('content-icc-admission',),
+                'ISO 8.6.5.5 Table 65: reject the independently malformed PDF entry',extra={'render_error':'Syntax'})
+            continue
+        # The malformed profile is unusable: strict mode rejects it, and repair
+        # mode draws the Alternate space instead (8.6.5.5, content.icc-unusable).
+        yield Case('icc-'+name,icc_pdf(raw,command=b'/C cs 1 0 0 scn 0 0 8 8 re f'),RENDER,('content-icc-admission',),
+            'ICC.1:2010 7.2–7.4, 8.2–8.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws',
+            oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
 
 
 def icc_pcs_rgb(values, pcs, legacy=False):
@@ -1427,7 +1438,9 @@ def icc_lut_cases():
         raw=bytearray(base);raw[offset:offset+len(value)]=value;bad.append((name,bytes(raw)))
     for name,raw in bad:
         tags=icc_tags(4);tags[b'A2B0']=raw
-        yield Case('icc-'+name,icc_pdf(icc_pack(tags,4),4),OPEN,('content-icc-admission',),'ICC 10.8/10.10 invalid processing-element structure',extra={'render_error':'Syntax'})
+        yield Case('icc-'+name,icc_pdf(icc_pack(tags,4),4,command=b'/C cs 0 1 1 0 scn 0 0 8 8 re f'),RENDER,('content-icc-admission',),
+            'ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws',
+            oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
 
     for kind in ('mft2','mAB'):
         raw=bytearray(icc_legacy(4)[0] if kind=='mft2' else icc_mab(4))

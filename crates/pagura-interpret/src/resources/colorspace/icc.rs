@@ -2,8 +2,12 @@
 //! `Alternate`, and profiles parsed once per object.
 
 use super::super::numbers::entry;
+use crate::repairs;
 use pagura_color::Profile;
-use pagura_core::{Built, Dictionary, Error, ObjectId, Result, Store, StoreKey, Value};
+use pagura_core::{
+    Built, Diagnostic, Dictionary, Error, ErrorKind, ObjectId, Recovery, Result, Store, StoreKey,
+    Value,
+};
 use pagura_document::Document;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -88,13 +92,18 @@ impl<'a> Profiles<'a> {
         let parse = || -> Result<Built<StoredProfile>> {
             let parsed = match embedded {
                 Some(bytes) => Profile::parse(bytes, components, &limits),
-                None => Profile::parse(
-                    &document.stream_data(document.object(id)?)?,
-                    components,
-                    &limits,
-                ),
+                None => document
+                    .object(id)
+                    .and_then(|object| document.stream_data(object))
+                    .and_then(|data| Profile::parse(&data, components, &limits)),
             };
-            let profile = parsed.map_err(|e| e.in_object(id))?.map(Arc::new);
+            // An image's embedded profile keeps its error: JPEG 2000 colour
+            // ranks its own candidates (7.4.9).
+            let profile = match parsed.map_err(|e| e.in_object(id)) {
+                Ok(profile) => profile.map(Arc::new),
+                Err(error) if embedded.is_none() => unusable(document, error)?,
+                Err(error) => return Err(error),
+            };
             let bytes = profile.as_ref().map_or(0, |p| p.retained_bytes());
             Ok(Built {
                 value: StoredProfile(profile),
@@ -125,6 +134,30 @@ impl<'a> Profiles<'a> {
         self.bytes = total;
         Ok(profile)
     }
+}
+
+/// A profile whose data cannot be used, as opposed to one the colour
+/// management does not support: damaged or malformed. The Alternate space, or
+/// the default for `N`, draws instead (8.6.5.5), reported as
+/// `content.icc-unusable`; Strict keeps the profile's error with that repair.
+/// Budget, cycle and missing-object errors stay errors.
+fn unusable(document: &Document, mut error: Error) -> Result<Option<Arc<Profile>>> {
+    if !matches!(error.kind, ErrorKind::Syntax | ErrorKind::Unsupported(_)) {
+        return Err(error);
+    }
+    if document.recovery() == Recovery::Strict {
+        error.repair.get_or_insert(repairs::ICC_UNUSABLE);
+        return Err(error);
+    }
+    document.repair(
+        Diagnostic::new(
+            repairs::ICC_UNUSABLE,
+            "unusable ICC profile; the Alternate space or the N default draws instead (8.6.5.5)",
+        )
+        .at(error.position)
+        .in_object_opt(error.object),
+    )?;
+    Ok(None)
 }
 
 /// An ICCBased space's stream as read, before its alternate.
@@ -326,7 +359,24 @@ mod tests {
                 .is_some()
         );
         // Object 4 is the page's content stream, not an ICC profile. Its
-        // bytes must be parsed even though an embedded-image key exists.
-        assert!(Profiles::new(&document, Some(&store)).get(id, 3).is_err());
+        // bytes must be parsed even though an embedded-image key exists: they
+        // are no usable profile, so the Alternate is used (8.6.5.5), reported.
+        assert!(
+            Profiles::new(&document, Some(&store))
+                .get(id, 3)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(document.diagnostics()[0].tag(), "content.icc-unusable");
+        let strict = Document::open(
+            pagura_testkit::fixture("classic", "rectangle.pdf"),
+            &OpenOptions {
+                recovery: Recovery::Strict,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let error = Profiles::new(&strict, None).get(id, 3).unwrap_err();
+        assert_eq!(error.repair, Some(repairs::ICC_UNUSABLE));
     }
 }
