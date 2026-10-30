@@ -1,0 +1,826 @@
+{
+  "schema": 2,
+  "area": "cloud_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "cloud_annotations/source-curve-miter",
+      "kind": "vector",
+      "description": "Ordinary curved-path miter has exact isolated triangle coverage sqrt(5)/2-3/4",
+      "requirements": [
+        "content-cloudy-borders",
+        "raster-strokes"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/cloud_annotations/source-curve-miter.pdf",
+          "sha256": "9386205c7a15c65d37ccfa1b9af172705d02ebafeecc2e7e9e2ed18607c3208a"
+        },
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/source-curve-miter.ppm",
+          "sha256": "34f4ecfef54b06122c5c4e3ab7ab5e94eb5cd1ffddbcbafc0e57bdadc047ff72"
+        }
+      },
+      "qualification": "deferred ordinary raster accuracy control; not a render pass",
+      "dpi": 144,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Square-72",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Square-72.pdf",
+      "sha256": "a7c9a1ecb9b37702abf8a3b94d4b956884545d13ec839d33aae4abed19d85af6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Square-72.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Square-144",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Square-144.pdf",
+      "sha256": "a7c9a1ecb9b37702abf8a3b94d4b956884545d13ec839d33aae4abed19d85af6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Square-144.ppm",
+      "oracle_sha256": "5cf4f13e3bfa93ac25e8eed9aa27f0d7b1424f8ce505a7c5856c18ff7d0b4760",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Circle-72",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Circle-72.pdf",
+      "sha256": "6ff9872c09b325faacbe44593a7f2cebde27abde1433ed3b5ceea3f4874319e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Circle-72.ppm",
+      "oracle_sha256": "cc25c290e2c7f833c39ffd13cade9e8dd50c307f6dd304df64ec0618b2be0ffa",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Circle-144",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Circle-144.pdf",
+      "sha256": "6ff9872c09b325faacbe44593a7f2cebde27abde1433ed3b5ceea3f4874319e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Circle-144.ppm",
+      "oracle_sha256": "db69292d8c134bb40aed80bfbe2751a07304833d54f1fd87777fc6966304f73c",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Polygon-72",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Polygon-72.pdf",
+      "sha256": "664f66b93ef01e38782a2de268868635c1016ebea7ccd523063736e176f9c92c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Polygon-72.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Polygon-144",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Polygon-144.pdf",
+      "sha256": "664f66b93ef01e38782a2de268868635c1016ebea7ccd523063736e176f9c92c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/Polygon-144.ppm",
+      "oracle_sha256": "5cf4f13e3bfa93ac25e8eed9aa27f0d7b1424f8ce505a7c5856c18ff7d0b4760",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/FreeText-72",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/FreeText-72.pdf",
+      "sha256": "9c0c892e02da9b8a8bc7a35c987a6815f6623738d11329182c5194a3fbc029c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/FreeText-72.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/FreeText-144",
+      "kind": "pdf",
+      "description": "Exact quadratic contour integrals establish the documented convex cloud lobes",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/FreeText-144.pdf",
+      "sha256": "9c0c892e02da9b8a8bc7a35c987a6815f6623738d11329182c5194a3fbc029c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/FreeText-144.ppm",
+      "oracle_sha256": "5cf4f13e3bfa93ac25e8eed9aa27f0d7b1424f8ce505a7c5856c18ff7d0b4760",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/strong",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/strong.pdf",
+      "sha256": "66460fe5065ff5641aeb43b5c80fcda6aea82c698014dd7ca194699284403fd3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/strong.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/fractional",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/fractional.pdf",
+      "sha256": "5e32f569a5e5e4e975404eabf54e11aa353d6b3a78dbb992714f12c7ff9d5328",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/fractional.ppm",
+      "oracle_sha256": "a451fcd6af7bb2974aa706a1aa405c0bbfd12384ab0d545f6af27766c59ad033",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/opacity",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/opacity.pdf",
+      "sha256": "c974ef9d49b9c19066c306a107990f219025e8d42376de2f466795e27766cd75",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/opacity.ppm",
+      "oracle_sha256": "8c22e3104d8562a08a8fba528cfeb8654475d733219623f794b9ea592ff17155",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/rotated",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/rotated.pdf",
+      "sha256": "2a3a66d2fbb83ad9f1802090a7a9c41dfdd5feb81a10c5ad0a5b1a54186d9421",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/rotated.ppm",
+      "oracle_sha256": "3a3353f650a8dabdaae0766a45a763283293ad38b78a5f4222c5c82c7d553b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/width-affects-lobes",
+      "kind": "pdf",
+      "description": "Independent quadratic areas, annotation clipping and source-over establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/width-affects-lobes.pdf",
+      "sha256": "72fc4b47f3a9b4b304ea78326559373a7ac0735d4abf3c743dad6e2b5403279a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/cloud_annotations/width-affects-lobes.ppm",
+      "oracle_sha256": "f377d9793f989201a0d68b3e8dd511cb5118129dc89453056f2409b3acf653db",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Square-stroke-72",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Square-stroke-72.pdf",
+      "sha256": "c0b7a6d537c9028eccebc53ca34f45abc1198779d82799a3381f29c5da99a8b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Square-stroke-72-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/Square-stroke-72-accuracy-bound.ppm",
+          "sha256": "c0acf4894f23060573367c1771e7d1c1ebfbf5d4a51fec36ee1770e15f819e2e"
+        }
+      },
+      "deferred_case": "Square-stroke-72",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/Square-stroke-144",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Square-stroke-144.pdf",
+      "sha256": "c0b7a6d537c9028eccebc53ca34f45abc1198779d82799a3381f29c5da99a8b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Square-stroke-144-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/Square-stroke-144-accuracy-bound.ppm",
+          "sha256": "6eefc562ecdd8b2f1e3cd5446aefa8f2c5f3318f95f743d9c6597d253dcd97ac"
+        }
+      },
+      "deferred_case": "Square-stroke-144",
+      "tolerance": 1,
+      "dpi": 144,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/Circle-stroke-72",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Circle-stroke-72.pdf",
+      "sha256": "01b7ff2cad9dd518897315bd3a9fbe27262e9e499e93aa891c613b21cb7f4b25",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Circle-stroke-72-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/Circle-stroke-72-accuracy-bound.ppm",
+          "sha256": "340dfbe2a9e943311ac1507cd66c04369a75f7aa4eade29e59299bb2f5ec9ba6"
+        }
+      },
+      "deferred_case": "Circle-stroke-72",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/Circle-stroke-144",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Circle-stroke-144.pdf",
+      "sha256": "01b7ff2cad9dd518897315bd3a9fbe27262e9e499e93aa891c613b21cb7f4b25",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Circle-stroke-144-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/Circle-stroke-144-accuracy-bound.ppm",
+          "sha256": "59b677f42d38969fd6225bcce671b2a6b084fe0e1f714b48b568be39d0c2ce10"
+        }
+      },
+      "deferred_case": "Circle-stroke-144",
+      "tolerance": 1,
+      "dpi": 144,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/Polygon-stroke-72",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Polygon-stroke-72.pdf",
+      "sha256": "a1becf6b21605e2eaffb94fe535c2aafecbbc1e02de0dea492dc722fd12537c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Polygon-stroke-72-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/Polygon-stroke-72-accuracy-bound.ppm",
+          "sha256": "c87a0919a1a5ef6d4a87e44db53933befd5dfcb083974f93383f8111f268e58f"
+        }
+      },
+      "deferred_case": "Polygon-stroke-72",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/Polygon-stroke-144",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/Polygon-stroke-144.pdf",
+      "sha256": "a1becf6b21605e2eaffb94fe535c2aafecbbc1e02de0dea492dc722fd12537c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/Polygon-stroke-144-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/Polygon-stroke-144-accuracy-bound.ppm",
+          "sha256": "892e704e516a9c3e5b2fe8f1f19c16792a183edbdc471db34d85ed58f0bddc2d"
+        }
+      },
+      "deferred_case": "Polygon-stroke-144",
+      "tolerance": 1,
+      "dpi": 144,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/FreeText-stroke-72",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/FreeText-stroke-72.pdf",
+      "sha256": "d319132160c96797068482da5c3234e7904edde707e0ba40d69b17c94c1f83f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/FreeText-stroke-72-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/FreeText-stroke-72-accuracy-bound.ppm",
+          "sha256": "c0acf4894f23060573367c1771e7d1c1ebfbf5d4a51fec36ee1770e15f819e2e"
+        }
+      },
+      "deferred_case": "FreeText-stroke-72",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/FreeText-stroke-144",
+      "kind": "pdf",
+      "description": "Independent normal offsets and exact nonzero polygon coverage establish the cloud stroke and miter joins; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/FreeText-stroke-144.pdf",
+      "sha256": "d319132160c96797068482da5c3234e7904edde707e0ba40d69b17c94c1f83f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/FreeText-stroke-144-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/FreeText-stroke-144-accuracy-bound.ppm",
+          "sha256": "6eefc562ecdd8b2f1e3cd5446aefa8f2c5f3318f95f743d9c6597d253dcd97ac"
+        }
+      },
+      "deferred_case": "FreeText-stroke-144",
+      "tolerance": 1,
+      "dpi": 144,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/dashed-1-72",
+      "kind": "pdf",
+      "description": "Closed-form lobe arclength positions dash cuts; true normal offsets and butt caps establish coverage; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/dashed-1-72.pdf",
+      "sha256": "f3bdb7df7b58b20c2cabf5dcd6aacfc1c41b79c2d558db8786bbf958d764d9bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/dashed-1-72-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/dashed-1-72-accuracy-bound.ppm",
+          "sha256": "14dcd0d5defaf01026c4b70e8a3ff9eaadf9faf26110dce3511fc8c5f40ace0d"
+        }
+      },
+      "deferred_case": "dashed-1-72",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/dashed-1-144",
+      "kind": "pdf",
+      "description": "Closed-form lobe arclength positions dash cuts; true normal offsets and butt caps establish coverage; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/dashed-1-144.pdf",
+      "sha256": "f3bdb7df7b58b20c2cabf5dcd6aacfc1c41b79c2d558db8786bbf958d764d9bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/dashed-1-144-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/dashed-1-144-accuracy-bound.ppm",
+          "sha256": "e37ee630fe44384f30aeaee819410fef4be6e6abdc419fda130992ac1cc751d7"
+        }
+      },
+      "deferred_case": "dashed-1-144",
+      "tolerance": 1,
+      "dpi": 144,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/dashed-2-72",
+      "kind": "pdf",
+      "description": "Closed-form lobe arclength positions dash cuts; true normal offsets and butt caps establish coverage; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/dashed-2-72.pdf",
+      "sha256": "29b1b93d35c196b39715cf019d264953bf0a05d3e27cf6fab11d256bd27cfdd4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/dashed-2-72-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/dashed-2-72-accuracy-bound.ppm",
+          "sha256": "1d0f5087867f2d1168fcae174ddcc83fd35915f0d7393d9f878fd184ff750742"
+        }
+      },
+      "deferred_case": "dashed-2-72",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/dashed-2-144",
+      "kind": "pdf",
+      "description": "Closed-form lobe arclength positions dash cuts; true normal offsets and butt caps establish coverage; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/dashed-2-144.pdf",
+      "sha256": "29b1b93d35c196b39715cf019d264953bf0a05d3e27cf6fab11d256bd27cfdd4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/dashed-2-144-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/dashed-2-144-accuracy-bound.ppm",
+          "sha256": "e8de8191b8d0fe64ce10232d8a2265e1dcb4a41eea992df60aa2832f4ef2a030"
+        }
+      },
+      "deferred_case": "dashed-2-144",
+      "tolerance": 1,
+      "dpi": 144,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/stroke-opacity",
+      "kind": "pdf",
+      "description": "Independent stroke coverage followed by rotation or source-over opacity establishes pixels; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/stroke-opacity.pdf",
+      "sha256": "08e8cda3c315062703283435a201288e9a1684c23375217dfeac5fb2a0d27059",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/stroke-opacity-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/stroke-opacity-accuracy-bound.ppm",
+          "sha256": "da84072c4eeea9bde042b30c430d275e0ecae911ef0f568106a836415ee0570c"
+        }
+      },
+      "deferred_case": "stroke-opacity",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/stroke-rotated",
+      "kind": "pdf",
+      "description": "Independent stroke coverage followed by rotation or source-over opacity establishes pixels; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/stroke-rotated.pdf",
+      "sha256": "bd6c257484432d21b46ed73ff48dce99a9af330c786b4d256fba6068b97ad683",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "cloud_annotations/stroke-rotated-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/cloud_annotations/stroke-rotated-accuracy-bound.ppm",
+          "sha256": "c0acf4894f23060573367c1771e7d1c1ebfbf5d4a51fec36ee1770e15f819e2e"
+        }
+      },
+      "deferred_case": "stroke-rotated",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "cloud_annotations/bad-intensity",
+      "kind": "pdf",
+      "description": "Malformed cloud declarations fail before no-mark shortcuts",
+      "expected": "open",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/bad-intensity.pdf",
+      "sha256": "b48cf6c44f0578a0dfad385f2ef41356f6b5954eaac7bb696a5aefce53f7a0f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "cloud_annotations/negative",
+      "kind": "pdf",
+      "description": "Malformed cloud declarations fail before no-mark shortcuts",
+      "expected": "open",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/negative.pdf",
+      "sha256": "ee2d2289f0a424eefd84358312245decfb64f1ba32c819a63513bbbc9e47f55d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "cloud_annotations/excess",
+      "kind": "pdf",
+      "description": "Malformed cloud declarations fail before no-mark shortcuts",
+      "expected": "open",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/excess.pdf",
+      "sha256": "bc36e3c35e55f05d40ee03efbc4bc58af1141b572a4182a86f07b1382b971c26",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "cloud_annotations/bad-effect",
+      "kind": "pdf",
+      "description": "Malformed cloud declarations fail before no-mark shortcuts",
+      "expected": "open",
+      "requirements": [
+        "content-cloudy-borders"
+      ],
+      "path": "corpus/generated/cloud_annotations/bad-effect.pdf",
+      "sha256": "6af0389f4ff022ddfeb13dbe9b93a97698298a6657e1e68db830868cc8eb5ea3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    }
+  ]
+}

@@ -137,6 +137,13 @@ def widget_cases():
     ]:
         objects=[b'<< /Subtype /Widget /Rect [1 1 7 7] '+field+b' >>']
         if parent: objects.append(parent)
+        if name == 'widget-rotated-border':
+            yield Case(name,page(b'',objects,extra=b'/Annots [5 0 R]'),RENDER,
+                       ('recovery-widgets',),
+                       'Same original input: quarter-turn of the square border is black on its four literal one-pixel inside strips',
+                       oracle=opaque_rectangles(16,16,[((1,1,6,1),(0,0,0)),((1,6,6,1),(0,0,0)),
+                                                    ((1,2,1,4),(0,0,0)),((6,2,1,4),(0,0,0))]))
+            continue
         yield Case(name,page(b'',objects,extra=b'/Annots [5 0 R]'),UNSUPPORTED if error=='unsupported' else OPEN,
                    ('recovery-widgets',),name,feature='annotation.appearance' if error=='unsupported' else None,
                    extra={} if error=='unsupported' else {'render_error':error})

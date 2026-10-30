@@ -1,0 +1,949 @@
+{
+  "schema": 2,
+  "area": "file_attachment_icons",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "file_attachment_icons/graph-72-0-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-72-0-generated.pdf",
+      "sha256": "8240df247b760e7842c902b1729681ee4dc9b222192506028ff45fcbaa84e8e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-72-0-generated.ppm",
+      "oracle_sha256": "cdc9b4ebe2fdf12afdc69cfed1bfc6137bdf4dc9528756c2cd585bc287ffcf96",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-72-0-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-72-0-stored.pdf",
+      "sha256": "7950a8f9531ec00bf2154f79682314dbb7aa626c4556fcbaf3dad02819894a19",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-72-0-stored.ppm",
+      "oracle_sha256": "cdc9b4ebe2fdf12afdc69cfed1bfc6137bdf4dc9528756c2cd585bc287ffcf96",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-144-0-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-144-0-generated.pdf",
+      "sha256": "8240df247b760e7842c902b1729681ee4dc9b222192506028ff45fcbaa84e8e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-144-0-generated.ppm",
+      "oracle_sha256": "e7d3785f844f0cd8fe37d880afdda4c7e9c13459374f23e28b26d1bc115bf309",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-144-0-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-144-0-stored.pdf",
+      "sha256": "7950a8f9531ec00bf2154f79682314dbb7aa626c4556fcbaf3dad02819894a19",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-144-0-stored.ppm",
+      "oracle_sha256": "e7d3785f844f0cd8fe37d880afdda4c7e9c13459374f23e28b26d1bc115bf309",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-72-90-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-72-90-generated.pdf",
+      "sha256": "b9b2863004217e92f1750cd2039e0271673e632287887588c7139440069cb0b2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-72-90-generated.ppm",
+      "oracle_sha256": "5fde3d1d8df20b5605a3053d13e8fc55434fd5e5f8555e345358a3e30ede4f21",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-72-90-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-72-90-stored.pdf",
+      "sha256": "0041ac5385de41e9445ec46a015f8fc9faeb2e188425d8e60ed127ab3454dbc9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-72-90-stored.ppm",
+      "oracle_sha256": "5fde3d1d8df20b5605a3053d13e8fc55434fd5e5f8555e345358a3e30ede4f21",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/paperclip-72-0-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/paperclip-72-0-generated.pdf",
+      "sha256": "7f81a55a3b3fd060156a719129ddb60fc45470f3aa71111e8eac5e111f5306c6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/paperclip-72-0-generated.ppm",
+      "oracle_sha256": "d83e9d504c5a0012ea51a8872980446fead389541d36c24e2c5528c17186aaa4",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/paperclip-72-0-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/paperclip-72-0-stored.pdf",
+      "sha256": "8b413f68804fb518202b861903efa0677acd6ffb9f167456140fd83e14a2a57f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/paperclip-72-0-stored.ppm",
+      "oracle_sha256": "d83e9d504c5a0012ea51a8872980446fead389541d36c24e2c5528c17186aaa4",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/paperclip-144-0-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/paperclip-144-0-generated.pdf",
+      "sha256": "7f81a55a3b3fd060156a719129ddb60fc45470f3aa71111e8eac5e111f5306c6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/paperclip-144-0-generated.ppm",
+      "oracle_sha256": "88e1d877af076b581d9b9d0cebb1b556ddb53c52a05381944541d819a17b3d72",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/paperclip-144-0-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/paperclip-144-0-stored.pdf",
+      "sha256": "8b413f68804fb518202b861903efa0677acd6ffb9f167456140fd83e14a2a57f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/paperclip-144-0-stored.ppm",
+      "oracle_sha256": "88e1d877af076b581d9b9d0cebb1b556ddb53c52a05381944541d819a17b3d72",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/paperclip-72-90-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/paperclip-72-90-generated.pdf",
+      "sha256": "4199605ab76f8a98730511ea52f7cbcc62ea7fb842379b3abb611bc4fce3fef3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/paperclip-72-90-generated.ppm",
+      "oracle_sha256": "3c1664739fd7b1f853377f5616e3efefb433cf9275155722d0026e80f28c8504",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/paperclip-72-90-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/paperclip-72-90-stored.pdf",
+      "sha256": "33387afeb30e48fab671a6adefa55307f17d9e4ed28790305d90662a97d47809",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/paperclip-72-90-stored.ppm",
+      "oracle_sha256": "3c1664739fd7b1f853377f5616e3efefb433cf9275155722d0026e80f28c8504",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/pushpin-72-0-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/pushpin-72-0-generated.pdf",
+      "sha256": "35bb89ff68ee24ade3166290e18142130e02f8c512275f34cb8053c0bbc9e055",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/pushpin-72-0-generated.ppm",
+      "oracle_sha256": "b2d2599b021832485dac516d72fc197477a01f20360dbf1bdced8fd2cd387474",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/pushpin-72-0-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/pushpin-72-0-stored.pdf",
+      "sha256": "1e1988ac80e1c3b258add05d5e95b69a9452e6ecaca5aa2f969a07c6bc3794c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/pushpin-72-0-stored.ppm",
+      "oracle_sha256": "b2d2599b021832485dac516d72fc197477a01f20360dbf1bdced8fd2cd387474",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/pushpin-144-0-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/pushpin-144-0-generated.pdf",
+      "sha256": "35bb89ff68ee24ade3166290e18142130e02f8c512275f34cb8053c0bbc9e055",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/pushpin-144-0-generated.ppm",
+      "oracle_sha256": "f31dfc65e6640d8cb8f720db71f70f9a82823c1934e767025c82b7a2f9d18511",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/pushpin-144-0-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/pushpin-144-0-stored.pdf",
+      "sha256": "1e1988ac80e1c3b258add05d5e95b69a9452e6ecaca5aa2f969a07c6bc3794c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/pushpin-144-0-stored.ppm",
+      "oracle_sha256": "f31dfc65e6640d8cb8f720db71f70f9a82823c1934e767025c82b7a2f9d18511",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/pushpin-72-90-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/pushpin-72-90-generated.pdf",
+      "sha256": "f59db62bb0b44a6c1c47b80bf6cd1c5d85822d07c630fe7cf33be84c9c2c72fe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/pushpin-72-90-generated.ppm",
+      "oracle_sha256": "76112d595b37b33129877b0faa6537e857294f0c90cbb5adffe724b50c6d9cfe",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/pushpin-72-90-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/pushpin-72-90-stored.pdf",
+      "sha256": "6304428a629f73cc54f834dc60c6d317adb2748f7f561f4b38a02f604564ddd9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/pushpin-72-90-stored.ppm",
+      "oracle_sha256": "76112d595b37b33129877b0faa6537e857294f0c90cbb5adffe724b50c6d9cfe",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/tag-72-0-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/tag-72-0-generated.pdf",
+      "sha256": "6cbf21dca3bd6bf8ac0b6e27e48ffe7052aa36fc567554b7e1af627b63dcdf18",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/tag-72-0-generated.ppm",
+      "oracle_sha256": "1cbe2f362e356abb326f842bebfadbc4e09a7582947629106b6200539c18d187",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/tag-72-0-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/tag-72-0-stored.pdf",
+      "sha256": "0c466e964c1e9eb6ddb73bae03a023b255e053975a4722bd91882a85f5e3f281",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/tag-72-0-stored.ppm",
+      "oracle_sha256": "1cbe2f362e356abb326f842bebfadbc4e09a7582947629106b6200539c18d187",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/tag-144-0-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/tag-144-0-generated.pdf",
+      "sha256": "6cbf21dca3bd6bf8ac0b6e27e48ffe7052aa36fc567554b7e1af627b63dcdf18",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/tag-144-0-generated.ppm",
+      "oracle_sha256": "f0085084df9592bd88b6c3662d58fb33b48958365686577c5d364206d8405329",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/tag-144-0-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/tag-144-0-stored.pdf",
+      "sha256": "0c466e964c1e9eb6ddb73bae03a023b255e053975a4722bd91882a85f5e3f281",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/tag-144-0-stored.ppm",
+      "oracle_sha256": "f0085084df9592bd88b6c3662d58fb33b48958365686577c5d364206d8405329",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/tag-72-90-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/tag-72-90-generated.pdf",
+      "sha256": "450359ea7e4a9d4f98d37fece00f7d8984138e92c4c1c642e378b29598538213",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/tag-72-90-generated.ppm",
+      "oracle_sha256": "26aa00e30d89b09f60f1ee5ea720dedf1f41fc6226af7e0c47050e90b7da48a5",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/tag-72-90-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/tag-72-90-stored.pdf",
+      "sha256": "0dd553c07dd8c85f5961bbe8206964ca19f4974a310b040e2efba2773afe4bcc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/tag-72-90-stored.ppm",
+      "oracle_sha256": "26aa00e30d89b09f60f1ee5ea720dedf1f41fc6226af7e0c47050e90b7da48a5",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-view-8-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-view-8-generated.pdf",
+      "sha256": "9bdfd952309702ddeb8e8078e44a168afd976f0fed04f0df3c6536736ba3fca9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-view-8-generated.ppm",
+      "oracle_sha256": "da8999cd90b1b9e2f0881e30f218baa823acd46e5c53b31371c4b2be94dfcde5",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-view-8-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-view-8-stored.pdf",
+      "sha256": "193bb559ccd6aefeb314c4e8e531eaf4bb77bd7a4a6aaf373a267ed92017dde3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-view-8-stored.ppm",
+      "oracle_sha256": "da8999cd90b1b9e2f0881e30f218baa823acd46e5c53b31371c4b2be94dfcde5",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-view-16-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-view-16-generated.pdf",
+      "sha256": "13ef6f43f05631775400d94934e4d1f99cc961a0b35e3492f275748a3a3eb2cc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-view-16-generated.ppm",
+      "oracle_sha256": "7e327935b1d4c83a8b6b2f8579bf19d9ba1dadab32b496b123637ad95d163848",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-view-16-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-view-16-stored.pdf",
+      "sha256": "399d763c07db1a2ca15d3a4f58cc8c50ab36fda88fe2513cca211a8b251ced6d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-view-16-stored.ppm",
+      "oracle_sha256": "7e327935b1d4c83a8b6b2f8579bf19d9ba1dadab32b496b123637ad95d163848",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-view-24-generated",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-view-24-generated.pdf",
+      "sha256": "038b6eec39e649c62d5d06817f37a4c20545e41248bcb5d2eee862c52b184141",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-view-24-generated.ppm",
+      "oracle_sha256": "b24d5a6d009199936b3a3bea836a4f9292705508861eb87637f53fe083f40843",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/graph-view-24-stored",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/graph-view-24-stored.pdf",
+      "sha256": "3a806909d3bc264c954cc6029fab127f89e7b60cd9797e086d62087b08c72545",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/graph-view-24-stored.ppm",
+      "oracle_sha256": "b24d5a6d009199936b3a3bea836a4f9292705508861eb87637f53fe083f40843",
+      "dpi": 144,
+      "width": 96,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/default",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/default.pdf",
+      "sha256": "5c545bf8d34a49583a55d76c14929d1424e9f3038c0d67fa6d5ee902cb56c2d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/default.ppm",
+      "oracle_sha256": "b2d2599b021832485dac516d72fc197477a01f20360dbf1bdced8fd2cd387474",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/null-name",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/null-name.pdf",
+      "sha256": "243058b1555179044287c4b94623806ca23276f28ef018be1b8b1815d8c86625",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/null-name.ppm",
+      "oracle_sha256": "b2d2599b021832485dac516d72fc197477a01f20360dbf1bdced8fd2cd387474",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/unknown-name",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/unknown-name.pdf",
+      "sha256": "fa476b4f49a2483ab8b9862eff7128c40f9b67abee015eb5fab52f449db8c18c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/unknown-name.ppm",
+      "oracle_sha256": "b2d2599b021832485dac516d72fc197477a01f20360dbf1bdced8fd2cd387474",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/green",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/green.pdf",
+      "sha256": "37d00ce6ba6331639ae9349a83fb9c40b1064693d873c61330eaef3c247dc7a4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/green.ppm",
+      "oracle_sha256": "24199d867ec7c0e44224c425592655e6e6a63d6071840ddcd35d4d1d81910eb4",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/transparent-background",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/transparent-background.pdf",
+      "sha256": "1acc3eea6d2fefd9fcac0d89120856a303e94c5b82c21681fa919bb085729771",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/transparent-background.ppm",
+      "oracle_sha256": "1dde0565884674c6f2a12a7ab9aa3794b9b1a3a80e751cb172e6a59139893bef",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/separate-opacity",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/separate-opacity.pdf",
+      "sha256": "9d314131904c61059f206cba9247b4af1b9b288f8989e48c006523ab58e32a27",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/separate-opacity.ppm",
+      "oracle_sha256": "eeba5fae9977ba1ae232d6f3853f3075f9e3f48ba0e73140859b14a8d13fcbcf",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/hidden",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/hidden.pdf",
+      "sha256": "6b22ceb68557707503e02c067a15dd770162ae9c25dbfa8efe95eddeb3f76be7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/hidden.ppm",
+      "oracle_sha256": "abcbabf25e09ec8d5e0901bbec36c8995419db3a8154f551392c474e65d5747e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/no-view",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/no-view.pdf",
+      "sha256": "30315998b47e534f08cd6c898b611936c8c6e6b6b25d1ec7debc40d9570bb54e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/no-view.ppm",
+      "oracle_sha256": "abcbabf25e09ec8d5e0901bbec36c8995419db3a8154f551392c474e65d5747e",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/stored-ignores-style",
+      "kind": "pdf",
+      "description": "Independent region-union artwork and exact coverage verify icon placement, opacity and stored/generated equivalence",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/stored-ignores-style.pdf",
+      "sha256": "1d911b259d6a93c175bc4374871974827e78c470a68774df786dbcbb4271a43f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/stored-ignores-style.ppm",
+      "oracle_sha256": "cdc9b4ebe2fdf12afdc69cfed1bfc6137bdf4dc9528756c2cd585bc287ffcf96",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "file_attachment_icons/wrong-name",
+      "kind": "pdf",
+      "description": "Malformed visual entries fail without an appearance",
+      "expected": "open",
+      "requirements": [
+        "content-file-attachment-icons"
+      ],
+      "path": "corpus/generated/file_attachment_icons/wrong-name.pdf",
+      "sha256": "991771766dfb5c521afcc775ef1c5a3a0cb7d954eb57a38203f0c135d6626168",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "file_attachment_icons/wrong-color",
+      "kind": "pdf",
+      "description": "Malformed visual entries fail without an appearance",
+      "expected": "open",
+      "requirements": [
+        "content-file-attachment-icons"
+      ],
+      "path": "corpus/generated/file_attachment_icons/wrong-color.pdf",
+      "sha256": "65b7db7f03034d4a82781ba35d91ca322ce0308a6774ffad8aaac389d142cb44",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "file_attachment_icons/wrong-alpha",
+      "kind": "pdf",
+      "description": "Malformed visual entries fail without an appearance",
+      "expected": "open",
+      "requirements": [
+        "content-file-attachment-icons"
+      ],
+      "path": "corpus/generated/file_attachment_icons/wrong-alpha.pdf",
+      "sha256": "654ec6be83b298d44541b98bbda24582290939ab0f358e10a20a459826810f61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "file_attachment_icons/null-annots",
+      "kind": "pdf",
+      "description": "Null Annots and indirect rectangle operands preserve exact appearance placement",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/null-annots.pdf",
+      "sha256": "91f32ca8cdf314cc7d641acd39179cc2e68ebb287af0f33dc8ae535f46e07a59",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/null-annots.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "file_attachment_icons/indirect-null-annots",
+      "kind": "pdf",
+      "description": "Null Annots and indirect rectangle operands preserve exact appearance placement",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/indirect-null-annots.pdf",
+      "sha256": "7eec0dd8c74597e7b3c7a0775c65947419d9b3aff74395c26336de64524ddae6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/indirect-null-annots.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "file_attachment_icons/indirect-rectangle",
+      "kind": "pdf",
+      "description": "Null Annots and indirect rectangle operands preserve exact appearance placement",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/file_attachment_icons/indirect-rectangle.pdf",
+      "sha256": "941d3881978bbf3350aa6630a8c690213e99092a760d51bce34107bb6d97c1e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/indirect-rectangle.ppm",
+      "oracle_sha256": "b075b18a9df4e8d09591d3fc8fd201a8071e259c87968ea3c77a25f85e8358eb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "file_attachment_icons/indirect-name",
+      "kind": "pdf",
+      "description": "Indirect icon names use the same original artwork without a file-service dependency",
+      "expected": "render",
+      "requirements": [
+        "content-file-attachment-icons"
+      ],
+      "path": "corpus/generated/file_attachment_icons/indirect-name.pdf",
+      "sha256": "4c559f0f3012eafe7ddf9852dc9591a2a7324f6d74390318bfee4d2666b02f5b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/file_attachment_icons/indirect-name.ppm",
+      "oracle_sha256": "cdc9b4ebe2fdf12afdc69cfed1bfc6137bdf4dc9528756c2cd585bc287ffcf96",
+      "dpi": 72,
+      "width": 48,
+      "height": 48,
+      "tolerance": 1
+    }
+  ]
+}

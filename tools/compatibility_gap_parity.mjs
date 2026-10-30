@@ -68,7 +68,11 @@ if (process.argv[2] === '--wasi') {
             assert(!existsSync(localOutput),`${stem}: partial output after refusal`);
             if(rejectedRepair) assert(c.repairs.some(tag=>r.stderr.includes(tag)),`${stem}: strict repair tag`);
             else if(c.expected==='unsupported') assert(r.stderr.includes(c.feature),`${stem}: feature tag`);
-            else assert(r.stderr.includes(c.render_error==='limit'?'Limit':'Syntax'),`${stem}: error kind`);
+            else {
+              const kind = {syntax:'Syntax', limit:'Limit', cycle:'Cycle', 'invalid-argument':'InvalidArgument'}[c.render_error?.toLowerCase()];
+              assert(kind,`${stem}: explicit render refusal kind required`);
+              assert(r.stderr.includes(kind),`${stem}: error kind`);
+            }
           }
         }
       }

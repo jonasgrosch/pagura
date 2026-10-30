@@ -1,0 +1,519 @@
+{
+  "schema": 2,
+  "area": "leader_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "leader_annotations/positive-72",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/positive-72.pdf",
+      "sha256": "4678caa3179be7be91781e2eb440cf6e588e3e4f15edd35838366f91ee18e5f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/positive-72.ppm",
+      "oracle_sha256": "4dd72aec8202f3e4cc7a1220f06bfde14580e1a0c634e995fcf0842a006a3c44",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/negative-72",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/negative-72.pdf",
+      "sha256": "6bcd451ad08e876eca892b55d1026675b3ad9daed04b698e67802f6d36da8246",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/negative-72.ppm",
+      "oracle_sha256": "b3f1c86af37bcd66f9634280e1daad105facc5831c4fba23dd2a473e9bcf2fe5",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/vertical-72",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/vertical-72.pdf",
+      "sha256": "98cc0458914030e2989bf6523b1089765bb53456bd5d3b7e880eb5af810511de",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/vertical-72.ppm",
+      "oracle_sha256": "7739f8411fceeb3dcc41225e4ac1551ec864c3b5def8c4b35ae643e9140f6719",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/positive-144",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/positive-144.pdf",
+      "sha256": "4678caa3179be7be91781e2eb440cf6e588e3e4f15edd35838366f91ee18e5f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/positive-144.ppm",
+      "oracle_sha256": "3fa639704209f0c3a3a3e874226d3213e3475b62445fdc268a98f6245a279969",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/negative-144",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/negative-144.pdf",
+      "sha256": "6bcd451ad08e876eca892b55d1026675b3ad9daed04b698e67802f6d36da8246",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/negative-144.ppm",
+      "oracle_sha256": "5119c12c1a8eed7cef91fdb2530b2b0bdf21a6c38fb8867be72b060be2a5d33a",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/vertical-144",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/vertical-144.pdf",
+      "sha256": "98cc0458914030e2989bf6523b1089765bb53456bd5d3b7e880eb5af810511de",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/vertical-144.ppm",
+      "oracle_sha256": "644ec32e170d539c1b55a924367e324f3365eee7d2f26f1e96c359054cdafbaf",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/reversed",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/reversed.pdf",
+      "sha256": "089e7af50bf2c307b794b3b257f55915942aa3da56050e67ea4a7f6e0d30ef69",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/reversed.ppm",
+      "oracle_sha256": "b3f1c86af37bcd66f9634280e1daad105facc5831c4fba23dd2a473e9bcf2fe5",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/rotated",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/rotated.pdf",
+      "sha256": "b48b3abea51498488de663b27e921015329c06a46c1bea3f86008094a32549de",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/rotated.ppm",
+      "oracle_sha256": "d8d00151180181c8659a626c72cdae77ed19e6057abbc26ab74767ae025a0573",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/opacity",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/opacity.pdf",
+      "sha256": "dbf7c5862fcde237bda3e7dd487601cf864e96eee028196cc6fa73a9e92757d2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/opacity.ppm",
+      "oracle_sha256": "e799f0044ad4e07fb8fc292d5bf3252aa59136f4207e5b3fede686e9d5c83c36",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/coincident",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/coincident.pdf",
+      "sha256": "4408c359e13fabac5f7c1252f57c1c72676b639c77ac848ae50e1d412d638196",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/coincident.ppm",
+      "oracle_sha256": "d5c73074573735542a78812ce400e7b250c04f442f26cbee1fc05cee3bf424f0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/clipped",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/clipped.pdf",
+      "sha256": "66f68d0dfda4a7688f4f925537cd99cb2a4953c154df0919bafaa36862bdc701",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/clipped.ppm",
+      "oracle_sha256": "01520b71464ac6eb2dc7a0a76de0c3eb37c3d6843952fdd2ee2ca5dda9cf4a41",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/zero-width",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/zero-width.pdf",
+      "sha256": "80141a872a4f859b73db49318c5f6e6c14bd8798be36d5fdc86a4dd6382f22f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/zero-width.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/no-color",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/no-color.pdf",
+      "sha256": "ba344499305d61ab5d5c3e9c098165300ca31de23ee1892ac70c2fabe9e5b292",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/no-color.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/offset-absent",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/offset-absent.pdf",
+      "sha256": "7f6cf39960d34aff1043dbfc36e6232634b4ef81b386d7354b944e704da82593",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/offset-absent.ppm",
+      "oracle_sha256": "9ae650ac5fe3b5c2cee3d56e1851467d953472da36a85aab1ee7d631732bd7c5",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/extension-absent",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/extension-absent.pdf",
+      "sha256": "2a2ba595fb373d2e8ef72086b36f36a2716446a3d473213cc18920b460088b2d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/extension-absent.ppm",
+      "oracle_sha256": "df8fc0d33dfe43a3d22025092f3186e3abac1e3d2b597d2d9e61f5413ea0cf27",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/only-extension",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/only-extension.pdf",
+      "sha256": "822f0b8222dc7f63e2a1c03f1876a126dc1e733ec938dfe37a568a4870b889a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/only-extension.ppm",
+      "oracle_sha256": "5bd307fb56b5f3ca544d75f8b30c828ecca0af80bfef28bc3252ea0232c7abd0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/only-offset",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/only-offset.pdf",
+      "sha256": "25637fd62e1bf04cd0ce7de7bd2cfd11fb95da4a2b2c18bffbc8c5d26619bf84",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/only-offset.ppm",
+      "oracle_sha256": "7d91db53c967dbdb4b8c49823b2fd3cc75c533aed7500743f0b711492abbbf78",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/offset-without-leader",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/offset-without-leader.pdf",
+      "sha256": "b4b823f85b1c26cc01038f2ddb7c91e750795eae9a03071a92ac5c0332ce4726",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/offset-without-leader.ppm",
+      "oracle_sha256": "2f19e6f3c051c73a4c1fec43e727e80729fd7298d926e65ff3b5b6364c934ddf",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/indirect",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/indirect.pdf",
+      "sha256": "2c86dec7bed1dc3b4d6083780c4aaf7d1b61c1ece5d2db5c8d2080c6fb4d7f5e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/indirect.ppm",
+      "oracle_sha256": "4dd72aec8202f3e4cc7a1220f06bfde14580e1a0c634e995fcf0842a006a3c44",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/dashes",
+      "kind": "pdf",
+      "description": "Independent literal rectangle unions verify leader sign, offset, extension and shared stroke opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/dashes.pdf",
+      "sha256": "342bfb7339d264be9e8dee2bc14b2b5f89a98572c3ea6767de9cc2edbc9f5e99",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/dashes.ppm",
+      "oracle_sha256": "e8127413d72259f9e1b095ddc5741acd15c7c25d69a4a34665e22fa83257eed7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/butt-endings",
+      "kind": "pdf",
+      "description": "Endings belong to the translated line proper",
+      "expected": "render",
+      "requirements": [
+        "content-line-leaders",
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/leader_annotations/butt-endings.pdf",
+      "sha256": "09676a60ee3cbc3875768770861ec3f021823b1378936542a59c98a1a7f0fee8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/leader_annotations/butt-endings.ppm",
+      "oracle_sha256": "a214847219b0094d92324f0f7d7373870ef5eee440786b339926064890c1850c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "leader_annotations/length-type",
+      "kind": "pdf",
+      "description": "Leader fields validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/length-type.pdf",
+      "sha256": "2cd8457a2c696b142b3d35cabd23761725475d8db73a25b7d76a84c2a1982df4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "leader_annotations/extension-type",
+      "kind": "pdf",
+      "description": "Leader fields validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/extension-type.pdf",
+      "sha256": "6f999ed26ac077bc94a4f1e52ce807b998cd2528f78a07287f34905a1399a8a0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "leader_annotations/offset-type",
+      "kind": "pdf",
+      "description": "Leader fields validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/offset-type.pdf",
+      "sha256": "d1307170ffda19f28ee0fdba6b103e7652a0c8b9059d51794b19df0378808a7c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "leader_annotations/negative-extension",
+      "kind": "pdf",
+      "description": "Leader fields validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/negative-extension.pdf",
+      "sha256": "a7e616ac6e5f54a53b6f468e0d30ae37ac5ad42b77c1b8f6576b18f96c7ced01",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "leader_annotations/negative-offset",
+      "kind": "pdf",
+      "description": "Leader fields validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/negative-offset.pdf",
+      "sha256": "417f9ad57bbc1d4786e4755fa92421990d12508b1b690db2b8d16328d8c4324c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "leader_annotations/missing-length",
+      "kind": "pdf",
+      "description": "Leader fields validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-line-leaders"
+      ],
+      "path": "corpus/generated/leader_annotations/missing-length.pdf",
+      "sha256": "9e06597a81239eefa7fbed30d23aef2a09bb6cb50da761f16d2e0b4a7c6c537c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    }
+  ]
+}
