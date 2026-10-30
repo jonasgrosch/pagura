@@ -33,6 +33,7 @@ impl Planner<'_> {
             store: self.store,
             limits: self.limits,
             region: bounds,
+            upright: scope.upright,
         };
         let mut image = None;
         let prepared = match colour {
@@ -248,6 +249,7 @@ impl Planner<'_> {
             store: self.store,
             limits: self.limits,
             region: bounds,
+            upright: scope.upright,
         };
         let prepared = Source::prepare(
             paint,

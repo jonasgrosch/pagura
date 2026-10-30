@@ -236,6 +236,7 @@ pub(super) fn decode_once(placed: &Placed, limits: &Limits) -> Option<Arc<Decode
         store: &store,
         limits,
         region: placed.rect,
+        upright: 0.0,
     };
     let decode = decode_array(placed, usize::from(placed.source.components()));
     let plain = matches!(placed.source.mask(), pagura_image::SourceMask::None)
@@ -272,6 +273,7 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSam
         key,
         mask: MaskDescription::None,
         alpha_is_shape: false,
+        upright: 0.0,
     };
     let convert = placed.space.as_ref().map(|space| converter(space, 3));
     let prepared = Prepared::new(

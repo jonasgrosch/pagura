@@ -234,6 +234,7 @@ fn image_source() -> Source {
             x1: 8,
             y1: 2,
         },
+        upright: 0.0,
     };
     Source::Image(
         ImageSampler::prepare_with(

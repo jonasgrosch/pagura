@@ -159,6 +159,7 @@ fn gradient(channels: usize) -> Source {
         store: &store,
         limits: &Limits::default(),
         region: page_rect(64, 64),
+        upright: 0.0,
     };
     let mut functions = Meter::new(usize::MAX, "test functions");
     let source = Source::shading(

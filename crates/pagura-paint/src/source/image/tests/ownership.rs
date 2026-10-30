@@ -22,6 +22,7 @@ fn rgb_codes_drop_the_original_converter_and_tables() {
             key: None,
             mask: MaskDescription::None,
             alpha_is_shape: false,
+            upright: 0.0,
         },
         &image,
         None,
@@ -190,6 +191,7 @@ fn code_table_function_fees_remain_after_converter_is_dropped() {
                 key: None,
                 mask: MaskDescription::None,
                 alpha_is_shape: false,
+                upright: 0.0,
             },
             (decoded, None),
             (

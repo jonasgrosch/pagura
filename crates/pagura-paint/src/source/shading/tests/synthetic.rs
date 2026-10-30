@@ -178,6 +178,7 @@ fn context<'a>(
             x1: u32::MAX,
             y1: u32::MAX,
         },
+        upright: 0.0,
     }
 }
 

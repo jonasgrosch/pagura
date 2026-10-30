@@ -63,6 +63,7 @@ fn oriented_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32
         key: None,
         mask: MaskDescription::None,
         alpha_is_shape: false,
+        upright: 0.0,
     };
     let convert = converter(&space, 3);
     let prepared = Prepared::new(

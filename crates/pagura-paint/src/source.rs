@@ -112,6 +112,10 @@ pub(crate) struct PaintContext<'a> {
     /// intersected with the mark's bounds. Sources may skip what lies
     /// outside (rows of an image's decode, for example).
     pub(crate) region: DeviceRect,
+    /// The part of the full range by which near-upright image sampling may
+    /// move values in the buffer it paints into, as that buffer's storage
+    /// admits (ADR 0004 §3); zero for exact sampling.
+    pub(crate) upright: f64,
 }
 
 /// A prepared colour source.

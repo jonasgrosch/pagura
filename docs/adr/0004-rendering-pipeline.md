@@ -117,6 +117,31 @@ the contract and is closer to the oracle at every such pixel. A result beyond
 one level of its oracle is a correctness change and needs its own decision. A
 mechanism admitted under this rule records its bound here.
 
+**Near-upright image placements.** Producers write float noise into the cross
+terms of image matrices, which sends exact sampling down its turned paths.
+The sampler may drop the cross terms, keeping their contribution at the
+centre of the image's device extent in the offsets, when that moves no sample
+position a pixel reaches by more than 2^-12 of a sample or of the pixel's
+footprint along that axis (`Geometry::near_upright`).
+- **Source bound.** If positions move by at most `δx` and `δy` samples, a
+  texel lane moves by at most `r = δx / min(|a|, 1) + δy / min(|d|, 1)` of its
+  range, for a footprint `|a|` by `|d|` samples. An area average over `|a|`
+  samples moves by at most `δx / |a|` of it, and a bilinear value by at most
+  `δx`. Every lane (converted colour, alpha and shape) lies within the full
+  range, so `r` bounds each lane as a part of the full range.
+- **Composite bound.** As a store, the image then injects at most `511 r`
+  levels: `255 r` through its colour, and `256 r` through its alpha over a
+  stored value of at most 256 levels.
+- **Admission (§6).** Storage admission charges this like any other source
+  error: `2^-12 + 511 r` levels as the store's η in the N16 room, and
+  `511 Σ r` over a buffer's near-upright stores in its F32 bound. A buffer
+  takes the narrowest format that admits the charge, N16 before F32. Where
+  none does, and in every F64 buffer (forced, feeding an amplifying
+  operation, or a child of one), its images sample exactly.
+- **Sampler.** The sampler drops the cross terms only where its own `r` is at
+  most the part its buffer's admission charged. Nearest samples keep the
+  exact placement, since a move of any size can select another sample.
+
 ### 4. Coverage and glyphs
 
 The band rasterizer has one signed-area cell kernel. Prepared marks contain

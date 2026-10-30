@@ -374,6 +374,7 @@ impl ImageSampler {
             },
             mask: description,
             alpha_is_shape: context.composite.alpha_is_shape,
+            upright: context.upright,
         };
         let convert = match description.space {
             Some(space) => {
@@ -424,6 +425,34 @@ impl ImageSampler {
         {
             paint.0.curved = curved(&paint.0, samples, bytes);
         }
+    }
+
+    /// The part of the full range by which sampling `image` near upright
+    /// under `unit_to_device` may move a texel lane's value, its mask's
+    /// included; zero where both sample exactly ([`Geometry::near_upright`]).
+    /// The storage survey charges it to the buffer the image paints into,
+    /// which admits at most that part (ADR 0004 §3).
+    pub(crate) fn near_upright_part(image: &Image, unit_to_device: Transform) -> f64 {
+        let Some(inverse) = unit_to_device.inverse() else {
+            return 0.0;
+        };
+        // An exact quarter turn is upright once transposed.
+        if Orientation::of(unit_to_device) == Orientation::Transposed {
+            return 0.0;
+        }
+        let masks = match &image.mask {
+            ImageMask::Stencil(mask) | ImageMask::Soft { mask, .. } => Some(&mask.source),
+            ImageMask::None | ImageMask::ColorKey(_) | ImageMask::Embedded => None,
+        };
+        std::iter::once(&image.source)
+            .chain(masks)
+            .filter_map(|source| {
+                let size = (source.width(), source.height());
+                exact_placement(size, source.interpolate(), inverse, Orientation::Rows)
+                    .ok()?
+                    .near_upright()
+            })
+            .fold(0.0, |part, (_, near)| part.max(near))
     }
 
     fn new(prepared: Option<Box<Prepared>>, channels: usize) -> Self {
@@ -1179,19 +1208,41 @@ fn validate(image: &DecodedImage) -> Result<()> {
 }
 
 /// The geometry of `image`, stored in `orientation`, under the
-/// device-to-unit-square `inverse`.
+/// device-to-unit-square `inverse`; upright where that is near it and
+/// moves texel values by no more than the `upright` part of the full range
+/// that the target's storage admits ([`Geometry::near_upright`]).
 fn placement(
     image: &DecodedImage,
     inverse: Transform,
     orientation: Orientation,
+    upright: f64,
 ) -> Result<Geometry> {
-    let (width, height) = (image.width, image.height);
-    match orientation {
-        Orientation::Rows => Geometry::new((width, height), image.interpolate, inverse),
+    let geometry = exact_placement(
+        (image.width, image.height),
+        image.interpolate,
+        inverse,
+        orientation,
+    )?;
+    Ok(match geometry.near_upright() {
+        Some((near, part)) if part <= upright => near,
+        _ => geometry,
+    })
+}
+
+/// The exact geometry of samples stored `size` in `orientation`, under the
+/// device-to-unit-square `inverse`.
+fn exact_placement(
+    (width, height): (u32, u32),
+    interpolate: bool,
+    inverse: Transform,
+    orientation: Orientation,
+) -> Result<Geometry> {
+    Ok(match orientation {
+        Orientation::Rows => Geometry::new((width, height), interpolate, inverse)?,
         Orientation::Transposed => {
-            Ok(Geometry::new((height, width), image.interpolate, inverse)?.transposed())
+            Geometry::new((height, width), interpolate, inverse)?.transposed()
         }
-    }
+    })
 }
 
 /// Whether `base` converts into the target as the identity with clipping
@@ -1214,6 +1265,8 @@ struct Description<'a> {
     key: Option<&'a [[u16; 2]]>,
     mask: MaskDescription<'a>,
     alpha_is_shape: bool,
+    /// [`PaintContext::upright`] of the buffer the image paints into.
+    upright: f64,
 }
 
 /// An image's explicit mask, apart from its samples.
@@ -1250,7 +1303,7 @@ impl Prepared {
         } = budgets;
         bytes.charge_items::<Self>(1)?;
         validate(&decoded.image)?;
-        let geometry = placement(&decoded.image, inverse, orientation)?;
+        let geometry = placement(&decoded.image, inverse, orientation, description.upright)?;
         let mask = match (mask, description.mask) {
             (Some(image), MaskDescription::Stencil | MaskDescription::Soft { .. }) => {
                 validate(&image.image)?;
@@ -1272,7 +1325,8 @@ impl Prepared {
                     independent: if fused {
                         None
                     } else {
-                        let geometry = placement(&image.image, inverse, orientation)?;
+                        let geometry =
+                            placement(&image.image, inverse, orientation, description.upright)?;
                         let plan = Sampling::new(&geometry, columns, bytes)?;
                         Some((geometry, plan))
                     },
