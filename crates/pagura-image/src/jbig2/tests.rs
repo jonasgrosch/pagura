@@ -73,6 +73,28 @@ fn contradictory_page_capabilities_are_reported_without_changing_samples() {
 }
 
 #[test]
+fn reported_page_capability_repair_does_not_waive_live_bitmap_limit() {
+    use pagura_core::{Diagnostics, Recovery};
+
+    let mut data = fixture("jbig2", "intermediate-default-black.jb2");
+    // T.88 7.4.8 page fields: the contradiction is in the flags byte.
+    *data.get_mut(11 + 16).unwrap() &= !32;
+    let limits = Limits {
+        // Enough for the page; an auxiliary bitmap must still be charged.
+        decoded_bytes: fixture("jbig2", "intermediate-default-black.out").len(),
+        ..Limits::default()
+    };
+    let mut diagnostics = Diagnostics::new(Recovery::Repair);
+    let error = super::decode_with_diagnostics(&data, None, &limits, &mut diagnostics).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(diagnostics.as_slice().len(), 1);
+    assert_eq!(
+        diagnostics.as_slice()[0].repair(),
+        Some(super::repairs::PAGE_CAPABILITIES)
+    );
+}
+
+#[test]
 fn independent_bitmaps_and_hostile_vectors() {
     let mut count = 0;
     let mut failures = Vec::new();

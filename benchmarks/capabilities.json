@@ -189,7 +189,7 @@
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
-    "corpus/manifests/recovery.json": "16ede4690d1321a42cd069a7cd6ffd6b77d69589ccb8a0943525ef0adef3d558"
+    "corpus/manifests/recovery.json": "f8f9ad8259c7ebe415149d8bb24eb8e0b82801f59db524308c5c50b896bacc69"
   },
   "capabilities": [
     {
