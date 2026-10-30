@@ -1,0 +1,626 @@
+{
+  "schema": 2,
+  "area": "circle_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "circle_annotations/circle-outline-72",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-outline-72.pdf",
+      "sha256": "53edc7773645afd79feae65d213f3091249bcefab957584ea752dfab42d8caa0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-outline-72.ppm",
+      "oracle_sha256": "6fbc46a18384d464df0704e2188e539fdfb26edb6e9c37ab6436e497be2cd7db",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-fill-72",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-fill-72.pdf",
+      "sha256": "c76ef6c8321a8af54e5093842b8fd93641441fa45120d9677830c5445182d3d6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-fill-72.ppm",
+      "oracle_sha256": "35fe7c0018f181eb86caefb13bcb74235ec56c354c3f0d78d01887206a769bd8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-stored-72",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-stored-72.pdf",
+      "sha256": "aa856d2ac71cd5ec39ab40f04d2f384e3163413f34015ac89cb4f4537a967d40",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-stored-72.ppm",
+      "oracle_sha256": "35fe7c0018f181eb86caefb13bcb74235ec56c354c3f0d78d01887206a769bd8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-border-fill-72",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-border-fill-72.pdf",
+      "sha256": "88d4d3a5f177c178b10be0523e3d793efe217575e7d95674550b7da55a015b4b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-border-fill-72.ppm",
+      "oracle_sha256": "2c5b66b8ffb1eef5416a251788aee9a420816e554bb96ef8de990c50d0e11292",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/ellipse-fill-72",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/ellipse-fill-72.pdf",
+      "sha256": "213c9559144c6bdeb904f0d4fd16698d759c023d307d85bccaa413fd3806695f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/ellipse-fill-72.ppm",
+      "oracle_sha256": "1d2cf3ef58ca8f0da2076d59604370d15adf891a9609adfa0d12abce0d1bc3bb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/ellipse-rotated-72",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/ellipse-rotated-72.pdf",
+      "sha256": "5aec596bff2ae5a8b7f2e0b627844cc1bce99428f1c4d51307b576fc72ab4467",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/ellipse-rotated-72.ppm",
+      "oracle_sha256": "d2ef38058bfa170fdd3be84472ce7e53a8d510194e5ac2bc8020e9becdf9c6d8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-outline-144",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-outline-144.pdf",
+      "sha256": "53edc7773645afd79feae65d213f3091249bcefab957584ea752dfab42d8caa0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-outline-144.ppm",
+      "oracle_sha256": "37fc50d46aeeab61b0ec7ffc615dd36f313b1cd30f7791844cae60862aafe839",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-fill-144",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-fill-144.pdf",
+      "sha256": "c76ef6c8321a8af54e5093842b8fd93641441fa45120d9677830c5445182d3d6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-fill-144.ppm",
+      "oracle_sha256": "65486c9c33c54ee4f84711caf8f9c4e496d5264cf1582cc53445e55fff72d88e",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-stored-144",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-stored-144.pdf",
+      "sha256": "aa856d2ac71cd5ec39ab40f04d2f384e3163413f34015ac89cb4f4537a967d40",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-stored-144.ppm",
+      "oracle_sha256": "65486c9c33c54ee4f84711caf8f9c4e496d5264cf1582cc53445e55fff72d88e",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-border-fill-144",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-border-fill-144.pdf",
+      "sha256": "88d4d3a5f177c178b10be0523e3d793efe217575e7d95674550b7da55a015b4b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-border-fill-144.ppm",
+      "oracle_sha256": "da4f5e34480c3a91a999f5d4622113e99c0bbb44150c62a15a3f9c4dc5e03f42",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/ellipse-fill-144",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/ellipse-fill-144.pdf",
+      "sha256": "213c9559144c6bdeb904f0d4fd16698d759c023d307d85bccaa413fd3806695f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/ellipse-fill-144.ppm",
+      "oracle_sha256": "70a366a356a77db32c6eaa43181f034d5b7fb92055e196406670aec05fa751ae",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/ellipse-rotated-144",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/ellipse-rotated-144.pdf",
+      "sha256": "5aec596bff2ae5a8b7f2e0b627844cc1bce99428f1c4d51307b576fc72ab4467",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/ellipse-rotated-144.ppm",
+      "oracle_sha256": "d9ad904dfa344a622ad6dca10ae67929cc62d8ff9cbe56b073df5362b7d641a8",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-opacity",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-opacity.pdf",
+      "sha256": "1aeb054d7303e902286e2fd9e185571eb79c301855a8a649feb4ea7148e42b71",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-opacity.ppm",
+      "oracle_sha256": "7a144da31e458dd7b9acff49fdac98fad15ac0ce19a3f92d18edf463ddd5eb7e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/no-mark",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/no-mark.pdf",
+      "sha256": "f6736e898a9847b89c6ef4c05a830c78675a6bc83646f3a23d03e94f23cc700e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/no-mark.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/transparent-border",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/transparent-border.pdf",
+      "sha256": "62d00303d8ba2e0ad56753807821f9b78af492ffcb093fc94496e0074a48d65a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/transparent-border.ppm",
+      "oracle_sha256": "9037922228d80b4ef0a5e24835bbd0e05f60d667ede0d308e5a1213d73509da0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-rd",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-rd.pdf",
+      "sha256": "3778fad933e59bf2e5fb8ef656f37b93be955046f4a574bace5b83d6fa69b5d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-rd.ppm",
+      "oracle_sha256": "7a1ed12d39204133839eb3af4d5c37f3539aadb25057ae4baa17c5044ecdf5aa",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-null",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-null.pdf",
+      "sha256": "d92b6e394427216f549888fb8d74a25d965dba6d97e6251506f88f4608788a61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-null.ppm",
+      "oracle_sha256": "35fe7c0018f181eb86caefb13bcb74235ec56c354c3f0d78d01887206a769bd8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/circle-empty-effect",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/circle-empty-effect.pdf",
+      "sha256": "dfdbddaf2a48f08e28bb447b1de1421cbb74852142fe1cebee6505c8c5463bf8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/circle-empty-effect.ppm",
+      "oracle_sha256": "35fe7c0018f181eb86caefb13bcb74235ec56c354c3f0d78d01887206a769bd8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/square-rd",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/square-rd.pdf",
+      "sha256": "8cb44427849a678f36b7e2c2742df772bbaed0130fafdc03c5b20ee2aa4425cd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/square-rd.ppm",
+      "oracle_sha256": "7c7f4d3a59aab29f4e4268e98d35cca29c097cb6da1ec3928a421ad839ba8bc6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/square-null",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/square-null.pdf",
+      "sha256": "b308d7cc6939ee1b24ce885f967d0625af1fe6dccfd9eae3c73cde5c737b7b54",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/square-null.ppm",
+      "oracle_sha256": "9bd520cced6883c25c4812f98ad43dde346dbe6b5837e313ef398bb891ee4501",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/square-empty-effect",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/square-empty-effect.pdf",
+      "sha256": "90b5278e75611c3c676af90393cde5a9050a9078b6ade4b59b14711b81e99ba5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/square-empty-effect.ppm",
+      "oracle_sha256": "9bd520cced6883c25c4812f98ad43dde346dbe6b5837e313ef398bb891ee4501",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/indirect-rd",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/indirect-rd.pdf",
+      "sha256": "e5bc649c94f78ff327d64ef7f2a503d14aa38e60d74f56c5d1c46173a1e7b418",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/indirect-rd.ppm",
+      "oracle_sha256": "7a1ed12d39204133839eb3af4d5c37f3539aadb25057ae4baa17c5044ecdf5aa",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/reversed-rectangle",
+      "kind": "pdf",
+      "description": "Closed-form conic/rectangle pixel areas validate generated shape bounds, interior and border opacity",
+      "expected": "render",
+      "requirements": [
+        "content-circle-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/circle_annotations/reversed-rectangle.pdf",
+      "sha256": "c2c7a0c96bac4f5d452138efc7fa28bedb0621c09a4b2154bacd3e7815606ca0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/circle_annotations/reversed-rectangle.ppm",
+      "oracle_sha256": "35fe7c0018f181eb86caefb13bcb74235ec56c354c3f0d78d01887206a769bd8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "circle_annotations/rd-type",
+      "kind": "pdf",
+      "description": "Malformed rectangle differences and effect types refuse generation",
+      "expected": "open",
+      "requirements": [
+        "content-circle-appearances"
+      ],
+      "path": "corpus/generated/circle_annotations/rd-type.pdf",
+      "sha256": "d8fa9076d15d0b37ea80c335584be1243aa2f913037f72a7672b9e71c8ed088f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "circle_annotations/rd-short",
+      "kind": "pdf",
+      "description": "Malformed rectangle differences and effect types refuse generation",
+      "expected": "open",
+      "requirements": [
+        "content-circle-appearances"
+      ],
+      "path": "corpus/generated/circle_annotations/rd-short.pdf",
+      "sha256": "f04cdceeae9be00126d1ab6cb5a7e703d61fb8e30527e7dc0e96cd15f2deed7f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "circle_annotations/rd-negative",
+      "kind": "pdf",
+      "description": "Malformed rectangle differences and effect types refuse generation",
+      "expected": "open",
+      "requirements": [
+        "content-circle-appearances"
+      ],
+      "path": "corpus/generated/circle_annotations/rd-negative.pdf",
+      "sha256": "170ac394d6d7671c13de5e00403736751f46b4bd655a4e2011f38416c2de0f69",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "circle_annotations/rd-width",
+      "kind": "pdf",
+      "description": "Malformed rectangle differences and effect types refuse generation",
+      "expected": "open",
+      "requirements": [
+        "content-circle-appearances"
+      ],
+      "path": "corpus/generated/circle_annotations/rd-width.pdf",
+      "sha256": "af331b84439ba19427c0e4de95022128c019ff39ad343acb34475d5c3e2bcd9a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "circle_annotations/rd-height",
+      "kind": "pdf",
+      "description": "Malformed rectangle differences and effect types refuse generation",
+      "expected": "open",
+      "requirements": [
+        "content-circle-appearances"
+      ],
+      "path": "corpus/generated/circle_annotations/rd-height.pdf",
+      "sha256": "f32fe44bbb4a76521fb21de8f551f4c2af6e33975af7b543f92160e141ec6bf5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "circle_annotations/rd-entry",
+      "kind": "pdf",
+      "description": "Malformed rectangle differences and effect types refuse generation",
+      "expected": "open",
+      "requirements": [
+        "content-circle-appearances"
+      ],
+      "path": "corpus/generated/circle_annotations/rd-entry.pdf",
+      "sha256": "70fbe8f4f7a45d179001d5fec186a6dd1d881f21909e6adcc8575542dfb3c834",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "circle_annotations/effect-type",
+      "kind": "pdf",
+      "description": "Malformed rectangle differences and effect types refuse generation",
+      "expected": "open",
+      "requirements": [
+        "content-circle-appearances"
+      ],
+      "path": "corpus/generated/circle_annotations/effect-type.pdf",
+      "sha256": "76250524e95ffcb46e8d96987432b8cb7627ca72933d494f06572dcbf5f6c99c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "circle_annotations/effect-style",
+      "kind": "pdf",
+      "description": "Malformed rectangle differences and effect types refuse generation",
+      "expected": "open",
+      "requirements": [
+        "content-circle-appearances"
+      ],
+      "path": "corpus/generated/circle_annotations/effect-style.pdf",
+      "sha256": "b4e39bd84b7e16caec879f34233680f4df34e40bd9000f1a015317552834b070",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "circle_annotations/cloudy",
+      "kind": "pdf",
+      "description": "Curved-stroke synthesis explicitly refuses pending separate source-curve accuracy qualification",
+      "expected": "unsupported",
+      "requirements": [
+        "content-circle-appearances"
+      ],
+      "path": "corpus/generated/circle_annotations/cloudy.pdf",
+      "sha256": "43b74135f3173b9a3b7ae2c92633c996895240cca4a8a6c67aafe2e5b7e128ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    }
+  ]
+}

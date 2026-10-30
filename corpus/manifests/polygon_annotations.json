@@ -1,0 +1,891 @@
+{
+  "schema": 2,
+  "area": "polygon_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "polygon_annotations/triangle-72",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/triangle-72.pdf",
+      "sha256": "d5f2970acba62b4a6d53f2d517e39d5544a18896cd3e7c6afcb94ac0e5ddbeb9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/triangle-72.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/triangle-stored-72",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/triangle-stored-72.pdf",
+      "sha256": "0c6115b336e7066db8a01e78aafc370747b6aa2924d56831c445e9bf4ed88a8d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/triangle-stored-72.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/polygon-border-72",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/polygon-border-72.pdf",
+      "sha256": "160a1cfaa11f6164ee1db87ffdb21e9c343f4073591a5b8d7cec6b81ec03957b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/polygon-border-72.ppm",
+      "oracle_sha256": "09f7487f7e21ee4367a3624402d124016a0758a1140360227e28ec0ad4a2529a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/polyline-72",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/polyline-72.pdf",
+      "sha256": "ec1e55273de778576e36c52c33e04d4c67f80353a76f70e753e806b433db2efa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/polyline-72.ppm",
+      "oracle_sha256": "78d18d1d8c5ab3036a648de5251f1019ce60fa673c64c89b7c15732447503d77",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/curve-fill-72",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/curve-fill-72.pdf",
+      "sha256": "c4cec06ac84c7b23a56968bd568343e2b10dd9cc614f719fd68a429c7ea7fee3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/curve-fill-72.ppm",
+      "oracle_sha256": "8f34befde261f2d82ed490f7898ab0e894cc80dbfe07d28fc6be1dd70eae8f9a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/curve-line-72",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/curve-line-72.pdf",
+      "sha256": "69f0f32e547e392c6eb5232c54b6d02af088555810e6ea3951949d5fa66c3246",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/curve-line-72.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/triangle-144",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/triangle-144.pdf",
+      "sha256": "d5f2970acba62b4a6d53f2d517e39d5544a18896cd3e7c6afcb94ac0e5ddbeb9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/triangle-144.ppm",
+      "oracle_sha256": "3826231a42f7ee43fb6167dcb098a5e7db2cacfcf1b35c67f0f42e9fd832077f",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/triangle-stored-144",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/triangle-stored-144.pdf",
+      "sha256": "0c6115b336e7066db8a01e78aafc370747b6aa2924d56831c445e9bf4ed88a8d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/triangle-stored-144.ppm",
+      "oracle_sha256": "3826231a42f7ee43fb6167dcb098a5e7db2cacfcf1b35c67f0f42e9fd832077f",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/polygon-border-144",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/polygon-border-144.pdf",
+      "sha256": "160a1cfaa11f6164ee1db87ffdb21e9c343f4073591a5b8d7cec6b81ec03957b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/polygon-border-144.ppm",
+      "oracle_sha256": "e85f945b6ee84f217383c2be24177149b340ffa1eb509f3d93a602c0f9607717",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/polyline-144",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/polyline-144.pdf",
+      "sha256": "ec1e55273de778576e36c52c33e04d4c67f80353a76f70e753e806b433db2efa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/polyline-144.ppm",
+      "oracle_sha256": "a6068342c7bbe60c8713d44ca06becba3466e3695b33015b71e787fbebd61b9c",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/curve-fill-144",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/curve-fill-144.pdf",
+      "sha256": "c4cec06ac84c7b23a56968bd568343e2b10dd9cc614f719fd68a429c7ea7fee3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/curve-fill-144.ppm",
+      "oracle_sha256": "0931d5ed0fcf28910a6a007ff3a6fd14a99bac9bd47c0277a8d2bcb7c66e6506",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/curve-line-144",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/curve-line-144.pdf",
+      "sha256": "69f0f32e547e392c6eb5232c54b6d02af088555810e6ea3951949d5fa66c3246",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/curve-line-144.ppm",
+      "oracle_sha256": "9ed78f1f4652ea5150d50371e97d4884422191a79907d62ef24cce7c38fe9bc2",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/clockwise",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/clockwise.pdf",
+      "sha256": "dc397cb5c24597715db0c78e05540bd2baac0d45a039f59e479226a229e4d7fd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/clockwise.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/rotated",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/rotated.pdf",
+      "sha256": "d172e8bc7ee46f521eb599feeb2bd4cb40ae952f76aabaa2664fea6ee8cb663f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/rotated.ppm",
+      "oracle_sha256": "b7036a6bf425bafbd5b3983f81657ae017412a040eda74d35c4ba86c9cdefb62",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/separate-opacity",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/separate-opacity.pdf",
+      "sha256": "8bcca6dedd770428224684fddc44fe457b5f2d2fa25ccd41a8d4722e124a7a8b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/separate-opacity.ppm",
+      "oracle_sha256": "6dfcb70aa2bd7abc58860e3345279fbbffce14becea70df0a0b67328c8414006",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/self-crossing",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/self-crossing.pdf",
+      "sha256": "cd455394696be7b2cfcc75fa7537cfc142cdc9c11148a4fabbe9cbb3a81ac221",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/self-crossing.ppm",
+      "oracle_sha256": "bb550d72a9b9e807fa6de8cc1906cf49dc24916f87d233ba89da1b1318869a1f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/path-lines",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-lines.pdf",
+      "sha256": "14dc1b13c7873f55ec9cc046373b4384150fc19f4cefd4c7c11dd6c1cf71f57c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/path-lines.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/path-precedence",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-precedence.pdf",
+      "sha256": "f2f479b983fbfee629180fddac94a102c1c40700eb3ea3b5649b515ab0eb5234",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/path-precedence.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/path-ignored-coordinate",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-ignored-coordinate.pdf",
+      "sha256": "4fbfd58d5d9a74417a0b48384a0be2317a7dbfd157260402a31964c85f79c37e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/path-ignored-coordinate.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/path-ignored-cycle",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-ignored-cycle.pdf",
+      "sha256": "940270ebdb696765c78916b42198bdcd67b15f525e22dd446942d00d07704a90",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/path-ignored-cycle.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/null-path",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/null-path.pdf",
+      "sha256": "af052b125c7b11b8fafd6e3be81e4d0b210d07020304334eaafc6eb1caccd81a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/null-path.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/plain-effect",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/plain-effect.pdf",
+      "sha256": "fbc10d6f112cb481a1d79122d5b0b1f9d0114d63b09c8d9623496cc4249fca84",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/plain-effect.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/null-effect",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/null-effect.pdf",
+      "sha256": "ac480e35a682553fd08d9b7c44d34a9087d8545aa5b6e90774fbd10d482ec772",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/null-effect.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/none-endings",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/none-endings.pdf",
+      "sha256": "6d6324dabacbc2b59359c59a3f627a3625c52c44ab427ea8c3805131acf57030",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/none-endings.ppm",
+      "oracle_sha256": "78d18d1d8c5ab3036a648de5251f1019ce60fa673c64c89b7c15732447503d77",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/null-endings",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/null-endings.pdf",
+      "sha256": "efe8b3c2a7bb5a5cb3b4e3c4dbbfb49baacf40a00042f8c05af5878d0d20a732",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/null-endings.ppm",
+      "oracle_sha256": "78d18d1d8c5ab3036a648de5251f1019ce60fa673c64c89b7c15732447503d77",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/indirect-vertices",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/indirect-vertices.pdf",
+      "sha256": "2a27a8c69c0a9cf08d5b10c49d621896124d4112cda83bf379d539d065e882c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/indirect-vertices.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/indirect-path",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/indirect-path.pdf",
+      "sha256": "9f1693e0f65671bb1a95d11837b01eb1b0fad9ef26f86fea1ffaf95e9c16998e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/indirect-path.ppm",
+      "oracle_sha256": "8f34befde261f2d82ed490f7898ab0e894cc80dbfe07d28fc6be1dd70eae8f9a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/no-mark",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/no-mark.pdf",
+      "sha256": "bc657b820f81454617e9d4ef145355a88bf8f067db39892dfa9b7359fa68a428",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/no-mark.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/no-stroke-color",
+      "kind": "pdf",
+      "description": "Independent convex/region coverage and quadratic integrals verify vertices and PDF 2.0 path appearances",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/polygon_annotations/no-stroke-color.pdf",
+      "sha256": "019144a7c18a36bea77563a2f75d264972637df2f297879922615667928162f2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/no-stroke-color.ppm",
+      "oracle_sha256": "5e600ec2a01551a1522cd2deb17b83052150c448dd58aa7039f2efac0be5d0d6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "polygon_annotations/vertices-missing",
+      "kind": "pdf",
+      "description": "Malformed vertex geometry fails before painting",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/vertices-missing.pdf",
+      "sha256": "634f3dfe9956b13cbdd9900dbe33289e68406a154fda154e9648c1eef2da92b5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/vertices-null",
+      "kind": "pdf",
+      "description": "Malformed vertex geometry fails before painting",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/vertices-null.pdf",
+      "sha256": "113d5a9cb92cf43acecaceeec37fbe7e9180359169c21aac93957904d5f13dba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/vertices-type",
+      "kind": "pdf",
+      "description": "Malformed vertex geometry fails before painting",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/vertices-type.pdf",
+      "sha256": "36b96ac33317042da52988575c1d0e912a5f2ed534e3750de55d9b60a72ba98f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/vertices-empty",
+      "kind": "pdf",
+      "description": "Malformed vertex geometry fails before painting",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/vertices-empty.pdf",
+      "sha256": "018748aee58b21664764b3d8ae15b11e335f69adb9648e89fd3a76a0a2524137",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/vertices-odd",
+      "kind": "pdf",
+      "description": "Malformed vertex geometry fails before painting",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/vertices-odd.pdf",
+      "sha256": "4a4e50eedf3dfac6349d912a1727a147a1d91bd867e2275fae3befee9c9c6e21",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/vertices-number",
+      "kind": "pdf",
+      "description": "Malformed vertex geometry fails before painting",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/vertices-number.pdf",
+      "sha256": "ca84d938c97797e0d580462dfe20c685ea7719a586d9b16df9baf5be9a861f04",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/path-type",
+      "kind": "pdf",
+      "description": "PDF 2.0 paths require a moveto pair followed by line pairs or cubic operands",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-type.pdf",
+      "sha256": "a9c54c5cb4367b5aee2a04510c87e625196df8eada1a14b2076b7ed9493bafdb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/path-empty",
+      "kind": "pdf",
+      "description": "PDF 2.0 paths require a moveto pair followed by line pairs or cubic operands",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-empty.pdf",
+      "sha256": "2eca29c9651dc5ea5cc1a7c73a40908f8e1e66060d58811efd18dd3532c3c4c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/path-first-curve",
+      "kind": "pdf",
+      "description": "PDF 2.0 paths require a moveto pair followed by line pairs or cubic operands",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-first-curve.pdf",
+      "sha256": "e02e7a82c2af1a97c2b7725c1032227018130cb15cf17dfca678a3a5f4e7d13a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/path-operands",
+      "kind": "pdf",
+      "description": "PDF 2.0 paths require a moveto pair followed by line pairs or cubic operands",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-operands.pdf",
+      "sha256": "6b3fcedd04a146882b559262560cd5d575b10f228a38059c8c9798623bb82062",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/path-entry",
+      "kind": "pdf",
+      "description": "PDF 2.0 paths require a moveto pair followed by line pairs or cubic operands",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-entry.pdf",
+      "sha256": "bbedd71f73f0fc22d2e419c5dbf5657afedcc1e3824f6ac2ea300c280a399663",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/path-number",
+      "kind": "pdf",
+      "description": "PDF 2.0 paths require a moveto pair followed by line pairs or cubic operands",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/path-number.pdf",
+      "sha256": "b2b4e7616c5731aef7517610f881e209102fb273bd09183be54da0ac2dbe70cb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/effect",
+      "kind": "pdf",
+      "description": "Malformed effect/ending declarations fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/effect.pdf",
+      "sha256": "7042b5c0f3c5e2f26b558ead9fdf9daffdd8a7e9db3493eda90c7d39efe6de22",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/endings-type",
+      "kind": "pdf",
+      "description": "Malformed effect/ending declarations fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/endings-type.pdf",
+      "sha256": "9e6360d1197ed43e6226c31e55045dead10fb8ada24ef7e9e35e11ef211fec8c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/endings-count",
+      "kind": "pdf",
+      "description": "Malformed effect/ending declarations fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/endings-count.pdf",
+      "sha256": "1b267695de0da906d28b3b2d7c290da87099351f371711ded6bc255e669e2fd0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/ending-name",
+      "kind": "pdf",
+      "description": "Malformed effect/ending declarations fail explicitly",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/ending-name.pdf",
+      "sha256": "ff0dae2c7d61fc7faeb6a5dd426bd8defdcdfc28463f656a4be2ec2253131226",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "polygon_annotations/cloudy",
+      "kind": "pdf",
+      "description": "Default zero cloud intensity keeps the existing polygon outline",
+      "expected": "open",
+      "requirements": [
+        "content-polygon-appearances"
+      ],
+      "path": "corpus/generated/polygon_annotations/cloudy.pdf",
+      "sha256": "ebcc868dbdc280ff1c30f47f9cfbda6f91dd1caea69ed5f493ebffa914f26fd4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "polygon_annotations/arrow",
+      "kind": "pdf",
+      "description": "Zero-width open endings paint no marks",
+      "expected": "render",
+      "requirements": [
+        "content-polygon-appearances",
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/polygon_annotations/arrow.pdf",
+      "sha256": "d255789a9722c8c3e8d3509d648c63fd844fca4f066b634841606794e94fb481",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/polygon_annotations/arrow.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    }
+  ]
+}

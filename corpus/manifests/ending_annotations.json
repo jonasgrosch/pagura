@@ -1,0 +1,1008 @@
+{
+  "schema": 2,
+  "area": "ending_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "ending_annotations/line-Square-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Square-72.pdf",
+      "sha256": "e70e9d0db0393c4f6bc5999cb109cc8fbf655ddead6b12a001d0869e332a72b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Square-72.ppm",
+      "oracle_sha256": "7c5b2bb1cb473a91e3e4da66f394e82b576bf160c7767543e8a3eb78fefc0bec",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-Square-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Square-144.pdf",
+      "sha256": "e70e9d0db0393c4f6bc5999cb109cc8fbf655ddead6b12a001d0869e332a72b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Square-144.ppm",
+      "oracle_sha256": "c239bd9cb5fb549a75568ea804439785e25432783ac17680586cddbb44e61a89",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-Circle-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Circle-72.pdf",
+      "sha256": "43f2c8b1cd390aee6985b83506d21ac196bea3124a62f52ad069896432444ea8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Circle-72.ppm",
+      "oracle_sha256": "96ad8fcc060bd7a7c82644d9cc1db381fe92503e6c347fb45ec6cdbf3f7ed2a6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-Circle-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Circle-144.pdf",
+      "sha256": "43f2c8b1cd390aee6985b83506d21ac196bea3124a62f52ad069896432444ea8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Circle-144.ppm",
+      "oracle_sha256": "836ebf444c343ff80c77d95c24860d66c8d6a456ade8a8b26c58abe59bf4145c",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-Diamond-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Diamond-72.pdf",
+      "sha256": "47fdac4df6c6b5ac268809e3488ebdc1d9fdbcd7635072497b9f473c3e71436c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Diamond-72.ppm",
+      "oracle_sha256": "0a9a1f1060816420642b40c84eb12095425a8554c839cdd13a0e9023ae9fbfaf",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-Diamond-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Diamond-144.pdf",
+      "sha256": "47fdac4df6c6b5ac268809e3488ebdc1d9fdbcd7635072497b9f473c3e71436c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Diamond-144.ppm",
+      "oracle_sha256": "142a7270eb0c507b0d3b0954d61515e5ae0d38d1d41a7ce77e4597aa73154db4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-OpenArrow-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-OpenArrow-72.pdf",
+      "sha256": "b0d1106b69e74c0d530755d360d73488b1e1e55db6bf305c69ff7f450d7fa8c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-OpenArrow-72.ppm",
+      "oracle_sha256": "0e4c93020b87c711ed24c670b1ed2ca490150e28e63b17d4e00c809af589c25c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-OpenArrow-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-OpenArrow-144.pdf",
+      "sha256": "b0d1106b69e74c0d530755d360d73488b1e1e55db6bf305c69ff7f450d7fa8c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-OpenArrow-144.ppm",
+      "oracle_sha256": "4485c28dd2fe3d1c0f246c00d81403a406c27cb307c8ac0c241ca0ca68bb68a4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-ClosedArrow-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-ClosedArrow-72.pdf",
+      "sha256": "b5aab211eeb293be7a9eef9394902ff8573a368f1ae64b4409b81b1a5894887a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-ClosedArrow-72.ppm",
+      "oracle_sha256": "066e408688fdc0c4a3fb2e50977b7bc1009635f804e48a2b03d5b0269b5d45a5",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-ClosedArrow-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-ClosedArrow-144.pdf",
+      "sha256": "b5aab211eeb293be7a9eef9394902ff8573a368f1ae64b4409b81b1a5894887a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-ClosedArrow-144.ppm",
+      "oracle_sha256": "029bf48de5c7c5b6d26a2dc8a45b96feed9017e05560314263bcddf92ba9224b",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-Butt-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Butt-72.pdf",
+      "sha256": "09d12fbae3b335f97d42768cd5dc669fdc7d7cc6e4d076d9b67f216a5ed9bd0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Butt-72.ppm",
+      "oracle_sha256": "78315a85730bb9e111884b53babf611eae7f97cd31bc99e1540a7a6355d31610",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-Butt-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Butt-144.pdf",
+      "sha256": "09d12fbae3b335f97d42768cd5dc669fdc7d7cc6e4d076d9b67f216a5ed9bd0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Butt-144.ppm",
+      "oracle_sha256": "63991ea4134fd00463f024f2173a4ac8cff0c5e1e686a220c221661f48d211d8",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-ROpenArrow-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-ROpenArrow-72.pdf",
+      "sha256": "4ae93c51044fd924691cb7a97730888b6e8c7d0b9035a46e883736e88192db62",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-ROpenArrow-72.ppm",
+      "oracle_sha256": "24bb707062440f8faa5a1a3f34fab31210095bb4f0446b3262abab35617d7cc0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-ROpenArrow-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-ROpenArrow-144.pdf",
+      "sha256": "4ae93c51044fd924691cb7a97730888b6e8c7d0b9035a46e883736e88192db62",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-ROpenArrow-144.ppm",
+      "oracle_sha256": "16ea669b32d4a01a81b298a7ca61bc2877b2daeb9669a37e8b183ae2a704e407",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-RClosedArrow-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-RClosedArrow-72.pdf",
+      "sha256": "12cd028326855cefedd78e2441abd4ea2bc7f8def366ec444a9bd16551e4446c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-RClosedArrow-72.ppm",
+      "oracle_sha256": "54b7c4dbd5503673bd1b1c386255d3fc297741f272bd0186417c9b7f071a47b9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-RClosedArrow-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-RClosedArrow-144.pdf",
+      "sha256": "12cd028326855cefedd78e2441abd4ea2bc7f8def366ec444a9bd16551e4446c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-RClosedArrow-144.ppm",
+      "oracle_sha256": "c9b5306c6520ce845579011ac0a2995a4fa96751c0febf30a3348fb10e884b6a",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-Slash-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Slash-72.pdf",
+      "sha256": "cf09aac1150eedab5b2e1cdbd23567f812c6f6b8bfaa552460df04f5b9ff812f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Slash-72.ppm",
+      "oracle_sha256": "f474b7740e5639808efee1ff319d465da6249ca902a61e6d00fb005a55d1454b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-Slash-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-Slash-144.pdf",
+      "sha256": "cf09aac1150eedab5b2e1cdbd23567f812c6f6b8bfaa552460df04f5b9ff812f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/line-Slash-144.ppm",
+      "oracle_sha256": "31e00c0bc54aa5a7333f20cbd65df4017b39521f0deb6a2a0a1bcfbc16d88c4b",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Square-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Square-72.pdf",
+      "sha256": "5113637f2870599f0b222d4f90ff83a4bd9f2194757e26e09987a607296e9ffd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Square-72.ppm",
+      "oracle_sha256": "7c5b2bb1cb473a91e3e4da66f394e82b576bf160c7767543e8a3eb78fefc0bec",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Square-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Square-144.pdf",
+      "sha256": "5113637f2870599f0b222d4f90ff83a4bd9f2194757e26e09987a607296e9ffd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Square-144.ppm",
+      "oracle_sha256": "c239bd9cb5fb549a75568ea804439785e25432783ac17680586cddbb44e61a89",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Circle-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Circle-72.pdf",
+      "sha256": "3297e4aa31b7488a5dd9a664135f65d72126deba7b3038369f412225a7f27d3d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Circle-72.ppm",
+      "oracle_sha256": "96ad8fcc060bd7a7c82644d9cc1db381fe92503e6c347fb45ec6cdbf3f7ed2a6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Circle-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Circle-144.pdf",
+      "sha256": "3297e4aa31b7488a5dd9a664135f65d72126deba7b3038369f412225a7f27d3d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Circle-144.ppm",
+      "oracle_sha256": "836ebf444c343ff80c77d95c24860d66c8d6a456ade8a8b26c58abe59bf4145c",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Diamond-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Diamond-72.pdf",
+      "sha256": "b3b9aa3f7b0f3e56151a4196bed194b180c824f8e42e87bc8cae07db640a8832",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Diamond-72.ppm",
+      "oracle_sha256": "0a9a1f1060816420642b40c84eb12095425a8554c839cdd13a0e9023ae9fbfaf",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Diamond-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Diamond-144.pdf",
+      "sha256": "b3b9aa3f7b0f3e56151a4196bed194b180c824f8e42e87bc8cae07db640a8832",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Diamond-144.ppm",
+      "oracle_sha256": "142a7270eb0c507b0d3b0954d61515e5ae0d38d1d41a7ce77e4597aa73154db4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-OpenArrow-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-OpenArrow-72.pdf",
+      "sha256": "1dcc3deb1ecaf6fead8b95de3d50f1333a7f43f5595d81de9a721d16db905d83",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-OpenArrow-72.ppm",
+      "oracle_sha256": "0e4c93020b87c711ed24c670b1ed2ca490150e28e63b17d4e00c809af589c25c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-OpenArrow-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-OpenArrow-144.pdf",
+      "sha256": "1dcc3deb1ecaf6fead8b95de3d50f1333a7f43f5595d81de9a721d16db905d83",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-OpenArrow-144.ppm",
+      "oracle_sha256": "4485c28dd2fe3d1c0f246c00d81403a406c27cb307c8ac0c241ca0ca68bb68a4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-ClosedArrow-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-ClosedArrow-72.pdf",
+      "sha256": "7e4d0b91c7840440d383815994423d90b5c2551012bb9758624e0c29964ca2b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-ClosedArrow-72.ppm",
+      "oracle_sha256": "066e408688fdc0c4a3fb2e50977b7bc1009635f804e48a2b03d5b0269b5d45a5",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-ClosedArrow-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-ClosedArrow-144.pdf",
+      "sha256": "7e4d0b91c7840440d383815994423d90b5c2551012bb9758624e0c29964ca2b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-ClosedArrow-144.ppm",
+      "oracle_sha256": "029bf48de5c7c5b6d26a2dc8a45b96feed9017e05560314263bcddf92ba9224b",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Butt-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Butt-72.pdf",
+      "sha256": "3d41750ccba2ed08afa8bd7ec0b79dde5c0b7f85681912a156d89183ae925c9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Butt-72.ppm",
+      "oracle_sha256": "78315a85730bb9e111884b53babf611eae7f97cd31bc99e1540a7a6355d31610",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Butt-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Butt-144.pdf",
+      "sha256": "3d41750ccba2ed08afa8bd7ec0b79dde5c0b7f85681912a156d89183ae925c9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Butt-144.ppm",
+      "oracle_sha256": "63991ea4134fd00463f024f2173a4ac8cff0c5e1e686a220c221661f48d211d8",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-ROpenArrow-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-ROpenArrow-72.pdf",
+      "sha256": "192b281cfafe7770e5b1b0f85090e9c4858c48da5b8d4777a7e3de7ad55e2bba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-ROpenArrow-72.ppm",
+      "oracle_sha256": "24bb707062440f8faa5a1a3f34fab31210095bb4f0446b3262abab35617d7cc0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-ROpenArrow-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-ROpenArrow-144.pdf",
+      "sha256": "192b281cfafe7770e5b1b0f85090e9c4858c48da5b8d4777a7e3de7ad55e2bba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-ROpenArrow-144.ppm",
+      "oracle_sha256": "16ea669b32d4a01a81b298a7ca61bc2877b2daeb9669a37e8b183ae2a704e407",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-RClosedArrow-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-RClosedArrow-72.pdf",
+      "sha256": "04b6690061ca7037a352aaeb60c881330d32a576dcc6d84d7aa0f3a4aec4ed4d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-RClosedArrow-72.ppm",
+      "oracle_sha256": "54b7c4dbd5503673bd1b1c386255d3fc297741f272bd0186417c9b7f071a47b9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-RClosedArrow-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-RClosedArrow-144.pdf",
+      "sha256": "04b6690061ca7037a352aaeb60c881330d32a576dcc6d84d7aa0f3a4aec4ed4d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-RClosedArrow-144.ppm",
+      "oracle_sha256": "c9b5306c6520ce845579011ac0a2995a4fa96751c0febf30a3348fb10e884b6a",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Slash-72",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Slash-72.pdf",
+      "sha256": "4c0b03789be583dc59e3adf2b2c69f53a8fa577373dc15790c1658dab39abc7b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Slash-72.ppm",
+      "oracle_sha256": "f474b7740e5639808efee1ff319d465da6249ca902a61e6d00fb005a55d1454b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/polyline-Slash-144",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-Slash-144.pdf",
+      "sha256": "4c0b03789be583dc59e3adf2b2c69f53a8fa577373dc15790c1658dab39abc7b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/polyline-Slash-144.ppm",
+      "oracle_sha256": "31e00c0bc54aa5a7333f20cbd65df4017b39521f0deb6a2a0a1bcfbc16d88c4b",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/mixed",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/mixed.pdf",
+      "sha256": "406d4bacb2a41ff21956ad9d8d6a97430cee85c0bb9786102979fcfe90c9af3c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/mixed.ppm",
+      "oracle_sha256": "1c276f368c02d77b107456535a1cd6f529c08e2906c640ff15963cf84475da2a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/vertical",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/vertical.pdf",
+      "sha256": "b908e80f6310e6ed25801d087eb9b4997eb75e0868bb68fa8cf415fd214f2c3f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/vertical.ppm",
+      "oracle_sha256": "1a43269bd77a3d45b8cb9d31eda15d4b8c39b80107f52465efc139610b2a303c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/rotated",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/rotated.pdf",
+      "sha256": "e0934b1a37c16b186afea15dd83ff186679ce4bb539e67fd6819ad74068a738d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/rotated.ppm",
+      "oracle_sha256": "10fdeaab4a154228bba54692402c4953b6914a40c4cc52a047fab258ab5c9e75",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/opacity",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/opacity.pdf",
+      "sha256": "0316c0b951d881f23031ba92c85fd0b7f47e9f9fcc5e71bff19e83d388ee8267",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/opacity.ppm",
+      "oracle_sha256": "4936d160f960300b62cb05c1f26d3e7515b922141b4e9e6130971bda693f78cf",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/transparent-interior",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/transparent-interior.pdf",
+      "sha256": "4bfc3bff8009a9f0c30244eab0ca6dea8a677d5c0803108813020a3ef6c4fd31",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/transparent-interior.ppm",
+      "oracle_sha256": "099ddca35d83026b094531052bc10415414c60e644fca80976efb6b47784b2fa",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/transparent-border",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/transparent-border.pdf",
+      "sha256": "36c60ca448c37f8adbb04a0f5e85f2f4daa8cbe57a71f249da89709cda9b0482",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/transparent-border.ppm",
+      "oracle_sha256": "f3d43a67124ad9619040e07cdd4eec70d6c7f3d712534eeb7f8288bd0f8c18bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/zero-width",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/zero-width.pdf",
+      "sha256": "c6e515e3865c2dc685294d44561512bdb4b60729c87d841c25402892c68903da",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/zero-width.ppm",
+      "oracle_sha256": "6084a0e7e79091b3a50f020e5bfb2b6ae9a75667bf1209d55049798f0e126633",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/clipped",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/clipped.pdf",
+      "sha256": "3990c5b78015ee4699d4b5d614e383d094d459d6f11932ee370361ce99716551",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/clipped.ppm",
+      "oracle_sha256": "93defa0e7701529de53f5425f143d1a29ca341c4067022c6ab279f0745a27799",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/indirect",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/indirect.pdf",
+      "sha256": "2e1196af9c3ec08bf033dc11bdad315d925f6d9e496b782a9a7d6a996e2991be",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/indirect.ppm",
+      "oracle_sha256": "65f9ff82315f274c60edb402d644455c05eb22dcf96fd7e4d5fc4ea9e61f60a2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/path-cubic",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/path-cubic.pdf",
+      "sha256": "47750faea9ca5ed9b1076c6b691175948b4fb726ebc9e58bcfe70362ff0f0117",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/path-cubic.ppm",
+      "oracle_sha256": "252ca920b109812cefb8391cca5f6667d717265b641790c7714e4c8cbde47b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/path-repeats",
+      "kind": "pdf",
+      "description": "Analytic offset polygons and exact disk areas verify ending artwork and paint order",
+      "expected": "render",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/path-repeats.pdf",
+      "sha256": "809cb8cb4af9621b3e5e2d60b69545de210fff4e05cde7940da1169c8ab7ecde",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/ending_annotations/path-repeats.ppm",
+      "oracle_sha256": "252ca920b109812cefb8391cca5f6667d717265b641790c7714e4c8cbde47b6e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "ending_annotations/line-unknown",
+      "kind": "pdf",
+      "description": "Unknown endpoint names remain explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-unknown.pdf",
+      "sha256": "54ce5149fca076b771c42f88cd6980299c7680ca9fea3e1109946f332dde8001",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "ending_annotations/line-interior-type",
+      "kind": "pdf",
+      "description": "A painted closed ending validates its interior color",
+      "expected": "open",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/line-interior-type.pdf",
+      "sha256": "fad5c7f6356333073439d5d73cacc6231f0b916ac84b95801836a6fdc3dc23f2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "ending_annotations/polyline-unknown",
+      "kind": "pdf",
+      "description": "Unknown endpoint names remain explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-unknown.pdf",
+      "sha256": "17c3e8e174125d7d341800aab732669249eb7c3937bd1de2ad3f8f43eaff5db7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "ending_annotations/polyline-interior-type",
+      "kind": "pdf",
+      "description": "A painted closed ending validates its interior color",
+      "expected": "open",
+      "requirements": [
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/ending_annotations/polyline-interior-type.pdf",
+      "sha256": "f0d0463b9df8356555e47eebdf4510820b5feb24a8e2a608457a00d31ac1af68",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    }
+  ]
+}
