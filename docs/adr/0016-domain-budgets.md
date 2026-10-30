@@ -207,37 +207,36 @@ renderer with only `function_work` raised; a prior refusal is not a
 performance baseline. Rendering arithmetic and per-sample charging are
 unchanged.
 
-## Amendment, 2026-10-30: bounded work rises from optional accelerations
+## Amendment, 2026-10-30: bounded budget rises that pay for themselves
 
 An optional acceleration is a route that produces the same bytes as the
 route it shortcuts and that preparation may skip, such as a stroke's spine
 of proven-covered cells. Until now such a route had to leave the smallest
-budget at which a render succeeds unchanged. For memory that is achievable:
-optional storage is admitted only while the mandatory route still fits. For
-work it is not always achievable. An acceleration's savings depend on the
-data, so on a row where it proves little its own work comes on top of the
-full mandatory work, and the mandatory remainder cannot be bounded in advance.
+budget at which a render succeeds unchanged. That is not always achievable:
+an acceleration's savings depend on the data, so where it proves little its
+own work and storage come on top of the mandatory route's, and the mandatory
+remainder cannot always be bounded in advance.
 
 1. **Execution never exceeds its reservation.** Unchanged. An acceleration
-   charges every unit it spends, and spent work is never refunded.
-2. **Memory stays strict.** The smallest `render_bytes` at which a render
-   succeeds never rises because of an acceleration.
-3. **Work may rise by a stated bound.** An acceleration may raise the
-   smallest rasterization work at which a fill succeeds (its `raster_work`,
-   and the same units reserved in `render_work`) by at most its own optional
-   work. That bound is a formula over quantities the acceleration knows
-   before it runs, such as the capsules a spine covers. It is written next
-   to the acceleration's code, and debug builds and tests assert it against
-   what the acceleration actually charged.
-4. **The speed-up must be worth the budget.** On the pages it targets, the
-   work an acceleration saves must exceed the most it can add by a wide
-   margin, at least tenfold, and its measured speed-up must hold under the
-   no-regression rule on every other page. An acceleration that saves
-   little where it fires does not qualify, however small its bound.
-5. **Unbounded accelerations stay out.** A route whose extra work cannot be
-   bounded before it runs, for example because it depends on crossings not
-   yet found, must still leave the minimum unchanged.
-6. **Evidence.** A change that uses this amendment states its bound, the
-   largest rise measured on its pages, the work it saves there, and a probe
-   that scans budgets. Success is not monotone in a budget, so bisection can
-   report a false minimum.
+   charges every unit and byte it spends, and spent work is never refunded.
+2. **A bounded rise is allowed.** An acceleration may raise the smallest
+   budget at which a fill or render succeeds, in work (`raster_work`, and
+   the same units reserved in `render_work`) or in memory (`render_bytes`),
+   by at most its own optional work or storage. That bound is a formula over
+   quantities the acceleration knows before it runs, such as the capsules a
+   spine covers. It is written next to the acceleration's code, and debug
+   builds and tests assert it against what the acceleration actually charged.
+3. **The rise must be small next to the speed-up.** On the pages it
+   targets, the share of time the acceleration saves must be at least four
+   times the share by which it can raise the minimum of the budget it
+   affects. A 3x speed-up saves two thirds of the time, so it may raise that
+   minimum by up to a sixth; a 1.25x speed-up saves a fifth, so it may raise
+   it by up to a twentieth. The speed-up is measured on the runner under the
+   no-regression rule, which every other page must also pass.
+4. **Unbounded accelerations stay out.** A route whose extra work or storage
+   cannot be bounded before it runs, for example because it depends on
+   crossings not yet found, must still leave the minimum unchanged.
+5. **Evidence.** A change that uses this amendment states its bound, the
+   largest rise measured on its pages as a share of each page's minimum, its
+   speed-up there, and a probe that scans budgets. Success is not monotone
+   in a budget, so bisection can report a false minimum.
