@@ -53,11 +53,12 @@ pub(crate) fn jbig2_globals<'a>(
         .transpose()
 }
 
-/// The samples of a JBIG2 image of `width` × `height` with `globals`.
+/// The samples of a JBIG2 image of `width` × `height` with `globals`, kept
+/// in the page bitmap's padded rows when `packed`.
 pub(crate) fn jbig2_samples(
     data: &[u8],
     globals: Option<&[u8]>,
-    (width, height): (u32, u32),
+    (width, height, packed): (u32, u32, bool),
     limits: &pagura_core::Limits,
 ) -> Result<Samples> {
     let decoded = jbig2::decode(data, globals, limits)?;
@@ -72,6 +73,16 @@ pub(crate) fn jbig2_samples(
         *byte = !*byte;
     }
     let count = p::budget(width, height, 1, 1, limits)?;
+    if packed {
+        // The page bitmap's rows are padded to whole bytes, as packed
+        // samples keep them; the padding bits are never samples.
+        let (width, height) = (width as usize, height as usize);
+        return crate::deferred::Packed::from_rows(width, height, inverted)
+            .map(Samples::Packed)
+            .ok_or(Error::syntax(
+                "JBIG2 page bitmap rows disagree with its size",
+            ));
+    }
     if count
         .checked_add(inverted.len())
         .is_none_or(|v| v > limits.decoded_bytes)

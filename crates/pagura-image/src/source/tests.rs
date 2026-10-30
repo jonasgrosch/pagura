@@ -195,3 +195,50 @@ fn native_planes_hold_the_interleaved_samples_in_either_orientation() {
     }
     assert!(planar > 0, "no JPEG decoded into native planes");
 }
+
+/// A JBIG2 image decoded for native layout keeps the page bitmap's padded
+/// rows as packed samples, of the same values as its unpacked samples, in
+/// either orientation.
+#[test]
+fn jbig2_native_samples_are_the_packed_page_bitmap() {
+    let fixture =
+        |extension| pagura_testkit::fixture("jbig2", &format!("arithmetic-layout-0-0.{extension}"));
+    let (globals, data) = (fixture("globals"), fixture("jb2"));
+    let dictionary = "/Type /XObject /Subtype /Image /Width 13 /Height 12 /BitsPerComponent 1 \
+                      /ColorSpace /DeviceGray /Filter /JBIG2Decode \
+                      /DecodeParms << /JBIG2Globals 3 0 R >>";
+    let document = open(pdf(&[("", &globals), (dictionary, &data)]));
+    let image = ImageSource::from_xobject(&document, document.object(ObjectId::new(4, 0)).unwrap())
+        .unwrap();
+    let decode = |layout, orientation| {
+        image
+            .decode(
+                &DecodeRequest::new(Reduce::Full, None, layout).with_orientation(orientation),
+                &document.limits(),
+                Recovery::Strict,
+            )
+            .unwrap()
+            .image
+    };
+    let unpacked = decode(Layout::Interleaved, Orientation::Rows);
+    assert!(matches!(unpacked.samples, Samples::Bytes(_)));
+    for orientation in [Orientation::Rows, Orientation::Transposed] {
+        let packed = decode(Layout::Native, orientation);
+        let expected = match orientation {
+            Orientation::Rows => unpacked.clone(),
+            Orientation::Transposed => unpacked.transposed(&document.limits()).unwrap(),
+        };
+        assert_eq!(
+            (packed.width, packed.height),
+            (expected.width, expected.height)
+        );
+        let count = usize::try_from(packed.width * packed.height).unwrap();
+        let values = |image: &crate::DecodedImage| {
+            (0..count).map(|i| image.samples.get(i)).collect::<Vec<_>>()
+        };
+        assert_eq!(values(&packed), values(&expected), "{orientation:?}");
+        if orientation == Orientation::Rows {
+            assert!(matches!(packed.samples, Samples::Packed(_)));
+        }
+    }
+}
