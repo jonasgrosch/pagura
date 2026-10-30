@@ -229,10 +229,15 @@ full mandatory work, and the mandatory remainder cannot be bounded in advance.
    before it runs, such as the capsules a spine covers. It is written next
    to the acceleration's code, and debug builds and tests assert it against
    what the acceleration actually charged.
-4. **Unbounded accelerations stay out.** A route whose extra work cannot be
+4. **The speed-up must be worth the budget.** On the pages it targets, the
+   work an acceleration saves must exceed the most it can add by a wide
+   margin, at least tenfold, and its measured speed-up must hold under the
+   no-regression rule on every other page. An acceleration that saves
+   little where it fires does not qualify, however small its bound.
+5. **Unbounded accelerations stay out.** A route whose extra work cannot be
    bounded before it runs, for example because it depends on crossings not
    yet found, must still leave the minimum unchanged.
-5. **Evidence.** A change that uses this amendment states its bound, the
-   largest rise measured on its pages, and a probe that scans budgets.
-   Success is not monotone in a budget, so bisection can report a false
-   minimum.
+6. **Evidence.** A change that uses this amendment states its bound, the
+   largest rise measured on its pages, the work it saves there, and a probe
+   that scans budgets. Success is not monotone in a budget, so bisection can
+   report a false minimum.
