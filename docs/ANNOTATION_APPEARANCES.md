@@ -49,3 +49,9 @@ are not selected for that geometric path. A separate unnamed widget cannot
 shadow the owning field's nonempty value with an empty local V. Nonempty source
 widgets keep the existing XFA boundary; complete field inspection still checks
 its selected metadata, and form edits still enforce DoNotScroll fit.
+
+For text fields, an exact UTF-16BE BOM or PDF 2.0 UTF-8 BOM with no following
+characters also denotes empty V or RV. This constant-size check does not decode,
+trim, repair or classify any nonempty or malformed sequence as empty. Signature
+V is not a text string: its existing absent/null/raw-empty legacy boundary stays
+unchanged, including when a BOM string appears in V or RV.

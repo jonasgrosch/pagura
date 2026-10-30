@@ -31,11 +31,21 @@ pub(super) fn generate(
         .and_then(Value::as_name)
         .ok_or(Error::syntax("widget has no field type"))?;
     let value = inherited(document, field, b"V")?;
-    let empty = value.is_none_or(|v| v.is_null() || v.as_string().is_some_and(<[u8]>::is_empty));
+    let empty = |value: &Value| {
+        value.is_null()
+            || value.as_string().is_some_and(|bytes| {
+                // A text string may encode zero characters after its UTF-16BE
+                // or PDF 2.0 UTF-8 BOM (7.9.2.2). Recognize only those exact
+                // empty encodings; malformed or nonempty data stays selected.
+                // Sig V is a dictionary, so keep its legacy raw-empty boundary.
+                bytes.is_empty()
+                    || kind == b"Tx"
+                        && matches!(bytes, [0xfe, 0xff] | [0xef, 0xbb, 0xbf])
+            })
+    };
     let geometry = matches!(kind.as_bytes(), b"Tx" | b"Sig")
-        && empty
-        && inherited(document, field, b"RV")?
-            .is_none_or(|value| value.is_null() || value.as_string() == Some(b""));
+        && value.is_none_or(empty)
+        && inherited(document, field, b"RV")?.is_none_or(empty);
     if !geometry {
         if let Some(field) = document.widget_field(annotation)? {
             if rect.width() == 0.0 || rect.height() == 0.0 {
