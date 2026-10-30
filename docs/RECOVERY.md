@@ -226,3 +226,10 @@ is the project reading of 7.10.2. Transfer-region selection follows
 default transfer, including through indirect references. A fractional boundary involving a nondefault
 transfer still fails explicitly: averaging colour before region selection would
 lose the correlation needed for nonlinear transfer functions.
+
+- `content.graphics-unmatched`, `content.text-unmatched` (8.4.2, 9.4.1):
+  unmatched `Q` or `ET` leaves the current graphics and text states unchanged.
+  These viewing policies report every deviation. Strict rejects them, and
+  incomplete operands, text objects, paths and compatibility sections, unknown
+  operators, crossed boundaries and resource limits remain errors. Readers may
+  disagree on malformed state boundaries.

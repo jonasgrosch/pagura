@@ -144,6 +144,12 @@ def text_cases():
         ("type3-metrics-repeated",b"BT /F 20 Tf (A) Tj ET",type3(b"400 0 d0 400 0 d0")),
         ("type3-metrics-outside",b"400 0 d0",[]),
     ]:
+        if name == "text-end-without-begin":
+            yield Case(name,page(b"ET"),RENDER,
+                       ("paint-text-errors", "recovery-content-state"),
+                       "An unmatched ET is a reported viewing no-op; Strict rejects it",
+                       oracle=rects([]), repairs=("content.text-unmatched",), strict_valid=False)
+            continue
         yield Case(name,page(content,objects,FONT if objects else b"<< >>"),OPEN,("paint-text-errors",),name.replace("-"," "),extra={"render_error":"syntax"})
 
 

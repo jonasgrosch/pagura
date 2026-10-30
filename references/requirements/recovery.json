@@ -216,6 +216,30 @@
         "recovery/jpx-raw-rgb-subsampled"
       ],
       "rule": "Reported viewing policy: a raw T.800 codestream may use an explicit PDF colour space with SMaskInData zero. Strict mode still requires full JPX framing. No colour or opacity metadata is inferred. Dimensions, channel count, precision, geometry, syntax and resource limits remain authoritative. Explicit PDF RGB remains RGB even when component sampling ratios resemble chroma subsampling; T.800 A.5.1/B.2 supply reference-grid sample placement, not a replacement colour-space declaration."
+    },
+    {
+      "id": "recovery-content-state",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.8.2",
+        "8.4.2",
+        "9.4.1"
+      ],
+      "status": "reported viewing repairs; strict rejects",
+      "tests": [
+        "recovery_state/unmatched-Q-prefix",
+        "recovery_state/unmatched-Q-suffix",
+        "recovery_state/unmatched-ET-prefix",
+        "recovery_state/unmatched-ET-suffix",
+        "recovery_state/unmatched-Q-in-text",
+        "recovery_state/unmatched-ET-in-saved-state",
+        "recovery_state/balanced-control",
+        "recovery_state/unmatched-retains-state",
+        "recovery_state/closed-text-glyph-control",
+        "content/syntax-Q",
+        "paint/text-end-without-begin"
+      ],
+      "rule": "Unmatched Q and ET leave state unchanged only under reported Repair permission. Unfinished operands, text objects, paths and compatibility sections, unknown operators, crossed state boundaries and resource limits still fail."
     }
   ]
 }

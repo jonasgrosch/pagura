@@ -149,6 +149,17 @@
     "paint_curved_stencils/three-coincident-curved-ancestors",
     "paint_curved_stencils/cap-quarter-turn",
     "paint_curved_stencils/cap-quarter-turn-direct",
-    "paint_curved_stencils/two-ancestors-curved-leaf-quarter-turn"
+    "paint_curved_stencils/two-ancestors-curved-leaf-quarter-turn",
+    "recovery_state/unmatched-Q-prefix",
+    "recovery_state/unmatched-Q-suffix",
+    "recovery_state/unmatched-ET-prefix",
+    "recovery_state/unmatched-ET-suffix",
+    "recovery_state/unmatched-Q-in-text",
+    "recovery_state/unmatched-ET-in-saved-state",
+    "recovery_state/balanced-control",
+    "recovery_state/unmatched-retains-state",
+    "recovery_state/closed-text-glyph-control",
+    "content/syntax-Q",
+    "paint/text-end-without-begin"
   ]
 }

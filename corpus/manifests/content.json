@@ -10009,18 +10009,24 @@
     {
       "id": "content/syntax-Q",
       "kind": "pdf",
-      "description": "Valid file with malformed page content",
-      "expected": "open",
+      "description": "An unmatched Q is a reported viewing no-op; Strict rejects it",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-explicit-operators",
+        "recovery-content-state"
       ],
       "path": "corpus/generated/content/syntax-Q.pdf",
       "sha256": "8e9074ae7fab1dffeffb3c6e82a75c2cb1a28bcd8e8d2f9700b2e7d929e4ebc8",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "api": "compile_page",
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unmatched"
+      ],
+      "oracle": "corpus/generated/content/syntax-Q.ppm",
+      "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
     },
     {
       "id": "content/syntax-q-unclosed",
