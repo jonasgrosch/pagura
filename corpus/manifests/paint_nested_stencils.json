@@ -388,7 +388,7 @@
       "id": "paint_nested_stencils/glyph-quadratic-refused",
       "kind": "pdf",
       "description": "Curved patterned glyphs retain true quadratics; linear glyph outlines propagate their exact geometry",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
         "paint-image-masks"
       ],
@@ -397,7 +397,12 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "pattern.image-mask"
+      "oracle": "corpus/generated/paint_nested_stencils/glyph-quadratic-refused.ppm",
+      "oracle_sha256": "e430420945fb071405a877f3f2b0341608c09b662bf9c3e0b36d84cce671b7b2",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
     },
     {
       "id": "paint_nested_stencils/glyph-tiny-quadratics-control",
@@ -423,7 +428,7 @@
       "id": "paint_nested_stencils/glyph-tiny-quadratics-refused",
       "kind": "pdf",
       "description": "101 sub-flattener-tolerance quadratic glyph slivers have exact total area 101/1000 pixel; preserve true curves",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
         "paint-image-masks"
       ],
@@ -432,7 +437,12 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "pattern.image-mask"
+      "oracle": "corpus/generated/paint_nested_stencils/glyph-tiny-quadratics-refused.ppm",
+      "oracle_sha256": "e12899e833fcfeeac99c61bee9ec251e3d96206ddd3581c9e0ac1f19308b4c55",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
     }
   ]
 }
