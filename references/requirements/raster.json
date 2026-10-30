@@ -202,7 +202,10 @@
         "paint_curved_stencils/singular-curve-point-direct",
         "paint_curved_stencils/half-pixel-diagonal-leaf",
         "pagura-reference area::tests::independently_refined_quadratic_regions_intersect_under_distinct_affine_maps",
-        "paint_curved_stencils/three-coincident-curved-ancestors"
+        "paint_curved_stencils/three-coincident-curved-ancestors",
+        "paint_curved_stencils/cap-quarter-turn",
+        "paint_curved_stencils/cap-quarter-turn-direct",
+        "paint_curved_stencils/two-ancestors-curved-leaf-quarter-turn"
       ],
       "gaps": "subdivision limits reject extreme curves",
       "rule": "Cubic B\u00e9zier geometry follows the specified control points; device-space approximation is subject to flatness tolerance."

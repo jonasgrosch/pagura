@@ -795,6 +795,72 @@
       "width": 16,
       "height": 16,
       "tolerance": 1
+    },
+    {
+      "id": "paint_curved_stencils/cap-quarter-turn",
+      "kind": "pdf",
+      "description": "Analytic true quadratic caps jointly intersect stencil, differently mapped glyph ancestors, leaf geometry and winding clips",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "paint-text-outlines",
+        "raster-curves"
+      ],
+      "path": "corpus/generated/paint_curved_stencils/cap-quarter-turn.pdf",
+      "sha256": "eeb33dd82fd83f77d78c1d179b1378d46f52c1133d10f698fcdb0540d07f054d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_curved_stencils/cap-quarter-turn.ppm",
+      "oracle_sha256": "2515b22d8c792dcc126e8787e866a28a9d793acd53ad0e3a6f83e76ac00f3127",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_curved_stencils/cap-quarter-turn-direct",
+      "kind": "pdf",
+      "description": "Analytic true quadratic caps jointly intersect stencil, differently mapped glyph ancestors, leaf geometry and winding clips",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "paint-text-outlines",
+        "raster-curves"
+      ],
+      "path": "corpus/generated/paint_curved_stencils/cap-quarter-turn-direct.pdf",
+      "sha256": "245328520a75566df67f3f8889f3ce2d6726502059b0a99c1db23edc619af895",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_curved_stencils/cap-quarter-turn-direct.ppm",
+      "oracle_sha256": "2515b22d8c792dcc126e8787e866a28a9d793acd53ad0e3a6f83e76ac00f3127",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_curved_stencils/two-ancestors-curved-leaf-quarter-turn",
+      "kind": "pdf",
+      "description": "Analytic true quadratic caps jointly intersect stencil, differently mapped glyph ancestors, leaf geometry and winding clips",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "paint-text-outlines",
+        "raster-curves"
+      ],
+      "path": "corpus/generated/paint_curved_stencils/two-ancestors-curved-leaf-quarter-turn.pdf",
+      "sha256": "56a5b0cd54d62bff7b688adf8b23ffb1c02619dda14e9410c4aaa4a8e55a6092",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_curved_stencils/two-ancestors-curved-leaf-quarter-turn.ppm",
+      "oracle_sha256": "16c0bf0ab379deef0f194a125e921bfe1e37f1715e9e079c2345a0550a99d38c",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
     }
   ]
 }

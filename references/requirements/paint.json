@@ -82,7 +82,10 @@
         "paint_curved_stencils/singular-curve-point",
         "paint_curved_stencils/singular-curve-point-direct",
         "paint_curved_stencils/half-pixel-diagonal-leaf",
-        "paint_curved_stencils/three-coincident-curved-ancestors"
+        "paint_curved_stencils/three-coincident-curved-ancestors",
+        "paint_curved_stencils/cap-quarter-turn",
+        "paint_curved_stencils/cap-quarter-turn-direct",
+        "paint_curved_stencils/two-ancestors-curved-leaf-quarter-turn"
       ],
       "gaps": "No hinting, as specified by ADR 0009.",
       "review": [
@@ -368,7 +371,10 @@
         "paint_curved_stencils/singular-curve-point",
         "paint_curved_stencils/singular-curve-point-direct",
         "paint_curved_stencils/half-pixel-diagonal-leaf",
-        "paint_curved_stencils/three-coincident-curved-ancestors"
+        "paint_curved_stencils/three-coincident-curved-ancestors",
+        "paint_curved_stencils/cap-quarter-turn",
+        "paint_curved_stencils/cap-quarter-turn-direct",
+        "paint_curved_stencils/two-ancestors-curved-leaf-quarter-turn"
       ],
       "gaps": "Ordinary nested tiling fills, strokes and glyphs beneath inherited patterned stencils propagate the complete ancestor geometry/clip chain; their pattern groups do not multiply coverage again. Fill rules and existing stroke outlines remain authoritative. True-quadratic patterned glyphs retain their original controls under the full device map; leaf coverage is certified against the joint curve/clip intersection within existing resource limits. Other glyph curves retain their documented canonical polygon contract. Nested image stencils and transparency groups retain joint geometric clipping. Interpolated pattern-coloured stencils and an unselected Pattern colour space retain Unsupported(pattern.image-mask). Shading retains the existing pixel-centre / 2x2 AntiAlias sampling policy. Cell marks use the existing per-pixel source-over model; no continuous union integration or whole-family accuracy claim.",
       "review": [

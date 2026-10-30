@@ -176,7 +176,7 @@ def glyph(cap):
 
 def fixture(name, caps=(CAP,), *, leaf="fill", clip=PAGE, winding=None,
             alpha=F(1), soft=False, group=False, ais=False, direct=False,
-            reverse=False, duplicate=False, repetitions=1, tiles=1):
+            reverse=False, duplicate=False, repetitions=1, tiles=1, quarter=False):
     """The outer all-painted image stencil activates inherited geometry.
 
     A pattern marks each ancestor glyph using the next pattern; each glyph
@@ -244,6 +244,8 @@ def fixture(name, caps=(CAP,), *, leaf="fill", clip=PAGE, winding=None,
     target = add(stream(leaf_content, COMMON+b"/Resources << "+leaf_resources+b">>"))
     for cap in reversed(ancestors):
         target = add(stream(b"/Pattern cs /Q scn "+glyph(cap), COMMON+b"/Resources << /Pattern << /Q "+target+b" >> /Font << /F "+font+b" >> >>"))
+    if quarter and not direct:
+        objects[-1] = objects[-1].replace(b"/Resources", b"/Matrix [0 1 -1 0 16 0] /Resources", 1)
     hole = (F(25, 4), F(13, 4), F(37, 4), F(25, 4)) if winding else None
     clipping = b""
     if winding:
@@ -270,12 +272,23 @@ def fixture(name, caps=(CAP,), *, leaf="fill", clip=PAGE, winding=None,
             content = clipping+b"/A gs 1 0 0 rg "+glyph(caps[0])
         else:
             content = clipping+b"/A gs /Pattern cs /P scn 0 0 "+str(extent).encode()+b" "+str(extent).encode()+b" re f"
+    if quarter and direct:
+        content = b"q 0 1 -1 0 16 0 cm "+content+b" Q"
     if repetitions != 1:
         content = b" ".join(b"q "+content+b" Q" for _ in range(repetitions))
         # Source-over recurrence is evaluated independently per repetition.
         marks *= repetitions
     expected = oracle(effective_caps, clip=clip, hole=hole, marks=marks,
                       alpha=alpha*(F(1, 2) if soft else 1))
+    if quarter:
+        assert clip == PAGE and not winding and tiles == 1
+        body = expected.split(b"\n", 3)[3]
+        rotated = bytearray(len(body))
+        for row in range(16):
+            for column in range(16):
+                old, new = (row*16+column)*3, ((15-column)*16+row)*3
+                rotated[new:new+3] = body[old:old+3]
+        expected = b"P6\n16 16\n255\n"+rotated
     if tiles == 1:
         source = page(content, objects, resources)
     else:
@@ -329,3 +342,6 @@ def cases():
     yield fixture("singular-curve-point-direct", ((F(0), F(0), F(0), F(17, 4), F(17, 4)),), direct=True)
     yield fixture("half-pixel-diagonal-leaf", leaf="half-triangle")
     yield fixture("three-coincident-curved-ancestors", (CAP, CAP, CAP))
+    yield fixture("cap-quarter-turn", quarter=True)
+    yield fixture("cap-quarter-turn-direct", quarter=True, direct=True)
+    yield fixture("two-ancestors-curved-leaf-quarter-turn", (CAP, SECOND), leaf="glyph", quarter=True)
