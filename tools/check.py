@@ -48,8 +48,9 @@ COMMANDS = [
     # reference over every conformance render case, and its invariance across
     # band heights, partitions and cached store values. The workspace run
     # skips it, as it is slow unoptimized.
+    # With the CJK substitutes, so CID pages that need one are compared.
     (CARGO + ["test", *OFFLINE, "--release", "-p", "pagura-reference", "--test", "harness",
-              "--", "--ignored"], {}),
+              "--features", "pagura-data/cjk-fonts", "--", "--ignored"], {}),
     # The host as shipped (no bundled data, ADR 0005) and with every opt-in
     # feature, each on its own: a workspace build unifies bundled-data on.
     (CARGO + ["clippy", *OFFLINE, "-p", "pagura-host", "--all-targets", "--no-default-features", "--", "-D", "warnings"], {}),

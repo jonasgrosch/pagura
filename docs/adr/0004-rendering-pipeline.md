@@ -408,8 +408,25 @@ allowance alone cannot decide a coverage byte near a half-level. The
 reference therefore retains each accepted hull's outward bounds and area
 (including placed-coordinate mapping and translation rounding),
 sums the errors of hulls that touch each pixel, and quantizes both ends of
-the resulting area interval. When those bytes differ it refines the
-original controls with one sixteenth of the area allowance and repeats.
+the resulting area interval. Each curve is halved in its own frame: its
+controls less its first one, in the outline's space, mapped by the linear
+map alone, and placed by adding the mapped first control once. A piece's
+mapped controls and its placed end point then lie within
+ε·(32·(d + 4)·own + (elevation + 8)·mapped + 4·placed) + tail of exact,
+per coordinate, at depth d: own is the curve's largest mapped control in its
+frame, mapped its largest mapped control, placed its largest placed control,
+elevation the rounding units of a quadratic's elevated controls and tail a
+localized pixel's two-sum tail. Its hull's area and bounds are outward by
+that much. Only the first term grows with depth, and it scales with the
+curve's own extent, so a piece far from the device origin still meets its
+share of the allowance. Paths and polygon glyph references are accepted at a
+fixed 1/256-pixel distance from the chord instead, which halving reaches
+whatever the magnitude: placed rounding is many orders below it. When those
+bytes differ it refines, in the pixel's local frame, the pieces of the
+original controls whose hulls can meet that pixel (their control boxes
+widened by the deepest piece's error) with one sixteenth of their area
+allowance, and repeats; the other pieces keep theirs, as their hulls add
+nothing to the pixel's interval.
 Clipping cannot increase the interval's error. An unresolved interval,
 segment limit or subdivision limit is an error, never permission to select
 the byte that agrees with the renderer. A synthetic overlapping-quadratic

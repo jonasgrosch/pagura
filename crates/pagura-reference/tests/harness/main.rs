@@ -13,10 +13,12 @@
 //!   cached.
 //!
 //! These three tests render every case several times, so the default test
-//! run skips them; `tools/check.py` runs them in release on every platform:
+//! run skips them; `tools/check.py` runs them in release on every platform,
+//! with the CJK substitutes so CID pages that need one are compared:
 //!
 //! ```text
-//! cargo test --release -p pagura-reference --test harness -- --ignored
+//! cargo test --release -p pagura-reference --test harness \
+//!     --features pagura-data/cjk-fonts -- --ignored
 //! ```
 //!
 //! A case whose recording or rendering meets a dependency's placeholder is
