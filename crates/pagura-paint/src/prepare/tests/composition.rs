@@ -84,6 +84,19 @@ fn round_cap_sliver_survives_composition_on_gray() {
     }
 }
 
+/// Renders the whole page at band heights down to one row, each within one
+/// level of the reference, and returns the last bytes: a mark culled short of
+/// rows it covers loses them in the bands it does not reach.
+fn check_bands(b: &Build) -> Vec<u8> {
+    let exact = b.reference();
+    let mut bytes = Vec::new();
+    for height in [1, 3, 16, 32] {
+        bytes = b.render(&b.request(b.page(), height)).unwrap();
+        crate::testing::assert_within_one_level(&bytes, &exact);
+    }
+    bytes
+}
+
 #[test]
 fn hairline_and_fitted_miter_tips_are_not_culled() {
     use pagura_interpret::{Pen, PenId, StrokeNode};
@@ -125,7 +138,7 @@ fn hairline_and_fitted_miter_tips_are_not_culled() {
                 mark: mark(StateId(0)),
             }),
         );
-        let bytes = check(&b);
+        let bytes = check_bands(&b);
         // The tips cover pixels more than two rows beyond the path.
         let painted = |y: usize| {
             bytes[y * 32..(y + 1) * 32]
@@ -135,6 +148,72 @@ fn hairline_and_fitted_miter_tips_are_not_culled() {
                 .any(|p| p[1] < 255)
         };
         assert!(painted(4) && painted(14), "width {width}");
+    }
+}
+
+#[test]
+fn empty_fill_and_clip_outlines_stay_beside_their_boundary() {
+    use pagura_interpret::{ClipNode, FillNode};
+    use pagura_raster::{FillRule, PathBuilder};
+    use std::sync::Arc;
+
+    // A polyline retraced through a 12° corner fills an empty region, which
+    // paints and clips as its hairline outline (10.7.4). Its bevel joins keep
+    // it within half a pixel of the boundary, where a miter would pass the
+    // corner by 4.8 pixels, beyond a fill's pixel of margin.
+    let corner = Point::new(9.5, 12.5);
+    let ends = [
+        Point::new(9.5, 2.5),
+        Point::new(
+            9.5 + 10.0 * 12f64.to_radians().sin(),
+            12.5 - 10.0 * 12f64.to_radians().cos(),
+        ),
+    ];
+    let mut path = PathBuilder::new();
+    path.move_to(ends[0]);
+    for point in [corner, ends[1], corner, ends[0]] {
+        path.line_to(point).unwrap();
+    }
+    path.close();
+    let path = Arc::new(path.finish());
+    for clipped in [false, true] {
+        let mut b = Build::new(16.0, 20.0);
+        let red = b.rgb([1.0, 0.0, 0.0]);
+        let (painted, info) = if clipped {
+            b.scene.clips.push(ClipNode {
+                parent: None,
+                path: Arc::clone(&path),
+                rule: FillRule::NonZero,
+            });
+            let clip = pagura_interpret::ClipId(0);
+            (
+                rect_path([0.0, 0.0, 16.0, 20.0]),
+                with_clip(StateId(0), clip),
+            )
+        } else {
+            (Arc::clone(&path), mark(StateId(0)))
+        };
+        b.node(
+            PAGE,
+            Node::Fill(FillNode {
+                path: painted,
+                rule: FillRule::NonZero,
+                paint: red,
+                mark: info,
+            }),
+        );
+        let bytes = check_bands(&b);
+        // The corner's pixel is painted, and no row more than a pixel past
+        // the corner.
+        let painted = |y: usize| {
+            bytes[y * 64..(y + 1) * 64]
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .any(|p| p[1] < 255)
+        };
+        assert!(bytes[(12 * 16 + 9) * 4 + 1] < 255, "clipped {clipped}");
+        assert!(!(14..20).any(painted), "clipped {clipped}");
     }
 }
 

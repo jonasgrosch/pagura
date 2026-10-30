@@ -133,6 +133,7 @@ pub(crate) fn unit_square() -> Path {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pagura_core::{Limits, Meter};
 
     #[test]
     fn hulls_round_outwards_and_clamp() {
@@ -179,6 +180,225 @@ mod tests {
                     bits(rect(source, transform)),
                     bits(path(&Path::rect(source), transform))
                 );
+            }
+        }
+    }
+
+    /// The pixels a shape covers over `area`.
+    fn covered(shape: &pagura_raster::Shape, area: pagura_raster::Area) -> Vec<(u32, u32)> {
+        use pagura_raster::{BandCoverage, BandRasterizer, MarkCoverage, Span};
+        let mut bytes = Meter::new(usize::MAX, "test bytes");
+        let mut raster = BandRasterizer::new(area, &mut bytes).unwrap();
+        let mut band = BandCoverage::with_capacity(shape.capacity(), &mut bytes).unwrap();
+        let mut pixels = Vec::new();
+        for b in shape.bands(&area) {
+            let mark = MarkCoverage {
+                shape: Some(shape),
+                clip: None,
+            };
+            raster.rasterize(mark, b, &mut band);
+            for row in band.rows() {
+                for span in row.spans() {
+                    match span {
+                        Span::Full { x, len } => pixels.extend((x..x + len).map(|x| (x, row.y))),
+                        Span::Partial { x, coverage } => pixels.extend(
+                            (x..)
+                                .zip(coverage)
+                                .filter(|&(_, &c)| c > 0)
+                                .map(|(x, _)| (x, row.y)),
+                        ),
+                    }
+                }
+            }
+        }
+        pixels
+    }
+
+    /// A polyline through `points`, closed or not.
+    fn polyline(points: &[[f64; 2]], closed: bool) -> Path {
+        let mut builder = pagura_raster::PathBuilder::new();
+        let mut points = points.iter().map(|&[x, y]| Point::new(x, y));
+        if let Some(first) = points.next() {
+            builder.move_to(first);
+        }
+        for point in points {
+            builder.line_to(point).unwrap();
+        }
+        if closed {
+            builder.close();
+        }
+        builder.finish()
+    }
+
+    /// A polyline from the origin turning by each of `corners` (degrees
+    /// between the incoming and outgoing segment) after segments of length
+    /// 6, back and forth across the x axis.
+    fn zigzag(corners: &[f64]) -> Vec<[f64; 2]> {
+        let mut points = vec![[0.0, 0.0]];
+        let mut heading: f64 = 0.0;
+        let (mut x, mut y) = (0.0, 0.0);
+        for (i, corner) in corners.iter().enumerate() {
+            x += 6.0 * heading.cos();
+            y += 6.0 * heading.sin();
+            points.push([x, y]);
+            let turn = (180.0 - corner).to_radians();
+            heading += if i % 2 == 0 { turn } else { -turn };
+        }
+        points.push([x + 6.0 * heading.cos(), y + 6.0 * heading.sin()]);
+        points
+    }
+
+    /// Over a region far larger than any test mark.
+    const AREA: pagura_raster::Area = pagura_raster::Area {
+        region: DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: 4096,
+            y1: 4096,
+        },
+        band_height: 32,
+    };
+
+    /// Asserts that every pixel `shape` covers lies in the culling rectangle
+    /// of `hull`.
+    fn within(what: &str, shape: Option<&pagura_raster::Shape>, hull: Option<Hull>) {
+        let Some(shape) = shape else {
+            return;
+        };
+        let culling = device(hull, AREA.region);
+        for (x, y) in covered(shape, AREA) {
+            assert!(
+                (culling.x0..culling.x1).contains(&x) && (culling.y0..culling.y1).contains(&y),
+                "{what}: pixel ({x}, {y}) outside {culling:?}"
+            );
+        }
+    }
+
+    /// Default user space to device pixels: unit and 300 dpi, flipped.
+    const DEVICES: [Transform; 2] = [
+        Transform::new(1.0, 0.0, 0.0, -1.0, 1000.0, 1000.0),
+        Transform::new(25.0 / 6.0, 0.0, 0.0, -25.0 / 6.0, 1000.0, 2000.0),
+    ];
+
+    /// Corners from nearly retraced to nearly straight, in degrees.
+    const CORNERS: [f64; 8] = [3.0, 6.0, 12.0, 30.0, 60.0, 90.0, 135.0, 170.0];
+
+    /// Every pixel a stroke covers lies in the culling rectangle its hull
+    /// gives, over strokes drawn from every join, cap, width, adjustment,
+    /// dash and pen.
+    #[test]
+    fn stroke_coverage_stays_within_the_culling_hull() {
+        use pagura_raster::{Adjustment, LineCap, LineJoin, Shape, ShapeOptions, Stroke};
+        let limits = Limits::default();
+        let options = ShapeOptions {
+            area: AREA,
+            limits: &limits,
+        };
+        let paths = [
+            ("zigzag", polyline(&zigzag(&CORNERS), false)),
+            (
+                "triangle",
+                polyline(&[[0.0, 0.0], [1.08, 4.32], [0.0, 4.32]], true),
+            ),
+            (
+                "square",
+                polyline(&[[0.0, 0.0], [5.0, 0.0], [5.0, 5.0], [0.0, 5.0]], true),
+            ),
+            (
+                "ell",
+                polyline(&[[0.0, 0.0], [4.0, 0.0], [4.0, 3.0]], false),
+            ),
+            ("dot", polyline(&[[1.0, 1.0], [1.0, 1.0]], false)),
+            (
+                "sliver",
+                polyline(&[[0.0, 0.0], [0.05, 0.0], [0.05, 0.05]], true),
+            ),
+        ];
+        let pens = [
+            Transform::IDENTITY,
+            Transform::scale(0.12, 0.12),
+            Transform::new(1.5, 0.4, -0.3, 0.6, 0.0, 0.0),
+        ];
+        let joins = [
+            (LineJoin::Miter, 1.0),
+            (LineJoin::Miter, 10.0),
+            (LineJoin::Miter, 100.0),
+            (LineJoin::Round, 10.0),
+            (LineJoin::Bevel, 10.0),
+        ];
+        let caps = [LineCap::Butt, LineCap::Round, LineCap::ProjectingSquare];
+        let widths = [0.0, 0.1, 2.0];
+        let mut seed: u64 = 0x2545_f491_4f6c_dd1d;
+        let mut pick = |n: usize| {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            usize::try_from(seed >> 33).unwrap() % n
+        };
+        for _ in 0..400 {
+            let (name, user) = &paths[pick(paths.len())];
+            let device_transform = DEVICES[pick(DEVICES.len())];
+            let (join, miter_limit) = joins[pick(joins.len())];
+            let pen = pagura_interpret::Pen {
+                stroke: Stroke {
+                    width: widths[pick(widths.len())],
+                    cap: caps[pick(caps.len())],
+                    join,
+                    miter_limit,
+                    dash_array: [Vec::new(), vec![0.0, 1.5]][pick(2)].clone(),
+                    dash_phase: 0.0,
+                },
+                transform: pens[pick(pens.len())],
+                adjustment: [Adjustment::None, Adjustment::Adjusted][pick(2)],
+            };
+            let shape = Shape::stroke(
+                user,
+                &pen.stroke,
+                pen.transform.inverse().unwrap(),
+                device_transform,
+                pen.adjustment,
+                &options,
+            )
+            .unwrap();
+            let reach = stroke_reach(&pen, device_transform);
+            within(
+                &format!("{name} {pen:?} under {device_transform:?}"),
+                shape.as_ref(),
+                path(user, device_transform).map(|h| expand(h, reach + 2.0)),
+            );
+        }
+    }
+
+    /// Every pixel a fill covers lies in the culling rectangle a fill's hull
+    /// gives, a pixel wider than its path's, empty fills included: a
+    /// retraced polyline paints its hairline outline, whose bevel joins keep
+    /// within half a pixel of the corners it turns.
+    #[test]
+    fn fill_coverage_stays_within_the_culling_hull() {
+        use pagura_raster::{FillRule, Shape, ShapeOptions};
+        let limits = Limits::default();
+        let options = ShapeOptions {
+            area: AREA,
+            limits: &limits,
+        };
+        for corner in CORNERS {
+            let turned = zigzag(&[corner]);
+            let retraced: Vec<[f64; 2]> = turned
+                .iter()
+                .chain(turned.iter().rev().skip(1))
+                .copied()
+                .collect();
+            for user in [polyline(&retraced, true), polyline(&turned, true)] {
+                for device_transform in DEVICES {
+                    for rule in [FillRule::NonZero, FillRule::EvenOdd] {
+                        let shape = Shape::fill(&user, device_transform, rule, &options).unwrap();
+                        within(
+                            &format!("{corner}° fill {rule:?} under {device_transform:?}"),
+                            shape.as_ref(),
+                            path(&user, device_transform).map(|h| expand(h, 1.0)),
+                        );
+                    }
+                }
             }
         }
     }
