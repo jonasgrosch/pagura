@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "2fd85999ee408fe2de4c368a3ce6e32062802817",
+  "audited_revision": "684dd638ebcda80887bed070d2c6aed98093aff0",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -353,14 +353,14 @@
     "corpus/manifests/font_collection_families.json": "de2eaa9ee1acc12ac4194fa33c59b3265310dce85cfa8eef946cc73c43a06597",
     "tools/fixturegen/font_collection_families.py": "86a15c1deadddf2d41f956baeb2149da8ebb8c77fc55871069c00a8ea4754090",
     "benchmarks/probes/image-repair-cases.json": "4d540a51a0489c68c4391687333b30ff1904fac85d69d36c66a1697ef74ccfe2",
-    "corpus/manifests/recovery_jbig2_tables.json": "2b8a188052fa1ccc4ee8e03acfff6f3dcf1126d1428228e3c264c15074c36a4a",
+    "corpus/manifests/recovery_jbig2_tables.json": "24640e9ec08b5d92b4c7d727babf48a0758813ce8890988b9bdf34f09cfa72db",
     "crates/pagura-image/src/dispatch.rs": "4cf059e264234d37eb68c0c8ab1e036dcb65e5567ebc7a6f3db1943d55cf0bd6",
     "crates/pagura-image/src/source/codec.rs": "be2be180c741b106adc8540d3ef75a2cc65f216c1d5d1ab894611d078931bc72",
     "crates/pagura-image/src/source/header.rs": "154cad1ebceb11c26c130d0845410b3e6c82b8db486d57a4bc4b2d63b16f0a3c",
     "crates/pagura-image/tests/jbig2_unused_controls.rs": "bef9235d52ba67d706971df8602cbb31b4da60c23c7f7d266fd4ebced14046af",
     "crates/pagura/examples/image_repair_parity.rs": "a2d625af1f6e5eba0bceeca704411b2420b23ffa2acf316cf599e5134003a141",
     "crates/pagura/tests/jbig2_unused_tables.rs": "625839e875b02468dc745359dcc4508e19420f9b26b2cce17f8d8215b8332ce6",
-    "tools/fixturegen/recovery_jbig2_tables.py": "aae750c940b78c5b47c012e8614036833566cc2576e94ab4c198856659dc344f",
+    "tools/fixturegen/recovery_jbig2_tables.py": "fbb6298b31889911541b6d1153c01a4cc6ee130f73cf7d2b8bda169211c8edfb",
     "tools/image_repair_observe.mjs": "51159b6caf9945fb8367ca6aa6de610de05124462de176058b51eadc3b75185e",
     "tools/image_repair_parity.mjs": "118fb24047bbb90b646b87e2eef7a1f9f133e2a1702b4acc6b5c21d3ed26f0e1"
   },
