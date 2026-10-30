@@ -18,6 +18,7 @@
 //! glyph's linear map, so a singular map can make a genuine point.
 
 use crate::area::Region;
+use crate::double::{Double, DoublePoint};
 use crate::glyph::Reference;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Limits, Result};
@@ -207,7 +208,9 @@ impl Hull {
     }
 }
 
-/// A flattened contour in the path's own space.
+/// A flattened contour in the path's own space; a true curve's in device
+/// space, its curves' inner vertices placed in double-words and every
+/// other one placed in doubles.
 #[derive(Debug, Clone, PartialEq)]
 struct Contour {
     points: Vec<Point>,
@@ -310,6 +313,9 @@ fn glyph_region_at_area(
     };
     let (contours, hulls) = contours_with_area(outline, device, curves, precision, limits)?;
     let mut region = region(&contours, FillRule::NonZero, |p| {
+        if reference == Reference::Curve {
+            return p;
+        }
         let q = p * linear;
         Point::new(q.x + origin.x, q.y + origin.y)
     });
@@ -396,8 +402,10 @@ fn contours_with_area(
     let allowance = precision.per_curve(curve_count);
     let mut start = Point::default();
     let mut position = Point::default();
+    let placing = (curves == Curves::Curve).then_some(device);
+    let vertex = |p: Point| placing.map_or(p, |device| place(p, device));
     let mut push = |contour: &mut Contour, point: Point| -> Result<()> {
-        if !(point * device).is_finite() || !point.is_finite() {
+        if !point.is_finite() || (placing.is_none() && !(point * device).is_finite()) {
             return Err(Error::invalid_argument("path geometry is not finite"));
         }
         count += 1;
@@ -413,7 +421,7 @@ fn contours_with_area(
             && contours.last().is_none_or(|c| c.closed)
         {
             contours.push(Contour {
-                points: vec![start],
+                points: vec![vertex(start)],
                 closed: false,
                 degenerate: true,
             });
@@ -429,7 +437,7 @@ fn contours_with_area(
                     });
                 }
                 if let Some(contour) = contours.last_mut() {
-                    push(contour, point)?;
+                    push(contour, vertex(point))?;
                 }
                 start = point;
                 position = point;
@@ -437,7 +445,7 @@ fn contours_with_area(
             Segment::LineTo(point) => {
                 if let Some(contour) = contours.last_mut() {
                     contour.degenerate &= contour.points.first().is_none_or(|&p| same(p, point));
-                    push(contour, point)?;
+                    push(contour, vertex(point))?;
                 }
                 position = point;
             }
@@ -449,17 +457,16 @@ fn contours_with_area(
                 position = start;
             }
         }
-        if let Some((controls @ [_, c1, c2, end], elevation)) = piece {
+        if let Some(controls @ [_, c1, c2, end]) = piece {
             if let Some(contour) = contours.last_mut() {
                 contour.degenerate &= [c1, c2, end].iter().all(|&p| same(p, position));
                 let mut points = Vec::new();
                 flatten_curve(
-                    (controls, elevation),
+                    (controls, *segment),
                     device,
                     curves,
                     allowance,
-                    &mut points,
-                    &mut hulls,
+                    (&mut points, &mut hulls),
                     limits,
                 )?;
                 for point in points {
@@ -473,37 +480,38 @@ fn contours_with_area(
     Ok((contours, hulls))
 }
 
-/// Rounding units of the coordinates' magnitude that elevating a quadratic
-/// adds to its cubic controls.
-const ELEVATION: f64 = 32.0;
-
-/// A curve's cubic controls from `from`, with the rounding units their
-/// elevation adds: a quadratic flattens as its elevated cubic. `None` for
-/// a move, line or close.
-fn cubic(segment: Segment, from: Point) -> Option<([Point; 4], f64)> {
+/// A curve's cubic controls from `from`: a quadratic flattens as its
+/// elevated cubic. `None` for a move, line or close.
+fn cubic(segment: Segment, from: Point) -> Option<[Point; 4]> {
     match segment {
-        Segment::CubicTo { c1, c2, end } => Some(([from, c1, c2, end], 0.0)),
+        Segment::CubicTo { c1, c2, end } => Some([from, c1, c2, end]),
         Segment::QuadTo { control, end } => {
             let [c1, c2] = Segment::elevated(from, control, end);
-            Some(([from, c1, c2, end], ELEVATION))
+            Some([from, c1, c2, end])
         }
         Segment::MoveTo(_) | Segment::LineTo(_) | Segment::Close => None,
     }
 }
 
-/// Appends the end points of the pieces of a cubic, after its start; its
-/// controls carry `elevation` rounding units beyond the source's.
+/// Appends the end points of the pieces of a cubic, after its start: a
+/// true curve's placed, any other's within the curves' tolerance of their
+/// chords.
 fn flatten_curve(
-    (points, elevation): ([Point; 4], f64),
+    (points, segment): ([Point; 4], Segment),
     device: Transform,
     curves: Curves,
     precision: Precision,
-    out: &mut Vec<Point>,
-    hulls: &mut Vec<Hull>,
+    (out, hulls): (&mut Vec<Point>, &mut Vec<Hull>),
     limits: &Limits,
 ) -> Result<()> {
     if curves == Curves::Curve {
-        return flatten_true_curve((points, elevation), device, precision, (out, hulls), limits);
+        return flatten_true_curve(
+            (segment, points[0]),
+            device,
+            precision,
+            (out, hulls),
+            limits,
+        );
     }
     let tolerance = curves.tolerance();
     let mut pending = vec![(points, 0)];
@@ -530,120 +538,217 @@ fn flatten_curve(
 /// piece's control hull, which holds the piece and its chord, has at most
 /// its share of the area budget.
 ///
-/// The curve is halved in its own frame: its controls less its first one,
-/// in the path's space, mapped by the linear map alone. Each coordinate of
-/// a piece's mapped controls, and of its emitted end point once placed,
-/// then lies within
+/// The curve is halved in its own frame, in double-words: its controls less
+/// its start, exact, with a quadratic elevated there, mapped by the linear
+/// map alone and placed by adding its start placed in double-words. Each
+/// coordinate of a piece's placed controls at depth `d` then lies within
 ///
 /// ```text
-/// δ(d) = ε·(32·(d + 4)·own + (elevation + 8)·mapped + 4·placed) + rounding
+/// δ(d) = 4·(d + 4)·ε²·(own + placed) + (d + 4)·MIN_POSITIVE
 /// ```
 ///
-/// of the exact one, at depth `d`:
+/// of the exact one (see [`control_error`]). Its vertices are rounded to
+/// doubles, and the curve's ends, like every other vertex of the outline,
+/// are placed in doubles: a vertex lies within `δ(d) + 2ε·placed + tail`,
+/// where `tail` is a localized pixel's two-sum tail.
 ///
-/// - `own`, the largest mapped control of the curve's frame, bounds the
-///   rounding of forming the frame and of `d` halvings in it (the existing
-///   allowance of 32 units a halving, four more for the frame and mapping);
-/// - `mapped`, the largest mapped control, bounds the source's elevation of
-///   a quadratic and the emitted point's return to the path's space;
-/// - `placed`, the largest placed control, bounds the placement, which adds
-///   the origin once and does not grow with depth;
-/// - `rounding` is a localized pixel's two-sum tail.
-///
-/// The hull's area is outward for controls within δ, and its bounds are
-/// widened by δ, as before; only the error is the curve's own instead of
-/// the page's, so pieces far from the device origin still meet their share.
+/// A piece stops at its own flatness: its hull, outward for controls within
+/// `δ(d)`, meets its share. The vertex error does not shrink with depth, so
+/// it does not decide when to stop; it stays in the emitted hull's area and
+/// bounds, which the pixel's interval sums as before.
 fn flatten_true_curve(
-    (points, elevation): ([Point; 4], f64),
+    (segment, from): (Segment, Point),
     device: Transform,
     precision: Precision,
     (out, hulls): (&mut Vec<Point>, &mut Vec<Hull>),
     limits: &Limits,
 ) -> Result<()> {
-    let linear = Transform {
-        e: 0.0,
-        f: 0.0,
-        ..device
+    let Some(Frame { controls, end, own }) = Frame::new(segment, from, device) else {
+        return Ok(());
     };
-    let magnitude = |p: Point, t: Transform| {
-        ((p.x * t.a).abs() + (p.y * t.c).abs() + t.e.abs())
-            .max((p.x * t.b).abs() + (p.y * t.d).abs() + t.f.abs())
-    };
-    let start = points[0];
-    let frame = points.map(|p| Point::new(p.x - start.x, p.y - start.y));
-    let largest = |controls: &[Point; 4], t: Transform| {
-        controls
-            .iter()
-            .map(|&p| magnitude(p, t))
-            .fold(1.0_f64, f64::max)
-    };
-    let (own, mapped, placed) = (
-        largest(&frame, linear),
-        largest(&points, linear),
-        largest(&points, device),
-    );
-    let fixed = f64::EPSILON * ((elevation + 8.0) * mapped + 4.0 * placed) + precision.rounding;
-    let anchor = start * device;
+    let anchor = DoublePoint::placed(from, device);
+    let placed = placed_extent(&controls, anchor, [from, end], device);
+    let vertex = 2.0 * f64::EPSILON * placed + precision.rounding;
+    let emitted = |depth: u32| control_error(depth, own, placed) + vertex;
     // The hulls of a piece's halves lie in its control box, widened by the
-    // deepest piece's error: a piece whose widened box misses the focus
+    // deepest pieces' errors: a piece whose widened box misses the focus
     // cannot touch its pixel, and takes the coarse budget.
-    let widening = own * f64::EPSILON * 32.0 * f64::from(MAX_DEPTH + 4) + fixed;
-    let misses = |controls: &[Point; 4]| {
+    let widening = 3.0 * control_error(MAX_DEPTH, own, placed) + vertex;
+    let misses = |[x0, y0, x1, y1]: [f64; 4]| {
         precision.focus.is_some_and(|focus| {
-            let [x0, y0, x1, y1] = focus.bounds;
-            controls.iter().all(|p| anchor.x + p.x + widening <= x0)
-                || controls.iter().all(|p| anchor.x + p.x - widening >= x1)
-                || controls.iter().all(|p| anchor.y + p.y + widening <= y0)
-                || controls.iter().all(|p| anchor.y + p.y - widening >= y1)
+            let [left, top, right, bottom] = focus.bounds;
+            x1 + widening <= left
+                || x0 - widening >= right
+                || y1 + widening <= top
+                || y0 - widening >= bottom
         })
     };
     let coarse = precision.focus.map_or(precision.area, |focus| focus.coarse);
-    let mut pending = vec![(frame, 0, (precision.area, coarse))];
-    while let Some((piece, depth, (fine, coarse))) = pending.pop() {
-        let controls = piece.map(|p| p * linear);
-        let share = if misses(&controls) { coarse } else { fine };
-        let [a, b, c, d] = controls;
-        let error = own * f64::EPSILON * 32.0 * f64::from(depth + 4) + fixed;
-        let triangle = |p: Point, q: Point| {
-            let (u, v) = (p - a, q - a);
-            let products = (u.x * v.y).abs() + (u.y * v.x).abs();
-            let determinant = (u.x * v.y - u.y * v.x).abs()
-                + 16.0 * f64::EPSILON * products
-                + 2.0 * error * (u.x.abs() + u.y.abs() + v.x.abs() + v.y.abs())
-                + 8.0 * error * error;
-            determinant * (0.5 + 16.0 * f64::EPSILON) + f64::MIN_POSITIVE
-        };
-        let area = (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 16.0 * f64::EPSILON);
-        if area <= share {
+    let mut pending = vec![(controls, 0, (precision.area, coarse), true)];
+    while let Some((piece, depth, (fine, coarse), last)) = pending.pop() {
+        let corners = piece.map(|p| anchor.add(p).point());
+        let bounds = corners.iter().fold(
+            [
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+            ],
+            |[x0, y0, x1, y1], p| [x0.min(p.x), y0.min(p.y), x1.max(p.x), y1.max(p.y)],
+        );
+        let share = if misses(bounds) { coarse } else { fine };
+        if hull_area(&piece, control_error(depth, own, placed)) <= share {
             if out.len() >= limits.path_segments {
                 return Err(Error::limit("flattened segment budget exceeded"));
             }
-            // The last piece ends at the curve's own end.
-            out.push(if piece[3] == frame[3] {
-                points[3]
-            } else {
-                Point::new(start.x + piece[3].x, start.y + piece[3].y)
-            });
+            // The last piece ends at the curve's own end, placed as every
+            // other vertex is.
+            out.push(if last { place(end, device) } else { corners[3] });
+            let error = emitted(depth);
             hulls.push(Hull {
                 bounds: [
-                    anchor.x + a.x.min(b.x).min(c.x).min(d.x) - error,
-                    anchor.y + a.y.min(b.y).min(c.y).min(d.y) - error,
-                    anchor.x + a.x.max(b.x).max(c.x).max(d.x) + error,
-                    anchor.y + a.y.max(b.y).max(c.y).max(d.y) + error,
+                    (bounds[0] - error).next_down(),
+                    (bounds[1] - error).next_down(),
+                    (bounds[2] + error).next_up(),
+                    (bounds[3] + error).next_up(),
                 ],
-                area,
+                area: hull_area(&piece, error),
             });
             continue;
         }
         if depth >= MAX_DEPTH {
             return Err(Error::limit("curve subdivision depth exceeded"));
         }
-        let (first, second) = halve(piece);
+        let (first, second) = halve_frame(piece);
         let shares = (fine * 0.5, coarse * 0.5);
-        pending.push((second, depth + 1, shares));
-        pending.push((first, depth + 1, shares));
+        pending.push((second, depth + 1, shares, last));
+        pending.push((first, depth + 1, shares, false));
     }
     Ok(())
+}
+
+/// `p` placed by `device` in doubles, as every vertex of a true-curve
+/// outline but its curves' inner ones is.
+fn place(p: Point, device: Transform) -> Point {
+    let q = p * Transform {
+        e: 0.0,
+        f: 0.0,
+        ..device
+    };
+    Point::new(q.x + device.e, q.y + device.f)
+}
+
+/// Bounds the curve's placed coordinates and their terms: every placed
+/// control, and the sums of terms of its ends placed in doubles.
+fn placed_extent(
+    controls: &[DoublePoint; 4],
+    anchor: DoublePoint,
+    ends: [Point; 2],
+    device: Transform,
+) -> f64 {
+    controls
+        .iter()
+        .map(|&p| anchor.add(p).point())
+        .map(|p| p.x.abs().max(p.y.abs()) * (1.0 + 4.0 * f64::EPSILON))
+        .chain(ends.map(|p| magnitude(p, device)))
+        .fold(0.0_f64, f64::max)
+}
+
+/// The largest absolute sum of the terms of either coordinate of `p` placed
+/// by `t`: doubles placing it err by at most `2ε` of it.
+fn magnitude(p: Point, t: Transform) -> f64 {
+    ((p.x * t.a).abs() + (p.y * t.c).abs() + t.e.abs())
+        .max((p.x * t.b).abs() + (p.y * t.d).abs() + t.f.abs())
+        * (1.0 + 4.0 * f64::EPSILON)
+}
+
+/// A true curve in its own frame: its cubic controls less its start, mapped
+/// by the linear map, in double-words.
+struct Frame {
+    controls: [DoublePoint; 4],
+    end: Point,
+    /// Bounds every coordinate's sum of mapped terms, `|a|·|x| + |c|·|y|`,
+    /// over the frame's controls before mapping.
+    own: f64,
+}
+
+impl Frame {
+    /// `None` for a move, line or close.
+    fn new(segment: Segment, from: Point, device: Transform) -> Option<Self> {
+        let frame = |p: Point| DoublePoint::difference(p, from);
+        let (unmapped, end) = match segment {
+            Segment::CubicTo { c1, c2, end } => {
+                ([DoublePoint::ZERO, frame(c1), frame(c2), frame(end)], end)
+            }
+            // Elevated in the frame: c1 = 2/3·q1 and c2 = q2 + 2/3·(q1 − q2).
+            Segment::QuadTo { control, end } => {
+                let (q1, q2) = (frame(control), frame(end));
+                let third = Double::two_thirds();
+                let c1 = q1.scale(third);
+                let c2 = q2.add(q1.sub(q2).scale(third));
+                ([DoublePoint::ZERO, c1, c2, q2], end)
+            }
+            Segment::MoveTo(_) | Segment::LineTo(_) | Segment::Close => return None,
+        };
+        let largest = |coordinate: fn(&DoublePoint) -> Double| {
+            unmapped
+                .iter()
+                .map(|p| coordinate(p).value().abs())
+                .fold(0.0_f64, f64::max)
+                * (1.0 + 4.0 * f64::EPSILON)
+        };
+        let (x, y) = (largest(|p| p.x), largest(|p| p.y));
+        let own = ((device.a.abs() * x + device.c.abs() * y)
+            .max(device.b.abs() * x + device.d.abs() * y))
+            * (1.0 + 4.0 * f64::EPSILON);
+        Some(Self {
+            controls: unmapped.map(|p| p.mapped(device)),
+            end,
+            own,
+        })
+    }
+}
+
+/// The per-coordinate error of a piece's controls at `depth`, placed or in
+/// the frame, in units of `u = ε/2` (see [`crate::double`]):
+///
+/// - the frame's differences are exact; elevating a quadratic errs by at
+///   most `19u²` of its largest frame coordinate, and the linear map adds
+///   `5u²` of the sum of mapped terms: `24u²·own` in all;
+/// - each halving forms three rows of midpoints, `3u²·own` each, as the
+///   pieces' coordinates lie within the frame's hull: `9u²·own` a depth;
+/// - placing the start errs by `6u²·placed`, and adding it to a control by
+///   `3u²·placed` more;
+/// - a result below `MIN_POSITIVE` errs by at most that much an operation.
+///
+/// `(24 + 9d)·u²·own + 9u²·placed` is at most `4·(d + 4)·ε²·(own + placed)`.
+fn control_error(depth: u32, own: f64, placed: f64) -> f64 {
+    let depth = f64::from(depth + 4);
+    4.0 * depth * f64::EPSILON * f64::EPSILON * (own + placed) + depth * 8.0 * f64::MIN_POSITIVE
+}
+
+/// The area of a piece's control hull, outward for controls within `error`
+/// of these and for the rounding of the differences to its first control.
+fn hull_area([a, b, c, d]: &[DoublePoint; 4], error: f64) -> f64 {
+    let relative = |p: &DoublePoint| p.sub(*a).point();
+    let (b, c, d) = (relative(b), relative(c), relative(d));
+    let triangle = |u: Point, v: Point| {
+        let products = (u.x * v.y).abs() + (u.y * v.x).abs();
+        let determinant = (u.x * v.y - u.y * v.x).abs()
+            + 16.0 * f64::EPSILON * products
+            + 2.0 * error * (u.x.abs() + u.y.abs() + v.x.abs() + v.y.abs())
+            + 8.0 * error * error;
+        determinant * (0.5 + 16.0 * f64::EPSILON) + f64::MIN_POSITIVE
+    };
+    (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 16.0 * f64::EPSILON)
+}
+
+/// The two halves of a piece in its frame.
+fn halve_frame([a, b, c, d]: [DoublePoint; 4]) -> ([DoublePoint; 4], [DoublePoint; 4]) {
+    let (ab, bc, cd) = (a.midpoint(b), b.midpoint(c), c.midpoint(d));
+    let (abc, bcd) = (ab.midpoint(bc), bc.midpoint(cd));
+    let m = abc.midpoint(bcd);
+    ([a, ab, abc, m], [m, bcd, cd, d])
 }
 
 /// The two halves of a cubic.
@@ -672,6 +777,7 @@ fn near(p: Point, a: Point, b: Point, bound: f64) -> bool {
 mod tests {
     use super::*;
     use crate::area::areas;
+    use crate::double::rational::Rational;
     use pagura_raster::{DeviceRect, PathBuilder};
 
     fn window(width: u32, height: u32) -> DeviceRect {
@@ -1112,5 +1218,176 @@ mod tests {
             .sum();
         // The sum of control-hull areas bounds the whole outline.
         assert!((total - 64.0 / 3.0).abs() < CURVE_AREA, "{total}");
+    }
+
+    /// Exact images of a frame's controls and the curve's placed ends.
+    struct Exact {
+        frame: [[Rational; 2]; 4],
+        anchor: [Rational; 2],
+        end: [Rational; 2],
+    }
+
+    impl Exact {
+        fn new(segment: Segment, from: Point, t: Transform) -> Self {
+            let exact = |p: Point| [Rational::from_f64(p.x), Rational::from_f64(p.y)];
+            let difference = |p: Point| {
+                let [x, y] = exact(p);
+                let [fx, fy] = exact(from);
+                [x.sub(&fx), y.sub(&fy)]
+            };
+            let zero = || [Rational::from_f64(0.0), Rational::from_f64(0.0)];
+            let (unmapped, end) = match segment {
+                Segment::CubicTo { c1, c2, end } => (
+                    [zero(), difference(c1), difference(c2), difference(end)],
+                    end,
+                ),
+                Segment::QuadTo { control, end } => {
+                    let (q1, q2) = (difference(control), difference(end));
+                    let c1 = [q1[0].two_thirds(), q1[1].two_thirds()];
+                    let c2 = [0, 1].map(|k| q2[k].add(&q1[k].sub(&q2[k]).two_thirds()));
+                    ([zero(), c1, c2, q2], end)
+                }
+                _ => unreachable!(),
+            };
+            let linear = |[x, y]: &[Rational; 2]| {
+                [
+                    x.times(t.a).add(&y.times(t.c)),
+                    x.times(t.b).add(&y.times(t.d)),
+                ]
+            };
+            let placed = |p: Point| {
+                let [x, y] = exact(p);
+                [
+                    x.times(t.a)
+                        .add(&y.times(t.c))
+                        .add(&Rational::from_f64(t.e)),
+                    x.times(t.b)
+                        .add(&y.times(t.d))
+                        .add(&Rational::from_f64(t.f)),
+                ]
+            };
+            Self {
+                frame: unmapped.each_ref().map(linear),
+                anchor: placed(from),
+                end: placed(end),
+            }
+        }
+    }
+
+    fn exact_halves(piece: &[[Rational; 2]; 4]) -> ([[Rational; 2]; 4], [[Rational; 2]; 4]) {
+        let mid = |p: &[Rational; 2], q: &[Rational; 2]| [0, 1].map(|k| p[k].add(&q[k]).half());
+        let [a, b, c, d] = piece;
+        let (ab, bc, cd) = (mid(a, b), mid(b, c), mid(c, d));
+        let (abc, bcd) = (mid(&ab, &bc), mid(&bc, &cd));
+        let m = mid(&abc, &bcd);
+        (
+            [a.clone(), ab, abc.clone(), m.clone()],
+            [m, bcd, cd, d.clone()],
+        )
+    }
+
+    #[test]
+    fn frames_stay_within_their_bound_of_exact_arithmetic() {
+        // Random curves, near and far from the origin, with near-cancelling
+        // maps and placements and controls a few ulps apart, followed down
+        // a random path of halvings to the deepest piece.
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let mut checked = 0;
+        for case in 0..160_u32 {
+            let mut unit =
+                || f64::from(u32::try_from(next() >> 40).unwrap()) / f64::from(1_u32 << 24) - 0.5;
+            let scale = [1.0, 2_500.0, 1e6, 2.0_f64.powi(40)][(case % 4) as usize];
+            let size = [1e-9, 1e-3, 1.0, 300.0][((case / 4) % 4) as usize];
+            let from = Point::new(scale * unit() + 1.0 / 3.0, scale * unit() - 2.0 / 7.0);
+            let near = |k: f64, u: f64, v: f64| {
+                if case % 7 == 0 {
+                    // A few ulps from the start: frame differences of a few bits.
+                    let ulp = |x: f64| f64::from_bits(x.to_bits() + 1) - x;
+                    Point::new(
+                        from.x + k * ulp(from.x.abs()),
+                        from.y - k * ulp(from.y.abs()),
+                    )
+                } else {
+                    Point::new(from.x + size * u, from.y + size * v)
+                }
+            };
+            let (c1, c2, end) = (
+                near(1.0, unit(), unit()),
+                near(2.0, unit(), unit()),
+                near(3.0, unit(), unit()),
+            );
+            let segment = if case % 2 == 0 {
+                Segment::QuadTo { control: c1, end }
+            } else {
+                Segment::CubicTo { c1, c2, end }
+            };
+            let (a, b, c, d) = (2.0 * unit(), unit() / 3.0, unit() / 7.0, 2.0 * unit());
+            // Placements that cancel the start's image to a few pixels.
+            let cancel = case % 3 == 0;
+            let e = if cancel {
+                -(from.x * a + from.y * c) + unit()
+            } else {
+                1e4 * unit()
+            };
+            let f = if cancel {
+                -(from.x * b + from.y * d) + unit()
+            } else {
+                1e4 * unit()
+            };
+            let device = Transform { a, b, c, d, e, f };
+            let frame = Frame::new(segment, from, device).unwrap();
+            let exact = Exact::new(segment, from, device);
+            let anchor = DoublePoint::placed(from, device);
+            let placed = placed_extent(&frame.controls, anchor, [from, frame.end], device);
+            let vertex = 2.0 * f64::EPSILON * placed;
+            // The curve's end, placed in doubles as every outline vertex is.
+            let end = place(frame.end, device);
+            assert!(exact.end[0].within(end.x, vertex), "end, case {case}");
+            assert!(exact.end[1].within(end.y, vertex), "end, case {case}");
+            let (mut piece, mut truth) = (frame.controls, exact.frame);
+            for depth in 0..=MAX_DEPTH {
+                let error = control_error(depth, frame.own, placed);
+                for (p, q) in piece.iter().zip(&truth) {
+                    let coordinates = [p.x, p.y];
+                    let placed_point = anchor.add(*p);
+                    let placed_coordinates = [placed_point.x, placed_point.y];
+                    let rounded = placed_point.point();
+                    for k in 0..2 {
+                        let exact_placed = q[k].add(&exact.anchor[k]);
+                        assert!(
+                            q[k].within_double(coordinates[k].hi, coordinates[k].lo, error),
+                            "frame, case {case} depth {depth}"
+                        );
+                        assert!(
+                            exact_placed.within_double(
+                                placed_coordinates[k].hi,
+                                placed_coordinates[k].lo,
+                                error
+                            ),
+                            "placed, case {case} depth {depth}"
+                        );
+                        assert!(
+                            exact_placed.within([rounded.x, rounded.y][k], error + vertex),
+                            "vertex, case {case} depth {depth}"
+                        );
+                        checked += 1;
+                    }
+                }
+                let (first, second) = halve_frame(piece);
+                let (exact_first, exact_second) = exact_halves(&truth);
+                (piece, truth) = if next() % 2 == 0 {
+                    (first, exact_first)
+                } else {
+                    (second, exact_second)
+                };
+            }
+        }
+        assert_eq!(checked, 160 * (u32_to_usize(MAX_DEPTH) + 1) * 8);
     }
 }
