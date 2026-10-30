@@ -36,8 +36,8 @@ use transfer::{Selection, Transfers};
 /// Returns the errors of the inputs the reference depends on (colour
 /// conversion, image decoding, stroking), `Limit` errors for budgets, and
 /// `InvalidArgument` for scenes the reference does not model: a partial
-/// transfer boundary, a singular pen or shading matrix, interpolated
-/// pattern-coloured stencil masks, and malformed scene ids.
+/// transfer boundary, a singular pen or shading matrix or malformed scene
+/// ids, and Unsupported for ordinary nested tiling beneath patterned stencils.
 pub fn render(scene: &Scene, request: &Request, limits: &Limits) -> Result<Rendering> {
     let mut renderer = Renderer::new(scene, request, limits)?;
     let root = scene

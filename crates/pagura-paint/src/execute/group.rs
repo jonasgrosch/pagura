@@ -14,7 +14,7 @@ use super::{
 use crate::kernel::{Colors, Mode, Sources, level};
 use crate::plan::{Conversion, GroupUse, Item, Layout, Start, area, intersect};
 use crate::process;
-use crate::source::copy_values;
+use crate::source::{Pixels, copy_values};
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::DeviceRect;
 
@@ -164,6 +164,35 @@ impl Executor<'_> {
         let ws = &mut *self.ws;
         let spent = sources(ws, (child, parent.layout), (x, y), cover, conversion);
         ws.usage.functions = ws.usage.functions.saturating_add(spent);
+        if let Some(stencil) = used.stencil {
+            let Some(source) = plan.paints.get(u32_to_usize(stencil)) else {
+                return;
+            };
+            let Some(slot) = plan.slots.of.get(u32_to_usize(stencil)) else {
+                return;
+            };
+            let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(*slot)) else {
+                return;
+            };
+            scratch.claim(stencil);
+            source.fill(
+                Pixels::new(x, y, len),
+                scratch,
+                &mut ws.colors,
+                &mut ws.texel_shape,
+            );
+            for ((alpha, shape), opacity) in ws
+                .alpha
+                .iter_mut()
+                .zip(&mut ws.shape)
+                .take(len)
+                .zip(&ws.colors.alpha)
+            {
+                *alpha *= opacity;
+                *shape *= opacity;
+            }
+            ws.usage.work = ws.usage.work.saturating_add(len.saturating_mul(2));
+        }
         let mask = match used.compositing.mask {
             Some(m) => mask::row(plan, &ws.masks, &mut ws.mask, m, (x, y), len),
             None => None,
