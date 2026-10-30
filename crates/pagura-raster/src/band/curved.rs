@@ -7,7 +7,7 @@ use super::cells::Cells;
 use super::clip::{Rows, Segment};
 use super::edges::{self, Bounds, Line, Polygon, StripList};
 use super::glyph::rounding::{self, Pixel};
-use super::shape::{Body, EdgeBody, Resolved, Shape};
+use super::shape::{Body, Resolved, Shape};
 use super::union::{Meters, Piece, Resolver};
 use super::{DeviceRect, GlyphEdges, Prep, RASTER_WORK, RENDER_BYTES};
 use crate::{FillRule, Path, Point, Transform, quantize_unit};
@@ -519,11 +519,10 @@ fn shape(
         work: work.used(),
         retained,
         rule: FillRule::NonZero,
-        body: Body::Edges(EdgeBody::default()),
+        body: Body::Certified(coverage),
         clip: Some(clip.clone()),
         masked: false,
         resolved: Resolved::default(),
-        certified: Some(coverage),
     }))
 }
 

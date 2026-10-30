@@ -422,6 +422,7 @@ impl BandRasterizer {
         let (scan, listed) = match &shape.body {
             Body::Edges(edges) => (edges.scan, edges.strips.is_some()),
             Body::Glyph(glyph) => (glyph.scan, glyph.strips.is_some()),
+            Body::Certified(_) => return rows.end,
         };
         if listed || rows.is_empty() {
             return rows.end;
@@ -444,11 +445,8 @@ impl BandRasterizer {
             return;
         }
         let _ = band;
-        if let Some(certified) = &shape.certified {
-            self.classified(certified, shape.bounds, rows, out);
-            return;
-        }
         match &shape.body {
+            Body::Certified(certified) => self.classified(certified, shape.bounds, rows, out),
             Body::Edges(edges) => {
                 let items = Items {
                     lines: Lines::Slice {
@@ -998,21 +996,21 @@ pub(crate) fn inspect(
     cells: &mut Cells,
     mut visit: impl FnMut(u32, usize, usize, f64, f64),
 ) -> Result<()> {
-    if let Some(rows) = &shape.certified {
-        for y in shape.bounds.y0..shape.bounds.y1 {
-            for segment in rows.row(y) {
-                visit(
-                    y,
-                    segment.x0 as usize,
-                    segment.x1 as usize,
-                    f64::from(segment.value) / 255.0,
-                    0.0,
-                );
-            }
-        }
-        return Ok(());
-    }
     let (items, scan) = match &shape.body {
+        Body::Certified(rows) => {
+            for y in shape.bounds.y0..shape.bounds.y1 {
+                for segment in rows.row(y) {
+                    visit(
+                        y,
+                        segment.x0 as usize,
+                        segment.x1 as usize,
+                        f64::from(segment.value) / 255.0,
+                        0.0,
+                    );
+                }
+            }
+            return Ok(());
+        }
         Body::Edges(edges) => (
             Items {
                 lines: Lines::Slice {

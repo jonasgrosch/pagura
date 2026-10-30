@@ -330,6 +330,7 @@ fn analytic(shape: &Shape) -> bool {
                 && matches!(body.edges.kind, Kind::Curve { .. } | Kind::Union { .. })
         }
         Body::Edges(body) => !body.curves.is_empty(),
+        Body::Certified(_) => false,
     }
 }
 
@@ -466,6 +467,7 @@ fn ambiguous(
     let width = match &shape.body {
         Body::Glyph(body) => body.scan.1.saturating_sub(body.scan.0),
         Body::Edges(body) => body.scan.1.saturating_sub(body.scan.0),
+        Body::Certified(_) => shape.bounds.width() as usize,
     };
     let mut cells = Cells::new(width, bytes)?;
     let cell_bytes = cells.retained_bytes();
