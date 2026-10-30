@@ -274,20 +274,22 @@ impl Shape {
         adjustment: Adjustment,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        let (polygon, tiling, mut bytes) =
+        let (polygon, tiling, mut bytes, _) =
             Self::stroke_pieces(path, stroke, (pen, transform), adjustment, options)?;
         Self::stroke_finish(polygon, tiling, options, &mut bytes)
     }
 
-    /// The device polygon of a stroke's pieces, how far they tile, and the
-    /// byte meter their preparation goes on with.
+    /// The device polygon of a stroke's pieces, how far they tile, the byte
+    /// meter their preparation goes on with, and whether the pieces of the
+    /// stroke translated are these translated: true unless stroke adjustment
+    /// snapped them to the device grid.
     pub(crate) fn stroke_pieces(
         path: &Path,
         stroke: &Stroke,
         (pen, transform): (Transform, Transform),
         adjustment: Adjustment,
         options: &Prep<'_>,
-    ) -> Result<(Polygon, Tiling, Meter)> {
+    ) -> Result<(Polygon, Tiling, Meter, bool)> {
         let limits = options.limits;
         if path.segments().len() > limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
@@ -299,28 +301,34 @@ impl Shape {
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         let path = path.transformed_with_bytes(pen, &mut bytes)?;
         let device = to_user.then(transform);
-        let (polygon, tiling) = match adjustment {
-            Adjustment::Adjusted => crate::stroke::adjusted_polygon_pieces(
-                &path,
-                device,
-                stroke,
-                limits,
-                Tiling::Unproven,
-                &mut bytes,
-            )?,
-            Adjustment::None => crate::stroke::polygon_pieces(
-                &path,
-                device,
-                stroke,
-                limits,
-                (Tiling::Unproven, crate::flatten::TOLERANCE),
-                &mut bytes,
-            )?,
+        let (polygon, tiling, translates) = match adjustment {
+            Adjustment::Adjusted => {
+                let (polygon, tiling, fit) = crate::stroke::adjusted_polygon_pieces(
+                    &path,
+                    device,
+                    stroke,
+                    limits,
+                    Tiling::Unproven,
+                    &mut bytes,
+                )?;
+                (polygon, tiling, fit == crate::adjust::Fit::Pen)
+            }
+            Adjustment::None => {
+                let (polygon, tiling) = crate::stroke::polygon_pieces(
+                    &path,
+                    device,
+                    stroke,
+                    limits,
+                    (Tiling::Unproven, crate::flatten::TOLERANCE),
+                    &mut bytes,
+                )?;
+                (polygon, tiling, true)
+            }
         };
         let released = path.retained_bytes();
         drop(path);
         bytes.refund(released);
-        Ok((polygon, tiling, bytes))
+        Ok((polygon, tiling, bytes, translates))
     }
 
     /// The shape of a stroke's pieces, with the rows their windings leave in

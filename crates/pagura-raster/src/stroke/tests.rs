@@ -238,7 +238,7 @@ fn adjusted_pieces_cover_the_fitted_components() {
                         && cap != LineCap::Round
                     {
                         let mut bytes = crate::testing::bytes();
-                        let (_, tiling) = adjusted_polygon_pieces(
+                        let (_, tiling, _) = adjusted_polygon_pieces(
                             path,
                             transform,
                             &stroke,

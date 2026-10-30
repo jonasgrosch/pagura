@@ -24,7 +24,7 @@ pub(crate) fn outline(
     bytes: &mut Meter,
 ) -> Result<(Path, Transform)> {
     let before = bytes.used();
-    let result = runs(path, transform, stroke, limits, bytes).and_then(|(runs, pen, t)| {
+    let result = runs(path, transform, stroke, limits, bytes).and_then(|(runs, pen, t, _)| {
         let mut out = PathBuilder::new();
         for run in &runs {
             crate::stroke::draw(&mut out, run, pen, stroke, limits, bytes)?;
@@ -36,16 +36,26 @@ pub(crate) fn outline(
     result
 }
 
+/// How fitting moved a stroke's geometry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Fit {
+    /// Only the pen's diameters were rounded and the centrelines kept, so a
+    /// translated stroke fits to the same runs, translated.
+    Pen,
+    /// The centrelines were snapped to the device grid, by how they lie on it.
+    Grid,
+}
+
 /// The fitted runs in the construction space of the fitted pen, the pen
-/// there (radius one half) and the transform from that space to device
-/// space; no runs when nothing is strokeable.
+/// there (radius one half), the transform from that space to device space,
+/// and how the fitting moved them; no runs when nothing is strokeable.
 pub(crate) fn runs(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
     bytes: &mut Meter,
-) -> Result<(Vec<Run>, Pen, Transform)> {
+) -> Result<(Vec<Run>, Pen, Transform, Fit)> {
     crate::stroke::validate(stroke, limits)?;
     let contours = flatten(path, transform, limits, bytes)?;
     if !contours.iter().any(|c| c.strokeable(stroke.cap)) {
@@ -53,7 +63,7 @@ pub(crate) fn runs(
             radius: 0.5,
             tolerance: TOLERANCE,
         };
-        return Ok((Vec::new(), pen, Transform::IDENTITY));
+        return Ok((Vec::new(), pen, Transform::IDENTITY, Fit::Pen));
     }
     let axis =
         (transform.b == 0.0 && transform.c == 0.0) || (transform.a == 0.0 && transform.d == 0.0);
@@ -117,7 +127,7 @@ pub(crate) fn runs(
         radius: 0.5,
         tolerance: TOLERANCE / (wx + wy),
     };
-    Ok((fitted_runs, pen, Transform::scale(wx, wy)))
+    Ok((fitted_runs, pen, Transform::scale(wx, wy), Fit::Grid))
 }
 fn snap(value: f64, width: f64) -> f64 {
     (value - width * 0.5).round() + width * 0.5
@@ -153,7 +163,7 @@ fn general(
     stroke: &Stroke,
     limits: &Limits,
     bytes: &mut Meter,
-) -> Result<(Vec<Run>, Pen, Transform)> {
+) -> Result<(Vec<Run>, Pen, Transform, Fit)> {
     let pen = if stroke.width == 0.0 {
         Transform::IDENTITY
     } else {
@@ -184,7 +194,7 @@ fn general(
         radius: 0.5,
         tolerance: TOLERANCE / (2.0 * scale),
     };
-    Ok((fitted_runs, fitted, pen))
+    Ok((fitted_runs, fitted, pen, Fit::Pen))
 }
 
 fn fitted_pen(t: Transform, width: f64) -> Result<Transform> {

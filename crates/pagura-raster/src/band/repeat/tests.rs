@@ -20,6 +20,16 @@ fn options(limits: &Limits) -> ShapeOptions<'_> {
 /// resolved rows where its own one has some.
 fn place(
     (path, stroke): (&Path, &Stroke),
+    origin: (f64, f64),
+    options: &ShapeOptions<'_>,
+    templates: &mut StrokeTemplates,
+) -> (Vec<u8>, Vec<u8>, bool) {
+    place_adjusted((path, stroke, Adjustment::None), origin, options, templates)
+}
+
+/// [`place`] under `adjustment`.
+fn place_adjusted(
+    (path, stroke, adjustment): (&Path, &Stroke, Adjustment),
     (x, y): (f64, f64),
     options: &ShapeOptions<'_>,
     templates: &mut StrokeTemplates,
@@ -30,7 +40,7 @@ fn place(
         stroke,
         Transform::IDENTITY,
         transform,
-        Adjustment::None,
+        adjustment,
         options,
     )
     .unwrap();
@@ -38,7 +48,7 @@ fn place(
         path,
         stroke,
         (Transform::IDENTITY, transform),
-        Adjustment::None,
+        adjustment,
         None,
         options,
         templates,
@@ -108,6 +118,47 @@ fn repeated_strokes_give_the_bytes_of_their_own_preparation() {
         templates.meter.as_ref().is_some_and(|m| m.used() > 0),
         "templates are charged"
     );
+}
+
+#[test]
+fn adjusted_strokes_repeat_where_fitting_keeps_their_centrelines() {
+    let limits = Limits::default();
+    let options = options(&limits);
+    // A thin stroke fitted to a one-pixel pen. The curl takes adjustment's
+    // general route, which keeps its centreline; the notch is orthogonal
+    // under an axis-aligned map, so adjustment snaps it to the grid.
+    let thin = Stroke {
+        width: 0.2,
+        ..Stroke::default()
+    };
+    let origins = [
+        (3.0, 4.0),
+        (22.25, 4.5),
+        (5.125, 27.0),
+        (37.3, 21.7),
+        (19.0625, 15.33),
+        (44.5, 3.0),
+        (31.17, 30.91),
+    ];
+    for (path, kept) in [(curl(), true), (notch(), false)] {
+        let mut templates = StrokeTemplates::default();
+        let mut reused = 0;
+        for (n, origin) in origins.into_iter().enumerate() {
+            let (repeated, own, hit) = place_adjusted(
+                (&path, &thin, Adjustment::Adjusted),
+                origin,
+                &options,
+                &mut templates,
+            );
+            assert_eq!(repeated, own, "placement {n} at {origin:?}");
+            reused += usize::from(hit);
+        }
+        if kept {
+            assert!(reused >= 4, "{reused} fitted placements reused");
+        } else {
+            assert_eq!(reused, 0, "snapped placements never repeat");
+        }
+    }
 }
 
 /// A notch narrower than the pen, with sides on whole pixels: half a pen

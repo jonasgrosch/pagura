@@ -27,6 +27,11 @@
 //! the pieces that can meet one pixel, around that area is the byte of the
 //! placement's own preparation.
 //!
+//! Stroke adjustment that only rounds the pen keeps the centrelines, so its
+//! pieces move with the stroke and repeat like any others. Adjustment that
+//! snaps centrelines to the device grid fits each placement by where it
+//! lies, so those strokes never repeat.
+//!
 //! Templates are kept from a stroke's second placement, only where it
 //! needed the resolver, within an eighth of the render's byte budget of
 //! their own, so that they never decide whether another shape fits.
@@ -150,17 +155,19 @@ impl Shape {
         templates: &mut StrokeTemplates,
     ) -> Result<Option<Self>> {
         let prep = Prep::new(options, clip);
-        let (polygon, tiling, mut bytes) =
+        let (polygon, tiling, mut bytes, translates) =
             Self::stroke_pieces(path, stroke, (pen, transform), adjustment, &prep)?;
-        // Only unproven pieces may need the resolver.
-        if adjustment != Adjustment::None
+        // Only unproven pieces may need the resolver, and only pieces that
+        // move with the stroke can repeat: stroke adjustment that snaps to
+        // the device grid fits each placement by where it lies.
+        if !translates
             || tiling != Tiling::Unproven
             || polygon.points.is_empty()
             || polygon.points_cells
         {
             return Self::stroke_finish(polygon, tiling, &prep, &mut bytes);
         }
-        let key = key(path, stroke, (pen, transform));
+        let key = key(path, stroke, (pen, transform), adjustment);
         let hash = hash(key.clone());
         let StrokeTemplates {
             meter,
@@ -784,6 +791,7 @@ fn key<'a>(
     path: &'a Path,
     stroke: &'a Stroke,
     (pen, transform): (Transform, Transform),
+    adjustment: Adjustment,
 ) -> impl Iterator<Item = u64> + Clone + 'a {
     let origin = path
         .segments()
@@ -817,6 +825,7 @@ fn key<'a>(
             stroke.join as u64,
             stroke.miter_limit.to_bits(),
             stroke.dash_phase.to_bits(),
+            adjustment as u64,
         ])
         .chain(stroke.dash_array.iter().map(|d| d.to_bits()))
         .chain(
