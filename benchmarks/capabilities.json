@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "59aa1a4dc88dabfe8b0417d5e8fcabdd5d53b147",
+  "audited_revision": "b050b619ef61977e8d19f87c33213ca6bd0cb047",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -70,7 +70,7 @@
     "crates/pagura-extract/src/structure/content.rs": "fcedc48f6f79294eccc2fa5b9dc90cde53f9527ffece4d1ce9d11205bbefef81",
     "crates/pagura-extract/src/structure/copy.rs": "fdf63c725b37978c64bc67b56d3a06649f1b9befa0eeba64a5f73e52b8d87065",
     "crates/pagura-extract/src/structure/roles.rs": "395727aad59dfe61ec5eee945f91df84a4a0e3189abd8104ca5eff7a993f2de3",
-    "crates/pagura-font/README.md": "b06d0bae9d8fdb78ad171395d94278855a71bbb14a753771d20a67ed2fec6de5",
+    "crates/pagura-font/README.md": "6b5f8c3895cc8cc015ae7d854e7aaae9b452d7ac8e4a61b57c119220e3f7c523",
     "crates/pagura-font/src/cff.rs": "d679afdd4e5afa8d0ff7a2d00244ad84689d65854355afaca410b0516575c1c0",
     "crates/pagura-font/src/lib.rs": "c5019378be7472767bf9853437a881055bcce2c15bc7f0b82382ea5424e47127",
     "crates/pagura-font/src/sfnt.rs": "66609906e9cd5c3dc51e72057257f659ac46e6e8f1a33f1e822f3e5e07bc3eea",
@@ -171,6 +171,7 @@
     "crates/pagura/tests/font_bindings.rs": "2ddd6b59ed4271776ed65c458c7db754a37ec93020b8edc1c87a0a594becf423",
     "crates/pagura/tests/font_collections.rs": "bd3b080fac724c4e0d884d2c07d0c09e7c402574b1c476b9ba29373f5f7ed7ba",
     "docs/RECOVERY.md": "18c53dd2c2f3e73b70b1dce71082bccd6073926d56b0492ef2219c3114674da5",
+    "docs/STATUS.md": "180c839c5b7cf597e558e91ff5232a8769d65c186c365a3738b74b1f7b15b9eb",
     "docs/adr/0009-text-and-fonts.md": "f6430d9a76c7bfcbda456b646efd7e5aa8508ff6f4d0194593a2d8e60fe9f8a0",
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
@@ -412,7 +413,8 @@
         "docs/RECOVERY.md",
         "tools/fixturegen/font_collections.py",
         "tools/fixturegen/font_bindings.py",
-        "tools/fixturegen/font.py"
+        "tools/fixturegen/font.py",
+        "docs/STATUS.md"
       ],
       "tests": [
         "crates/pagura-font/tests/vectors/static_fonts.rs",
