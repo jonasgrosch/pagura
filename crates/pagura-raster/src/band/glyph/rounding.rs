@@ -804,6 +804,94 @@ fn source_lines(
     Ok(error)
 }
 
+/// Adds one original-control source to a localized joint coverage proof.
+pub(in crate::band) fn source_pieces(
+    source: Source<'_>,
+    pixel: Pixel,
+    (options, round): (&Prep<'_>, i32),
+    (bounds, group): ([f64; 4], u8),
+    pieces: &mut Vec<Piece>,
+    (work, bytes): (&mut Meter, &mut Meter),
+) -> Result<f64> {
+    let Source {
+        outline,
+        linear,
+        origin,
+        points: source_points,
+    } = source;
+    let (ox, dx) = subtract(origin.x, f64::from(pixel.x));
+    let (oy, dy) = subtract(origin.y, f64::from(pixel.y));
+    let local = Transform {
+        e: ox,
+        f: oy,
+        ..linear
+    };
+    let mut hulls = Vec::new();
+
+    let targets = [bounds];
+    let before = bytes.used();
+    let (mut polygon, local_points) = flattened_with(
+        outline,
+        local,
+        options.limits,
+        bytes,
+        Some(Inspection {
+            hulls: Some(&mut hulls),
+            work,
+            rounding: dx.abs().max(dy.abs()) * (1.0 + 8.0 * f64::EPSILON),
+            targets: &targets,
+            offset: Point::default(),
+            factor: 16.0_f64.powi(-round),
+        }),
+    )?;
+    let retained = polygon.heap_bytes()
+        + local_points.capacity() * size_of::<Point>()
+        + hulls.capacity() * size_of::<Hull>();
+    bytes.refund(bytes.used().saturating_sub(before + retained));
+    let released = local_points.capacity() * size_of::<Point>();
+    drop(local_points);
+    bytes.refund(released);
+    for &point in source_points {
+        // A genuine point's floor belongs to its canonical placed position.
+        let point = Point::new(
+            (point.x + origin.x).floor() - f64::from(pixel.x),
+            (point.y + origin.y).floor() - f64::from(pixel.y),
+        );
+        polygon.cell(point, options.limits, bytes)?;
+    }
+    let lines = edges::lines(&polygon, bytes)?;
+    let released = polygon.heap_bytes();
+    drop(polygon);
+    bytes.refund(released);
+    bytes.reserve_capacity(pieces, lines.len())?;
+    pieces.extend(
+        lines
+            .iter()
+            .filter_map(|&line| Piece::new(line, 0.0, group)),
+    );
+    work.charge(lines.len())?;
+    let arithmetic = lines.iter().fold(0.0, |sum, &line| {
+        outward(sum + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]))
+    });
+    let released = lines.capacity() * size_of::<Line>();
+    drop(lines);
+    bytes.refund(released);
+    let mut error = hulls.iter().fold(0.0, |sum, hull| {
+        if hull.intersects(bounds) {
+            outward(sum + hull.area)
+        } else {
+            sum
+        }
+    });
+    let released = hulls.capacity() * size_of::<Hull>();
+    drop(hulls);
+    bytes.refund(released);
+    error = outward(
+        error + arithmetic + source_lines(outline, linear, origin, pixel, local, bounds, work)?,
+    );
+    Ok(error)
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::AREA;
@@ -1386,92 +1474,4 @@ mod tests {
             "unresolved curve coverage interval",
         );
     }
-}
-
-/// Adds one original-control source to a localized joint coverage proof.
-pub(in crate::band) fn source_pieces(
-    source: Source<'_>,
-    pixel: Pixel,
-    (options, round): (&Prep<'_>, i32),
-    (bounds, group): ([f64; 4], u8),
-    pieces: &mut Vec<Piece>,
-    (work, bytes): (&mut Meter, &mut Meter),
-) -> Result<f64> {
-    let Source {
-        outline,
-        linear,
-        origin,
-        points: source_points,
-    } = source;
-    let (ox, dx) = subtract(origin.x, f64::from(pixel.x));
-    let (oy, dy) = subtract(origin.y, f64::from(pixel.y));
-    let local = Transform {
-        e: ox,
-        f: oy,
-        ..linear
-    };
-    let mut hulls = Vec::new();
-
-    let targets = [bounds];
-    let before = bytes.used();
-    let (mut polygon, local_points) = flattened_with(
-        outline,
-        local,
-        options.limits,
-        bytes,
-        Some(Inspection {
-            hulls: Some(&mut hulls),
-            work,
-            rounding: dx.abs().max(dy.abs()) * (1.0 + 8.0 * f64::EPSILON),
-            targets: &targets,
-            offset: Point::default(),
-            factor: 16.0_f64.powi(-round),
-        }),
-    )?;
-    let retained = polygon.heap_bytes()
-        + local_points.capacity() * size_of::<Point>()
-        + hulls.capacity() * size_of::<Hull>();
-    bytes.refund(bytes.used().saturating_sub(before + retained));
-    let released = local_points.capacity() * size_of::<Point>();
-    drop(local_points);
-    bytes.refund(released);
-    for &point in source_points {
-        // A genuine point's floor belongs to its canonical placed position.
-        let point = Point::new(
-            (point.x + origin.x).floor() - f64::from(pixel.x),
-            (point.y + origin.y).floor() - f64::from(pixel.y),
-        );
-        polygon.cell(point, options.limits, bytes)?;
-    }
-    let lines = edges::lines(&polygon, bytes)?;
-    let released = polygon.heap_bytes();
-    drop(polygon);
-    bytes.refund(released);
-    bytes.reserve_capacity(pieces, lines.len())?;
-    pieces.extend(
-        lines
-            .iter()
-            .filter_map(|&line| Piece::new(line, 0.0, group)),
-    );
-    work.charge(lines.len())?;
-    let arithmetic = lines.iter().fold(0.0, |sum, &line| {
-        outward(sum + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]))
-    });
-    let released = lines.capacity() * size_of::<Line>();
-    drop(lines);
-    bytes.refund(released);
-    let mut error = hulls.iter().fold(0.0, |sum, hull| {
-        if hull.intersects(bounds) {
-            outward(sum + hull.area)
-        } else {
-            sum
-        }
-    });
-    let released = hulls.capacity() * size_of::<Hull>();
-    drop(hulls);
-    bytes.refund(released);
-    error = outward(
-        error + arithmetic + source_lines(outline, linear, origin, pixel, local, bounds, work)?,
-    );
-    Ok(error)
 }
