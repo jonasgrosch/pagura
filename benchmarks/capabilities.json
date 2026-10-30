@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "a446fd94880db68dda207f372a53268de8273e29",
+  "audited_revision": "59aa1a4dc88dabfe8b0417d5e8fcabdd5d53b147",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -11,7 +11,9 @@
     "quartz"
   ],
   "source_files": {
+    ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e",
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "4e472880ae540cbf6bd2f70c83c8686949d1d3d9d526f1062b3a1ff4816533da",
     "corpus/manifests/content.json": "e4d1691c56a0a34ef967f2e7d46fa42f70fb244198a50cf923c9273b838bf491",
     "corpus/manifests/font_bindings.json": "a60a0fcad9897ba4cea5cbd4d4d72f1023e875031e34c1381dae2396a1bcee1a",
     "corpus/manifests/font_collections.json": "7ae986aa24565a9edaee17b94a15fdb3190a1bbcc28e5fc09a10eac1b0d3dc37",
@@ -152,6 +154,7 @@
     "crates/pagura-text/src/substitute.rs": "1a8cef1d0c58721e61ccdbf30d677aeed03053a2cdc2f9994013577685434db4",
     "crates/pagura-text/src/substitute/cid.rs": "6ba76ff13c02b40134d03a60ca260aa9b6900edb6a6c936aa1ef9996fcb8d8ad",
     "crates/pagura-write/src/lib.rs": "c51a1ce95091e024ba999884b6b1f558f9723426f0c7b248cf079887d1fdbb54",
+    "crates/pagura/examples/compatibility_gap_parity.rs": "6d18cdb9b86cab85572566701948f0caa8d24c932c22783adfab38c0909c9f31",
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
@@ -195,6 +198,7 @@
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "4c148dcbf9942c1c79f9e09308548a72bc1cf7d05aca7252a0d3b1a61916ce65",
+    "tools/compatibility_gap_parity.mjs": "1e9426e693a13a523a931ab8aff8300e30cd21e274432f6be0cb986ee83e149c",
     "tools/fixturegen/font.py": "18b57cf5ceac3874d7f8641c0d361e857d3c21e2257353eadd51b08176fd9c5b",
     "tools/fixturegen/font_bindings.py": "c3446adc9fd63897f1410d4fec3701e35fa20a0472469041f70b4569b7b5f86f",
     "tools/fixturegen/font_collections.py": "e4ef683ffdab5f862ea3e3c5bbfec838faf0be873984d14214347135cc3f4c48",
@@ -415,7 +419,11 @@
         "crates/pagura-font/src/sfnt/collection/tests.rs",
         "crates/pagura-font/tests/vectors/collections.rs",
         "crates/pagura/tests/font_collections.rs",
-        "crates/pagura/tests/font_bindings.rs"
+        "crates/pagura/tests/font_bindings.rs",
+        ".github/workflows/compatibility-gap-parity.yml",
+        "crates/pagura/examples/compatibility_gap_parity.rs",
+        "tools/compatibility_gap_parity.mjs",
+        "benchmarks/probes/compatibility-gap-fixtures.json"
       ],
       "requirements": [
         "font-bounds",
