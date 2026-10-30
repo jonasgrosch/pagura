@@ -5,7 +5,7 @@
 
 use super::frame::CHANNELS;
 use super::{Cover, PageBuffer, Usage, Workspace};
-use crate::plan::{Output, Plan};
+use crate::plan::{MAX_SPOTS, Output, Plan};
 use crate::process;
 use pagura_color::{Conversion, Encoder, Process};
 use pagura_core::convert::u32_to_usize;
@@ -40,7 +40,7 @@ pub(super) fn record(
 pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mut Vec<u8>) {
     let width = u32_to_usize(plan.area.region.width());
     let output = &plan.output;
-    let mut preview = Preview::default();
+    let (mut preview, mut one_spot) = (Preview::<MAX_SPOTS>::default(), Preview::<1>::default());
     // One fill of the whole band, written over while it is still in cache:
     // cheaper than filling a surface beforehand, and than appending row by
     // row. A background of one repeated byte, as white and transparent
@@ -86,11 +86,14 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mu
                             1 if plain => self::plain::<1>(output, row, pixels),
                             3 if plain => self::plain::<3>(output, row, pixels),
                             4 if plain => self::plain::<4>(output, row, pixels),
+                            // A page of one spot compares only its tint.
+                            _ if output.layout.spots == 1 => {
+                                let row = (row, pixels, selection);
+                                one_spot_row(output, row, &mut one_spot, &mut ws.usage);
+                            }
                             _ => {
-                                for (k, (out, pixel)) in row.iter_mut().zip(pixels).enumerate() {
-                                    let select = selection.get(k).copied().unwrap_or(0);
-                                    *out = wide(output, pixel, select, &mut preview, &mut ws.usage);
-                                }
+                                let row = (row, pixels, selection);
+                                wide_row(output, row, &mut preview, &mut ws.usage);
                             }
                         }
                     }
@@ -135,12 +138,38 @@ fn plain<'a, const N: usize>(
     }
 }
 
+/// [`wide`] of a row's pixels with their transfer selections, the spot
+/// preview kept from pixel to pixel.
+fn wide_row<'a, const N: usize>(
+    output: &Output,
+    (row, pixels, selection): (&mut [[u8; 4]], impl Iterator<Item = &'a [f64]>, &[u16]),
+    preview: &mut Preview<N>,
+    usage: &mut Usage,
+) {
+    for (k, (out, pixel)) in row.iter_mut().zip(pixels).enumerate() {
+        let select = selection.get(k).copied().unwrap_or(0);
+        *out = wide(output, pixel, select, preview, usage);
+    }
+}
+
+/// [`wide_row`] of a page of one spot channel, kept out of [`write`]: inlined there, it changes
+/// how the rows of pages without spots compile.
+#[inline(never)]
+fn one_spot_row<'a>(
+    output: &Output,
+    row: (&mut [[u8; 4]], impl Iterator<Item = &'a [f64]>, &[u16]),
+    preview: &mut Preview<1>,
+    usage: &mut Usage,
+) {
+    wide_row(output, row, preview, usage);
+}
+
 /// One f64 page pixel as premultiplied RGBA8 over the background.
-fn wide(
+fn wide<const N: usize>(
     output: &Output,
     pixel: &[f64],
     select: u16,
-    preview: &mut Preview,
+    preview: &mut Preview<N>,
     usage: &mut Usage,
 ) -> [u8; 4] {
     let layout = output.layout;
@@ -189,13 +218,15 @@ fn over(background: [u8; 4], rgb: [f64; 3], alpha: f64) -> [u8; 4] {
 
 /// Overprint preview (ADR 0004 §7): process colour as CMYK plus the CMYK
 /// equivalents of the spot tints, added with saturation, then RGB. The last
-/// tints and their equivalent are kept, compared exactly.
+/// tints and their equivalent are kept, compared exactly. It reads the
+/// first `N` spot channels, which must be all of the page's: the tints past
+/// them are 0.
 #[derive(Debug, Default)]
-struct Preview {
-    last: Option<([f64; crate::plan::MAX_SPOTS], [f64; 4])>,
+struct Preview<const N: usize> {
+    last: Option<([f64; N], [f64; 4])>,
 }
 
-impl Preview {
+impl<const N: usize> Preview<N> {
     fn rgb(&mut self, output: &Output, straight: &[f64], usage: &mut Usage) -> [f64; 3] {
         let layout = output.layout;
         let process = layout.process.components();
@@ -206,7 +237,7 @@ impl Preview {
             let rgb = process::rgb(layout.process, &straight[..process]);
             Encoder::new(Process::Cmyk, &Conversion::default()).encode(rgb, &mut cmyk);
         }
-        let mut tints = [0.0; crate::plan::MAX_SPOTS];
+        let mut tints = [0.0; N];
         for (tint, &value) in tints.iter_mut().zip(&straight[process..]) {
             *tint = 1.0 - value;
         }
@@ -224,12 +255,8 @@ impl Preview {
 }
 
 /// The CMYK equivalent of spot tints, each definition's alternate added with
-/// saturation.
-fn equivalent(
-    output: &Output,
-    tints: &[f64; crate::plan::MAX_SPOTS],
-    usage: &mut Usage,
-) -> [f64; 4] {
+/// saturation; the tints past `N` are 0.
+fn equivalent<const N: usize>(output: &Output, tints: &[f64; N], usage: &mut Usage) -> [f64; 4] {
     let mut result = [1.0; 4];
     for spot in &output.spots {
         let mut input = [0.0; pagura_color::MAX_COMPONENTS];
@@ -299,10 +326,132 @@ mod tests {
                 3 => plain::<3>(&output, &mut row, pixels.clone()),
                 _ => plain::<4>(&output, &mut row, pixels.clone()),
             }
-            let (mut preview, mut usage) = (Preview::default(), Usage::default());
+            let (mut preview, mut usage) = (Preview::<MAX_SPOTS>::default(), Usage::default());
             for (bytes, pixel) in row.iter().zip(pixels) {
                 assert_eq!(*bytes, wide(&output, pixel, 0, &mut preview, &mut usage));
             }
+        }
+    }
+
+    #[test]
+    fn a_kept_spot_equivalent_gives_each_pixel_its_own_bytes() {
+        // Two spots, repeated and changing tints, translucent pixels and
+        // values past alpha: each pixel as it follows the row equals the
+        // pixel on its own.
+        let spot = |cmyk, channel| crate::plan::SpotPlan {
+            convert: super::super::tests::ink(cmyk),
+            components: 1,
+            inputs: vec![(0, channel)],
+        };
+        let output = Output {
+            layout: crate::plan::Layout {
+                process: Process::Cmyk,
+                spots: 2,
+            },
+            background: [255, 128, 0, 192],
+            spots: vec![spot([0.0, 0.8, 0.3, 0.0], 0), spot([0.5, 0.0, 0.0, 0.2], 1)],
+            transfers: Vec::new(),
+        };
+        let samples = [0.0, -0.0, 0.25, 0.5, 1.0, 1.25];
+        let mut values = Vec::new();
+        for k in 0..96 {
+            let pick = |i: usize| samples[(k + i) % samples.len()];
+            let alpha = [1.0, 0.5, 0.0][k / 8 % 3];
+            values.extend((0..4).map(pick));
+            // The second spot changes while the first stays.
+            let spots = [samples[k / 4 % 6], samples[k / 2 % 6]];
+            values.extend(spots.into_iter().chain([alpha, 0.0, 0.0]));
+        }
+        let (mut preview, mut usage) = (Preview::<MAX_SPOTS>::default(), Usage::default());
+        for pixel in values.chunks_exact(output.layout.stride()) {
+            assert_eq!(
+                wide(&output, pixel, 0, &mut preview, &mut usage),
+                wide(
+                    &output,
+                    pixel,
+                    0,
+                    &mut Preview::<MAX_SPOTS>::default(),
+                    &mut usage
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn a_long_kept_tint_prefix_survives_misses_and_opacity_changes() {
+        let count = MAX_SPOTS;
+        let output = Output {
+            layout: crate::plan::Layout {
+                process: Process::Cmyk,
+                spots: count,
+            },
+            background: [230, 245, 255, 255],
+            spots: (0..count)
+                .map(|channel| crate::plan::SpotPlan {
+                    convert: super::super::tests::ink([0.0, 0.8, 0.3, 0.0]),
+                    components: 1,
+                    inputs: vec![(0, channel)],
+                })
+                .collect(),
+            transfers: Vec::new(),
+        };
+        let (mut preview, mut usage) = (Preview::<MAX_SPOTS>::default(), Usage::default());
+        for k in 0..192 {
+            let alpha = [1.0, 0.5, 0.25][k / 8 % 3];
+            let mut pixel = vec![alpha; output.layout.stride()];
+            pixel[..4].copy_from_slice(&[0.0; 4]);
+            pixel[4 + count] = alpha;
+            let changed = [count - 1, 0, count / 2][k / 16 % 3];
+            pixel[4 + changed] = alpha * [0.125, 0.5, 0.875][k / 2 % 3];
+            assert_eq!(
+                wide(&output, &pixel, 0, &mut preview, &mut usage),
+                wide(
+                    &output,
+                    &pixel,
+                    0,
+                    &mut Preview::<MAX_SPOTS>::default(),
+                    &mut usage
+                ),
+                "case {k} changed tint {changed}"
+            );
+        }
+    }
+
+    #[test]
+    fn one_spot_rows_give_the_bytes_and_work_of_every_spot_preview() {
+        // Repeated and changing tints, signed zeros, values past alpha, NaN
+        // and translucent pixels: comparing the one spot's tint gives each
+        // pixel the bytes, and the row the misses, of comparing them all.
+        let samples = [0.0, -0.0, 0.25, 0.5, 1.0, 1.25, f64::NAN];
+        for process in [Process::Gray, Process::Rgb, Process::Cmyk] {
+            let output = Output {
+                layout: crate::plan::Layout { process, spots: 1 },
+                background: [255, 128, 0, 192],
+                spots: vec![crate::plan::SpotPlan {
+                    convert: super::super::tests::ink([0.0, 0.8, 0.3, 0.0]),
+                    components: 1,
+                    inputs: vec![(0, 0)],
+                }],
+                transfers: Vec::new(),
+            };
+            let colours = process.components();
+            let mut values = Vec::new();
+            for k in 0..128 {
+                let pick = |i: usize| samples[(k / 4 + i) % samples.len()];
+                let alpha = [1.0, 0.5, 0.0][k / 8 % 3];
+                values.extend((0..colours).map(pick));
+                let tint = samples[k / 2 % samples.len()];
+                values.extend([tint, alpha, 0.0, 0.0]);
+            }
+            let (mut one, mut every) = (Preview::<1>::default(), Preview::<MAX_SPOTS>::default());
+            let (mut one_usage, mut every_usage) = (Usage::default(), Usage::default());
+            for pixel in values.chunks_exact(output.layout.stride()) {
+                let alone = &mut Preview::<MAX_SPOTS>::default();
+                let bytes = wide(&output, pixel, 0, &mut one, &mut one_usage);
+                assert_eq!(bytes, wide(&output, pixel, 0, alone, &mut Usage::default()));
+                assert_eq!(bytes, wide(&output, pixel, 0, &mut every, &mut every_usage));
+            }
+            assert_eq!(one_usage.functions, every_usage.functions);
         }
     }
 }
