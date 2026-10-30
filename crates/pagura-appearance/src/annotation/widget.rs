@@ -167,6 +167,7 @@ fn inherited<'a>(
             return Ok(None);
         }
         if let Some(id) = parent.as_reference() {
+            work.charge(visited.len())?;
             if visited.contains(&id) {
                 return Err(Error::cycle("cyclic widget field ancestry").in_object(id));
             }

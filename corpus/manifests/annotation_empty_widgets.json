@@ -221,6 +221,25 @@
       "render_error": "cycle"
     },
     {
+      "id": "annotation_empty_widgets/legacy-long-ancestry",
+      "kind": "pdf",
+      "description": "A bounded40-parent legacy chain remains geometric; low traversal work must also bound its membership comparisons",
+      "expected": "render",
+      "requirements": [
+        "content-source-widget-display"
+      ],
+      "path": "corpus/generated/annotation_empty_widgets/legacy-long-ancestry.pdf",
+      "sha256": "bc6781c732e1a1f16bd34db63202e223ae5e477e95be733a3ed3c8e75edbb573",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/annotation_empty_widgets/legacy-long-ancestry.ppm",
+      "oracle_sha256": "b3dee3ce9e40c4ac9852a0209d15084bd7f8370db98487b6386958e8a608ce48",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
       "id": "annotation_empty_widgets/nonempty-xfa",
       "kind": "pdf",
       "description": "A nonempty source value retains the existing XFA generation boundary",

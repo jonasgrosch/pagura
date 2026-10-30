@@ -1187,6 +1187,7 @@
     "annotation_empty_widgets/nonempty-xfa",
     "annotation_empty_widgets/stored-precedence",
     "circle_annotations/cloudy",
-    "recovery/widget-rotated-border"
+    "recovery/widget-rotated-border",
+    "annotation_empty_widgets/legacy-long-ancestry"
   ]
 }
