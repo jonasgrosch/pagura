@@ -27,6 +27,10 @@ JBIG2 viewing reports `jbig2.page-capabilities` when complete regions contradict
 the page's auxiliary/refinement capability bits (T.88 7.4.8.5). Strict mode
 rejects the same input. This repair changes neither region validation nor
 resource limits; it does not establish broader JBIG2 compatibility.
+Refinement line prediction reuses the template state with only its reference
+centre set (T.88 6.3.5.6, Figures 14–15). The decoder and independent encoder
+now map that symbolic state through their own template bit order; geometric
+expected bitmaps remain unchanged when the TPGR streams are re-encoded.
 
 | Area | Implemented | Remaining boundary |
 |---|---|---|

@@ -71,6 +71,50 @@
       "tolerance": 0
     },
     {
+      "id": "recovery/jbig2-page-capabilities-prediction-centre-t0",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities prediction centre t0",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-prediction-centre-t0.pdf",
+      "sha256": "19954709b4ef18b9049cbf4f084a2e3ae5ed22b788a06b3efe0ec5070c7d0c41",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-prediction-centre-t0.ppm",
+      "oracle_sha256": "3d71580f5ed54cd8df06c1a6350a8fd5ab99bd047d156577360ab3f6b6e12151",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jbig2-page-capabilities-prediction-centre-t1",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities prediction centre t1",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-prediction-centre-t1.pdf",
+      "sha256": "b691d9837dfe7551d5b5727b1944cbf8e225e040718319c667646ad4d2491905",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-prediction-centre-t1.ppm",
+      "oracle_sha256": "3d71580f5ed54cd8df06c1a6350a8fd5ab99bd047d156577360ab3f6b6e12151",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
       "id": "recovery/pattern-coloured-base-no-operands",
       "kind": "pdf",
       "description": "pattern coloured base no operands",

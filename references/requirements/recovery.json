@@ -190,7 +190,9 @@
       "tests": [
         "recovery/jbig2-page-capabilities-auxiliary",
         "recovery/jbig2-page-capabilities-refinement",
-        "recovery/jbig2-page-capabilities-both"
+        "recovery/jbig2-page-capabilities-both",
+        "recovery/jbig2-page-capabilities-prediction-centre-t0",
+        "recovery/jbig2-page-capabilities-prediction-centre-t1"
       ],
       "rule": "Reported viewing policy: complete auxiliary/refinement regions override contradicting page capability bits 5/1. Strict mode rejects the deviation. Actual segment syntax, referrals, combination operators, complete decoding, and all resource bounds remain authoritative. Expected bitmaps are geometric and encoded independently of product code."
     }

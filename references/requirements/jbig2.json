@@ -940,12 +940,13 @@
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
-        "corpus/manifests/jbig2.json"
+        "corpus/manifests/jbig2.json",
+        "pagura-image::jbig2::refinement::tests::line_prediction_reuses_the_reference_centre_pixel_context"
       ],
       "primary_text_review": {
-        "rule": "Refinement uses either template, offsets and typical prediction; explicit references match size/location/operator, while page references are clipped rectangles with zero outside samples and REPLACE composition.",
-        "implementation_agreement": "agrees within the stated scope",
-        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "rule": "Refinement uses either template, offsets and typical prediction; explicit references match size/location/operator, while page references are clipped rectangles with zero outside samples and REPLACE composition. SLTP reuses the template state with only the reference-centre pixel set (Figures 14 and 15); the numeric index follows this implementation\u2019s chosen template bit assignment.",
+        "implementation_agreement": "SLTP mapping corrected from numeric context labels belonging to a different bit order; the geometric centre-state unit test independently pins the mapping for both templates.",
+        "generated_expectations_agreement": "Geometric expected bitmaps remain unchanged. TPGR streams are re-encoded using the correct shared centre-pixel probability state; old encoder/decoder round-tripping alone was insufficient evidence.",
         "verdict": "verified against the listed base-text clauses"
       },
       "vector_ids": [
@@ -973,7 +974,9 @@
         "jbig2/refinement-prediction-uniform-0-t0",
         "jbig2/refinement-prediction-uniform-1-t0",
         "jbig2/refinement-prediction-uniform-0-t1",
-        "jbig2/refinement-prediction-uniform-1-t1"
+        "jbig2/refinement-prediction-uniform-1-t1",
+        "jbig2/refinement-prediction-centre-context-t0",
+        "jbig2/refinement-prediction-centre-context-t1"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
@@ -1034,7 +1037,8 @@
             "jbig2/refinement-prediction-uniform-0-t1"
           ]
         },
-        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels.",
+        "historical_tpgr_encoding_note": "These observations predate the added reference-centre-state collision cases. Existing encoded fixture bytes remain identical after the encoder correction; those cases did not distinguish the wrong SLTP state selection. Their historical matches do not qualify the new collision cases or the newly admitted public TPGR inputs."
       }
     },
     {
