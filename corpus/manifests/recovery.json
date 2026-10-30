@@ -1377,6 +1377,50 @@
       "tolerance": 0
     },
     {
+      "id": "recovery/unclosed-marked",
+      "kind": "pdf",
+      "description": "unclosed marked",
+      "expected": "render",
+      "requirements": [
+        "recovery-content"
+      ],
+      "path": "corpus/generated/recovery/unclosed-marked.pdf",
+      "sha256": "c2e431e533e1d600ee5c2bee8ae60728465bfee92d5c9d57f03941e11f1277e2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unclosed"
+      ],
+      "oracle": "corpus/generated/recovery/unclosed-marked.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/unclosed-marked-deep",
+      "kind": "pdf",
+      "description": "unclosed marked deep",
+      "expected": "render",
+      "requirements": [
+        "recovery-content"
+      ],
+      "path": "corpus/generated/recovery/unclosed-marked-deep.pdf",
+      "sha256": "22f3b331b2b019a186b05b78daf9131c3da1d4d8fade174c7ce36ca8901bdb60",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unclosed"
+      ],
+      "oracle": "corpus/generated/recovery/unclosed-marked-deep.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
       "id": "recovery/type3-empty-bounds-x",
       "kind": "pdf",
       "description": "type3 empty bounds x",

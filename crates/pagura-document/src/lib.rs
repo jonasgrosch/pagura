@@ -16,6 +16,7 @@ mod diagnostics;
 pub mod features;
 pub mod forms;
 mod history;
+pub mod information;
 mod load;
 mod memory;
 pub mod navigation;

@@ -12,6 +12,9 @@ Informational diagnostics (`DiagnosticKind::Information`, ADR 0003/0009):
 `font.substituted` reports permitted non-embedded font substitution;
 `font.cid-glyph-missing` reports incomplete substitute coverage once per font,
 keeping the PDF advance while an unavailable glyph paints nothing.
+`pages.contents-undefined` reports a page whose `/Contents` refers to an
+undefined object: the reference is null (7.3.10), so the page renders without
+content instead of failing, and the report keeps that page from looking complete.
 `form.appearance-kept` reports keeping an untouched field's valid stored
 appearance when generating a replacement is unsupported. These information
 diagnostics are permitted in Strict and Repair modes and are not applied
@@ -96,6 +99,18 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   and Nonsymbolic is treated as its inverse. Valid pairs are not repairs and
   keep their 9.6.5 selection routes, even when the font's character set
   disagrees. Applied by `pagura-text` for every caller of `PdfFont`.
+- `font.symbolic-latin-encoding` (9.6.5, 9.8.2; ADR 0009): a non-embedded
+  font flagged Symbolic whose name is a known Latin family and whose
+  `/Encoding` names a Latin base encoding (Standard, WinAnsi or MacRoman)
+  uses that encoding with the standard face instead of failing. Symbol,
+  dingbat and unknown families, and fonts without such an encoding, still
+  fail with `font.non-embedded`.
+
+- `font.embedded-unusable` (9.9; ADR 0009): an embedded program that still
+  cannot be used after its parser's own repairs (syntax, binding or
+  unsupported construct) is replaced by the substitute a non-embedded font with
+  the same name and descriptor would get, with the PDF's widths. Strict mode
+  keeps the program's error; budget and cycle errors are never replaced.
 - `font.widths-length` (Table 109): a `Widths` array whose length disagrees
   with `FirstChar` and `LastChar`; codes past the array use `MissingWidth`
   and extra entries are ignored.
@@ -136,12 +151,20 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   `file.header-offset`, `file.header-format`, `catalog.type-missing`:
   structure recovered by scanning; the last complete physical definition of
   an object wins.
+- `object.stray-delimiter` (7.3.7, 7.3.10): unmatched `>>` or `]` between a
+  complete indirect value and its `endobj` are ignored. A closing delimiter
+  cannot begin a value, so nothing that could hold content is skipped; any
+  other token before `endobj` remains an error.
 - `security.permissions-unsigned`, `security.literal-hash`,
   `security.hash-padding`: malformed encryption entries recovered; normal
   authentication is still required.
 
 - `content.graphics-unclosed` (7.8.2, 8.4.2): unmatched saved graphics states
   are discarded at the end of an otherwise finished content sequence.
+- `content.marked-unclosed` (14.6): marked-content sequences left open at the
+  end of an otherwise finished content sequence are closed there, so optional
+  content stays hidden or visible until that end. Open sequences nest without
+  a depth limit; each costs one operator of the content.
 - `font.type3-width` (9.6.4, Table 111): `Widths` controls the advance when a
   CharProc's `d0`/`d1` width disagrees or declares a nonzero vertical advance;
   glyph geometry is retained.
