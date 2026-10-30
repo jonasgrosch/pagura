@@ -187,14 +187,20 @@ impl Executor<'_> {
             alpha: &ws.alpha[..len],
             shape: &ws.shape[..len],
         };
+        let mut target = Target {
+            page: &mut ws.page,
+            wide: &mut ws.wide,
+            levels: &mut ws.levels,
+            starts: &mut ws.starts,
+            initial: &mut ws.initial,
+        };
+        if mode.blend != pagura_interpret::BlendMode::Normal
+            && super::store_blended_result(&mut target, parent, (x, y), &sources, mode.blend)
+        {
+            return;
+        }
         store(
-            &mut Target {
-                page: &mut ws.page,
-                wide: &mut ws.wide,
-                levels: &mut ws.levels,
-                starts: &mut ws.starts,
-                initial: &mut ws.initial,
-            },
+            &mut target,
             parent,
             (x, y),
             (&sources, &mode),

@@ -522,8 +522,9 @@ values and rounded once to the parent's format. A narrow child is an isolated
 group, a non-isolated group of Normal content (source-over is associative, so
 it composites as an isolated one) or a soft mask, in an RGB blending space,
 without knockout other than the opaque-member identity, composited with
-Normal into a narrow parent. Every other child is F64, since no inequality
-bounds what narrow children inject into an F64 parent. Let B's colour and
+Normal into a narrow parent, or into the page over an opaque background with
+a blend mode below. Every other child is F64, since no inequality bounds
+what narrow children inject into an F64 parent. Let B's colour and
 alpha channels be within E_c(B) and E_α(B) levels of their reference, and m be
 the composite's opacity factor (constant alpha, coverage and soft-mask
 value). The composite x' = (1 - m α/255) x + m c then injects
@@ -537,6 +538,19 @@ more. A luminosity mask's value is within the largest bound of its colour
 channels, since the luminosity weights sum to one, and an alpha mask's within
 its alpha bound, each plus the f64 evaluation of its luminosity and transfer
 function.
+
+**Blend modes over the opaque page.** Over an opaque background every store
+leaves the page's alpha at its full word or level: the exact result is 1,
+and the f64 evaluation errs far below half a word or an f32 step. A group
+result of a separable mode B then composites, in units of one, as
+x' = (1 - m α) x + m α B(x, C/α) for the child's colour C and alpha α, and
+the page buffer evaluates it in f64 and rounds once. For Multiply, Screen,
+Darken, Lighten and Exclusion, ∂B/∂b lies in [-1, 1], so x' moves by at most
+as much as x (the lemma's L ≤ 1), and by no more than Normal's composite
+with C (at most m), α (at most m x) and a mask value (at most 1): the child
+injects what a Normal child does. Difference moves by up to 2 m x with α, so
+its results, the modes that amplify and every mode into other buffers stay
+F64.
 
 A child's own bound E(B) is:
 
@@ -567,8 +581,9 @@ N16.
 **Not proven.** These stay F64 until a bound is recorded here: a second
 dynamic store at an N16 pixel, because two nearest-word roundings exceed its
 room; N16 children; narrow children of F64 parents; blend modes other than
-Normal and transfer functions in a buffer, whose results depend on the
-backdrop in a way the lemma does not model; non-isolated groups whose content
+Normal in a buffer, but for the group results over the opaque page above,
+and transfer functions, whose results depend on the backdrop in a way the
+lemma does not model; non-isolated groups whose content
 is not all Normal, because removing the backdrop divides by the group's
 alpha; knockout groups other than the opaque-member identity; non-RGB
 blending spaces, spot channels and overprint simulation, whose conversions

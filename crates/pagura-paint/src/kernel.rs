@@ -2,15 +2,15 @@
 //! buffer row. The f64 kernel evaluates the transparent imaging model of
 //! clause 11 per pixel and is monomorphized over the blend mode, knockout
 //! and the colour source; the narrow kernels (ADR 0004) store Normal
-//! source-over only. Callers pass per-pixel alpha and shape already reduced
+//! source-over, and other blend modes as dynamic stores. Callers pass per-pixel alpha and shape already reduced
 //! by coverage, constant alpha and soft mask.
 
 mod narrow;
 
 pub(crate) use narrow::{
-    UNIT, dynamic_f32, dynamic_n16, dynamic_n16_runs, dynamic_n16_uniform, f32_bytes, full, level,
-    levels, n16_bytes, opaque_word, overwrite_n16, store_f32, store_f32_runs, store_f32_uniform,
-    store_n16, store_n16_runs, store_n16_uniform, targets, word,
+    UNIT, blend_f32, blend_n16, dynamic_f32, dynamic_n16, dynamic_n16_runs, dynamic_n16_uniform,
+    f32_bytes, full, level, levels, n16_bytes, opaque_word, overwrite_n16, store_f32,
+    store_f32_runs, store_f32_uniform, store_n16, store_n16_runs, store_n16_uniform, targets, word,
 };
 
 use crate::blend::{Blend, BlendVisitor, Normal, with_blend};

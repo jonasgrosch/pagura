@@ -212,6 +212,7 @@ mod tests {
                 transform: build.transform(),
                 pixels: build.page(),
                 user_unit: 1.0,
+                opaque: true,
             },
             buffers: Vec::new(),
             groups: FastMap::default(),
