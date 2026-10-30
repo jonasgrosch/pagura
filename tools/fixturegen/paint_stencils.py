@@ -9,7 +9,7 @@ unambiguous continuous geometric-union result.
 from collections.abc import Callable
 from fractions import Fraction as F
 
-from .model import Case, RENDER, UNSUPPORTED
+from .model import Case, RENDER
 from .pdf import document, stream
 from .raster import winding_area
 
