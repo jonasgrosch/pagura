@@ -267,7 +267,8 @@
         "paint_stencils/colored-interpolate",
         "pagura-paint prepare::tests::pattern_stencils::stencil_geometry_obeys_path_clip_work_and_memory_caps",
         "pagura-paint prepare::tests::pattern_stencils::stencil_clip_is_invariant_across_bands_regions_and_warm_stores",
-        "pagura-paint prepare::tests::pattern_stencils::patterned_stencil_preserves_cmyk_zero_colorants_during_overprint"
+        "pagura-paint prepare::tests::pattern_stencils::patterned_stencil_preserves_cmyk_zero_colorants_during_overprint",
+        "pagura-reference harness: patterned stencil differential, independent oracle and band/region/cache invariance gates"
       ],
       "gaps": "Interpolated pattern-coloured stencils and an unselected Pattern colour space retain Unsupported(pattern.image-mask). Shading retains the existing pixel-centre / 2x2 AntiAlias sampling policy. Cell marks use the existing per-pixel source-over model; no continuous union integration or whole-family accuracy claim.",
       "review": [
