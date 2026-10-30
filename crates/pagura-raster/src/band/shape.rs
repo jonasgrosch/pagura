@@ -39,7 +39,6 @@ pub struct Shape {
     pub(crate) masked: bool,
     /// The rows resolved at preparation and their sides.
     pub(crate) resolved: Resolved,
-    pub(super) certified: Option<clip::Rows>,
 }
 
 /// Rows of a shape whose windings its signed area does not determine, or
@@ -123,6 +122,9 @@ pub(crate) enum Body {
     Edges(EdgeBody),
     /// Shared glyph geometry, translated as its edges accumulate.
     Glyph(GlyphBody),
+    /// Complete joint coverage runs certified during preparation, emitted
+    /// through the same row sink as clipping paths.
+    Certified(clip::Rows),
 }
 
 /// One translated placement of shared glyph geometry.
@@ -410,6 +412,7 @@ impl Shape {
         let own = match &self.body {
             Body::Edges(edges) => edges.lines.len() + edges.curves.len(),
             Body::Glyph(glyph) => glyph.boundaries,
+            Body::Certified(_) => 0,
         };
         own.saturating_add(self.resolved.len())
     }
@@ -746,7 +749,6 @@ impl Shape {
             clip: frame.clip.cloned(),
             masked: false,
             resolved: Resolved::default(),
-            certified: None,
         }))
     }
 
@@ -841,7 +843,6 @@ impl Shape {
             clip: frame.clip.cloned(),
             masked: frame.paths.is_some(),
             resolved,
-            certified: None,
         })
     }
 

@@ -7,14 +7,14 @@ use super::cells::Cells;
 use super::clip::{Rows, Segment};
 use super::edges::{self, Bounds, Line, Polygon, StripList};
 use super::glyph::rounding::{self, Pixel};
-use super::shape::{Body, EdgeBody, Resolved, Shape};
+use super::shape::{Body, Resolved, Shape};
 use super::union::{Meters, Piece, Resolver};
 use super::{DeviceRect, GlyphEdges, Prep, RASTER_WORK, RENDER_BYTES};
 use crate::{FillRule, Path, Point, Transform, quantize_unit};
 use pagura_core::{Error, Meter, Result};
 
 /// One clip input, preserving the distinction between a canonical path fill
-/// and a glyph whose original curves determine coverage (8.5.4, 9.3.6).
+/// and ordinary glyph coverage semantics (8.5.4, 9.3.6).
 #[derive(Debug, Clone, Copy)]
 pub struct ClipSource<'a> {
     pub(super) path: &'a Path,
@@ -40,8 +40,9 @@ impl<'a> ClipSource<'a> {
         }
     }
 
-    /// A glyph outline whose true curves and geometric points determine
-    /// coverage under its complete device transform.
+    /// A glyph outline under its complete device transform: true quadratic
+    /// curves, or the ordinary canonical polygon for genuine cubics and
+    /// singular maps, including geometric points' floor cells.
     pub fn glyph(path: &'a Path, transform: Transform) -> Self {
         Self {
             path,
@@ -519,11 +520,10 @@ fn shape(
         work: work.used(),
         retained,
         rule: FillRule::NonZero,
-        body: Body::Edges(EdgeBody::default()),
+        body: Body::Certified(coverage),
         clip: Some(clip.clone()),
         masked: false,
         resolved: Resolved::default(),
-        certified: Some(coverage),
     }))
 }
 
