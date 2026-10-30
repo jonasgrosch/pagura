@@ -139,7 +139,7 @@ def offset(n):
     return b"\x1d"+u32(n)
 
 
-def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, font_set=False, line_count=0, conforming=False):
+def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, font_set=False, line_count=0, conforming=False, top_matrix=None):
     end = b"" if cff2 else b"\x0e"
     rect_subr = operands(100,0,0,200,-100,0)+b"\x05"+(b"" if cff2 else b"\x0b")
     rect = operands(0,0)+b"\x15"+number(-107)+b"\x0a"+end
@@ -207,6 +207,8 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
     fdselect = b"\x03"+u16(1)+u16(0)+b"\x00"+u16(5)
     def top(chars, chars_set, encoding, private_at, fdarray_at, fdselect_at, vstore_at=0):
         result = operands(393,394,0)+b"\x0c\x1e" if cid and conforming else b""
+        if top_matrix is not None:
+            result += top_matrix+b"\x0c\x07"
         result += offset(chars)+b"\x11"
         if not cff2:
             result += offset(chars_set)+b"\x0f"+(b"" if cid and conforming else offset(encoding)+b"\x10")

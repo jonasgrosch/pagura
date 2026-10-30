@@ -119,6 +119,17 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   dingbat and unknown families, and fonts without such an encoding, still
   fail with `font.non-embedded`.
 
+- `font.program-binding` (PDF Table 124, ADR 0009): a CIDFontType0 embedding
+  key/subtype contradicts an intact self-identifying CFF1 or sfnt program.
+  Repair parses the complete bytes and preserves program charset CIDs/GIDs
+  and PDF widths. Strict rejects; ambiguous Type 1 CID order, conflicting
+  TrueType maps, malformed programs and resource failures stay errors.
+
+- `font.collection-face` (PDF Table 124, ADR 0009): PDF supplies no collection
+  face index. Repair selects one unique FontName/BaseFont PostScript-name
+  match from a valid TTC/OTC, including valid subset-tag removal. Strict
+  rejects the PDF reader policy; the native font API accepts valid collections.
+
 - `font.embedded-unusable` (9.9; ADR 0009): an embedded program that still
   cannot be used after its parser's own repairs (syntax, binding or
   unsupported construct) is replaced by the substitute a non-embedded font with

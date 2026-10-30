@@ -48,6 +48,16 @@ pub const SYMBOLIC_LATIN_ENCODING: Repair = Repair::new("font.symbolic-latin-enc
 /// name and descriptor would get (ADR 0009); the PDF's widths keep the advances.
 pub const EMBEDDED_UNUSABLE: Repair = Repair::new("font.embedded-unusable");
 
+/// A CIDFontType0's embedding key/subtype disagrees with an intact CFF or
+/// sfnt program. The parsed program's charset/GIDs and PDF metrics remain
+/// unchanged; Type 1 name dictionaries cannot supply a CID order.
+pub const PROGRAM_BINDING: Repair = Repair::new("font.program-binding");
+
+/// PDF embedding supplies no collection face index (Table 124). A valid
+/// collection is selected by its unique FontName/BaseFont PostScript name,
+/// including standardized subset-tag removal, as explicit reader policy.
+pub const COLLECTION_FACE: Repair = Repair::new("font.collection-face");
+
 /// Every repair tag defined by this crate.
 pub const ALL: &[Repair] = &[
     CID_TO_GID_IDENTITY,
@@ -63,6 +73,8 @@ pub const ALL: &[Repair] = &[
     ENCODING_NAME,
     WIDTHS_LENGTH,
     STREAM_LENGTHS,
+    PROGRAM_BINDING,
+    COLLECTION_FACE,
     SYMBOLIC_LATIN_ENCODING,
     EMBEDDED_UNUSABLE,
 ];

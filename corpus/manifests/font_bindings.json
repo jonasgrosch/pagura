@@ -1,0 +1,221 @@
+{
+  "schema": 2,
+  "area": "font_bindings",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "font_bindings/cff-label-control",
+      "kind": "pdf",
+      "description": "cff label control",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/cff-label-control.pdf",
+      "sha256": "7cd3c0c2f6357872301d103cefd8de7ebbce4171d19a2c557bcb7ff57c4d0667",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_bindings/cff-label-control.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_bindings/cff-label",
+      "kind": "pdf",
+      "description": "cff label",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/cff-label.pdf",
+      "sha256": "3ca22fdb3da95b9dc67b7a1a77bb66de8e1db7a8ed5b93acf9ff9033409c28d1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.program-binding"
+      ],
+      "oracle": "corpus/generated/font_bindings/cff-label.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_bindings/cff-key-control",
+      "kind": "pdf",
+      "description": "cff key control",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/cff-key-control.pdf",
+      "sha256": "7cd3c0c2f6357872301d103cefd8de7ebbce4171d19a2c557bcb7ff57c4d0667",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_bindings/cff-key-control.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_bindings/cff-key",
+      "kind": "pdf",
+      "description": "cff key",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/cff-key.pdf",
+      "sha256": "a7853adf60de50c29615fb099cebd13a7742427b4546c06c5bf771a798c94089",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.program-binding"
+      ],
+      "oracle": "corpus/generated/font_bindings/cff-key.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_bindings/otf-label-control",
+      "kind": "pdf",
+      "description": "otf label control",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/otf-label-control.pdf",
+      "sha256": "2e36d3bf918874b812dee3f8f84369e497eaa51456f2f53f8de501bfa78f28d9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_bindings/otf-label-control.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_bindings/otf-label",
+      "kind": "pdf",
+      "description": "otf label",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/otf-label.pdf",
+      "sha256": "00033cd6234908988e8f7faffc70ccebb175be7d49896cd39ce62e2c917c25af",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.program-binding"
+      ],
+      "oracle": "corpus/generated/font_bindings/otf-label.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_bindings/glyf-label-control",
+      "kind": "pdf",
+      "description": "glyf label control",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/glyf-label-control.pdf",
+      "sha256": "c2cf950f0b4cb801e8e15e73d1488912bac7c7f46bbb56f6b7e2db5997aa9fe8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_bindings/glyf-label-control.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_bindings/glyf-label",
+      "kind": "pdf",
+      "description": "glyf label",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/glyf-label.pdf",
+      "sha256": "05dc906bf71a2207499768b21a9057fc9d65d357507199b198ac1734e611898b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.program-binding"
+      ],
+      "oracle": "corpus/generated/font_bindings/glyf-label.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_bindings/type1-cid-order",
+      "kind": "pdf",
+      "description": "No recoverable complete program with a defined CID/GID order",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/type1-cid-order.pdf",
+      "sha256": "ce19336f45b7f58328e500d99244f6d261bd5499463fafe1507056bcef9ed9a3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_bindings/damaged-cff",
+      "kind": "pdf",
+      "description": "No recoverable complete program with a defined CID/GID order",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/damaged-cff.pdf",
+      "sha256": "993808578bf6a4fe9c71d1618dd0f5e3e4e112be6fe042619b19e5d2b8f71adf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_bindings/glyf-conflicting-map",
+      "kind": "pdf",
+      "description": "A conflicting CID map cannot be discarded to reinterpret a program binding",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_bindings/glyf-conflicting-map.pdf",
+      "sha256": "e80ec4c2696a935b1d1c4c710d4b07a6179bdabd076da344b0f0222e05695f1d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    }
+  ]
+}
