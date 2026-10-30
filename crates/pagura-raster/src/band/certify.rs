@@ -25,6 +25,7 @@ use super::edges::Polygon;
 use crate::Point;
 use crate::geometry::{greater, lesser};
 use pagura_core::{Meter, Result};
+use std::cmp::Ordering;
 
 mod cover;
 pub(crate) use cover::{Covered, covered};
@@ -281,8 +282,41 @@ fn place(
         work.add(segment - passed)?;
         a.range = [lesser(range[0], end), greater(range[1], end)];
     }
-    active.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
+    order(active);
     Some(())
+}
+
+/// Puts the placed chains in order: of x, and chains at the same x by their
+/// first point. The chains kept from the last slab mostly keep its order
+/// and the joining ones sit at the end, so each chain out of order moves
+/// into place by binary search; past twice as many chains moved as there
+/// are, the sort takes over. The order is total, so both give the same.
+///
+/// Chains at the same x meet at the slab's middle. Unless they are the same
+/// segment across the whole slab they are not apart, so the slab is in doubt
+/// in either order: the certificate is sound for any order of them, as it
+/// was for the one the sort used to leave to chance.
+#[inline(never)]
+fn order(active: &mut [Active]) {
+    let mut moved = 0;
+    for i in 1..active.len() {
+        if before(&active[i - 1], &active[i]).is_lt() {
+            continue;
+        }
+        let to = active[..i].partition_point(|a| before(a, &active[i]).is_lt());
+        moved += i - to;
+        if moved > 2 * active.len() {
+            active.sort_unstable_by(before);
+            return;
+        }
+        active[to..=i].rotate_right(1);
+    }
+}
+
+/// The order of placed chains: chains take points of their own, so no two
+/// share their first.
+fn before(a: &Active, b: &Active) -> Ordering {
+    a.x.total_cmp(&b.x).then(a.chain.start.cmp(&b.chain.start))
 }
 
 /// Whether the placed chains hold winding 0 or the common sign on the slab
@@ -1015,5 +1049,87 @@ mod tests {
             .cell(Point::new(0.2, 0.7), &limits, &mut bytes)
             .unwrap();
         assert!(!certifies(&cancelled, 0.0));
+    }
+
+    /// The fields of a placed chain, `x` by its bits.
+    fn key(a: &Active) -> (usize, usize, bool, usize, u64, [u64; 2]) {
+        let (c, r) = (a.chain, a.range);
+        (
+            c.start,
+            c.end,
+            c.up,
+            a.segment,
+            a.x.to_bits(),
+            r.map(f64::to_bits),
+        )
+    }
+
+    #[test]
+    fn ordering_placed_chains_matches_the_sort() {
+        // Kept chains in order of x alone with a few neighbours swapped, then
+        // joining chains, on a coarse grid of x so that ties are common;
+        // coincident chains of opposite directions share x and range, and -0
+        // and +0 differ in their bits. Every chain has a start of its own.
+        let mut state = 0x2026_u64;
+        let mut next = |bound: usize| {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            usize::try_from(state >> 33).unwrap() % bound
+        };
+        let real = |n: usize| f64::from(u32::try_from(n).unwrap());
+        let grids = [0.0, -0.0, 0.25, 1.0, 1.5, 3.0, 7.75];
+        for case in 0..6_000 {
+            let len = [2, 5, 17, 64, 300][case % 5] + next(8);
+            let coarse = case % 3 == 0;
+            let mut active: Vec<Active> = (0..len)
+                .map(|k| {
+                    let x = if coarse {
+                        grids[next(grids.len())]
+                    } else {
+                        real(next(1 << 20)) / 64.0
+                    };
+                    let chain = Chain {
+                        start: k,
+                        end: k + 1 + next(4),
+                        up: next(2) == 0,
+                    };
+                    Active {
+                        chain,
+                        segment: k,
+                        x,
+                        range: [x - real(next(3)), x + real(next(3))],
+                    }
+                })
+                .collect();
+            let joining = next(1 + len / [1, 4, 16, 64][case % 4]);
+            let kept = len - joining.min(len);
+            active[..kept].sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
+            for _ in 0..[0, 0, 1, 3, 40][case / 5 % 5] {
+                let k = next(len);
+                if k + 1 < kept {
+                    active.swap(k, k + 1);
+                }
+            }
+            if case % 7 == 0 && len > 2 {
+                let (k, at) = (next(len), next(len));
+                let twin = Chain {
+                    start: len + at,
+                    end: len + at + 1,
+                    up: !active[k].chain.up,
+                };
+                active[at] = Active {
+                    chain: twin,
+                    ..active[k]
+                };
+            }
+            let mut sorted = active.clone();
+            sorted.sort_by(before);
+            order(&mut active);
+            assert!(
+                active.iter().map(key).eq(sorted.iter().map(key)),
+                "case {case}"
+            );
+        }
     }
 }
