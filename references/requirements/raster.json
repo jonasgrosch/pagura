@@ -163,7 +163,7 @@
         "8.5.2.2",
         "10.7.2"
       ],
-      "status": "adaptive device-space flattening at 1/256 pixel",
+      "status": "adaptive device-space path flattening at 1/256 pixel; true-quadratic glyph coverage retained",
       "tests": [
         "raster/cubic",
         "paint_curved_stencils/cap-fractional",
@@ -208,7 +208,7 @@
         "paint_curved_stencils/two-ancestors-curved-leaf-quarter-turn"
       ],
       "gaps": "subdivision limits reject extreme curves",
-      "rule": "Cubic B\u00e9zier geometry follows the specified control points; device-space approximation is subject to flatness tolerance."
+      "rule": "Cubic B\u00e9zier geometry follows the specified control points; device-space approximation is subject to flatness tolerance. Exactly quadratic glyph outlines retain their true curves, including inherited glyph clips; joint original-control area bounds certify coverage under ADR 0004/0034."
     },
     {
       "id": "raster-strokes",
