@@ -290,7 +290,7 @@
     {
       "id": "classic/pattern-unsupported",
       "kind": "pdf",
-      "description": "Table 74 constant-spacing fitting collapses this oblique device lattice; unsupported explicitly",
+      "description": "A singular pattern matrix has no lattice (ADR 0004 section 2); unsupported explicitly",
       "expected": "unsupported",
       "requirements": [
         "syntax-classic-xref",
@@ -298,7 +298,7 @@
         "unsupported-is-explicit"
       ],
       "path": "corpus/generated/classic/pattern-unsupported.pdf",
-      "sha256": "89e5df42c4e2be705101073ae3df66463087eae03dd0f35fc54678abac2a43ef",
+      "sha256": "67c266cb89ccfb0f3d98bb58b2259fdcfb79441f865468c7ca2a30376fa44632",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
