@@ -203,6 +203,7 @@ pub(crate) fn inspected_coverage(shape: &Shape, area: Area) -> Vec<u8> {
     let scan = match &shape.body {
         shape::Body::Edges(body) => body.scan,
         shape::Body::Glyph(body) => body.scan,
+        shape::Body::Certified(_) => (shape.bounds.x0 as usize, shape.bounds.x1 as usize),
     };
     let mut bytes = crate::testing::bytes();
     let mut cells = cells::Cells::new(scan.1.saturating_sub(scan.0), &mut bytes).unwrap();
