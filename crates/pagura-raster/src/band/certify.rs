@@ -292,10 +292,10 @@ fn place(
 /// into place by binary search; past twice as many chains moved as there
 /// are, the sort takes over. The order is total, so both give the same.
 ///
-/// Chains at the same x meet at the slab's middle. Unless they are the same
-/// segment across the whole slab they are not apart, so the slab is in doubt
-/// in either order: the certificate is sound for any order of them, as it
-/// was for the one the sort used to leave to chance.
+/// Chains at the same x meet at the slab's middle: they are apart only as
+/// identical segments across the slab, and [`alternates`] counts them
+/// whatever their order. So their order decides no slab, only which pair a
+/// doubtful one is found at, and the sign when they lead the first slab.
 #[inline(never)]
 fn order(active: &mut [Active]) {
     let mut moved = 0;
@@ -320,9 +320,10 @@ fn before(a: &Active, b: &Active) -> Ordering {
 }
 
 /// Whether the placed chains hold winding 0 or the common sign on the slab
-/// (lo, hi): directions alternating from the left starting with `first`,
-/// and neighbours apart. Each slab stands alone: its order, directions and
-/// separation decide its own winding, whatever another slab holds.
+/// (lo, hi): directions alternating from the left starting with `first`
+/// (see [`alternates`]), and neighbours apart. Each slab stands alone: its
+/// order, directions and separation decide its own winding, whatever another
+/// slab holds.
 fn holds(
     points: &[Point],
     active: &[Active],
@@ -331,12 +332,8 @@ fn holds(
     margins: Margins,
     work: &mut Work,
 ) -> bool {
-    let ordered = active.len().is_multiple_of(2)
-        && active
-            .iter()
-            .enumerate()
-            .all(|(k, a)| a.chain.up == (first ^ (k % 2 == 1)));
-    ordered
+    active.len().is_multiple_of(2)
+        && alternates(active, first)
         && active.windows(2).all(|w| {
             w[0].range[1] + margins.rounding < w[1].range[0]
                 || apart(
@@ -347,6 +344,51 @@ fn holds(
                     work,
                 )
         })
+}
+
+/// Whether the directions of the placed chains alternate from the left,
+/// starting with `first`. Chains at one x meet at the slab's middle, so of
+/// them only identical segments across the slab are apart, as identical
+/// vertices may touch at its ends. Opposite ones of those cancel, whatever
+/// their order: what is left at one x is one chain of the direction due, or
+/// none.
+fn alternates(active: &[Active], first: bool) -> bool {
+    // Commonly every chain comes in its turn. Otherwise only chains at one x
+    // up to the first out of turn can make up for it.
+    let Some(k) = active
+        .iter()
+        .enumerate()
+        .position(|(k, a)| a.chain.up != (first ^ (k % 2 == 1)))
+    else {
+        return true;
+    };
+    let near = &active[..active.len().min(k + 2)];
+    near.windows(2).any(|w| at_one_x(&w[0], &w[1])) && cancel(active, first)
+}
+
+/// [`alternates`] by the net direction of the chains at each x.
+fn cancel(active: &[Active], first: bool) -> bool {
+    let mut due = first;
+    active
+        .chunk_by(at_one_x)
+        .all(|same| match directions(same) {
+            (up, down) if up == down => true,
+            (up, down) if up.abs_diff(down) == 1 && (up > down) == due => {
+                due = !due;
+                true
+            }
+            _ => false,
+        })
+}
+
+fn at_one_x(a: &Active, b: &Active) -> bool {
+    a.x.total_cmp(&b.x).is_eq()
+}
+
+/// The chains running up and down among `chains`.
+fn directions(chains: &[Active]) -> (usize, usize) {
+    let up = chains.iter().filter(|a| a.chain.up).count();
+    (up, chains.len() - up)
 }
 
 // Appends the strictly y-monotone chains of one closed contour, each in
@@ -1043,12 +1085,71 @@ mod tests {
         );
         assert_eq!(tight.used(), cells.heap_bytes());
 
+        // A cell under the reverse of its own square cancels it: winding 0
+        // throughout, whichever of their coincident sides comes first.
         let opposite = [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0)];
         let mut cancelled = polygon(&[&opposite]);
         cancelled
             .cell(Point::new(0.2, 0.7), &limits, &mut bytes)
             .unwrap();
-        assert!(!certifies(&cancelled, 0.0));
+        assert!(certifies(&cancelled, 0.0));
+    }
+
+    #[test]
+    fn coincident_opposite_chains_cancel_whatever_their_order() {
+        // Squares sharing a side: their sides along it run opposite ways at
+        // one x, first in one order of the chains, then in the other.
+        let left = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
+        let right = [(1.0, 0.0), (2.0, 0.0), (2.0, 1.0), (1.0, 1.0)];
+        assert!(certifies(&polygon(&[&left, &right]), 0.0));
+        assert!(certifies(&polygon(&[&right, &left]), 0.0));
+        // A square and its reverse cancel throughout; twice the same square
+        // winds twice.
+        let reverse = [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0)];
+        assert!(certifies(&polygon(&[&left, &reverse]), 0.0));
+        assert!(certifies(&polygon(&[&reverse, &left]), 0.0));
+        assert!(!certifies(&polygon(&[&left, &left]), 0.0));
+    }
+
+    #[test]
+    fn alternation_by_turns_agrees_with_cancelling_chains_at_one_x() {
+        let mut state = 0x0431_u64;
+        let mut next = |bound: usize| {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            usize::try_from(state >> 33).unwrap() % bound
+        };
+        let chain = Chain {
+            start: 0,
+            end: 1,
+            up: false,
+        };
+        for case in 0..20_000 {
+            let len = next(9);
+            let mut x = 0.0;
+            let active: Vec<Active> = (0..len)
+                .map(|_| {
+                    x += [0.0, 1.0][next(2)];
+                    Active {
+                        chain: Chain {
+                            up: next(2) == 0,
+                            ..chain
+                        },
+                        segment: 0,
+                        x,
+                        range: [x; 2],
+                    }
+                })
+                .collect();
+            for first in [false, true] {
+                assert_eq!(
+                    alternates(&active, first),
+                    cancel(&active, first),
+                    "case {case}"
+                );
+            }
+        }
     }
 
     /// The fields of a placed chain, `x` by its bits.
