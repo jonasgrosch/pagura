@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "ae75ada9c55b1a9ab4e7ef2740768b3130aedb37",
+  "audited_revision": "f0221562bf8bc0f9cfb97e91bcb4961aff512043",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -194,7 +194,7 @@
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
     ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e",
-    "benchmarks/probes/compatibility-gap-fixtures.json": "dc0e3d37e72e6e3d21196db09711b7a54c2869a6422568d059cb4212876a98d8",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "ab94078f417272035826f45c3aecadb28ab565220b3661f16b345962319622cd",
     "corpus/manifests/annotation_compat.json": "91f6e05cb4d9ad220e2d6be0f41b7d86047b839ec46f27430562d15bc2cd6323",
     "corpus/manifests/annotation_display.json": "2b2418bd5a8f5be67188a57bde3beaa642d029f2f280b4f754fcb659bf73b0ab",
     "corpus/manifests/annotation_empty_widgets.json": "8b205c65420c3057eca24a4d9e23b7391f54c32eea4af25fa8d20a448ca7d02f",
