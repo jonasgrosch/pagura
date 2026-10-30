@@ -331,3 +331,153 @@ fn knockout_groups_of_opaque_members_fold_with_their_plain_groups() {
     b.rect(group, [2.75, 1.5, 6.0, 4.0], c, mark(multiply));
     check(&b);
 }
+
+#[test]
+fn knockout_groups_of_disjoint_members_composite_as_source_over() {
+    let knockout = GroupAttributes {
+        isolated: false,
+        knockout: true,
+        space: None,
+    };
+    let source = GlyphSource {
+        outline: rect_path([0.0, 0.0, 1.5, 2.5]),
+        key: OutlineKey {
+            font: pagura_interpret::FontKey(1),
+            glyph: 3,
+        },
+        linear: Transform::IDENTITY,
+    };
+    // A text object under text knockout: `count` glyphs of opacity 0.4,
+    // `gap` apart in rows of `row`, in a group of opacity `alpha`.
+    let text = |(gap, count, row): (f64, u32, u32), alpha: f64| {
+        let width = gap * f64::from(row.min(count)) + 2.0;
+        let mut b = Build::new(width, 4.0 * f64::from(count.div_ceil(row)));
+        let back = b.rgb([0.1, 0.5, 0.9]);
+        let red = b.rgb([0.9, 0.2, 0.1]);
+        let faint = b.state(|s| s.alpha = 0.4);
+        let group = b.state(|s| s.alpha = alpha);
+        b.rect(
+            PAGE,
+            [0.0, 0.0, width, 4.0 * f64::from(count.div_ceil(row))],
+            back,
+            mark(StateId(0)),
+        );
+        let text = b.transparency(PAGE, knockout, mark(group));
+        let placements = (0..count)
+            .map(|i| Placement {
+                source: 0,
+                origin: Point::new(
+                    0.25 + gap * f64::from(i % row),
+                    0.75 + 4.0 * f64::from(i / row),
+                ),
+            })
+            .collect();
+        b.node(
+            text,
+            Node::Glyphs(GlyphsNode {
+                sources: vec![source.clone()],
+                placements,
+                positions: Vec::new(),
+                paint: red,
+                mark: mark(faint),
+            }),
+        );
+        (b, text, faint)
+    };
+    // Footprints a pixel apart: the group composites as its members, and
+    // the page stays N16.
+    let (b, ..) = text((4.0, 10, 10), 1.0);
+    assert_eq!(formats(&b), [Format::N16]);
+    let prepared = b
+        .prepare(&b.request(b.page(), 32), &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(prepared.plan.groups.len(), 1);
+    check(&b);
+    // Closer, they still share no pixel; the page compares the wider
+    // footprints of N16 and stores F32.
+    let (b, ..) = text((2.0, 10, 10), 1.0);
+    assert_eq!(formats(&b), [Format::F32]);
+    check(&b);
+    // In a translucent group, the group's buffer is narrow.
+    let (b, ..) = text((4.0, 10, 10), 0.5);
+    assert_eq!(formats(&b), [Format::N16, Format::F32]);
+    check(&b);
+    // Glyphs that share pixels, overlapping or not, knock each other out.
+    for gap in [1.6, 1.0, 0.25] {
+        let (b, ..) = text((gap, 24, 24), 1.0);
+        assert_eq!(formats(&b), [Format::F64, Format::F64], "gap {gap}");
+        check(&b);
+    }
+    // So do apart members of which some are opaque, whose footprints are
+    // not recorded.
+    let (mut b, group, _) = text((4.0, 10, 10), 1.0);
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    b.rect(group, [20.5, 0.5, 23.5, 3.5], black, mark(StateId(0)));
+    assert_eq!(formats(&b), [Format::F64, Format::F64]);
+    check(&b);
+    // Beyond the footprints compared, the group knocks out.
+    let (b, ..) = text((4.0, 4_097, 64), 1.0);
+    assert_eq!(formats(&b), [Format::F64, Format::F64]);
+}
+
+#[test]
+fn the_disjoint_member_identity_spends_a_page_allowance() {
+    let knockout = GroupAttributes {
+        isolated: false,
+        knockout: true,
+        space: None,
+    };
+    // Glyphs stacked in a column share every column of pixels, so a sweep
+    // compares each with all above it: n (n - 1) / 2 comparisons.
+    let count = 2_100_u32;
+    let source = GlyphSource {
+        outline: rect_path([0.0, 0.0, 0.5, 0.5]),
+        key: OutlineKey {
+            font: pagura_interpret::FontKey(1),
+            glyph: 4,
+        },
+        linear: Transform::IDENTITY,
+    };
+    let page = |groups: u32| {
+        let mut b = Build::new(8.0, 3.0 * f64::from(count) + 2.0);
+        let red = b.rgb([0.9, 0.2, 0.1]);
+        let faint = b.state(|s| s.alpha = 0.4);
+        for g in 0..groups {
+            let text = b.transparency(PAGE, knockout, mark(StateId(0)));
+            let placements = (0..count)
+                .map(|i| Placement {
+                    source: 0,
+                    origin: Point::new(0.25 + 4.0 * f64::from(g), 0.25 + 3.0 * f64::from(i)),
+                })
+                .collect();
+            b.node(
+                text,
+                Node::Glyphs(GlyphsNode {
+                    sources: vec![source.clone()],
+                    placements,
+                    positions: Vec::new(),
+                    paint: red,
+                    mark: mark(faint),
+                }),
+            );
+        }
+        b
+    };
+    let groups = |b: &Build| {
+        b.prepare(&b.request(b.page(), 32), &Limits::default())
+            .unwrap_or_else(|e| panic!("{e}"))
+            .plan
+            .groups
+            .len()
+    };
+    // One column fits the page's comparisons: its group composites as its
+    // members.
+    let b = page(1);
+    assert_eq!(formats(&b), [Format::N16]);
+    assert_eq!(groups(&b), 1);
+    // A second column would exceed them: its group knocks out, and the
+    // page it reads stays F64 with it.
+    let b = page(2);
+    assert_eq!(formats(&b), [Format::F64, Format::F64]);
+    assert_eq!(groups(&b), 2);
+}

@@ -29,6 +29,10 @@ const N16_ROOM: f64 = 0.5 - 1.0 / 68_719_476_736.0;
 /// The most dynamic stores whose footprints N16 admission compares.
 pub(super) const FOOTPRINTS: usize = 4096;
 
+/// The footprint comparisons the disjoint-member identity may spend on one
+/// page, over all its knockout groups; past them a group knocks out.
+pub(super) const APART_COMPARISONS: usize = 1 << 22;
+
 /// Whether an N16 page admits `buffer`'s dynamic stores: at most one at
 /// any pixel, each injecting less than the room an N16 pixel leaves
 /// (ADR 0004 §6). Footprints are page-level device bounds, so the answer
@@ -67,19 +71,61 @@ pub(super) fn n16_admits(
             .map(|store| store.rect)
             .filter(|rect| !rect.is_empty()),
     );
-    let admitted = disjoint(&mut rects, bytes)?;
+    // At most FOOTPRINTS rectangles: a sweep never compares more pairs.
+    let admitted = disjoint(&mut rects, |_| true, bytes)?;
     let released = rects.capacity() * size_of::<DeviceRect>();
     drop(rects);
     bytes.refund(released);
     Ok(admitted)
 }
 
-/// Whether no two rectangles share a pixel.
-fn disjoint(rects: &mut [DeviceRect], bytes: &mut Meter) -> Result<bool> {
+/// Whether every dynamic store of knockout `buffer` has a footprint and no
+/// two share a pixel, within `comparisons` (false past them). Footprints are
+/// page-level device bounds, so the answer does not depend on the region.
+pub(super) fn disjoint_members(
+    buffer: &Buffer,
+    comparisons: &mut usize,
+    bytes: &mut Meter,
+) -> Result<bool> {
+    let footprints = &buffer.footprints;
+    if buffer.dynamics.len() != buffer.dynamic
+        || footprints.len() != buffer.dynamic
+        || buffer.dynamic > FOOTPRINTS
+    {
+        return Ok(false);
+    }
+    let mut rects = Vec::new();
+    bytes.reserve_capacity(&mut rects, footprints.len())?;
+    rects.extend(footprints.iter().copied().filter(|rect| !rect.is_empty()));
+    let spend = |visited: usize| match comparisons.checked_sub(visited) {
+        Some(left) => {
+            *comparisons = left;
+            true
+        }
+        None => false,
+    };
+    let admitted = disjoint(&mut rects, spend, bytes)?;
+    let released = rects.capacity() * size_of::<DeviceRect>();
+    drop(rects);
+    bytes.refund(released);
+    Ok(admitted)
+}
+
+/// Whether no two rectangles share a pixel; false once `spend` refuses the
+/// rectangles a sweep step visits.
+fn disjoint(
+    rects: &mut [DeviceRect],
+    mut spend: impl FnMut(usize) -> bool,
+    bytes: &mut Meter,
+) -> Result<bool> {
     rects.sort_unstable_by_key(|r| r.x0);
     let mut active: Vec<DeviceRect> = Vec::new();
     let mut disjoint = true;
     for rect in rects.iter() {
+        if !spend(active.len()) {
+            disjoint = false;
+            break;
+        }
         active.retain(|other| other.x1 > rect.x0);
         if active
             .iter()
@@ -220,6 +266,7 @@ mod tests {
             open: Vec::new(),
             outlines: FastMap::default(),
             transfers: false,
+            comparisons: APART_COMPARISONS,
         };
         let mut fixture = Meter::new(1 << 20, "proof fixture");
         let node = survey

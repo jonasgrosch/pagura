@@ -9,8 +9,8 @@
 mod formats;
 mod hulls;
 
-use formats::{F64_STORE, FOOTPRINTS, MARGIN};
-use hulls::{Outlines, extent, hulls, unite};
+use formats::{APART_COMPARISONS, F64_STORE, FOOTPRINTS, MARGIN, disjoint_members};
+use hulls::{Outlines, extent, glyph_footprints, hulls, unite};
 
 use crate::format::Format;
 use crate::plan::Layout;
@@ -115,6 +115,7 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs, bytes: &mut Meter) -> Result
         open: Vec::new(),
         outlines: Outlines::default(),
         transfers: false,
+        comparisons: APART_COMPARISONS,
     };
     let result = survey.finish(bytes);
     let retained = match &result {
@@ -253,6 +254,8 @@ struct Buffer {
     opaque_members: bool,
     /// Every store's opacity after the first equals its shape.
     later_opaque: bool,
+    /// Its stores blend Normal and no two share a pixel.
+    apart_members: bool,
     /// Every store blends Normal.
     normal: bool,
     /// It provides the backdrop of a non-isolated child whose content is not
@@ -272,6 +275,10 @@ struct Buffer {
     masks: Vec<(usize, usize)>,
     /// Its dynamic stores, by footprint.
     dynamics: Vec<Dynamic>,
+    /// In a knockout group, the pixels of each of `dynamics` that the
+    /// disjoint-member identity compares: a glyph placement's own, else its
+    /// `rect`. Kept until the identity is decided.
+    footprints: Vec<DeviceRect>,
     /// The device pixels its stores can reach.
     extent: Option<bounds::Hull>,
     /// Plain groups of opaque members that flatten into it if its knockout
@@ -283,12 +290,11 @@ struct Buffer {
 }
 
 impl Buffer {
-    /// Its members knock each other out: unless every store after the
-    /// first has opacity equal to its shape, where knockout is source-over
-    /// (11.4.6). The first store meets the initial backdrop, where it is
-    /// source-over at any opacity.
+    /// Its members knock each other out unless later stores are opaque
+    /// members, or no pixel has two members. Both identities composite as
+    /// source-over (11.4.6); the first store may have any opacity.
     fn knockout(&self) -> bool {
-        self.knockout_attribute && !self.later_opaque
+        self.knockout_attribute && !self.later_opaque && !self.apart_members
     }
 
     /// Normal content: compositing it onto a backdrop equals compositing
@@ -339,6 +345,8 @@ struct Survey<'s> {
     /// Glyph outline hulls computed so far.
     outlines: Outlines,
     transfers: bool,
+    /// Footprint comparisons the disjoint-member identity has left.
+    comparisons: usize,
 }
 
 /// The kind of paint a store takes.
@@ -359,6 +367,7 @@ impl Survey<'_> {
             knockout_attribute: knockout,
             opaque_members: true,
             later_opaque: true,
+            apart_members: false,
             normal: true,
             reads: false,
             stores: 0,
@@ -368,6 +377,7 @@ impl Survey<'_> {
             children: Vec::new(),
             masks: Vec::new(),
             dynamics: Vec::new(),
+            footprints: Vec::new(),
             extent: None,
             pending: Vec::new(),
             transfer: false,
@@ -430,25 +440,50 @@ impl Survey<'_> {
                 let extent = extent(scene, node, context.transform, (&mut self.outlines, bytes))?;
                 (Vec::new(), extent)
             };
+            // A knockout compares glyph placements by their own pixels.
+            let apart = match node {
+                Node::Glyphs(glyphs)
+                    if self.buffers[buffer].knockout_attribute && !hulls.is_empty() =>
+                {
+                    let pixels = self.inputs.pixels;
+                    let outlines = (&mut self.outlines, &mut *bytes);
+                    glyph_footprints(glyphs, context.transform, pixels, outlines)?
+                }
+                _ => Vec::new(),
+            };
             let stores = Stores {
                 kind,
                 count,
                 hulls: &hulls,
+                apart: &apart,
                 extent,
                 alpha_shape,
             };
             self.mark(buffer, state, &stores, context, depth, bytes)?;
-            let released = hulls.capacity() * size_of::<Option<bounds::Hull>>();
-            drop(hulls);
+            let released = hulls.capacity() * size_of::<Option<bounds::Hull>>()
+                + apart.capacity() * size_of::<DeviceRect>();
+            drop((hulls, apart));
             bytes.refund(released);
         }
         self.settle(buffer, bytes)
     }
 
     /// Flattens the pending groups of `buffer` once its content shows that
-    /// its knockout is the opaque-member identity, so that it composites as
-    /// source-over and they can composite straight into it.
+    /// its knockout is an identity, so that it composites as source-over and
+    /// they can composite straight into it.
     fn settle(&mut self, buffer: usize, bytes: &mut Meter) -> Result<()> {
+        let target = &self.buffers[buffer];
+        // At a pixel of one member, (1 - s) b + s ((1 - α/s) b + (α/s) c)
+        // is (1 - α) b + α c: every store dynamic gives every member a
+        // footprint.
+        if target.knockout() && target.normal && target.stores == target.dynamic {
+            let apart = disjoint_members(target, &mut self.comparisons, bytes)?;
+            self.buffers[buffer].apart_members = apart;
+        }
+        let footprints = std::mem::take(&mut self.buffers[buffer].footprints);
+        let released = footprints.capacity() * size_of::<DeviceRect>();
+        drop(footprints);
+        bytes.refund(released);
         let pending = std::mem::take(&mut self.buffers[buffer].pending);
         if !self.buffers[buffer].knockout() {
             for &(key, child) in &pending {
@@ -588,6 +623,11 @@ impl Survey<'_> {
                     child: cell,
                     mask,
                 }));
+                if target.knockout_attribute {
+                    bytes.reserve_capacity(&mut target.footprints, rects.len())?;
+                    let own = |(i, &rect)| stores.apart.get(i).copied().unwrap_or(rect);
+                    target.footprints.extend(rects.iter().enumerate().map(own));
+                }
             }
         }
         let released = rects.capacity() * size_of::<DeviceRect>();
@@ -677,6 +717,10 @@ impl Survey<'_> {
             child: Some(child),
             mask,
         });
+        if target.knockout_attribute {
+            bytes.reserve_capacity(&mut target.footprints, 1)?;
+            target.footprints.push(rect);
+        }
         target.stores = target.stores.saturating_add(1);
         target.dynamic = target.dynamic.saturating_add(1);
         target.normal &= state.blend == BlendMode::Normal;
@@ -803,6 +847,8 @@ struct Stores<'h> {
     count: usize,
     /// One device hull per store where footprints matter, else none.
     hulls: &'h [Option<bounds::Hull>],
+    /// Glyph placements' own pixels in a knockout group, else none.
+    apart: &'h [DeviceRect],
     /// The device hull of all of them, where a group's extent needs it.
     extent: Option<bounds::Hull>,
     /// The source's alpha is its shape (not an image with a soft mask).
