@@ -11,7 +11,7 @@
         "9.6.5.4",
         "9.9.1"
       ],
-      "status": "TrueType/OpenType glyf outlines, cmap 0/2/4/6/10/12/13, exact subtable identities, hmtx and post; internal layouts pending primary-text review",
+      "status": "TrueType/OpenType glyf outlines, cmap 0/2/4/6/10/12/13, exact subtable identities, hmtx and post; internal layouts pending primary-text review; bounded named/indexed TTC v1/v2 faces with file-relative shared tables",
       "tests": [
         "font/truetype-cmap0",
         "font/truetype-cmap4",
@@ -33,9 +33,30 @@
         "font/truetype-cmap10",
         "font/truetype-cmap13",
         "font/truetype-cmap14",
-        "font/sfnt-legacy-true"
+        "font/sfnt-legacy-true",
+        "font_collections/glyf-simple-first-control",
+        "font_collections/glyf-simple-second-control",
+        "font_collections/glyf-simple-single-v1",
+        "font_collections/glyf-simple-single-v2",
+        "font_collections/glyf-simple-pair-first",
+        "font_collections/glyf-simple-pair-second",
+        "font_collections/glyf-simple-pair-second-subset",
+        "font_collections/glyf-cid-first-control",
+        "font_collections/glyf-cid-second-control",
+        "font_collections/glyf-cid-single-v1",
+        "font_collections/glyf-cid-single-v2",
+        "font_collections/glyf-cid-pair-first",
+        "font_collections/glyf-cid-pair-second",
+        "font_collections/glyf-cid-pair-second-subset",
+        "font_collections/rectangle-0",
+        "font_collections/rectangle-1",
+        "font_collections/native-glyf-v1",
+        "font_collections/native-glyf-v2",
+        "font_collections/native-glyf-standalone",
+        "font_collections/native-glyf-late-directory",
+        "font_collections/native-glyf-dsig"
       ],
-      "gaps": "Other cmap/post formats and collections are unsupported. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies require TrueType primary review.",
+      "gaps": "Other cmap/post formats and unknown collection versions are unsupported. Collection binary layouts remain pending primary review; PDF name selection is explicit reader policy, not standardized by Table 124. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies require TrueType primary review.",
       "tables": [
         "124"
       ],
@@ -51,7 +72,7 @@
           "OpenType / ISO/IEC 14496-22:2019: sfnt layouts, cmap identities beyond PDF-selected encodings, newer cmap formats"
         ],
         "external_status": "pending primary-text review of TrueType and OpenType",
-        "evidence": "ISO-derived PDF constraints plus analytic binary fixtures. Secondary read-fonts 0.41.0 comparison agrees on 26 cmap 10/13 code queries. Its mapping API does not implement format 2; no differential claim for format 2 or a primary-format known-answer dataset.",
+        "evidence": "ISO-derived PDF constraints plus analytic binary fixtures. Secondary read-fonts 0.41.0 comparison agrees on 26 cmap 10/13 code queries. Its mapping API does not implement format 2; no differential claim for format 2 or a primary-format known-answer dataset. Independent font_collections rectangles cover named/indexed glyf/CFF faces, shared tables, late directories and PDF subset-name selection; no Rust output creates expected paths or pixels.",
         "choices": "Platform 0 and (3,10) are exposed separately; supplementary Unicode mappings never impersonate PDF (3,1). Format 14 is unused because 9.6.5.4 selects by a single mapped value, while 9.7.4.2 uses explicit CIDs/GIDs. Legacy component offsets use unscaled translation; external semantics pending."
       }
     },
@@ -178,7 +199,19 @@
         "font/review-cff-width-cntrmask",
         "font/review-cff-width-seac",
         "font/review-cff-flex1-equal",
-        "font/review-cff-cid-count"
+        "font/review-cff-cid-count",
+        "font_collections/cff-cid-first-control",
+        "font_collections/cff-cid-second-control",
+        "font_collections/cff-cid-single-v1",
+        "font_collections/cff-cid-single-v2",
+        "font_collections/cff-cid-pair-first",
+        "font_collections/cff-cid-pair-second",
+        "font_collections/cff-cid-pair-second-subset",
+        "font_collections/native-cff-v1",
+        "font_collections/native-cff-v2",
+        "font_collections/native-cff-standalone",
+        "font_collections/native-cff-late-directory",
+        "font_collections/native-cff-dsig"
       ],
       "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Nondefault variations, CFF2 Font DICT matrices, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported.",
       "tables": [
@@ -196,7 +229,7 @@
           "OpenType / ISO/IEC 14496-22: CFF2 header/INDEX/DICT, FDSelect 4, variation stores, Private/charstring blends and Font DICT matrices"
         ],
         "external_status": "TN 5176/5177 and applicable TN 5014 reviewed; CFF2 pending primary-text review",
-        "evidence": "Secondary read-fonts 0.41.0 comparison: 668 glyph-name mappings and 1792 code mappings across the seven metadata fixtures agree, with undefined entries normalized against GID 0; the gap at ExpertEncoding code 92 was corrected following that comparison. Analytic fixtures exercise FDSelect 4 and Private DICT blends; no external known-answer dataset or primary-format verification. Secondary skrifa 0.46.2 agrees on bounds and curve counts of six default CFF2 glyphs: static, charstring blend, inherited/overridden Private DICT blends, FDSelect 4 and FD index 256. Font DICT matrix behavior disagreed and is explicitly unsupported; these comparisons are not primary-text verification. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions.",
+        "evidence": "Secondary read-fonts 0.41.0 comparison: 668 glyph-name mappings and 1792 code mappings across the seven metadata fixtures agree, with undefined entries normalized against GID 0; the gap at ExpertEncoding code 92 was corrected following that comparison. Analytic fixtures exercise FDSelect 4 and Private DICT blends; no external known-answer dataset or primary-format verification. Secondary skrifa 0.46.2 agrees on bounds and curve counts of six default CFF2 glyphs: static, charstring blend, inherited/overridden Private DICT blends, FDSelect 4 and FD index 256. Font DICT matrix behavior disagreed and is explicitly unsupported; these comparisons are not primary-text verification. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Independent font_collections rectangles cover named/indexed glyf/CFF faces, shared tables, late directories and PDF subset-name selection; no Rust output creates expected paths or pixels.",
         "choices": "Unhinted API retains flex curves, skips hint placement and ignores allowed embedded PostScript. Type 2 random uses a per-glyph 32-bit LCG seeded from folded initialRandomSeed bits, returning (state+1)/2^32; the texts specify seed and range but not the algorithm. Uninitialized transient reads use zero (undefined by TN 5177), invalid index ranges and nonfinite arithmetic fail, zero-element roll is a no-op. CFF2 default-instance interpretation and Font DICT matrix restrictions retain the earlier secondary evidence and pending status."
       },
       "format_verification": [

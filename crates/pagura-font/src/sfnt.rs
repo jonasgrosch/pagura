@@ -5,7 +5,7 @@ use crate::cff::Cff;
 use crate::memory::vector;
 use crate::read::{self, here, syntax};
 use crate::recovery::glyph_error;
-use crate::{CmapSubtable, GlyphId, repairs};
+use crate::{CmapSubtable, FontFace, GlyphId, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Name, Position, Result};
@@ -14,6 +14,7 @@ use std::collections::BTreeMap;
 use std::ops::{Range, RangeInclusive};
 
 mod cmap;
+mod collection;
 mod directory;
 mod glyf;
 mod names;
@@ -22,8 +23,6 @@ use directory::{Directory, Flavor};
 
 type Tables = BTreeMap<[u8; 4], Range<usize>>;
 
-/// The offset table at the start of the program, which lists every table.
-const DIRECTORY: Position = Position::Buffer(0);
 /// Version 1.0 of head, hhea and maxp; maxp 0.5 holds only a glyph count.
 const VERSION_1_0: u32 = 0x0001_0000;
 const MAXP_VERSION_0_5: u32 = 0x0000_5000;
@@ -71,6 +70,7 @@ pub(crate) struct Sfnt {
 struct Table<'a> {
     data: &'a [u8],
     tables: &'a Tables,
+    position: Position,
 }
 
 impl<'a> Table<'a> {
@@ -81,7 +81,7 @@ impl<'a> Table<'a> {
 
     fn required(&self, tag: [u8; 4]) -> Result<Cursor<'a>> {
         self.get(tag)
-            .unwrap_or_else(|| Err(syntax(DIRECTORY, "missing required sfnt table")))
+            .unwrap_or_else(|| Err(syntax(self.position, "missing required sfnt table")))
     }
 
     fn has(&self, tag: [u8; 4]) -> bool {
@@ -90,15 +90,18 @@ impl<'a> Table<'a> {
 }
 
 impl Sfnt {
-    pub(crate) fn parse(data: &[u8], work: &mut Work<'_>) -> Result<Self> {
+    pub(crate) fn parse(data: &[u8], face: FontFace<'_>, work: &mut Work<'_>) -> Result<Self> {
+        let selected = collection::select(data, face, work)?;
+        let position = Position::Buffer(selected.offset);
         let Directory {
             flavor,
             tables,
             clipped_post,
-        } = directory::parse(data, work)?;
+        } = directory::parse(data, selected.offset, selected.header_end, work)?;
         let table = Table {
             data,
             tables: &tables,
+            position,
         };
         let Container {
             units,
@@ -134,7 +137,7 @@ impl Sfnt {
         Ok(Self {
             outlines,
             advances,
-            glyph_count: read::glyph_id(glyph_count, DIRECTORY)?.0,
+            glyph_count: read::glyph_id(glyph_count, position)?.0,
             units,
             cmaps,
             names,
@@ -242,7 +245,7 @@ struct Container {
 }
 
 fn cff_container(table: &Table<'_>, work: &mut Work<'_>) -> Result<Container> {
-    let cff = cff_table(table.data, table.tables, work)?;
+    let cff = cff_table(table, work)?;
     let glyph_count = u32_to_usize(cff.glyph_count());
     // 9.9.1 Table 124: CFF OpenType needs CFF and cmap, without imposing
     // glyf's head/hhea/hmtx/loca/maxp requirements.
@@ -288,7 +291,7 @@ fn glyf_container(table: &Table<'_>, work: &mut Work<'_>) -> Result<Container> {
     let glyf = table
         .tables
         .get(b"glyf")
-        .ok_or_else(|| syntax(DIRECTORY, "missing glyf table"))?
+        .ok_or_else(|| syntax(table.position, "missing glyf table"))?
         .clone();
     let locations = locations(
         table.required(*b"loca")?,
@@ -305,12 +308,13 @@ fn glyf_container(table: &Table<'_>, work: &mut Work<'_>) -> Result<Container> {
     })
 }
 
-fn cff_table(data: &[u8], tables: &Tables, work: &mut Work<'_>) -> Result<Cff> {
-    let range = tables
+fn cff_table(table: &Table<'_>, work: &mut Work<'_>) -> Result<Cff> {
+    let range = table
+        .tables
         .get(b"CFF ")
-        .or_else(|| tables.get(b"CFF2"))
-        .ok_or_else(|| syntax(DIRECTORY, "missing OpenType CFF table"))?;
-    Cff::parse(data, range.clone(), work)
+        .or_else(|| table.tables.get(b"CFF2"))
+        .ok_or_else(|| syntax(table.position, "missing OpenType CFF table"))?;
+    Cff::parse(table.data, range.clone(), work)
 }
 
 fn locations(
