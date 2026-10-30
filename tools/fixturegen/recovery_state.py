@@ -22,11 +22,6 @@ def cases():
         ('unmatched-ET-suffix', marks + b'ET ET', ('content.text-unmatched',)),
         ('unmatched-Q-in-text', b'BT Q ET ' + marks, ('content.graphics-unmatched',)),
         ('unmatched-ET-in-saved-state', b'q ET Q ' + marks, ('content.text-unmatched',)),
-        ('unclosed-empty-text', marks + b'BT', ('content.text-unclosed',)),
-        ('unclosed-knockout-text', marks + b'/G gs BT', ('content.text-unclosed',)),
-        ('unpainted-path', marks + b'8 8 4 4 re', ('content.path-unpainted',)),
-        ('unpainted-clipped-path', marks + b'8 8 4 4 re W', ('content.path-unpainted',)),
-        ('unpainted-empty-clip', marks + b'W', ('content.path-unpainted',)),
         ('balanced-control', marks + b'BT ET 8 8 4 4 re n', ()),
     ]:
         resources = b'<< /ExtGState << /G << /TK true >> >> >>'
@@ -39,12 +34,9 @@ def cases():
                  rectangles=[((2, 2, 4, 4), BLUE)],
                  repairs=('content.graphics-unmatched', 'content.text-unmatched'),
                  requirement='recovery-content-state')
-    # A missing ET must close the existing Type3 glyph clip; the explicit
-    # glyph rectangle gives an independent one-byte-free raster oracle.
+    # The valid glyph control has independently stated rectangle geometry.
     font = b'<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1 1] /FontMatrix [1 0 0 1 0 0] /CharProcs << /A 6 0 R >> /Encoding << /Differences [65 /A] >> /FirstChar 65 /LastChar 65 /Widths [1] /Resources << >> >>'
     glyph = stream(b'1 0 0 0 1 1 d1 0 0 1 1 re f')
-    for suffix, repairs in [(b'', ('content.text-unclosed',)), (b' ET', ())]:
-        name = 'unclosed-text-glyph' if not suffix else 'closed-text-glyph-control'
-        yield render(name, b'1 0 0 rg BT /F 4 Tf 1 0 0 1 1 1 Tm (A) Tj' + suffix,
-                     [font, glyph], b'<< /Font << /F 5 0 R >> >>', rectangle,
-                     repairs=repairs, requirement='recovery-content-state')
+    yield render('closed-text-glyph-control', b'1 0 0 rg BT /F 4 Tf 1 0 0 1 1 1 Tm (A) Tj ET',
+                 [font, glyph], b'<< /Font << /F 5 0 R >> >>', rectangle,
+                 requirement='recovery-content-state')

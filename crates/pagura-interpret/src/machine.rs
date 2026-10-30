@@ -313,36 +313,15 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             };
             result.map_err(|error| content.locate(error, offset))?;
         }
-        if !reader.is_balanced() {
+        if !reader.is_balanced()
+            || !scope.path.is_empty()
+            || scope.pending_clip.is_some()
+            || scope.text.is_some()
+        {
             return Err(content.locate(
                 Error::syntax("content sequence ends with unfinished state"),
                 content.end(),
             ));
-        }
-        if scope.text.is_some() {
-            self.repair_at_end(
-                content,
-                Error::syntax("content sequence ends with an open text object"),
-                Diagnostic::new(
-                    repairs::TEXT_UNCLOSED,
-                    "text object closed at end of content sequence (9.4.1)",
-                ),
-            )?;
-            self.end_text(scope)?;
-        }
-        if !scope.path.is_empty() || scope.pending_clip.is_some() {
-            self.repair_at_end(
-                content,
-                Error::syntax("content sequence ends with an unpainted path"),
-                Diagnostic::new(
-                    repairs::PATH_UNPAINTED,
-                    "unpainted path ended without painting at end of content sequence (8.5.3)",
-                ),
-            )?;
-            // A missing painting operator cannot imply visible paint. In
-            // particular, do not turn the pending W/W* into a fill or stroke.
-            scope.path.finish();
-            scope.pending_clip = None;
         }
         if !scope.marked.is_empty() {
             self.repair_at_end(

@@ -36,10 +36,6 @@ fn every_state_repair_has_a_positioned_strict_refusal() {
     for (name, tag) in [
         ("unmatched-Q-prefix", "content.graphics-unmatched"),
         ("unmatched-ET-prefix", "content.text-unmatched"),
-        ("unclosed-empty-text", "content.text-unclosed"),
-        ("unclosed-text-glyph", "content.text-unclosed"),
-        ("unpainted-path", "content.path-unpainted"),
-        ("unpainted-empty-clip", "content.path-unpainted"),
     ] {
         let bytes = fixture("recovery_state", &format!("{name}.pdf"));
         let strict = Document::open(
@@ -75,6 +71,9 @@ fn syntax_and_crossed_state_boundaries_remain_errors() {
         "BX",
         "notAnOperator",
         "BT BT",
+        "BT",
+        "1 1 m",
+        "W",
         "BT q ET",
         "q BT Q",
         "[1",

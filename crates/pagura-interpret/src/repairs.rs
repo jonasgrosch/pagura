@@ -35,12 +35,6 @@ pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
 pub const GRAPHICS_UNMATCHED: Repair = Repair::new("content.graphics-unmatched");
 /// 9.4.1: an unmatched ET has no text object to close.
 pub const TEXT_UNMATCHED: Repair = Repair::new("content.text-unmatched");
-/// 9.4.1: close a text object at the end of its content sequence, only
-/// when this does not cross a saved graphics-state boundary.
-pub const TEXT_UNCLOSED: Repair = Repair::new("content.text-unclosed");
-/// 8.5.3: end an unpainted final path without painting it. A pending clip
-/// has no later mark to affect and is discarded with the path.
-pub const PATH_UNPAINTED: Repair = Repair::new("content.path-unpainted");
 /// 14.6: close marked-content sequences left open at the end of a content
 /// sequence, after all painting and text objects have finished.
 pub const MARKED_UNCLOSED: Repair = Repair::new("content.marked-unclosed");
@@ -65,8 +59,6 @@ pub const ALL: &[Repair] = &[
     GRAPHICS_UNCLOSED,
     GRAPHICS_UNMATCHED,
     TEXT_UNMATCHED,
-    TEXT_UNCLOSED,
-    PATH_UNPAINTED,
     MARKED_UNCLOSED,
     TYPE3_WIDTH,
     PATTERN_UNDERLYING,

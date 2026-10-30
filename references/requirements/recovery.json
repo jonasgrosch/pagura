@@ -140,7 +140,7 @@
       "tests": [
         "recovery/unclosed-graphics"
       ],
-      "rule": "An otherwise complete content sequence with unmatched saved graphics states reports their closure at sequence end. Separate reported policies cover unclosed marked content and terminal text/path state. Unfinished operands and compatibility sections still fail."
+      "rule": "An otherwise complete content sequence with unmatched saved graphics states reports their closure at sequence end. Unfinished operands, paths, text, marked content and compatibility sections still fail."
     },
     {
       "id": "recovery-type3",
@@ -186,8 +186,6 @@
       "clauses": [
         "7.8.2",
         "8.4.2",
-        "8.5.3",
-        "8.5.4",
         "9.4.1"
       ],
       "status": "reported viewing repairs; strict rejects",
@@ -198,17 +196,11 @@
         "recovery_state/unmatched-ET-suffix",
         "recovery_state/unmatched-Q-in-text",
         "recovery_state/unmatched-ET-in-saved-state",
-        "recovery_state/unclosed-empty-text",
-        "recovery_state/unclosed-knockout-text",
-        "recovery_state/unpainted-path",
-        "recovery_state/unpainted-clipped-path",
-        "recovery_state/unpainted-empty-clip",
         "recovery_state/balanced-control",
         "recovery_state/unmatched-retains-state",
-        "recovery_state/unclosed-text-glyph",
         "recovery_state/closed-text-glyph-control"
       ],
-      "rule": "Unmatched Q and ET leave state unchanged; a final text object closes as ET without crossing saved-state boundaries; an unpainted final path ends without painting. All deviations require reported Repair permission. Unfinished operands, unknown operators, crossed state boundaries and resource limits still fail."
+      "rule": "Unmatched Q and ET leave state unchanged only under reported Repair permission. Unfinished operands, text objects, paths and compatibility sections, unknown operators, crossed state boundaries and resource limits still fail."
     }
   ]
 }

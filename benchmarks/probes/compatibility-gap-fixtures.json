@@ -7,14 +7,8 @@
     "recovery_state/unmatched-ET-suffix",
     "recovery_state/unmatched-Q-in-text",
     "recovery_state/unmatched-ET-in-saved-state",
-    "recovery_state/unclosed-empty-text",
-    "recovery_state/unclosed-knockout-text",
-    "recovery_state/unpainted-path",
-    "recovery_state/unpainted-clipped-path",
-    "recovery_state/unpainted-empty-clip",
     "recovery_state/balanced-control",
     "recovery_state/unmatched-retains-state",
-    "recovery_state/unclosed-text-glyph",
     "recovery_state/closed-text-glyph-control"
   ]
 }
