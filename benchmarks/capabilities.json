@@ -537,7 +537,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Reported sparse Type 1 Subrs retain original indexes and assigned charstrings. Bounded indexed/named TTC v1/v2 native faces use shared file-relative tables; reported PDF collection name policy and intact CFF/sfnt CIDFontType0 binding repairs preserve program glyph identities and PDF widths.",
+      "implemented": "TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Reported sparse Type 1 Subrs retain original indexes and assigned charstrings. Bounded indexed/named TTC v1/v2 native faces use shared file-relative tables; reported PDF collection name policy and intact CFF/sfnt CIDFontType0 binding repairs preserve program glyph identities and PDF widths. New PDF collection admissions verify selected glyf/CFF family and named/CID namespace; explicit CIDFontType2 maps cannot be bypassed by a CID-CFF charset.",
       "remaining": "Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. PDF collection selection is reported reader policy with Strict refusal; unknown/ambiguous names, Type 1 CID order and missing glyph identities are not inferred. Contradictory standalone sfnt/font-family validation remains a separate gap.",
       "sources": [
         "crates/pagura-font/README.md",
