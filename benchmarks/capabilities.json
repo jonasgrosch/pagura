@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "b8d5c1c41b194bc35694e9691b1d09017a0549ab",
+  "audited_revision": "6f4497ca42cff05fb0e6529693f8d8effbfefaad",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -149,7 +149,7 @@
     "crates/pagura/src/lib.rs": "443a9c8a86d1883dfe87c5612895feffee7591f72b5dfd418e0d047c61177512",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
-    "crates/pagura/tests/api/document.rs": "e5ecf107fdb648e90faf90e13b5703aeb151afbd7ad1cb7ea6e59c8548a5a102",
+    "crates/pagura/tests/api/document.rs": "6bff88b0c778bc4299c08d9db57cdc15a750b489c46d8fc3def47f4e07c5c1c2",
     "crates/pagura/tests/api/editing.rs": "1775dd357ce924da4c3c5911aca4ee98f5204aa3bc48e6ef96fb6bf019f8a085",
     "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
     "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
@@ -163,7 +163,7 @@
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
-    "references/requirements/document.json": "fd4309bc8dbf5ef28329ede06859f31dbdea1c109612fe0da94d323da44144e9",
+    "references/requirements/document.json": "8de61bb16a282d321cba4073e1b67a9212071e943b159ff75de5648f978a48dd",
     "references/requirements/font.json": "45b53480e60ff9201a610ba16b1aaa6fd6cf26f6a6074f2af1bf3cfe566806b5",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",

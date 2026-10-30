@@ -19,6 +19,9 @@ pub const LENGTH_CORRECTED: Repair = Repair::new("stream.length-corrected");
 pub const TRAILER_RECONSTRUCTED: Repair = Repair::new("trailer.reconstructed");
 /// Nonstandard data between the PDF version and its line terminator (7.5.2).
 pub const HEADER_FORMAT: Repair = Repair::new("file.header-format");
+/// 7.5.2: a complete leading Catalog identifies a headerless PDF body;
+/// no version is inferred, and all normal structural checks still run.
+pub const HEADER_ABSENT: Repair = Repair::new("file.header-absent");
 /// Permissions written as an unsigned 32-bit integer rather than signed (7.6).
 pub const PERMISSIONS_UNSIGNED: Repair = Repair::new("security.permissions-unsigned");
 /// Binary security fields recovered without literal-string EOL normalization.
@@ -140,6 +143,7 @@ pub const ALL: &[Repair] = &[
     LENGTH_CORRECTED,
     TRAILER_RECONSTRUCTED,
     HEADER_FORMAT,
+    HEADER_ABSENT,
     PERMISSIONS_UNSIGNED,
     LITERAL_HASH,
     HASH_PADDING,

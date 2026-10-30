@@ -88,9 +88,12 @@
       "status": "partial",
       "tests": [
         "pagura-document reconstruction strict/repair tests",
-        "corpus/manifests/document.json"
+        "corpus/manifests/document.json",
+        "recovery_document/header-absent",
+        "recovery_document/header-absent-binary-comment"
       ],
-      "gaps": "bounded token scan plus ordered indexes; broad real-world corpus and fuzzing validation remain"
+      "gaps": "bounded token scan plus ordered indexes; broad real-world corpus and fuzzing validation remain",
+      "rule": "Header absence may be reported only before a complete explicitly typed leading Catalog with a Pages reference; no version is inferred. Explicit unknown headers and all normal structure and security checks remain errors."
     },
     {
       "id": "document-security",
@@ -166,7 +169,10 @@
         "document/stream-length-missing",
         "document/stream-length-negative",
         "document/stream-length-undefined",
-        "document/stream-length-outside"
+        "document/stream-length-outside",
+        "recovery_document/stream-length-crosses-next-object",
+        "recovery_document/stream-length-crosses-xref",
+        "recovery_document/stream-length-crosses-EOF"
       ],
       "gaps": "ambiguous or absent stream boundaries remain errors; missing page definitions cannot be invented"
     },
