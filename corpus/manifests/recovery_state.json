@@ -39,6 +39,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
+        "content.graphics-unmatched",
         "content.graphics-unmatched"
       ],
       "oracle": "corpus/generated/recovery_state/unmatched-Q-suffix.ppm",
@@ -83,6 +84,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
+        "content.text-unmatched",
         "content.text-unmatched"
       ],
       "oracle": "corpus/generated/recovery_state/unmatched-ET-suffix.ppm",

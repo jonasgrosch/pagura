@@ -17,9 +17,9 @@ def cases():
     rectangle = [((1, 1, 4, 4), RED)]
     for name, content, repairs in [
         ('unmatched-Q-prefix', b'Q ' + marks, ('content.graphics-unmatched',)),
-        ('unmatched-Q-suffix', marks + b'Q Q', ('content.graphics-unmatched',)),
+        ('unmatched-Q-suffix', marks + b'Q Q', ('content.graphics-unmatched', 'content.graphics-unmatched')),
         ('unmatched-ET-prefix', b'ET ' + marks, ('content.text-unmatched',)),
-        ('unmatched-ET-suffix', marks + b'ET ET', ('content.text-unmatched',)),
+        ('unmatched-ET-suffix', marks + b'ET ET', ('content.text-unmatched', 'content.text-unmatched')),
         ('unmatched-Q-in-text', b'BT Q ET ' + marks, ('content.graphics-unmatched',)),
         ('unmatched-ET-in-saved-state', b'q ET Q ' + marks, ('content.text-unmatched',)),
         ('balanced-control', marks + b'BT ET 8 8 4 4 re n', ()),
