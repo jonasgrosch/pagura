@@ -288,6 +288,9 @@ def cases():
     yield from transfer_cases()
     yield from codec_cases()
     yield render('unclosed-graphics',b'q 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.graphics-unclosed',))
+    yield render('unclosed-marked',b'/P <</MCID 0>> BDC 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.marked-unclosed',))
+    # Printer PCLm output opens a sequence per strip and never closes one.
+    yield render('unclosed-marked-deep',b'/P BMC '*400+b'1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.marked-unclosed',))
     yield from type3_empty_bounds_cases()
 
 
@@ -310,7 +313,10 @@ def raw_jpx_cases():
             encoded = data[:-1] if suffix=='truncated' else data
             yield Case('jpx-raw-'+name+'-'+suffix,page(b'4 0 0 1 0 0 cm /X Do',[stream(encoded,extra)],resources),
                        OPEN,('recovery-jpx-codestream',),'Raw JPX without sufficient metadata or complete data remains rejected',
-                       extra={'render_error':'syntax'})
+                       # Strict rejects repairable raw framing before it can
+                       # inspect the incomplete codestream. Repair still must
+                       # reject truncation instead of returning partial pixels.
+                       strict_valid=suffix!='truncated', extra={'render_error':'syntax'})
 
 
 def type3_empty_bounds_cases():

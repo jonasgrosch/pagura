@@ -6420,6 +6420,29 @@
       "api": "compile_page"
     },
     {
+      "id": "content/marked-unclosed-hidden",
+      "kind": "pdf",
+      "description": "Reported recovery: marked-unclosed",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/marked-unclosed-hidden.pdf",
+      "sha256": "904250c93db31491a70cb763cc78fa5b1541501d0d9e68fd982dcee649cc7ff3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unclosed"
+      ],
+      "oracle": "corpus/generated/content/marked-unclosed-hidden.ppm",
+      "oracle_sha256": "26e05920e6bbdeb401387cbda8007fdace761fc2e4ca9e590ac633f7e0c83cd8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
       "id": "content/form-hidden-body",
       "kind": "pdf",
       "description": "An invisible form skips its entire body, including unsupported text operators",

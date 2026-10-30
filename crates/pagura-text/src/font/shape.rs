@@ -30,6 +30,18 @@ impl PdfFont {
                     glyph,
                     matrix: program.font_matrix(),
                 }),
+            Source::UnicodeSubstitute {
+                program,
+                to_unicode,
+            } => to_unicode
+                .as_ref()
+                .and_then(|map| map.text(code))
+                .and_then(|text| crate::substitute::cid::unicode_glyph(program, text.as_str()))
+                .map_or(GlyphShape::Blank, |glyph| GlyphShape::Outline {
+                    program: Arc::clone(program),
+                    glyph,
+                    matrix: program.font_matrix(),
+                }),
             Source::Type3 {
                 procedures, matrix, ..
             } => name
@@ -116,7 +128,7 @@ impl PdfFont {
             Source::Program {
                 program, cid_map, ..
             } => cid_glyph(program, cid_map.as_ref(), cid).is_some(),
-            Source::CidSubstitute { .. } => true,
+            Source::CidSubstitute { .. } | Source::UnicodeSubstitute { .. } => true,
             Source::Type3 { .. } | Source::MetricsOnly => false,
         }
     }

@@ -97,18 +97,29 @@ pub(crate) fn scale(transform: Transform) -> f64 {
 }
 
 /// How far a stroke with `pen` reaches beyond its path in device pixels
-/// under `transform`: half the line width, times the miter limit for miter
-/// joins or √2 for square caps, through the pen's scale.
+/// under `transform`: the pen's radius, times the miter limit for miter
+/// joins or √2 for square caps. The radius is half the line width through
+/// the pen's scale, and half a pixel for a hairline, whose pen is one device
+/// pixel wide under any transform. Stroke adjustment rounds the pen's
+/// diameters up by at most half a pixel, to at least one, and moves its
+/// centrelines by at most half a pixel (10.7.5).
 pub(crate) fn stroke_reach(pen: &pagura_interpret::Pen, transform: Transform) -> f64 {
     let stroke = &pen.stroke;
     let join = if stroke.join == pagura_raster::LineJoin::Miter {
         stroke.miter_limit.max(1.0)
     } else {
         1.0
+    }
+    .max(std::f64::consts::SQRT_2);
+    let reach = if stroke.width == 0.0 {
+        0.5 * join
+    } else {
+        stroke.width.max(0.0) / 2.0 * join * scale(pen.transform.then(transform))
     };
-    stroke.width.max(0.0) / 2.0
-        * join.max(std::f64::consts::SQRT_2)
-        * scale(pen.transform.then(transform))
+    match pen.adjustment {
+        pagura_raster::Adjustment::None => reach,
+        pagura_raster::Adjustment::Adjusted => (reach + 0.25 * join).max(0.5 * join) + 0.5,
+    }
 }
 
 /// The unit square under `transform`, as a path.
