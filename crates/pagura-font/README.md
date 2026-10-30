@@ -56,8 +56,14 @@ Implemented formats:
   mandatory argument fallback for unrecognized OtherSubrs, hint replacement, and StandardEncoding seac. Hint replacement consumes its
   operands and returns the requested subroutine number without applying hints.
 
-Font errors carry a `Position::Buffer` offset into the program bytes. For
-Type 1 programs, offsets in the PFB-unframed, hexadecimal-decoded or
+Font errors carry a `Position::Buffer` offset into the program bytes.
+In Repair mode, unassigned Type 1 Subrs entries remain unavailable at their
+original indexes and report `font.type1-sparse-subrs`; Strict rejects them.
+Assigned subroutines and original bytes stay intact. Calls to holes are
+malformed glyphs and follow the existing reported `font.glyph-data` fallback,
+which does not reconstruct the missing outline.
+
+For Type 1 programs, offsets in the PFB-unframed, hexadecimal-decoded or
 decrypted copies are mapped back to the input byte they came from.
 
 Two kinds of bound apply (ADR 0016, ADR 0023). **Format ceilings** are fixed

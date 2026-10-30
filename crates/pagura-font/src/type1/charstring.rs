@@ -220,7 +220,9 @@ impl Run<'_, '_> {
                         .font
                         .subrs
                         .get(index)
-                        .ok_or_else(|| syntax(at, "Type 1 subroutine index out of range"))?;
+                        .ok_or_else(|| syntax(at, "Type 1 subroutine index out of range"))?
+                        .as_ref()
+                        .ok_or_else(|| syntax(at, "unassigned Type 1 subroutine called"))?;
                     if self.charstring(subr.cursor(&self.font.plain)?, depth + 1, s)? == Flow::End {
                         return self.end(&r, "data after Type 1 character end");
                     }

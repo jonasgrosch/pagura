@@ -2096,6 +2096,66 @@
         "implementation": "Only the optional positioned-text recorder performs fallback. Existing Unicode, including an explicit empty string, is retained. Otherwise an outline glyph can supply a program name to the same AGL converter the text decoder already uses. No recovered text is passed back to glyph selection, metrics or painting. Name-processing work and retained output bytes are separately bounded. Composite collection mappings retain priority before program-name fallback. AGL and ZapfDingbats names are separate lists. The latter is used only for a recognized ZapfDingbats/Dingbats base font, including recognized subset/style names; other fonts and absent base names get AGL alone. This policy also applies to encoding-name conversion. ToUnicode remains authoritative.",
         "expectations": "Independent pairs cover both-set and valid Symbolic flags with and without post names, AGL suffix/component and supplementary-scalar rules, authoritative ToUnicode, authoritative encoding names and unknown names. Exact pixels and glyph IDs remain fixed; decoded glyph text and positioned fallback text are checked separately. Independent a12/a19 vectors cover ordinary and Dingbats fonts on raw and named routes. Annex D.6 gives the hand and check-mark identities; those names are absent from the local AGL. All vectors retain exact rectangle pixels and metrics."
       }
+    },
+    {
+      "id": "font-type1-sparse-subrs",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9.1"
+      ],
+      "tables": [
+        "124"
+      ],
+      "status": "Reported retention of unavailable Type 1 Subrs entries, preserving declared indexes and original bytes.",
+      "tests": [
+        "font/repair-type1-sparse-tail-pfa",
+        "font/repair-type1-sparse-tail-pfb",
+        "font/repair-type1-sparse-tail-hex",
+        "font/repair-type1-sparse-interior-pfa",
+        "font/repair-type1-sparse-interior-pfb",
+        "font/repair-type1-sparse-interior-hex",
+        "font/repair-type1-sparse-nested-pfa",
+        "font/repair-type1-sparse-nested-pfb",
+        "font/repair-type1-sparse-nested-hex",
+        "font/repair-type1-sparse-all-unused-pfa",
+        "font/repair-type1-sparse-all-unused-pfb",
+        "font/repair-type1-sparse-all-unused-hex",
+        "font/type1-sparse-called",
+        "font/type1-sparse-dense-twin",
+        "recovery/type1-sparse-tail",
+        "recovery/type1-sparse-tail-valid",
+        "recovery/type1-sparse-interior",
+        "recovery/type1-sparse-interior-valid",
+        "recovery/type1-sparse-nested",
+        "recovery/type1-sparse-nested-valid",
+        "recovery/type1-sparse-all-unused",
+        "recovery/type1-sparse-all-unused-valid",
+        "font/type1-sparse-invalid-duplicate",
+        "font/type1-sparse-invalid-index",
+        "font/type1-sparse-invalid-record"
+      ],
+      "gaps": "No PostScript execution or invented subroutines. Calling an unavailable entry remains a malformed glyph and follows the existing explicit font.glyph-data policy in Repair mode; no fidelity claim for that glyph.",
+      "verification": {
+        "primary_text": "Local Adobe Type 1 Font Format",
+        "locator": "6 callsubr; 8 Using Subroutines; ADR 0003",
+        "rule": "Each Subrs element is an independently encoded charstring, called by its original array index. The format does not specify an unused-null-slot repair.",
+        "verdict": "Required element type reviewed; sparse-array recovery is explicit project policy.",
+        "implementation": "Strict rejects unassigned slots. Repair retains None at each unassigned index, without compacting the array, decrypting unavailable bytes or synthesizing return programs. The declared count is charged before allocation. Calls to holes remain positioned Syntax failures, subject only to the existing reported glyph-data fallback.",
+        "expectations": "Independent standard-library Type 1 encoder and fixed rectangle path/pixels, with leading, interior, trailing, all-unused and nested slots across PFA, PFB and hexadecimal eexec. Dense twins preserve assigned procedures. Parse and outline budget exhaustion remains Limit."
+      },
+      "repairs": [
+        {
+          "tag": "font.type1-sparse-subrs",
+          "locator": "Type 1 6; 8; ADR 0003",
+          "rule": "Retain unassigned Subrs slots as unavailable and preserve all declared indexes.",
+          "vectors": [
+            "font/repair-type1-sparse-tail-pfa",
+            "font/repair-type1-sparse-interior-pfa",
+            "font/repair-type1-sparse-nested-pfa",
+            "font/repair-type1-sparse-all-unused-pfa"
+          ]
+        }
+      ]
     }
   ]
 }
