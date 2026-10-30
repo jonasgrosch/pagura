@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "e1221b487af1156ad5bfe29b750d8d0539ebea66",
+  "audited_revision": "b8d5c1c41b194bc35694e9691b1d09017a0549ab",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -216,7 +216,7 @@
     "tools/fixturegen/paint_curved_stencils.py": "f5ced4fb245dd7ac2c93ec53bbcb5d4110a06008be0fd7d42f927a1735150e21",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
     "tools/fixturegen/paint_nested_stencils.py": "fd69e0ab47477978eec5eefa15aa824b346d11be7b9fd191f3b7069a97b1f9d6",
-    "tools/fixturegen/paint_stencils.py": "18678fab5831dcd7c976b4955317a87377b25407343ae48c420ed9779a160911",
+    "tools/fixturegen/paint_stencils.py": "ad5d59140448af92009f0dc5bc72f53a997066bb803a2be349f632cfb48fb048",
     "web/client.mjs": "187b849419860bc64478a30fe7ddb0069e17b89f037528dda1454a1bf07d18f8",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
