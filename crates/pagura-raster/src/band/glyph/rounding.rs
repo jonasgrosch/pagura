@@ -27,8 +27,8 @@ const DIRECT: f64 = 1.0 / (255.0 * 1024.0);
 /// The Arc replaces the original Path's Arc; placement data stays borrowed.
 #[derive(Debug)]
 pub(in crate::band) struct Proof {
-    pub(super) outline: Path,
-    pub(super) linear: Transform,
+    pub(in crate::band) outline: Path,
+    pub(in crate::band) linear: Transform,
     direct: Option<Direct>,
     curved: bool,
     share: f64,
@@ -132,18 +132,18 @@ impl Direct {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Pixel {
-    x: u32,
-    y: u32,
-    byte: u8,
+pub(in crate::band) struct Pixel {
+    pub(in crate::band) x: u32,
+    pub(in crate::band) y: u32,
+    pub(in crate::band) byte: u8,
 }
 
 #[derive(Clone, Copy)]
-struct Source<'a> {
-    outline: &'a Path,
-    linear: Transform,
-    origin: Point,
-    points: &'a [Point],
+pub(in crate::band) struct Source<'a> {
+    pub(in crate::band) outline: &'a Path,
+    pub(in crate::band) linear: Transform,
+    pub(in crate::band) origin: Point,
+    pub(in crate::band) points: &'a [Point],
 }
 
 impl<'a> Source<'a> {
@@ -555,80 +555,17 @@ fn interval(
     (options, round): (&Prep<'_>, i32),
     (work, bytes): (&mut Meter, &mut Meter),
 ) -> Result<(f64, f64)> {
-    let Source {
-        outline,
-        linear,
-        origin,
-        points: source_points,
-    } = source;
-    let (ox, dx) = subtract(origin.x, f64::from(pixel.x));
-    let (oy, dy) = subtract(origin.y, f64::from(pixel.y));
-    let local = Transform {
-        e: ox,
-        f: oy,
-        ..linear
-    };
-    let mut hulls = Vec::new();
     let frame = Frame::new(options).ok_or(Error::limit("unresolved curve coverage interval"))?;
     let bounds = clip_bounds(&frame, pixel);
-    let targets = [bounds];
-    let before = bytes.used();
-    let (mut polygon, local_points) = flattened_with(
-        outline,
-        local,
-        options.limits,
-        bytes,
-        Some(Inspection {
-            hulls: Some(&mut hulls),
-            work,
-            rounding: dx.abs().max(dy.abs()) * (1.0 + 8.0 * f64::EPSILON),
-            targets: &targets,
-            offset: Point::default(),
-            factor: 16.0_f64.powi(-round),
-        }),
-    )?;
-    let retained = polygon.heap_bytes()
-        + local_points.capacity() * size_of::<Point>()
-        + hulls.capacity() * size_of::<Hull>();
-    bytes.refund(bytes.used().saturating_sub(before + retained));
-    let released = local_points.capacity() * size_of::<Point>();
-    drop(local_points);
-    bytes.refund(released);
-    for &point in source_points {
-        // A genuine point's floor belongs to its canonical placed position.
-        let point = Point::new(
-            (point.x + origin.x).floor() - f64::from(pixel.x),
-            (point.y + origin.y).floor() - f64::from(pixel.y),
-        );
-        polygon.cell(point, options.limits, bytes)?;
-    }
-    let lines = edges::lines(&polygon, bytes)?;
-    let released = polygon.heap_bytes();
-    drop(polygon);
-    bytes.refund(released);
     let mut pieces = Vec::new();
-    bytes.reserve(&mut pieces, lines.len())?;
-    pieces.extend(lines.iter().filter_map(|&line| Piece::new(line, 0.0, 0)));
-    work.charge(lines.len())?;
-    let arithmetic = lines.iter().fold(0.0, |sum, &line| {
-        outward(sum + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]))
-    });
-    let released = lines.capacity() * size_of::<Line>();
-    drop(lines);
-    bytes.refund(released);
-    let mut error = hulls.iter().fold(0.0, |sum, hull| {
-        if hull.intersects(bounds) {
-            outward(sum + hull.area)
-        } else {
-            sum
-        }
-    });
-    let released = hulls.capacity() * size_of::<Hull>();
-    drop(hulls);
-    bytes.refund(released);
-    error = outward(
-        error + arithmetic + source_lines(outline, linear, origin, pixel, local, bounds, work)?,
-    );
+    let mut error = source_pieces(
+        source,
+        pixel,
+        (options, round),
+        (bounds, 0),
+        &mut pieces,
+        (work, bytes),
+    )?;
     let mut rules = Vec::new();
     bytes.reserve_capacity(&mut rules, 1)?;
     rules.push(FillRule::NonZero);
@@ -725,11 +662,11 @@ fn subtract(a: f64, b: f64) -> (f64, f64) {
     (high, (a - (high - back)) + (-b - back))
 }
 
-fn outward(value: f64) -> f64 {
+pub(in crate::band) fn outward(value: f64) -> f64 {
     value * (1.0 + 16.0 * f64::EPSILON)
 }
 
-fn localized_line(line: Line, pixel: Pixel) -> (Line, Point) {
+pub(in crate::band) fn localized_line(line: Line, pixel: Pixel) -> (Line, Point) {
     let shift = |p: Point| {
         let (x, dx) = subtract(p.x, f64::from(pixel.x));
         let (y, dy) = subtract(p.y, f64::from(pixel.y));
@@ -740,7 +677,7 @@ fn localized_line(line: Line, pixel: Pixel) -> (Line, Point) {
     (Line { a, b }, Point::new(da.x.max(db.x), da.y.max(db.y)))
 }
 
-fn edge_error(line: Line, delta: Point, bounds: [f64; 4]) -> f64 {
+pub(in crate::band) fn edge_error(line: Line, delta: Point, bounds: [f64; 4]) -> f64 {
     let radius = delta.x.max(delta.y);
     let hull = Hull {
         bounds: [
@@ -1449,4 +1386,92 @@ mod tests {
             "unresolved curve coverage interval",
         );
     }
+}
+
+/// Adds one original-control source to a localized joint coverage proof.
+pub(in crate::band) fn source_pieces(
+    source: Source<'_>,
+    pixel: Pixel,
+    (options, round): (&Prep<'_>, i32),
+    (bounds, group): ([f64; 4], u8),
+    pieces: &mut Vec<Piece>,
+    (work, bytes): (&mut Meter, &mut Meter),
+) -> Result<f64> {
+    let Source {
+        outline,
+        linear,
+        origin,
+        points: source_points,
+    } = source;
+    let (ox, dx) = subtract(origin.x, f64::from(pixel.x));
+    let (oy, dy) = subtract(origin.y, f64::from(pixel.y));
+    let local = Transform {
+        e: ox,
+        f: oy,
+        ..linear
+    };
+    let mut hulls = Vec::new();
+
+    let targets = [bounds];
+    let before = bytes.used();
+    let (mut polygon, local_points) = flattened_with(
+        outline,
+        local,
+        options.limits,
+        bytes,
+        Some(Inspection {
+            hulls: Some(&mut hulls),
+            work,
+            rounding: dx.abs().max(dy.abs()) * (1.0 + 8.0 * f64::EPSILON),
+            targets: &targets,
+            offset: Point::default(),
+            factor: 16.0_f64.powi(-round),
+        }),
+    )?;
+    let retained = polygon.heap_bytes()
+        + local_points.capacity() * size_of::<Point>()
+        + hulls.capacity() * size_of::<Hull>();
+    bytes.refund(bytes.used().saturating_sub(before + retained));
+    let released = local_points.capacity() * size_of::<Point>();
+    drop(local_points);
+    bytes.refund(released);
+    for &point in source_points {
+        // A genuine point's floor belongs to its canonical placed position.
+        let point = Point::new(
+            (point.x + origin.x).floor() - f64::from(pixel.x),
+            (point.y + origin.y).floor() - f64::from(pixel.y),
+        );
+        polygon.cell(point, options.limits, bytes)?;
+    }
+    let lines = edges::lines(&polygon, bytes)?;
+    let released = polygon.heap_bytes();
+    drop(polygon);
+    bytes.refund(released);
+    bytes.reserve_capacity(pieces, lines.len())?;
+    pieces.extend(
+        lines
+            .iter()
+            .filter_map(|&line| Piece::new(line, 0.0, group)),
+    );
+    work.charge(lines.len())?;
+    let arithmetic = lines.iter().fold(0.0, |sum, &line| {
+        outward(sum + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]))
+    });
+    let released = lines.capacity() * size_of::<Line>();
+    drop(lines);
+    bytes.refund(released);
+    let mut error = hulls.iter().fold(0.0, |sum, hull| {
+        if hull.intersects(bounds) {
+            outward(sum + hull.area)
+        } else {
+            sum
+        }
+    });
+    let released = hulls.capacity() * size_of::<Hull>();
+    drop(hulls);
+    bytes.refund(released);
+    error = outward(
+        error + arithmetic + source_lines(outline, linear, origin, pixel, local, bounds, work)?,
+    );
+    Ok(error)
 }

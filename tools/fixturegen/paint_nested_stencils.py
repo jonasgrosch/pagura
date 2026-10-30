@@ -9,7 +9,8 @@ from fractions import Fraction as F
 import struct
 
 from .font import simple, truetype
-from .model import Case, RENDER, UNSUPPORTED
+from .paint_curved_stencils import original_quadratic_oracle
+from .model import Case, RENDER
 from .paint_stencils import (RED, ROWS, SIZE, mask_polygons, number, page,
                              polygon, rectangle)
 from .pdf import stream
@@ -119,9 +120,8 @@ def nested(name, *, depth=1, matrix=MASK_MATRIX, clip=None, evenodd=False,
 
 
 def glyph_case(name, curve):
-    # The quadratic is deliberately retained as a quadratic by the engine.
-    # Replacing it with the generic clipping flattener would change that
-    # contract; this unsupported mark variant stays explicit.
+    # Preserve the original source and IDs. Its former refusal is now a
+    # positive true-quadratic analytic oracle, never a flattened replacement.
     points = ([(0,0,True),(0,300,False),(300,0,True)] if curve else
               [(0,0,True),(300,0,True),(300,300,True),(0,300,True)])
     program = truetype(glyph_override=simple(points), table_overrides={b"hmtx":struct.pack(">HhHh",500,0,600,0)+bytes(6)})
@@ -133,10 +133,10 @@ def glyph_case(name, curve):
     content = b"/Pattern cs /P scn 10.5 0 0 10.5 2.25 2.25 cm /I Do"
     resources = b"<< /Pattern << /P 5 0 R >> /XObject << /I 6 0 R >> >>"
     return Case(name,page(content,[pattern,image,solid,font,descriptor,stream(program,b"/Length1 "+str(len(program)).encode())],resources),
-                UNSUPPORTED if curve else RENDER,("paint-image-masks",),
+                RENDER,("paint-image-masks",),
                 "Curved patterned glyphs retain true quadratics; linear glyph outlines propagate their exact geometry",
-                oracle=None if curve else oracle([("nonzero",[rectangle(F(9,4),F(9,4),F(51,4),F(51,4))])],[(rectangle(F(2),F(2),F(11),F(11)),RED)]),
-                feature="pattern.image-mask" if curve else None,extra={} if curve else {"tolerance":1})
+                oracle=original_quadratic_oracle() if curve else oracle([("nonzero",[rectangle(F(9,4),F(9,4),F(51,4),F(51,4))])],[(rectangle(F(2),F(2),F(11),F(11)),RED)]),
+                extra={"tolerance":1})
 
 
 def tiny_quadratic_proof(patterned):
@@ -167,10 +167,10 @@ def tiny_quadratic_proof(patterned):
     pixels[at:at+3] = bytes([255,229,229])
     return Case("glyph-tiny-quadratics-refused" if patterned else "glyph-tiny-quadratics-control",
                 page(content,[pattern,mask,solid,font,descriptor,stream(program,b"/Length1 "+str(len(program)).encode())],resources),
-                UNSUPPORTED if patterned else RENDER,("paint-image-masks",),
+                RENDER,("paint-image-masks",),
                 "101 sub-flattener-tolerance quadratic glyph slivers have exact total area 101/1000 pixel; preserve true curves",
-                oracle=None if patterned else b"P6\n16 16\n255\n"+pixels,
-                feature="pattern.image-mask" if patterned else None,extra={} if patterned else {"tolerance":1})
+                oracle=b"P6\n16 16\n255\n"+pixels,
+                extra={"tolerance":1})
 
 
 def cases():

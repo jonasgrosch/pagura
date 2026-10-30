@@ -34,6 +34,7 @@ mod clip;
 mod convex;
 mod coverage;
 mod curve;
+mod curved;
 mod edges;
 mod glyph;
 mod raster;
@@ -45,6 +46,7 @@ mod union;
 
 pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, RowOut, Span};
+pub use curved::ClipSource;
 pub(crate) use edges::{Mapped, Polygon};
 pub use glyph::GlyphEdges;
 pub use raster::BandRasterizer;

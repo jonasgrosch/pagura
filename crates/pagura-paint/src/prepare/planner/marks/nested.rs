@@ -1,5 +1,5 @@
 //! The geometry inherited by ordinary nested tiling marks beneath an
-//! image stencil (8.7.3, 8.9.6.2): keep each fill, stroke or linear glyph
+//! image stencil (8.7.3, 8.9.6.2): keep each fill, stroke or glyph
 //! and clip as geometry, so leaf marks integrate the intersection once.
 
 use super::{Geometry, Spec};
@@ -50,12 +50,16 @@ impl Planner<'_> {
                     budget,
                 )
             }
-            // Generic clipping flattens curves. A patterned glyph's true
-            // quadratic coverage cannot be replaced with that geometry.
-            Geometry::Glyph(..) => Err(Error::unsupported(
-                pagura_interpret::features::PATTERN_IMAGE_MASK,
-                "curved patterned glyphs under an inherited stencil are not implemented",
-            )),
+            Geometry::Glyph(source, linear, origin, _) => {
+                let [a, b, c, d] = *linear;
+                self.pattern_glyph(
+                    scope,
+                    spec.info.clip,
+                    &source.outline,
+                    Transform::new(a, b, c, d, origin.x, origin.y),
+                    budget,
+                )
+            }
             Geometry::Unit(_) | Geometry::Area(_) => Err(Error::invalid_argument(
                 "a tiling paint requires path geometry",
             )),

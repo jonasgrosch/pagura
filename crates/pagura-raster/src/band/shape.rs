@@ -29,8 +29,8 @@ pub(crate) const RENDER_BYTES: &str = "render memory budget exceeded";
 pub struct Shape {
     pub(crate) area: Area,
     pub(crate) bounds: DeviceRect,
-    work: usize,
-    retained: usize,
+    pub(super) work: usize,
+    pub(super) retained: usize,
     pub(crate) rule: FillRule,
     pub(crate) body: Body,
     pub(crate) clip: Option<ClipShape>,
@@ -39,6 +39,7 @@ pub struct Shape {
     pub(crate) masked: bool,
     /// The rows resolved at preparation and their sides.
     pub(crate) resolved: Resolved,
+    pub(super) certified: Option<clip::Rows>,
 }
 
 /// Rows of a shape whose windings its signed area does not determine, or
@@ -393,8 +394,8 @@ impl Shape {
         .bands()
     }
 
-    /// Work units its rasterization costs at most over all its bands, for
-    /// the render-work reservation.
+    /// Work admission for rasterization over every band, including cumulative
+    /// preparation proofs for inherited true-curve clips.
     pub fn work(&self) -> usize {
         self.work
     }
@@ -436,6 +437,9 @@ impl Shape {
         shared: Option<(&std::sync::Arc<super::GlyphEdges>, crate::Point)>,
     ) -> Result<Option<Self>> {
         let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
+        if options.clip.is_some_and(ClipShape::curved) {
+            return super::curved::polygon(polygon, rule, options, bytes, &mut work);
+        }
         Self::polygon_metered(polygon, rule, winding, options, bytes, &mut work, shared)
     }
 
@@ -458,8 +462,7 @@ impl Shape {
         };
         frame.fit(hull);
         if let Some(paths) = frame.paths {
-            // A mark strictly inside every convex clipping path meets none
-            // of their boundaries.
+            // Strict containment meets none of the convex clip boundaries.
             work.charge(
                 paths
                     .convex()
@@ -743,6 +746,7 @@ impl Shape {
             clip: frame.clip.cloned(),
             masked: false,
             resolved: Resolved::default(),
+            certified: None,
         }))
     }
 
@@ -837,6 +841,7 @@ impl Shape {
             clip: frame.clip.cloned(),
             masked: frame.paths.is_some(),
             resolved,
+            certified: None,
         })
     }
 
