@@ -89,7 +89,7 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mu
                             // A page of one spot compares only its tint.
                             _ if output.layout.spots == 1 => {
                                 let row = (row, pixels, selection);
-                                wide_row(output, row, &mut one_spot, &mut ws.usage);
+                                one_spot_row(output, row, &mut one_spot, &mut ws.usage);
                             }
                             _ => {
                                 let row = (row, pixels, selection);
@@ -150,6 +150,18 @@ fn wide_row<'a, const N: usize>(
         let select = selection.get(k).copied().unwrap_or(0);
         *out = wide(output, pixel, select, preview, usage);
     }
+}
+
+/// [`wide_row`] of a page of one spot channel, kept out of [`write`]: inlined there, it changes
+/// how the rows of pages without spots compile.
+#[inline(never)]
+fn one_spot_row<'a>(
+    output: &Output,
+    row: (&mut [[u8; 4]], impl Iterator<Item = &'a [f64]>, &[u16]),
+    preview: &mut Preview<1>,
+    usage: &mut Usage,
+) {
+    wide_row(output, row, preview, usage);
 }
 
 /// One f64 page pixel as premultiplied RGBA8 over the background.
