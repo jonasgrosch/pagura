@@ -124,6 +124,7 @@ fn load_stream(
         )?;
     }
     if collection {
+        collection_family(&program, kind, metrics_font).map_err(|error| error.within(start))?;
         report.diagnostic(
             Diagnostic::new(
                 repairs::COLLECTION_FACE,
@@ -170,6 +171,21 @@ fn cid_binding(
         }
     }
     declared.map(|format| (format, false))
+}
+
+/// Table 124 and 9.7.4.2 give the outline family and glyph namespace of
+/// each PDF subtype. Validate new collection admissions before the face
+/// policy is reported; in particular, a CID-CFF charset cannot replace a
+/// written CIDFontType2 CIDToGIDMap. Standalone admission is unchanged.
+fn collection_family(program: &FontProgram, kind: FontKind, font: &Dictionary) -> Result<()> {
+    let cff = matches!(kind, FontKind::Type1 | FontKind::MmType1)
+        || font.is_name(b"Subtype", b"CIDFontType0");
+    if program.has_cff_outlines() != cff || (kind != FontKind::Type0 && program.is_cid_keyed()) {
+        return Err(Error::syntax(
+            "font collection face disagrees with PDF font subtype",
+        ));
+    }
+    Ok(())
 }
 
 fn collection_names<'a>(

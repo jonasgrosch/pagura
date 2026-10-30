@@ -144,6 +144,10 @@ impl Sfnt {
         })
     }
 
+    pub(crate) fn has_cff_outlines(&self) -> bool {
+        self.cff().is_some()
+    }
+
     fn cff(&self) -> Option<&Cff> {
         match &self.outlines {
             Outlines::Cff(cff) => Some(cff),

@@ -217,6 +217,19 @@ remains valid in either mode. This does not claim PDF standardizes collections. 
 in force. Unknown collection versions, ambiguous names and malformed
 containers remain errors in Strict and Repair.
 
+The selected collection face must also match Table 124's outline family:
+TrueType and CIDFontType2 use glyf; Type1 uses non-CID CFF; CIDFontType0
+uses CFF with either charset CIDs or direct GIDs. A contradictory face is
+not loaded under the PDF's font subtype. This prevents a CID-CFF charset
+from bypassing an explicit CIDFontType2 CIDToGIDMap. Existing reported
+substitution remains the fallback for fonts eligible under the provider
+policy. The native collection API retains its format-independent face
+selection; parsed-family inspection is available separately.
+
+Contradictory standalone sfnt/font-family bindings remain a separate
+validation gap. Their existing selection policy is outside this collection
+admission change.
+
 ### Contradictory CID program labels (amended 2026-10-30)
 
 A CIDFontType0 can carry an intact CFF1 or sfnt program under the wrong

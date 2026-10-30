@@ -422,7 +422,7 @@
         "124",
         "125"
       ],
-      "status": "PDF font descriptors bind Type1, TrueType, CFF and CID CFF programs; PDF widths supply advances and program matrices transform outlines.; reported CIDFontType0 binding recovery validates complete self-identifying CFF1/sfnt bytes while preserving program glyph identities and PDF widths",
+      "status": "PDF font descriptors bind Type1, TrueType, CFF and CID CFF programs; PDF widths supply advances and program matrices transform outlines.; reported CIDFontType0 binding recovery validates complete self-identifying CFF1/sfnt bytes while preserving program glyph identities and PDF widths; new collection admissions validate parsed glyf/CFF family and named/CID namespace before mapping",
       "tests": [
         "text/tt-unicode-priority",
         "text/tt-unicode-missing-post",
@@ -470,9 +470,22 @@
         "font_bindings/glyf-label",
         "font_bindings/type1-cid-order",
         "font_bindings/damaged-cff",
-        "font_bindings/glyf-conflicting-map"
+        "font_bindings/glyf-conflicting-map",
+        "font_collection_families/glyf-cid2-map0",
+        "font_collection_families/cid-cff-as-cid2-map0",
+        "font_collection_families/name-cff-as-cid2-map0",
+        "font_collection_families/glyf-as-cid0-map0",
+        "font_collection_families/glyf-cid2-map1",
+        "font_collection_families/cid-cff-as-cid2-map1",
+        "font_collection_families/name-cff-as-cid2-map1",
+        "font_collection_families/glyf-as-cid0-map1",
+        "font_collection_families/glyf-as-simple-type1",
+        "font_collection_families/cid-cff-as-simple-type1",
+        "font_collection_families/name-cff-simple-type1",
+        "font_collection_families/name-cff-cid0-direct-gid",
+        "font_collection_families/cid-cff-cid0-charset"
       ],
-      "gaps": "Type1/CFF/Type2 primary texts are now available locally but binary verification is delegated to pagura-font; this registry covers PDF bindings. PDF binding kind and declared length extents are checked; Type1 Length1/2 boundaries are not independently reconciled with parsed eexec boundaries, and OpenType outline technology is not independently classified here. Type 1 name dictionaries under CIDFontType0 remain errors: no CID order is inferred.",
+      "gaps": "Type1/CFF/Type2 primary texts are now available locally but binary verification is delegated to pagura-font; this registry covers PDF bindings. PDF binding kind and declared length extents are checked; Type1 Length1/2 boundaries are not independently reconciled with parsed eexec boundaries, and OpenType outline technology is not independently classified here. Type 1 name dictionaries under CIDFontType0 remain errors: no CID order is inferred. Standalone contradictory sfnt/font-family bindings remain a separate structural-validation gap.",
       "verification": {
         "rule": "PDF font descriptors bind Type1, TrueType, CFF and CID CFF programs; PDF widths supply advances and program matrices transform outlines.",
         "implementation": "ISO PDF bindings agree; binary font formats remain pending primary-text review",
