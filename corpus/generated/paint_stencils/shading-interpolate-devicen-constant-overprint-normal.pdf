@@ -1,0 +1,51 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /OutputIntents [<< /Type /OutputIntent /S /GTS_PDFX /OutputConditionIdentifier (Independent overprint fixture) >>] >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 16 16] /Group << /S /Transparency /I true /CS /DeviceCMYK >> /Resources << /Pattern << /P 5 0 R >> /XObject << /I 6 0 R >> /ExtGState << /Back << /ca .5 >> /G << /op true /OP true /OPM 1 /ca .5 /AIS true /BM /Normal /SMask << /S /Alpha /G 8 0 R >> >> >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 89 >>
+stream
+/Back gs .2 .4 .6 0 k 0 0 16 16 re f /G gs /Pattern cs /P scn 12 0 0 8 2.25 4.25 cm /I Do
+endstream
+endobj
+5 0 obj
+<< /Type /Pattern /PatternType 2 /Shading << /ShadingType 2 /ColorSpace 7 0 R /Coords [0 0 16 0] /Function << /FunctionType 2 /Domain [0 1] /C0 [.5] /C1 [.5] /N 1 >> /Extend [true true] >> >>
+endobj
+6 0 obj
+<< /Length 1 /Type /XObject /Subtype /Image /Width 2 /Height 1 /ImageMask true /BitsPerComponent 1 /Interpolate true>>
+stream
+@
+endstream
+endobj
+7 0 obj
+[/DeviceN [/Cyan] /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 0 0] /N 1 >>]
+endobj
+8 0 obj
+<< /Length 27 /Type /XObject /Subtype /Form /BBox [0 0 16 16] /Group << /S /Transparency /I true /CS /DeviceGray >> /Resources << /ExtGState << /Half << /ca .5 >> >> >>>>
+stream
+/Half gs 0 g 0 0 16 16 re f
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000179 00000 n 
+0000000236 00000 n 
+0000000571 00000 n 
+0000000710 00000 n 
+0000000917 00000 n 
+0000001070 00000 n 
+0000001185 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+1416
+%%EOF

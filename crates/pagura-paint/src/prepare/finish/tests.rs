@@ -154,6 +154,7 @@ fn activation_order_keeps_source_positions_with_equal_first_bands() {
                 position: pagura_core::Position::default(),
                 work: 0,
                 kind: ItemKind::Group(GroupUse {
+                    stencil: None,
                     group: 0,
                     cover: None,
                     compositing: Compositing {

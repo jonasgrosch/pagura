@@ -59,7 +59,13 @@ exact result.
 - **Image sampling:** for a minified image, the exact-area average of the
   source samples under the pixel's preimage; for a magnified one, the nearest
   sample or, with `/Interpolate`, bilinear interpolation of associated colour
-  and alpha between sample centres (8.9.5.3, ADR 0010). Decoders return
+  and alpha between sample centres (8.9.5.3, ADR 0010). A magnified
+  pattern-coloured stencil supplies that bilinear alpha as a per-pixel
+  source value: it scales the completed pattern result's alpha and shape
+  once, while the image unit square, clip and cell ink remain joint
+  geometry. It is not an independently averaged geometric mask. Minified
+  stencils retain exact painted sample cells regardless of Interpolate.
+  Decoders return
   byte-exact samples, and the exact average is over those samples. A JPEG
   block's DC term is the mean of its unrounded inverse transform, not of its
   rounded, clamped and colour-converted samples (on a large real image they
