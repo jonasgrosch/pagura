@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "c1cef159240a66bcb7e2b38f5573a465b1ca667c",
+  "audited_revision": "c81e6c6f59feec55ec3cd85c5a19a7cf48a2fb84",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -140,7 +140,7 @@
     "crates/pagura-pki/src/types.rs": "9745b4b8a8a2ae3010a5f59ba657a6906294230c3960e9d6897e9d531c5b6053",
     "crates/pagura-pki/src/validation/revocation/mod.rs": "56cd5b248aea2586f0da10540f165e2dc3393aa32ade55f52bc7f0ddba2d789e",
     "crates/pagura-raster/src/band/clip.rs": "1c214257d7f3b1b6cdfc36ba651f46be26454b2ecac1323522948a8743e73a5a",
-    "crates/pagura-raster/src/band/curved.rs": "1f8ef76d0bd181306b04772e8272ffc87a8c2696f305576c03e95e3521b8f44f",
+    "crates/pagura-raster/src/band/curved.rs": "bb3d977c33da318fe2c6145ec656eeafb3ec54d8a1b7735b52f30d9f71486b80",
     "crates/pagura-raster/src/band/glyph/rounding.rs": "6f432c8cca3f9a1e5d39191d72ec8c9134331f5eb92fc635a87b3290e9c500b6",
     "crates/pagura-raster/src/band/shape.rs": "a01c7e44a0b045e89c565575690dae875248b1f2535a23d3698bfffa35b99cd4",
     "crates/pagura-raster/src/features.rs": "472cdc73d6f95cf832a88919fad3ddaadc3ed7ccf4854fea9a2a7b22e7434e6c",
