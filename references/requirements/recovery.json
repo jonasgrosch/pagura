@@ -179,6 +179,27 @@
         "recovery/pattern-coloured-base-no-operands"
       ],
       "rule": "Coloured patterns paint in their intrinsic colours and accept only their name even if the Pattern colour space declares a base. A reported repair discards extra numeric operands of the selected underlying colour space; wrong types and counts remain syntax errors. The underlying space is retained for later uncoloured patterns."
+    },
+    {
+      "id": "recovery-jpx-codestream",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "8.9.5.1 Table 87"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/jpx-raw-gray",
+        "recovery/jpx-raw-rgb",
+        "recovery/jpx-raw-gray-no-space",
+        "recovery/jpx-raw-rgb-no-space",
+        "recovery/jpx-raw-gray-opacity",
+        "recovery/jpx-raw-rgb-opacity",
+        "recovery/jpx-raw-gray-truncated",
+        "recovery/jpx-raw-rgb-truncated",
+        "recovery/jpx-raw-rgb-subsampled"
+      ],
+      "rule": "Reported viewing policy: a raw T.800 codestream may use an explicit PDF colour space with SMaskInData zero. Strict mode still requires full JPX framing. No colour or opacity metadata is inferred. Dimensions, channel count, precision, geometry, syntax and resource limits remain authoritative. Explicit PDF RGB remains RGB even when component sampling ratios resemble chroma subsampling; T.800 A.5.1/B.2 supply reference-grid sample placement, not a replacement colour-space declaration."
     }
   ]
 }

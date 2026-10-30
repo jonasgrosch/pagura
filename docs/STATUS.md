@@ -23,6 +23,11 @@ The source check detects stale evidence and missing ownership, not runtime parit
 
 ## Capability matrix
 
+Raw JPEG 2000 codestreams in PDF images require the reported
+`jpx.raw-codestream` viewing repair, an explicit PDF colour space and no
+embedded-opacity request. Strict mode requires full JPX framing (7.4.9).
+This does not infer missing colour/channel metadata or extend codec coverage.
+
 | Area | Implemented | Remaining boundary |
 |---|---|---|
 | Rendering architecture | One interpreter with negotiated device needs; separate text device; appearance generation in `pagura-appearance`; cached resolution-independent scenes; source-order preparation, per-buffer N16/F32/F64 storage and one band executor; exact rendering only | Additional output/hit-testing devices, persistent resumable jobs and broader scheduling. `Accuracy::Competitive` and the former rendering pipelines have been removed. Architecture alone does not establish complete PDF feature coverage. |

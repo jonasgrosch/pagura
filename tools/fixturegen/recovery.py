@@ -280,6 +280,7 @@ def pattern_cases():
 
 
 def cases():
+    yield from raw_jpx_cases()
     yield from pattern_cases()
     yield type3_case()
     yield from sampled_cases()
@@ -291,6 +292,57 @@ def cases():
     # Printer PCLm output opens a sequence per strip and never closes one.
     yield render('unclosed-marked-deep',b'/P BMC '*400+b'1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.marked-unclosed',))
     yield from type3_empty_bounds_cases()
+
+
+def raw_jpx_cases():
+    """PDF 7.4.9 framing repair; colour is stated by the dictionary, never guessed."""
+    resources = b'<< /XObject << /X 5 0 R >> >>'
+    for name,planes,space in [
+        ('gray',[[0,64,128,255]],b'/DeviceGray'),
+        ('rgb',[[255,0,0,255],[0,255,0,255],[0,0,255,255]],b'/DeviceRGB'),
+    ]:
+        data = jpx.codestream(planes,4,1,levels=0)
+        params = b'/Type /XObject /Subtype /Image /Width 4 /Height 1 /ColorSpace '+space+b' /Filter /JPXDecode'
+        colors = [(v,)*3 for v in planes[0]] if len(planes)==1 else list(zip(*planes))
+        yield render('jpx-raw-'+name,b'4 0 0 1 0 0 cm /X Do',[stream(data,params)],resources,
+                     [((x,0,1,1),c) for x,c in enumerate(colors)],
+                     requirement='recovery-jpx-codestream',repairs=('jpx.raw-codestream',))
+        for suffix,extra in [('no-space',params.replace(b'/ColorSpace '+space,b'')),
+                             ('opacity',params+b' /SMaskInData 1'),
+                             ('truncated',params)]:
+            encoded = data[:-1] if suffix=='truncated' else data
+            yield Case('jpx-raw-'+name+'-'+suffix,page(b'4 0 0 1 0 0 cm /X Do',[stream(encoded,extra)],resources),
+                       OPEN,('recovery-jpx-codestream',),'Raw JPX without sufficient metadata or complete data remains rejected',
+                       # Strict rejects repairable raw framing before it can
+                       # inspect the incomplete codestream. Repair still must
+                       # reject truncation instead of returning partial pixels.
+                       strict_valid=suffix!='truncated', extra={'render_error':'syntax'})
+
+    yield raw_jpx_subsampling_case()
+
+
+def raw_jpx_subsampling_case():
+    """7.4.9 explicit RGB is authoritative; T.800 B.2 locates each sample grid."""
+    planes = [[16*i for i in range(16)], [0,80,160,240], [20,220,40,200,60,180,80,160]]
+    steps = [(1,1),(2,2),(2,1)]
+    # Independently encode each component on its own native grid, then combine
+    # their level-zero packets under one SIZ/COD declaration (T.800 A.5.1/B.2).
+    streams = [jpx.codestream([values],4//dx,4//dy) for values,(dx,dy) in zip(planes,steps)]
+    first = streams[0]
+    coding, tile = first.index(b'\xff\x52'), first.index(b'\xff\x90')
+    size = struct.pack('>H8IH',0,4,4,0,0,4,4,0,0,3) + b''.join(bytes([7,dx,dy]) for dx,dy in steps)
+    header = b'\xff\x4f' + jpx.marker(0x51,size) + first[coding:tile]
+    packets = b''.join(data[data.index(b'\xff\x93')+2:-2] for data in streams)
+    encoded = header + jpx.marker(0x90,struct.pack('>HIBB',0,14+len(packets),0,1)) + b'\xff\x93' + packets + b'\xff\xd9'
+    params = b'/Type /XObject /Subtype /Image /Width 4 /Height 4 /ColorSpace /DeviceRGB /Filter /JPXDecode'
+    # The oracle uses only the declared source samples and integer grid
+    # locations, never decoder output. No sampling ratio implies YCbCr.
+    pixels = bytes(planes[c][(y//dy)*(4//dx)+(x//dx)]
+                   for y in range(4) for x in range(4) for c,(dx,dy) in enumerate(steps))
+    return render('jpx-raw-rgb-subsampled',b'4 0 0 4 0 0 cm /X Do',
+                  [stream(encoded,params)],b'<< /XObject << /X 5 0 R >> >>',size=4,
+                  oracle=b'P6\n4 4\n255\n'+pixels,
+                  requirement='recovery-jpx-codestream',repairs=('jpx.raw-codestream',))
 
 
 def type3_empty_bounds_cases():
