@@ -209,6 +209,12 @@ def cases():
     yield from icc_cases()
     yield from invalid_compositing_cases()
     for name, command in [("syntax-unknown", b"future"), ("syntax-arity", b"1 q"), ("syntax-type", b"(bad) w"), ("syntax-Q", b"Q"), ("syntax-q-unclosed", b"q"), ("syntax-l", b"1 1 l"), ("syntax-TJ", b"[/Bad] TJ"), ("syntax-pending-clip", b"W"), ("syntax-reference", b"4 0 R"), ("syntax-zero-dash", b"[0 0] 0 d"), ("transfer", b"/GS gs")]:
+        if name == "syntax-Q":
+            yield Case(name, single_page([command], media_box=b"[0 0 64 64]"), RENDER,
+                       ("content-explicit-operators", "recovery-content-state"),
+                       "An unmatched Q is a reported viewing no-op; Strict rejects it",
+                       oracle=opaque_rectangles(64,64,[]), repairs=("content.graphics-unmatched",), strict_valid=False)
+            continue
         if name == "syntax-q-unclosed":
             yield Case(name, single_page([command], media_box=b"[0 0 64 64]"), RENDER,
                        ("content-explicit-operators",), "Unmatched saved graphics state is reported at sequence end",

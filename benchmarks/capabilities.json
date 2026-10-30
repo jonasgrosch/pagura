@@ -12,9 +12,9 @@
   ],
   "source_files": {
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "corpus/manifests/content.json": "e4d1691c56a0a34ef967f2e7d46fa42f70fb244198a50cf923c9273b838bf491",
+    "corpus/manifests/content.json": "fbc849348bca1976c42386026901341abf765dcbc61f653ed9577e5762e8d85a",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
-    "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
+    "corpus/manifests/paint.json": "ab3e0574179b39542627b1cd41ebf0303df8d1238015417239e0aa87d6afd3cd",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
     "crates/pagura-appearance/src/annotation.rs": "bf896237ee3e3c448b16c0af372c706a8491e866dc78a6e32649b073d518e83d",
     "crates/pagura-appearance/src/annotation/border.rs": "4423feb6d972c20fccde3e8ad80ecc7a02540c94db1e2fa268601b29627e96e8",
@@ -175,7 +175,7 @@
     "references/requirements/paint.json": "76d93b9e6579b261f55a39730ced3d602f5dc677bd1f842c6b386806106b9bb8",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
-    "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
+    "references/requirements/recovery.json": "ef73071fb1b3bfee5bf82450aa561a2d38be6d359838faaaea1773f645e0dfef",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "b486b86c6c94cf97d8e0bd704cd8fd08d2aabc68745f2c48fe965fda9a1c4f46",
@@ -2207,7 +2207,8 @@
         "recovery-transfer",
         "recovery-type3",
         "recovery-widgets",
-        "unsupported-is-explicit"
+        "unsupported-is-explicit",
+        "recovery-content-state"
       ],
       "fixtures": [],
       "comparisons": {

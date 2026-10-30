@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "cases": [
+    "recovery_state/unmatched-Q-prefix",
+    "recovery_state/unmatched-Q-suffix",
+    "recovery_state/unmatched-ET-prefix",
+    "recovery_state/unmatched-ET-suffix",
+    "recovery_state/unmatched-Q-in-text",
+    "recovery_state/unmatched-ET-in-saved-state",
+    "recovery_state/balanced-control",
+    "recovery_state/unmatched-retains-state",
+    "recovery_state/closed-text-glyph-control",
+    "content/syntax-Q",
+    "paint/text-end-without-begin"
+  ]
+}

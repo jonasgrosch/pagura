@@ -1,0 +1,205 @@
+{
+  "schema": 2,
+  "area": "recovery_state",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "recovery_state/unmatched-Q-prefix",
+      "kind": "pdf",
+      "description": "unmatched Q prefix",
+      "expected": "render",
+      "requirements": [
+        "recovery-content-state"
+      ],
+      "path": "corpus/generated/recovery_state/unmatched-Q-prefix.pdf",
+      "sha256": "74f1b3dec18dac29dc1538584bc2151924a6acae1648f36391c5fa308d928180",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_state/unmatched-Q-prefix.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery_state/unmatched-Q-suffix",
+      "kind": "pdf",
+      "description": "unmatched Q suffix",
+      "expected": "render",
+      "requirements": [
+        "recovery-content-state"
+      ],
+      "path": "corpus/generated/recovery_state/unmatched-Q-suffix.pdf",
+      "sha256": "ea6df8313ebe6f04632614287e7ae865c41516d19df9f5469570f852856d2797",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unmatched",
+        "content.graphics-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_state/unmatched-Q-suffix.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery_state/unmatched-ET-prefix",
+      "kind": "pdf",
+      "description": "unmatched ET prefix",
+      "expected": "render",
+      "requirements": [
+        "recovery-content-state"
+      ],
+      "path": "corpus/generated/recovery_state/unmatched-ET-prefix.pdf",
+      "sha256": "027c3f191eaecf0c5dc2cfc4c611d40e9ceb5fd7e6466753301576d1a9bd0ac9",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.text-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_state/unmatched-ET-prefix.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery_state/unmatched-ET-suffix",
+      "kind": "pdf",
+      "description": "unmatched ET suffix",
+      "expected": "render",
+      "requirements": [
+        "recovery-content-state"
+      ],
+      "path": "corpus/generated/recovery_state/unmatched-ET-suffix.pdf",
+      "sha256": "b180b1bd9c325368833babb7f317961d05d09f5db40e4ef004dec09c063c856e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.text-unmatched",
+        "content.text-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_state/unmatched-ET-suffix.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery_state/unmatched-Q-in-text",
+      "kind": "pdf",
+      "description": "unmatched Q in text",
+      "expected": "render",
+      "requirements": [
+        "recovery-content-state"
+      ],
+      "path": "corpus/generated/recovery_state/unmatched-Q-in-text.pdf",
+      "sha256": "fd708e00f619cecfe48158a5afc4627f61662db2a8484688f487e96b0b35766e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_state/unmatched-Q-in-text.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery_state/unmatched-ET-in-saved-state",
+      "kind": "pdf",
+      "description": "unmatched ET in saved state",
+      "expected": "render",
+      "requirements": [
+        "recovery-content-state"
+      ],
+      "path": "corpus/generated/recovery_state/unmatched-ET-in-saved-state.pdf",
+      "sha256": "cc6f4a50649f86f1613e2da2169e3d47202184016df50f7f2ab18e46b6a880b5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.text-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_state/unmatched-ET-in-saved-state.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery_state/balanced-control",
+      "kind": "pdf",
+      "description": "balanced control",
+      "expected": "render",
+      "requirements": [
+        "recovery-content-state"
+      ],
+      "path": "corpus/generated/recovery_state/balanced-control.pdf",
+      "sha256": "719d123346d5b5834f8fc4c4090d714781371429073e692507abeca070e7e0a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_state/balanced-control.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery_state/unmatched-retains-state",
+      "kind": "pdf",
+      "description": "unmatched retains state",
+      "expected": "render",
+      "requirements": [
+        "recovery-content-state"
+      ],
+      "path": "corpus/generated/recovery_state/unmatched-retains-state.pdf",
+      "sha256": "1707207a655f83b6a36af488183319ff9feb280744ce8d1fa2cfff0d1be1faf1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unmatched",
+        "content.text-unmatched"
+      ],
+      "oracle": "corpus/generated/recovery_state/unmatched-retains-state.ppm",
+      "oracle_sha256": "0b66520e274d36e4a3f3b15370688d9f4e475a28fd124d82dc8b63d4085bef61",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery_state/closed-text-glyph-control",
+      "kind": "pdf",
+      "description": "closed text glyph control",
+      "expected": "render",
+      "requirements": [
+        "recovery-content-state"
+      ],
+      "path": "corpus/generated/recovery_state/closed-text-glyph-control.pdf",
+      "sha256": "f91edff7480a0cd6a28ca04a3033175041888d65e504d1ee1132b362b65c30a2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_state/closed-text-glyph-control.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    }
+  ]
+}

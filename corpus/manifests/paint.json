@@ -737,17 +737,24 @@
     {
       "id": "paint/text-end-without-begin",
       "kind": "pdf",
-      "description": "text end without begin",
-      "expected": "open",
+      "description": "An unmatched ET is a reported viewing no-op; Strict rejects it",
+      "expected": "render",
       "requirements": [
-        "paint-text-errors"
+        "paint-text-errors",
+        "recovery-content-state"
       ],
       "path": "corpus/generated/paint/text-end-without-begin.pdf",
       "sha256": "bcb3ab026c4b1c2bada611c4f7b60516e7db80fefc11b2e729fff5669a43471b",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.text-unmatched"
+      ],
+      "oracle": "corpus/generated/paint/text-end-without-begin.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
     },
     {
       "id": "paint/text-unfinished",

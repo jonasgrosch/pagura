@@ -31,6 +31,10 @@ pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
 /// 7.8.2; 8.4.2: discard unmatched saved graphics states at the end of a
 /// content sequence, after all painting and text objects have finished.
 pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
+/// 8.4.2: an unmatched Q cannot restore a state; keep the current state.
+pub const GRAPHICS_UNMATCHED: Repair = Repair::new("content.graphics-unmatched");
+/// 9.4.1: an unmatched ET has no text object to close.
+pub const TEXT_UNMATCHED: Repair = Repair::new("content.text-unmatched");
 /// 14.6: close marked-content sequences left open at the end of a content
 /// sequence, after all painting and text objects have finished.
 pub const MARKED_UNCLOSED: Repair = Repair::new("content.marked-unclosed");
@@ -53,6 +57,8 @@ pub const ALL: &[Repair] = &[
     TEXT_CLIP_RESET,
     APPEARANCE_EMPTY,
     GRAPHICS_UNCLOSED,
+    GRAPHICS_UNMATCHED,
+    TEXT_UNMATCHED,
     MARKED_UNCLOSED,
     TYPE3_WIDTH,
     PATTERN_UNDERLYING,
