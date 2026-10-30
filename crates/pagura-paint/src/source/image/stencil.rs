@@ -1,8 +1,9 @@
-//! A non-interpolated stencil as exact sample-cell geometry (8.9.6.2).
+//! A cell-sampled stencil as exact sample-cell geometry (8.9.6.2).
 //! Adjacent painted samples of one row share a rectangle. Keeping this
 //! geometry through pattern preparation preserves mask/pattern correlation
 //! at fractional device pixels; multiplying two area averages would not.
 
+use super::geometry::{Geometry, Mode};
 use super::{ImageBudgets, ImageSampler, Orientation, decode, decoded_bytes};
 use crate::source::PaintContext;
 use pagura_core::convert::u32_to_usize;
@@ -12,9 +13,24 @@ use pagura_interpret::Image;
 use pagura_raster::{Path, PathBuilder, Point, Transform};
 
 impl ImageSampler {
+    /// Whether this placement uses the ordinary image sampler's bilinear
+    /// centre values (ADR 0004). Minification uses exact sample-cell areas
+    /// regardless of Interpolate, including anisotropic placements.
+    pub(crate) fn stencil_interpolates(image: &Image, to_device: Transform) -> Result<bool> {
+        if !image.interpolate {
+            return Ok(false);
+        }
+        let inverse = to_device.inverse().ok_or(Error::unsupported(
+            pagura_interpret::features::PATTERN_IMAGE_MASK,
+            "singular pattern stencil transform",
+        ))?;
+        let geometry = Geometry::new((image.source.width(), image.source.height()), true, inverse)?;
+        Ok(geometry.mode() == Mode::Bilinear)
+    }
+
     /// Builds a stencil's painted sample cells in the image's user space.
-    /// Interpolated masks retain their explicit unsupported result: their
-    /// continuously varying shape cannot be represented by these cells.
+    /// Bilinear placements instead use their unit-square geometry and a
+    /// separate per-pixel source opacity, applied once to the pattern result.
     pub(crate) fn stencil_path(
         image: &Image,
         transform: Transform,
@@ -22,10 +38,9 @@ impl ImageSampler {
         repairs: &mut Vec<Diagnostic>,
         budgets: ImageBudgets<'_>,
     ) -> Result<Path> {
-        if image.interpolate {
-            return Err(Error::unsupported(
-                pagura_interpret::features::PATTERN_IMAGE_MASK,
-                "interpolated pattern-coloured stencils are not implemented",
+        if Self::stencil_interpolates(image, transform.then(context.transform))? {
+            return Err(Error::invalid_argument(
+                "bilinear stencil needs a sampled source",
             ));
         }
         if transform.then(context.transform).inverse().is_none() {

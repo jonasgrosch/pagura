@@ -151,6 +151,7 @@ impl Planner<'_> {
             position: result.position,
             work: 0,
             kind: ItemKind::Group(crate::plan::GroupUse {
+                stencil: None,
                 group: child,
                 cover: None,
                 compositing,

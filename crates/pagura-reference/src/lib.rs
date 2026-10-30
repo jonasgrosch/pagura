@@ -17,6 +17,8 @@
 //! - non-interpolated patterned stencils are unions of independently
 //!   constructed sample quadrilaterals; tiling marks intersect those regions
 //!   before coverage quantization, without using product stencil paths;
+//!   magnified Interpolate masks independently sample one bilinear opacity
+//!   and apply it to the complete pattern result's alpha and shape;
 //! - colours, shadings and images go through `pagura-color`'s definitions
 //!   and the contract's sampling definitions (ADR 0004);
 //! - the output is composited onto the background and quantized once.

@@ -147,7 +147,18 @@ Ordinary nested tiling under an inherited stencil remains unsupported: its
 ordinary outer mark coverage would apply fractional mask coverage twice.
 Nested image stencils already propagate the complete geometric intersection;
 transparency groups apply the inherited clip once through their children.
-Interpolated patterned masks remain unsupported. Inherited clip identities
+Magnified interpolated stencils retain their unit-square geometry through
+that same clipping. The ordinary image sampler supplies one bilinear opacity
+at each global device-pixel centre (ADR 0004, 8.9.5.3), applied once to both
+the complete tiling/shading result's alpha and shape, before graphics-state
+alpha and soft masks. An intermediate one-mark F64 group gives shading the
+same application point; no extra executor or image interpretation is used.
+That neutral group's Normal overprint forms clause 11.7.4.3's implicit
+source before the original non-Normal blend; the result does not perform a
+second source-component substitution. Rational translucent-backdrop
+Separation/DeviceN controls distinguish one substitution from two.
+Under minification, including anisotropic placements, Interpolate uses the
+existing exact source-cell areas. Inherited clip identities
 include their stencil chain; source paths and capacities are metered and
 released after planning. Cell marks retain ADR 0004's per-pixel compositing
 contract, rather than claiming continuous union integration across cell marks.

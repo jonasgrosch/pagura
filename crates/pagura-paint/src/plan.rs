@@ -235,6 +235,9 @@ pub(crate) enum Boundary {
 /// A group's result composited into its parent.
 #[derive(Debug)]
 pub(crate) struct GroupUse {
+    /// A patterned stencil's bilinear source opacity; a zero-channel paint
+    /// index, applied once to both alpha and shape before graphics state.
+    pub(crate) stencil: Option<u32>,
     /// The group.
     pub(crate) group: u32,
     /// The coverage of a pattern-filled mark; `None` for a transparency

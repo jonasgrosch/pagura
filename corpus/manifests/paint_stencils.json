@@ -87,8 +87,8 @@
     {
       "id": "paint_stencils/colored-interpolate",
       "kind": "pdf",
-      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
-      "expected": "unsupported",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
       "requirements": [
         "paint-image-masks"
       ],
@@ -97,7 +97,112 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "pattern.image-mask"
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate.ppm",
+      "oracle_sha256": "a93bba857e39018a480850aa32a97ed66249ab4f2298afb2bc2995d591587fb6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-fractional-clip",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-fractional-clip.pdf",
+      "sha256": "42b8ce33ad5fdbfda1348b5829f39c2e1550238b799575beb01209351ccc8005",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-fractional-clip.ppm",
+      "oracle_sha256": "351e112b40e8e46ab3690176c1fe27604658ca90b15d6d3564da231e6bbe03cd",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-reversed",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-reversed.pdf",
+      "sha256": "746ac3e8007a9036b2b6ca7e5f4afb2e66456b4d32b4d6085c6790ba926c2291",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-reversed.ppm",
+      "oracle_sha256": "b30ea7227396b6e93d18e0ab87fa8ec0c107d0f3690d1d2340f67db3224d2597",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-minified",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-minified.pdf",
+      "sha256": "8a8eb2b83e03efbc7d6787b4d86f21379d2f8912d0ddfd5ee3a2863815d192c0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-minified.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-anisotropic",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-anisotropic.pdf",
+      "sha256": "dc81a28b7476cefed3f61aa7c02af77067732ac7778fe753c3d61fc02b821826",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-anisotropic.ppm",
+      "oracle_sha256": "ce837c81b7bf9192ef9a7d4fc7f522f352d400619ae6aa4dc2b70dab45d58433",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-quarter-turn",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-quarter-turn.pdf",
+      "sha256": "dcdf0b15e87655c012c6c7d1b7987c7e06964dfc29000a32f143b5a6e7ca7260",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-quarter-turn.ppm",
+      "oracle_sha256": "013892d1b7a23378883511e4773c2414b270c37275794c6e111ad169a99fd004",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
     },
     {
       "id": "paint_stencils/colored-matched-stencil",
@@ -222,8 +327,8 @@
     {
       "id": "paint_stencils/uncolored-interpolate",
       "kind": "pdf",
-      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
-      "expected": "unsupported",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
       "requirements": [
         "paint-image-masks"
       ],
@@ -232,7 +337,112 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "pattern.image-mask"
+      "oracle": "corpus/generated/paint_stencils/uncolored-interpolate.ppm",
+      "oracle_sha256": "8ceaa6f881b7dec2c4489b5f89a206e5dcf498d3f4bf395d7a5f76fcaa4a6b2e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-interpolate-fractional-clip",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-interpolate-fractional-clip.pdf",
+      "sha256": "3a19ecec2c6167491a35a7220c305e579f835392e141455bb254a1dcf4212d0d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-interpolate-fractional-clip.ppm",
+      "oracle_sha256": "3b02a937672011d16d245c39a0306ec8e9df9791b779530a23d1fa8d3903bbe6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-interpolate-reversed",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-interpolate-reversed.pdf",
+      "sha256": "331cecf0fa2abfe76fee5580819247d20cf929beb67738456538de28bbfbb588",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-interpolate-reversed.ppm",
+      "oracle_sha256": "1e394f831134c61867d2deec6c6eb07fd6fa5d49bde3af1f99d22d6fc09ab2df",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-interpolate-minified",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-interpolate-minified.pdf",
+      "sha256": "d3a55e8b79882900c214169fc55a91b57346837bfcc08051056ece528304a634",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-interpolate-minified.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-interpolate-anisotropic",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-interpolate-anisotropic.pdf",
+      "sha256": "2892270ea179105c9a16ad21019490d272949f57020da7cdecdd751801864ebb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-interpolate-anisotropic.ppm",
+      "oracle_sha256": "90159835c69ff3d5db3088490693137095ad6b2da78ea6df892a18320378d366",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/uncolored-interpolate-quarter-turn",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/uncolored-interpolate-quarter-turn.pdf",
+      "sha256": "28468938bece1caa0184e5cf343c65150ef063bd3fd59307121df65f77c19e82",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/uncolored-interpolate-quarter-turn.ppm",
+      "oracle_sha256": "9c4d1dd869cdec7aa4fa549f86b2c8959c228c6755745487f289eb49133e0c30",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
     },
     {
       "id": "paint_stencils/uncolored-matched-stencil",
@@ -357,8 +567,8 @@
     {
       "id": "paint_stencils/shading-interpolate",
       "kind": "pdf",
-      "description": "Exact geometric patterned stencil; independent rational joint-area oracle",
-      "expected": "unsupported",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
       "requirements": [
         "paint-image-masks"
       ],
@@ -367,7 +577,112 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "pattern.image-mask"
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate.ppm",
+      "oracle_sha256": "26bf506e1662b723c152f97eb2fad5ca840e8cac39d44339ce0abe8cdf4e1e06",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-fractional-clip",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-fractional-clip.pdf",
+      "sha256": "a9c3629e2b8a45df39e5f189c66095eb3046ca9121de7706d860d61b2dd0d8bc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-fractional-clip.ppm",
+      "oracle_sha256": "9d79106b7f4f9ea6f29aa149d964f6c2f9dc17fdc1a2911fc6b64065355f9ec3",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-reversed",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-reversed.pdf",
+      "sha256": "72996c51433597ec2961b0fd754f6d72cabd1d01c327cffa5235fe7ca3bc7fdd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-reversed.ppm",
+      "oracle_sha256": "2390d9713193e432ecb248b3e7181889f20020259cce350a123fe2a7c5580ec0",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-minified",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-minified.pdf",
+      "sha256": "e0a3d16d4cc804e1ae0b47115ceea07a95e3febf79af0846d4c2daec1ff9b3f0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-minified.ppm",
+      "oracle_sha256": "9a3bdaeecc18e697276a963451a8e47162cc44a46661e910f066905e0fba26da",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-anisotropic",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-anisotropic.pdf",
+      "sha256": "fc0b6c212f07f116a131176b880f496a8dd1a6879257a333ac0ee9315b5395f1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-anisotropic.ppm",
+      "oracle_sha256": "d7203b236ecead31ffbbec2a57d0faddb73c4333162d348fd62a2a1939e9cd7b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-quarter-turn",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-quarter-turn.pdf",
+      "sha256": "74ad04f76df966fa6f62a5889ef9ac09aa4d0a2f1d3583ad0c93e263bac18c4a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-quarter-turn.ppm",
+      "oracle_sha256": "990f339e97682229b3d214b98058e667b4871ddbb7bcba0b022f3ef01d6fceeb",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
     },
     {
       "id": "paint_stencils/shading-matched-stencil",
@@ -470,9 +785,765 @@
       "tolerance": 1
     },
     {
+      "id": "paint_stencils/colored-interpolate-alpha",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-alpha.pdf",
+      "sha256": "9c3435f8ba9580163a084660e3888bbb3a60636035402de30e4a2a657f4e0fc0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-alpha.ppm",
+      "oracle_sha256": "d1a332a18604859374a3c51829f77d78679d1b975ebb03d6244b23189300e698",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-nested-soft-mask",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-nested-soft-mask.pdf",
+      "sha256": "aa8657843678645289d055b4a0cb54fa8c7b8d30631c6a13f3af7eda27683163",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-nested-soft-mask.ppm",
+      "oracle_sha256": "d1a332a18604859374a3c51829f77d78679d1b975ebb03d6244b23189300e698",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-soft-mask",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-soft-mask.pdf",
+      "sha256": "3dda3d17e9d66ec69f63e5be0f9615405a3a3730daf9efd1612569808b1e7865",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-soft-mask.ppm",
+      "oracle_sha256": "e5e5e514fee40a4870da5d79401d229c146442da07c33a988069ddab7be6c01b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-gradient-transform",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-gradient-transform.pdf",
+      "sha256": "0f640d898d8496af6122c0f57e22acf82d76d404c62f73e68cc3b8bdcfa823cf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-gradient-transform.ppm",
+      "oracle_sha256": "9f75c64f8ea2430a9aff91ef7c3eafa318e2c411b7c3bccab7e6fcfa5370c18b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-empty",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-empty.pdf",
+      "sha256": "0a550f5fba82c4fb4fd00719fcd3cd34ff29e006cb2017140e5744971a03a763",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-empty.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-overlapping-cells",
+      "kind": "pdf",
+      "description": "Exact geometric coverage and rational pixel-centre bilinear source opacity",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-overlapping-cells.pdf",
+      "sha256": "90a402bb372b8b81ed1979d2fa64594ba3c8dbfc4f83db012578db7cff41a750",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-overlapping-cells.ppm",
+      "oracle_sha256": "26bf506e1662b723c152f97eb2fad5ca840e8cac39d44339ce0abe8cdf4e1e06",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-knockout-ais-false",
+      "kind": "pdf",
+      "description": "Rational bilinear stencil alpha and shape in isolated knockout group with blue backdrop and AIS",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-knockout-ais-false.pdf",
+      "sha256": "6df64a0a94f3f9e0b02b1119f7cefa0ef74436ccbb253209e094e29d3d3e3fe9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-knockout-ais-false.ppm",
+      "oracle_sha256": "050f947275a25ce5d60ffed99e3b9ebdb3b29f62c2d26a2ba7cc39a2178c5ab7",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-interpolate-knockout-ais-true",
+      "kind": "pdf",
+      "description": "Rational bilinear stencil alpha and shape in isolated knockout group with blue backdrop and AIS",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-interpolate-knockout-ais-true.pdf",
+      "sha256": "ffbbe6570496a5aac7737659d44ff760827d4f479b21fa96bae52392e86009bd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-interpolate-knockout-ais-true.ppm",
+      "oracle_sha256": "28fb6612fe0ce66b5a9e9383e55fed57dd3c27ba6f7d70eeb50a2c700b29cdc3",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-knockout-ais-false",
+      "kind": "pdf",
+      "description": "Rational bilinear stencil alpha and shape in isolated knockout group with blue backdrop and AIS",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-knockout-ais-false.pdf",
+      "sha256": "f72ed5666c8231eb44a067988efdd47d76fac635b79c1756a5dc0174b0b58bde",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-knockout-ais-false.ppm",
+      "oracle_sha256": "050f947275a25ce5d60ffed99e3b9ebdb3b29f62c2d26a2ba7cc39a2178c5ab7",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-knockout-ais-true",
+      "kind": "pdf",
+      "description": "Rational bilinear stencil alpha and shape in isolated knockout group with blue backdrop and AIS",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-knockout-ais-true.pdf",
+      "sha256": "4be539dd799ca854b56aff78a2edb9f6f8bd806e8a8aae16144c7578bc2b7322",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-knockout-ais-true.ppm",
+      "oracle_sha256": "28fb6612fe0ce66b5a9e9383e55fed57dd3c27ba6f7d70eeb50a2c700b29cdc3",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/interpolate-matched-colored-pattern",
+      "kind": "pdf",
+      "description": "Equivalent complete raster: bilinear patterned stencil versus ordinary solid stencil",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/interpolate-matched-colored-pattern.pdf",
+      "sha256": "a19e01d6954dbf186387e03ffcfff2895a2e257120462737817154861dc04c5a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/interpolate-matched-colored-pattern.ppm",
+      "oracle_sha256": "26bf506e1662b723c152f97eb2fad5ca840e8cac39d44339ce0abe8cdf4e1e06",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/interpolate-matched-colored-solid",
+      "kind": "pdf",
+      "description": "Equivalent complete raster: bilinear patterned stencil versus ordinary solid stencil",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/interpolate-matched-colored-solid.pdf",
+      "sha256": "0d4428d9fcdf10a1a31eb7338de308124811af8870393fe95f4aa12c5e539f40",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/interpolate-matched-colored-solid.ppm",
+      "oracle_sha256": "26bf506e1662b723c152f97eb2fad5ca840e8cac39d44339ce0abe8cdf4e1e06",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/interpolate-matched-uncolored-pattern",
+      "kind": "pdf",
+      "description": "Equivalent complete raster: bilinear patterned stencil versus ordinary solid stencil",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/interpolate-matched-uncolored-pattern.pdf",
+      "sha256": "b35cb4a080f57d972aeb6ac3f7fff55304e2f2acf96ca957680fceb1c26ebed3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/interpolate-matched-uncolored-pattern.ppm",
+      "oracle_sha256": "89d7cd037f3d30256928d0db039dfd2748e1343177ac683ce1d1fde8ad1cf611",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/interpolate-matched-uncolored-solid",
+      "kind": "pdf",
+      "description": "Equivalent complete raster: bilinear patterned stencil versus ordinary solid stencil",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/interpolate-matched-uncolored-solid.pdf",
+      "sha256": "585314371a9a69a00eb61f38f054d96726a72369ebd0e5a55c3cda76744a3f2c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/interpolate-matched-uncolored-solid.ppm",
+      "oracle_sha256": "89d7cd037f3d30256928d0db039dfd2748e1343177ac683ce1d1fde8ad1cf611",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/interpolate-matched-shading-pattern",
+      "kind": "pdf",
+      "description": "Equivalent complete raster: bilinear patterned stencil versus ordinary solid stencil",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/interpolate-matched-shading-pattern.pdf",
+      "sha256": "2c2fd799c11988f29b19c14e5c3d05296f991e65dd10213126d81d0297a57084",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/interpolate-matched-shading-pattern.ppm",
+      "oracle_sha256": "26bf506e1662b723c152f97eb2fad5ca840e8cac39d44339ce0abe8cdf4e1e06",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/interpolate-matched-shading-solid",
+      "kind": "pdf",
+      "description": "Equivalent complete raster: bilinear patterned stencil versus ordinary solid stencil",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/interpolate-matched-shading-solid.pdf",
+      "sha256": "59c4c21938ada2a1c7b3019ccb0c3604ce0d1989d33c9a9aea2e1763b2b919a7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/interpolate-matched-shading-solid.ppm",
+      "oracle_sha256": "26bf506e1662b723c152f97eb2fad5ca840e8cac39d44339ce0abe8cdf4e1e06",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/interpolate-stress-pattern",
+      "kind": "pdf",
+      "description": "262144-pixel equivalent-output stress; exact integer bilinear opacity weights over a 64x64 checkerboard",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/interpolate-stress-pattern.pdf",
+      "sha256": "fb532fad05f69b23882905d68c9d4437322f5bcbb2e18a15a76858b1368e44d8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/interpolate-stress-pattern.ppm",
+      "oracle_sha256": "769f2ff497f50e899009253d1ce072006068fef9b2edd765d7fcba651d021cf8",
+      "dpi": 72,
+      "width": 512,
+      "height": 512,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/interpolate-stress-solid",
+      "kind": "pdf",
+      "description": "262144-pixel equivalent-output stress; exact integer bilinear opacity weights over a 64x64 checkerboard",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/interpolate-stress-solid.pdf",
+      "sha256": "50b9aa3c8732604d0c21da70e6fc1eff8947421ce62dd7bf76ebb837d2a330b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/interpolate-stress-solid.ppm",
+      "oracle_sha256": "769f2ff497f50e899009253d1ce072006068fef9b2edd765d7fcba651d021cf8",
+      "dpi": 72,
+      "width": 512,
+      "height": 512,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-separation-constant-overprint-normal",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-separation-constant-overprint-normal.pdf",
+      "sha256": "01f0ac72c0de0f9b7b4de01aaa794caa52885158dd77c298eb4a93bc51bcba1a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-separation-constant-overprint-normal.ppm",
+      "oracle_sha256": "2aee27dba2660234416a4530e15fe3af4d7e3f20a8445b9e6cc08fe5aff5b4fb",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-separation-constant-overprint-multiply",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-separation-constant-overprint-multiply.pdf",
+      "sha256": "eb20a7dcefb99512b8b336b6675892880d9d9432f0ac78872df1bff15907d32a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-separation-constant-overprint-multiply.ppm",
+      "oracle_sha256": "8efbd739cd0aa41decb707ea1baea3b93c92209ca87a4974776b9ccb7ef837ce",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-separation-constant-overprint-screen",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-separation-constant-overprint-screen.pdf",
+      "sha256": "15ed1da1c1501d7c82249b344a69298e203eea24e65bb8ee9655da70cd417046",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-separation-constant-overprint-screen.ppm",
+      "oracle_sha256": "de1fd1e0a0aba045af414a53828fd76b288e59c89df65369c43f1ddfbd5bef97",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-separation-gradient-overprint-normal",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-separation-gradient-overprint-normal.pdf",
+      "sha256": "93d5121309f85ab2f528f48953a1f192bdfe9f993cf1daa7e1ca8ffc7510be7f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-separation-gradient-overprint-normal.ppm",
+      "oracle_sha256": "39878b50a367d3154953be46054c0750516146078f396b26044957b781e0c4f6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-separation-gradient-overprint-multiply",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-separation-gradient-overprint-multiply.pdf",
+      "sha256": "ce20ef38afc99be5cd7878cb36031ce5a5d2727b57a8dcbd98b09f92904e7a99",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-separation-gradient-overprint-multiply.ppm",
+      "oracle_sha256": "b614bdbaa53e1d85305e17da6c3af8bef1a35723984b9c315abb81f178b5f7bc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-separation-gradient-overprint-screen",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-separation-gradient-overprint-screen.pdf",
+      "sha256": "7288b6dd31d5d8925cbea7ddd2b54c52a1f06966b968c7da10f92df14c8ba81f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-separation-gradient-overprint-screen.ppm",
+      "oracle_sha256": "068302b2536e9de78da10fbfb6e6352f8668094e7dd1018b34266f3ac6edd633",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-devicen-constant-overprint-normal",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-devicen-constant-overprint-normal.pdf",
+      "sha256": "3ae92e07371fe8483037c5d9bef2aaa1717e73a1ad47ef98abd79a8ebbb58381",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-devicen-constant-overprint-normal.ppm",
+      "oracle_sha256": "2aee27dba2660234416a4530e15fe3af4d7e3f20a8445b9e6cc08fe5aff5b4fb",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-devicen-constant-overprint-multiply",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-devicen-constant-overprint-multiply.pdf",
+      "sha256": "2c50f4df26cf8c87dcb3151db94d54cf45003bbaf35d53bcf32b6f93ae4f3d89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-devicen-constant-overprint-multiply.ppm",
+      "oracle_sha256": "8efbd739cd0aa41decb707ea1baea3b93c92209ca87a4974776b9ccb7ef837ce",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-devicen-constant-overprint-screen",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-devicen-constant-overprint-screen.pdf",
+      "sha256": "d732fc90d843fe263d1b9181ec6c5162bdfa1832fb68a0df861d196daedcf157",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-devicen-constant-overprint-screen.ppm",
+      "oracle_sha256": "de1fd1e0a0aba045af414a53828fd76b288e59c89df65369c43f1ddfbd5bef97",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-devicen-gradient-overprint-normal",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-devicen-gradient-overprint-normal.pdf",
+      "sha256": "6f82bf07bc4b7f14ce6f60bcf93bfe6ca930e7b6313b984997ee847b7aa2c1e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-devicen-gradient-overprint-normal.ppm",
+      "oracle_sha256": "39878b50a367d3154953be46054c0750516146078f396b26044957b781e0c4f6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-devicen-gradient-overprint-multiply",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-devicen-gradient-overprint-multiply.pdf",
+      "sha256": "be37c12928c566f7d09a08502a6e90ce126a68f4b4652583112fa6fcf01c34d0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-devicen-gradient-overprint-multiply.ppm",
+      "oracle_sha256": "b614bdbaa53e1d85305e17da6c3af8bef1a35723984b9c315abb81f178b5f7bc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/shading-interpolate-devicen-gradient-overprint-screen",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/shading-interpolate-devicen-gradient-overprint-screen.pdf",
+      "sha256": "c2774ef9d1c3822a6675c5ab1aeb7823a121cc379f705ab24987dcc3a56767d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/shading-interpolate-devicen-gradient-overprint-screen.ppm",
+      "oracle_sha256": "068302b2536e9de78da10fbfb6e6352f8668094e7dd1018b34266f3ac6edd633",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-interpolate-separation-constant-overprint-normal",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-interpolate-separation-constant-overprint-normal.pdf",
+      "sha256": "58c24570a77bee18ddbc9b83579f9a1925505d54f8f6c4304abc5d8f6e159a23",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-interpolate-separation-constant-overprint-normal.ppm",
+      "oracle_sha256": "2aee27dba2660234416a4530e15fe3af4d7e3f20a8445b9e6cc08fe5aff5b4fb",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-interpolate-separation-constant-overprint-multiply",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-interpolate-separation-constant-overprint-multiply.pdf",
+      "sha256": "988dcd7212dfa4ff319aba87f0a0842375cc0bd22998930af5cddfab81a195c8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-interpolate-separation-constant-overprint-multiply.ppm",
+      "oracle_sha256": "8efbd739cd0aa41decb707ea1baea3b93c92209ca87a4974776b9ccb7ef837ce",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-interpolate-separation-constant-overprint-screen",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-interpolate-separation-constant-overprint-screen.pdf",
+      "sha256": "3fc5f2ec30daa6f5c45d8e5109842bfe275f1c54537a52a4ee49eb97b1a8fac0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-interpolate-separation-constant-overprint-screen.ppm",
+      "oracle_sha256": "de1fd1e0a0aba045af414a53828fd76b288e59c89df65369c43f1ddfbd5bef97",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-interpolate-devicen-constant-overprint-normal",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-interpolate-devicen-constant-overprint-normal.pdf",
+      "sha256": "9de0dc72de820157832bf8673294358588d5bd2cb9e2fa742d5ae2f7a8972f9c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-interpolate-devicen-constant-overprint-normal.ppm",
+      "oracle_sha256": "2aee27dba2660234416a4530e15fe3af4d7e3f20a8445b9e6cc08fe5aff5b4fb",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-interpolate-devicen-constant-overprint-multiply",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-interpolate-devicen-constant-overprint-multiply.pdf",
+      "sha256": "b114487fd54402a93ab104fa315e5a29a58a57367eaaf07b165909e5dfd70bd4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-interpolate-devicen-constant-overprint-multiply.ppm",
+      "oracle_sha256": "8efbd739cd0aa41decb707ea1baea3b93c92209ca87a4974776b9ccb7ef837ce",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-interpolate-devicen-constant-overprint-screen",
+      "kind": "pdf",
+      "description": "Rational partial-colorant source substitution with translucent CMYK backdrop, fractional geometry, AIS, alpha and soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks",
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-interpolate-devicen-constant-overprint-screen.pdf",
+      "sha256": "f51afdc84720b3157097565e32917586079f78d0e3ad64038157b0e9e1e8cd24",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-interpolate-devicen-constant-overprint-screen.ppm",
+      "oracle_sha256": "de1fd1e0a0aba045af414a53828fd76b288e59c89df65369c43f1ddfbd5bef97",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
       "id": "paint_stencils/colored-different-masks",
       "kind": "pdf",
-      "description": "Separate geometric clipping identities for two masks sharing one pattern",
+      "description": "Separate source and clipping identities for two masks sharing one pattern",
       "expected": "render",
       "requirements": [
         "paint-image-masks"
@@ -484,6 +1555,26 @@
       "repairs": [],
       "oracle": "corpus/generated/paint_stencils/colored-different-masks.ppm",
       "oracle_sha256": "ede3f64a0e7d45fce2d891298847d9ed3c819159f85affe66f399de3b2f0e187",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/colored-different-interpolated-masks",
+      "kind": "pdf",
+      "description": "Separate source and clipping identities for two masks sharing one pattern",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/colored-different-interpolated-masks.pdf",
+      "sha256": "ffba4d63573cc5d6e7cf3ce30516400074a209f38a5d98b75aab2cd68ddd24da",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/colored-different-interpolated-masks.ppm",
+      "oracle_sha256": "a3f83724b869a6eb78f04f2e9b68cc89076128e5b8cc5a5f96d9c4fedc1baee9",
       "dpi": 72,
       "width": 16,
       "height": 16,

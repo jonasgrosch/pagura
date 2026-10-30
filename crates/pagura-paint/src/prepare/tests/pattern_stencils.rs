@@ -9,6 +9,14 @@ use pagura_testkit::{Manifest, fixture};
 use std::sync::Arc;
 
 fn scene(name: &str) -> Scene {
+    assert_eq!(
+        pagura_testkit::workspace_root().canonicalize().unwrap(),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap(),
+        "fixture helper belongs to the tested workspace",
+    );
     let document = Document::open(
         fixture("paint_stencils", &format!("{name}.pdf")),
         &OpenOptions::default(),
@@ -26,7 +34,10 @@ fn patterned_stencil_oracles_and_negative_controls() {
     for case in Manifest::load("paint_stencils").cases() {
         let name = case.name();
         let scene = scene(name);
-        let request = RenderRequest::page(&scene.page, 1.0).unwrap();
+        let mut request = RenderRequest::page(&scene.page, 1.0).unwrap();
+        if scene.print_intent {
+            request.overprint = crate::OverprintMode::Simulate;
+        }
         let store = Store::new(1 << 20);
         let prepared = crate::prepare(&scene, &request, &store, &Limits::default());
         if case.string("expected") == Some("unsupported") {
@@ -38,12 +49,17 @@ fn patterned_stencil_oracles_and_negative_controls() {
         }
         let prepared = prepared.unwrap_or_else(|error| panic!("{name}: {error}"));
         let expected = fixture("paint_stencils", &format!("{name}.ppm"));
-        let expected = &expected[b"P6\n16 16\n255\n".len()..];
+        let expected = expected.splitn(5, u8::is_ascii_whitespace).nth(4).unwrap();
         let mut scratch = Scratch::default();
         let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
         let mut actual = Vec::new();
         rendering.render(&mut actual);
         super::assert_within_charges(&rendering, prepared.charges());
+        assert_eq!(
+            actual.len() / 4,
+            expected.len() / 3,
+            "{name}: complete raster dimensions"
+        );
         let maximum = actual
             .as_chunks::<4>()
             .0
@@ -119,12 +135,22 @@ fn stencil_geometry_obeys_path_clip_work_and_memory_caps() {
 
 #[test]
 fn graphics_soft_mask_errors_precede_stencil_decoder_errors() {
+    for name in [
+        "colored-aligned",
+        "colored-interpolate",
+        "shading-interpolate",
+    ] {
+        stencil_mask_error_precedence(name);
+    }
+}
+
+fn stencil_mask_error_precedence(name: &str) {
     use crate::testing::Build;
     use pagura_color::Components;
     use pagura_interpret::{GroupAttributes, MaskKind, Node};
 
     let mut build = Build::new(16.0, 16.0);
-    build.scene = scene("colored-aligned");
+    build.scene = scene(name);
     let (mask, _) = build.mask(MaskKind::Alpha, GroupAttributes::default(), None);
     build.scene.masks[0].backdrop = Some(Components::from_slice(&[0.0, 0.0]));
     let state = build.state(|state| state.soft_mask = Some(mask));
@@ -149,12 +175,21 @@ fn graphics_soft_mask_errors_precede_stencil_decoder_errors() {
 
 #[test]
 fn patterned_stencil_preserves_cmyk_zero_colorants_during_overprint() {
+    stencil_overprint("colored-matched-stencil");
+}
+
+#[test]
+fn interpolated_stencil_preserves_cmyk_zero_colorants_during_overprint() {
+    stencil_overprint("interpolate-matched-colored-pattern");
+}
+
+fn stencil_overprint(name: &str) {
     use crate::testing::{Build, mark};
     use pagura_color::ColorSpace;
     use pagura_interpret::{GroupId, Paint, StateId};
 
     let mut build = Build::new(16.0, 16.0);
-    build.scene = scene("colored-matched-stencil");
+    build.scene = scene(name);
     build.simulate = true;
     for state in &mut build.scene.states {
         let mut value = (**state).clone();
@@ -178,7 +213,7 @@ fn patterned_stencil_preserves_cmyk_zero_colorants_during_overprint() {
     let mut request = RenderRequest::page(&build.scene.page, 1.0).unwrap();
     request.overprint = crate::OverprintMode::Simulate;
     let actual = build.render(&request).unwrap();
-    let expected = fixture("paint_stencils", "colored-matched-stencil.ppm");
+    let expected = fixture("paint_stencils", &format!("{name}.ppm"));
     let expected = &expected[b"P6\n16 16\n255\n".len()..];
     for (actual, red) in actual
         .as_chunks::<4>()
@@ -196,8 +231,30 @@ fn patterned_stencil_preserves_cmyk_zero_colorants_during_overprint() {
 
 #[test]
 fn stencil_clip_is_invariant_across_bands_regions_and_warm_stores() {
-    let scene = scene("colored-fractional-clip");
-    let whole = RenderRequest::page(&scene.page, 1.0).unwrap();
+    stencil_invariance("colored-fractional-clip");
+}
+
+#[test]
+fn bilinear_stencil_is_invariant_across_bands_regions_and_warm_stores() {
+    for name in [
+        "colored-interpolate-fractional-clip",
+        "shading-interpolate-fractional-clip",
+        "colored-different-interpolated-masks",
+        "colored-interpolate-knockout-ais-false",
+        "shading-interpolate-gradient-transform",
+        "shading-interpolate-devicen-gradient-overprint-multiply",
+        "tiling-interpolate-separation-constant-overprint-screen",
+    ] {
+        stencil_invariance(name);
+    }
+}
+
+fn stencil_invariance(name: &str) {
+    let scene = scene(name);
+    let mut whole = RenderRequest::page(&scene.page, 1.0).unwrap();
+    if scene.print_intent {
+        whole.overprint = crate::OverprintMode::Simulate;
+    }
     let mut expected = Vec::new();
     let store = Store::new(1 << 20);
     let prepared = crate::prepare(&scene, &whole, &store, &Limits::default()).unwrap();
@@ -239,5 +296,65 @@ fn stencil_clip_is_invariant_across_bands_regions_and_warm_stores() {
                 }
             }
         }
+    }
+}
+
+#[test]
+fn bilinear_stencil_reserves_source_group_work_and_bytes_before_rendering() {
+    for name in [
+        "colored-interpolate",
+        "uncolored-interpolate",
+        "shading-interpolate",
+    ] {
+        let scene = scene(name);
+        let mut request = RenderRequest::page(&scene.page, 1.0).unwrap();
+        if scene.print_intent {
+            request.overprint = crate::OverprintMode::Simulate;
+        }
+        for capacity in [0, 1 << 20] {
+            let store = Store::new(capacity);
+            crate::prepare(&scene, &request, &store, &Limits::default()).unwrap();
+            for limits in [
+                Limits {
+                    path_segments: 4,
+                    ..Limits::default()
+                },
+                Limits {
+                    display_commands: 1,
+                    ..Limits::default()
+                },
+                Limits {
+                    render_work: 0,
+                    ..Limits::default()
+                },
+                Limits {
+                    render_bytes: 0,
+                    ..Limits::default()
+                },
+            ] {
+                assert_eq!(
+                    crate::prepare(&scene, &request, &store, &limits)
+                        .unwrap_err()
+                        .kind,
+                    ErrorKind::Limit,
+                    "{name}: capacity {capacity}: {limits:?}"
+                );
+            }
+        }
+        assert_eq!(
+            crate::prepare(
+                &scene,
+                &request,
+                &Store::new(0),
+                &Limits {
+                    decoded_bytes: 0,
+                    ..Limits::default()
+                }
+            )
+            .unwrap_err()
+            .kind,
+            ErrorKind::Limit,
+            "{name}: cold decode budget"
+        );
     }
 }

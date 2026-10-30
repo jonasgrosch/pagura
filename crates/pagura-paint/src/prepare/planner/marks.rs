@@ -5,6 +5,7 @@
 //! own, gathered into its run's item where it can be (`runs`).
 
 mod glyphs;
+mod interpolation;
 mod paints;
 
 use super::clips::{Clipping, Extra};
@@ -57,6 +58,8 @@ struct Spec<'a> {
     colour: Colour<'a>,
     /// A stencil's explicit painted-cell geometry replaces its image.
     stencil: bool,
+    /// Bilinear image opacity applied once after painting its pattern.
+    opacity: Option<u32>,
 }
 
 impl Planner<'_> {
@@ -74,6 +77,7 @@ impl Planner<'_> {
             geometry: Geometry::Fill(&node.path, node.rule),
             colour: Colour::Paint(node.paint),
             stencil: false,
+            opacity: None,
         };
         self.mark(scope, &spec, budget)
     }
@@ -99,6 +103,7 @@ impl Planner<'_> {
             geometry: Geometry::Stroke(&node.path, pen),
             colour: Colour::Paint(node.paint),
             stencil: false,
+            opacity: None,
         };
         self.mark(scope, &spec, budget)
     }
@@ -118,6 +123,7 @@ impl Planner<'_> {
             geometry: Geometry::Unit(to_device),
             colour: Colour::Image(node),
             stencil: false,
+            opacity: None,
         };
         self.mark(scope, &spec, budget)
     }
@@ -149,6 +155,7 @@ impl Planner<'_> {
             geometry,
             colour: Colour::Shading(node),
             stencil: false,
+            opacity: None,
         };
         self.mark(scope, &spec, budget)
     }
@@ -272,6 +279,9 @@ impl Planner<'_> {
         bounds: pagura_raster::DeviceRect,
         budget: &mut Budget,
     ) -> Result<()> {
+        if ImageSampler::stencil_interpolates(&node.image, node.transform.then(scope.transform))? {
+            return self.interpolated_stencil(scope, node, state, bounds, budget);
+        }
         let target = self.target(scope);
         let context = PaintContext {
             transform: scope.transform,
@@ -306,6 +316,7 @@ impl Planner<'_> {
                 geometry: Geometry::Fill(&path, FillRule::NonZero),
                 colour: Colour::Paint(paint),
                 stencil: true,
+                opacity: None,
             };
             self.prepare_mark(scope, &spec, budget)
         };
@@ -436,6 +447,7 @@ impl Planner<'_> {
             position: spec.position,
             work: covered.work,
             kind: ItemKind::Group(GroupUse {
+                stencil: spec.opacity,
                 group,
                 cover: (!spec.stencil).then_some(covered.cover),
                 compositing,
@@ -496,6 +508,9 @@ impl Planner<'_> {
             boundary: covered.boundary,
             words,
         };
+        if let Some(opacity) = spec.opacity {
+            return self.sampled_stencil_mark(scope, spec, covered, mark, opacity, budget);
+        }
         if self.gathering == Some(scope.group)
             && !records
             && covered.boundary == Boundary::Absent
