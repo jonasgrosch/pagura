@@ -368,7 +368,7 @@ fn decode_array(document: &Document, value: &Value, components: u8) -> Result<Ve
 
 /// The `Matte` of the soft-mask image `object` (11.6.5.3): numbers, whose
 /// count and the mask's dimensions the caller checks against the image.
-fn matte(document: &Document, object: pagura_core::ObjectId) -> Result<Option<Vec<f64>>> {
+fn matte(document: &Document, object: ObjectId) -> Result<Option<Vec<f64>>> {
     let Some(value) = document
         .object(object)?
         .dictionary()
