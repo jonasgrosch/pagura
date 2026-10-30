@@ -488,6 +488,61 @@
       "width": 16,
       "height": 16,
       "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-flat-half-area",
+      "kind": "pdf",
+      "description": "One opaque red stencil covers exactly half of two boundary pixels",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-flat-half-area.pdf",
+      "sha256": "30478211423f5aba28c0acbb269ca3cc8d7bb3aa3409303c6bda3b1c3d247373",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-flat-half-area.ppm",
+      "oracle_sha256": "6ad651bb0821c59c0644e93e9ce723459a7d377aefed9bd5ef436dad341f6762",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "paint_stencils/tiling-nested-ordinary-refused",
+      "kind": "pdf",
+      "description": "Valid ordinary nested tiling is explicitly unsupported under an inherited stencil",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-nested-ordinary-refused.pdf",
+      "sha256": "69f7e3a1b9bfe6e715ba39773f08a8bc82505610c3b50823e8ca47349db0c559",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.image-mask"
+    },
+    {
+      "id": "paint_stencils/tiling-nested-image-stencil",
+      "kind": "pdf",
+      "description": "Nested image stencils preserve the full inherited geometric intersection",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint_stencils/tiling-nested-image-stencil.pdf",
+      "sha256": "eae593f7481b79dd1cd8df0c08cb06f198a5524ff2dbc19974e8d868538cbda8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_stencils/tiling-nested-image-stencil.ppm",
+      "oracle_sha256": "6ad651bb0821c59c0644e93e9ce723459a7d377aefed9bd5ef436dad341f6762",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
     }
   ]
 }

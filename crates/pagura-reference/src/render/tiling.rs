@@ -24,6 +24,12 @@ impl Renderer<'_> {
         parent: &mut Buffer,
         context: &Context<'_>,
     ) -> Result<()> {
+        if geometric.is_none() && !context.inherited.is_empty() {
+            return Err(Error::unsupported(
+                pagura_interpret::features::PATTERN_IMAGE_MASK,
+                "ordinary nested tiling under a patterned stencil is not implemented",
+            ));
+        }
         let tiling = self
             .scene
             .tilings

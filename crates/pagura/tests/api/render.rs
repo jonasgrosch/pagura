@@ -4,6 +4,52 @@ use crate::support::{self, open, ppm};
 use pagura::{Document, ErrorKind, OpenOptions, RenderOptions, Tile};
 use pagura_testkit::{Json, Manifest, assert_bytes_eq, fixture};
 
+#[test]
+fn nested_tiling_under_a_patterned_stencil_fails_before_any_output_in_both_modes() {
+    use pagura::{Recovery, RenderContext};
+    use std::sync::Arc;
+
+    for recovery in [Recovery::Strict, Recovery::Repair] {
+        let document = Arc::new(
+            Document::open(
+                fixture("paint_stencils", "tiling-nested-ordinary-refused.pdf"),
+                &OpenOptions {
+                    recovery,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap(),
+        );
+        let context = RenderContext::new(document);
+        let page = context.document().page(0).unwrap();
+        let scene = context.scene(page).unwrap();
+        let mut called = false;
+        let result = context.render_bands(
+            &scene,
+            &RenderOptions::default(),
+            None,
+            |_| false,
+            |_, _| {
+                called = true;
+                Ok::<(), ()>(())
+            },
+        );
+        let error = result.unwrap_err();
+        assert_eq!(
+            error.feature().map(pagura::Feature::as_str),
+            Some("pattern.image-mask")
+        );
+        assert!(!called, "unsupported geometry reached the output consumer");
+        assert_eq!(
+            context
+                .render_page(page, &RenderOptions::default())
+                .unwrap_err()
+                .feature(),
+            error.feature()
+        );
+    }
+}
+
 /// Every classic case with an image oracle renders to it, exactly or within
 /// the tolerance its manifest entry records (ADR 0004).
 #[test]
