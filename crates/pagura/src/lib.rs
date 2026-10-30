@@ -93,6 +93,8 @@ pub use pagura_document::forms;
 pub use pagura_document::navigation;
 /// Reported repair of contradicting JBIG2 page capability declarations.
 pub use pagura_image::jbig2::repairs::PAGE_CAPABILITIES as JBIG2_PAGE_CAPABILITIES;
+/// Reported repair of an unused JBIG2 Huffman aggregation-table selector.
+pub use pagura_image::jbig2::repairs::UNUSED_AGGREGATION_TABLE as JBIG2_UNUSED_AGGREGATION_TABLE;
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,

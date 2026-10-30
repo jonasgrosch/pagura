@@ -120,6 +120,15 @@
       "repair": "jpx.raw-codestream",
       "sha256": "41371762b5efdde3b81896e64445736abdec2f9e09d37c8979054e430293cfe4",
       "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/red_stamp.pdf"
+    },
+    {
+      "id": "pdfjs/bitmap-symbol-symhuffcustom-texthuffcustom.pdf/p0",
+      "repair": "jbig2.unused-aggregation-table",
+      "sha256": "c0799af446d978d843ee0788a6dddb8c572a5e2b57414de4e7b2a742ec2d34a2",
+      "url": "https://raw.githubusercontent.com/mozilla/pdf.js/157d30e833e5afbd282db5b1280aae4843f55c0a/test/pdfs/bitmap-symbol-symhuffcustom-texthuffcustom.pdf",
+      "strict_error": "Error: Error { kind: Syntax, message: \"generation out of range\", position: File(1251), object: None, repair: None }",
+      "strict_error_baseline_revision": "cc99e5762028eae8af3ea020cf493a929b2af3de",
+      "expected_render": true
     }
   ]
 }

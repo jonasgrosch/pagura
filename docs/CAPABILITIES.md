@@ -3,7 +3,7 @@
 Generated from [capabilities.json](../benchmarks/capabilities.json) by
 `uv run --locked --offline python tools/capabilities.py`. Edit the ledger, not this file.
 
-Source audit: `3e77019dff9eecdc2624eb16358fde308b7fd0de`. G00 source inventory is complete for this revision.
+Source audit: `e42e12596976653098baabc2991535cd38f09c4c`. G00 source inventory is complete for this revision.
 These are scoped source observations, not executed feature tests or a proof of full PDF coverage.
 Library includes lower-level crate APIs; each row states its remaining public integration.
 Linked tests/fixtures exist; listing them does not claim a fresh pass.
@@ -28,7 +28,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `security.passwords` / D03 | Password security and encoding | partial / partial / partial / partial | Standard security R2-R6, RC4/AES and R6 SASLprep; CLI supports legacy text conversion. | Public-key handlers, encrypted history and browser legacy text conversion; writing encryption is E01. |
 | `fonts.programs` / R04 | Embedded font programs | partial / partial / partial / partial | TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. | Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. |
 | `fonts.cid-substitution` / R04 | CID font substitution | partial / partial / partial / partial | Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works. | Vertical substituted glyph forms/metrics and unavailable provider/collection coverage. |
-| `images.codecs` / R03 | PDF image codec variants | partial / partial / partial / partial | JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1. Reported repair of contradicting JBIG2 auxiliary/refinement page flags; strict mode retains rejection. | Residual JPEG, CCITT, JBIG2 and JPX subvariants are enumerated in the tag dispositions; baseline-supported valid cases still need G01 fixtures. |
+| `images.codecs` / R03 | PDF image codec variants | partial / partial / partial / partial | JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1. Reported repair of contradicting JBIG2 auxiliary/refinement page flags; strict mode retains rejection. Reported Repair also retains an unused Huffman aggregation-table selector with the referenced table fully validated and charged; Strict rejects it and repeated occurrences preserve the first diagnostic. | Residual JPEG, CCITT, JBIG2 and JPX subvariants are enumerated in the tag dispositions; baseline-supported valid cases still need G01 fixtures. |
 | `images.jpx-alpha` / R02 | JPX embedded straight/premultiplied alpha | implemented / implemented / implemented / implemented | SMaskInData 1/2 decode and compositing, including alpha normalization/unpremultiplication; explicit PDF Indexed spaces retain direct index/opacity channels without a container palette, including first/last opacity order. | Opacity combined with an explicit PDF Indexed space and a JPX container palette still requires channel mapping; broader colour/layout interactions remain R02 work. |
 | `images.jpx-colour` / R02 | JPX embedded colour interpretation | partial / partial / partial / partial | Explicit PDF colour spaces and embedded Gray/RGB/CMYK mapping; embedded ICC forward profiles use the bounded cache and existing transforms (Gray/RGB pixel fixtures); eight-bit unsigned sYCC converts through the IEC Annex F matrix with explicit PDF override and alpha fixtures. | Other/mixed sYCC precisions, Lab-input profiles, multiple-colour precedence and unsupported selected-transform fallback; remaining channel/layout and interaction coverage. |
 | `colour.transparency` / R05 | Group colour, transparency and overprint | partial / partial / partial / partial | Gray/RGB/CMYK groups, knockout, blend modes, masks, forward ICC and process/spot overprint display. | Destination/inverse ICC, calibrated group destinations, black-point compensation and transfer-region combinations. |
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 336 registered requirement IDs map to capability rows in the ledger.
+All 337 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery

@@ -23,6 +23,16 @@ The source check detects stale evidence and missing ownership, not runtime parit
 
 ## Capability matrix
 
+JBIG2 also reports `jbig2.unused-aggregation-table` for the unused Huffman
+aggregation selector when aggregation is disabled (T.88 7.4.2.1.1). Its table
+remains parsed, validated and budgeted; genuine aggregation, arithmetic coding,
+other flag errors and malformed references retain their checks. Only the first
+occurrence in decoding order is retained, including correct Globals identity.
+This narrow policy does not allow file envelopes, terminal page/file segments,
+missing arithmetic markers or page-information reordering. New literal-matrix
+controls cover valid twins, used aggregation and subsequent faults; broader
+codec parity remains unestablished.
+
 JBIG2 viewing reports `jbig2.page-capabilities` when complete regions contradict
 the page's auxiliary/refinement capability bits (T.88 7.4.8.5). Strict mode
 rejects the same input. This repair changes neither region validation nor
