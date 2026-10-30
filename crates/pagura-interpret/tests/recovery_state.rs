@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 //! Reported state recovery cannot bypass syntax, scope or resource limits.
-use pagura_core::{ErrorKind, Limits, Position, Recovery};
+use pagura_core::{ErrorKind, Limits, Position, Recovery, Result};
 use pagura_document::{Document, OpenOptions};
 use pagura_interpret::Interpreter;
 use pagura_testkit::fixture;
 
-fn document(content: &str, options: &OpenOptions) -> Document {
+fn document(content: &str, options: &OpenOptions) -> Result<Document> {
     let objects = [
         "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
         "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
@@ -28,7 +28,7 @@ fn document(content: &str, options: &OpenOptions) -> Document {
         bytes.extend(format!("{offset:010} 00000 n \n").bytes());
     }
     bytes.extend(format!("trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n").bytes());
-    Document::open(bytes, options).unwrap()
+    Document::open(bytes, options)
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn syntax_and_crossed_state_boundaries_remain_errors() {
         "[1",
         "1 1 m impossible",
     ] {
-        let document = document(content, &OpenOptions::default());
+        let document = document(content, &OpenOptions::default()).unwrap();
         let error = Interpreter::new(&document)
             .scene(document.page(0).unwrap())
             .unwrap_err();
@@ -99,7 +99,8 @@ fn unmatched_closures_are_charged_to_the_operation_budget() {
             },
             ..Default::default()
         },
-    );
+    )
+    .unwrap();
     let error = Interpreter::new(&document)
         .scene(document.page(0).unwrap())
         .unwrap_err();
