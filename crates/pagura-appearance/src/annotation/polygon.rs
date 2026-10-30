@@ -9,12 +9,20 @@ use crate::stream::AppearanceStream;
 use pagura_core::{Dictionary, Rect, Result};
 use pagura_document::Document;
 
+/// The two Table181 annotations have different closure and ending rules.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Kind {
+    Polygon,
+    PolyLine,
+}
+
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
-    closed: bool,
+    kind: Kind,
 ) -> Result<Option<AppearanceStream>> {
+    let closed = kind == Kind::Polygon;
     let geometry = path::read(document, annotation)?;
     let effect = if closed {
         cloud::Effect::read(document, annotation)?
@@ -33,7 +41,7 @@ pub(super) fn generate(
     let mut marks = Marks::new(document, annotation);
     let path = [cloud
         .as_ref()
-        .map_or_else(|| geometry.subpath(closed), cloud::Outline::path)];
+        .map_or_else(|| geometry.subpath(kind), cloud::Outline::path)];
     if closed && let Some(interior) = color(document, annotation, b"IC", None)? {
         marks.fill(&path, &interior)?;
     }

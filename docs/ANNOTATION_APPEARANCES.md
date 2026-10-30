@@ -14,7 +14,9 @@ appearance selection, placement, and the narrowly required shared reservation
 and page-view geometry helpers. It excludes that draft's facade editing/save
 integration, host/viewer changes, broad ancestry, and unqualified benchmark
 claims. Generated button states and rich-field editing are not newly promised by
-the existing persistence facade.
+the existing persistence facade. Shared form-model readers and filling helpers are
+also updated to feed the common appearance generator; the existing editing
+roundtrip tests cover those helpers and their persistence boundaries.
 
 Rectangle scalars are resolved through the document object graph. Thus an
 indirect numeric coordinate is valid in Strict and Repair modes. An inert Popup

@@ -2,6 +2,7 @@
 
 use super::ending::Endpoint;
 use super::marks::{PathOperator, Subpath};
+use super::polygon::Kind;
 use crate::values::{number, optional};
 use pagura_core::{Dictionary, Error, Result, Value};
 use pagura_document::Document;
@@ -61,11 +62,14 @@ impl Geometry {
         Ok([ends[0].unwrap_or(fallback), ends[1].unwrap_or(fallback)])
     }
 
-    pub(super) fn subpath(&self, closed: bool) -> Subpath<'_> {
+    pub(super) fn subpath(&self, kind: Kind) -> Subpath<'_> {
         match self {
-            Self::Vertices(points) if closed => Subpath::Polygon(points),
+            Self::Vertices(points) if kind == Kind::Polygon => Subpath::Polygon(points),
             Self::Vertices(points) => Subpath::Polyline(points),
-            Self::Operators(commands) => Subpath::Operators { commands, closed },
+            Self::Operators(commands) => Subpath::Operators {
+                commands,
+                closed: kind == Kind::Polygon,
+            },
         }
     }
 }

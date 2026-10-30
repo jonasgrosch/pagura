@@ -117,8 +117,8 @@ pub fn annotation_appearance_with_fonts(
         b"Stamp" => stamp::generate(document, annotation, rect, fonts)?,
         b"FreeText" => free_text::generate(document, annotation, rect, fonts)?,
         b"Line" => line::generate(document, annotation, rect, fonts)?,
-        b"Polygon" => polygon::generate(document, annotation, rect, true)?,
-        b"PolyLine" => polygon::generate(document, annotation, rect, false)?,
+        b"Polygon" => polygon::generate(document, annotation, rect, polygon::Kind::Polygon)?,
+        b"PolyLine" => polygon::generate(document, annotation, rect, polygon::Kind::PolyLine)?,
         b"Text" => icon::generate(document, annotation, rect, icon::Kind::Text)?,
         b"FileAttachment" => {
             icon::generate(document, annotation, rect, icon::Kind::FileAttachment)?
