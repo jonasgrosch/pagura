@@ -1,6 +1,6 @@
 //! Coefficient bit modelling, T.800 D.1–D.7, Tables D.1–D.7.
 
-use pagura_core::Result;
+use pagura_core::{Error, Result};
 
 use super::io::{Budget, syntax};
 use super::mq::{Context, Decoder};
@@ -466,10 +466,46 @@ impl Raw<'_> {
     }
 }
 
+/// The bordered sample states of [`Block`], kept across the code-blocks of
+/// an image's decode. They are charged as the buffer grows past the
+/// largest code-block so far, rather than once per code-block: the decode
+/// charges at most the states of its largest `w × h` code-block,
+/// `(w + 2)(h + 2)`, and never more than [`States::MOST`].
+#[derive(Debug, Default)]
+pub(super) struct States {
+    values: Vec<u16>,
+    /// The states charged to the decode's budget.
+    charged: usize,
+}
+
+impl States {
+    /// The most states a code-block can need (A.6.1: each side 4 to 1,024
+    /// samples, at most 4,096 samples): `(1024 + 2)(4 + 2)`, 12,312 bytes.
+    pub const MOST: usize = (1024 + 2) * (4 + 2);
+
+    /// `count` zeroed states, charging only those past the largest block's.
+    fn take(&mut self, count: usize, budget: &mut Budget<'_>) -> Result<Vec<u16>> {
+        let mut values = std::mem::take(&mut self.values);
+        if count > self.charged {
+            budget.charge::<u16>(count - self.charged)?;
+            self.charged = count;
+            values
+                .try_reserve_exact(count.saturating_sub(values.len()))
+                .map_err(|_| Error::limit("JPEG 2000 allocation failed"))?;
+        }
+        debug_assert!(self.charged <= Self::MOST, "code-block states past A.6.1");
+        // Zeroing a block's states is work in proportion to its samples,
+        // like the first coding pass, which `passes` charges for them.
+        values.clear();
+        values.resize(count, 0);
+        Ok(values)
+    }
+}
+
 pub(super) fn decode(
     segments: &[Segment],
     p: &Parameters,
-    budget: &mut Budget<'_>,
+    (budget, states): (&mut Budget<'_>, &mut States),
 ) -> Result<Vec<Sample>> {
     let base = segments.first().map_or(0, |s| s.base);
     let valid_modes = segments::BYPASS
@@ -490,7 +526,7 @@ pub(super) fn decode(
     let bordered = (p.width + 2) * (p.height + 2);
     let mut block = Block {
         samples: budget.filled(count, Sample::default())?,
-        states: budget.filled(bordered, 0)?,
+        states: states.take(bordered, budget)?,
         width: p.width,
         height: p.height,
         orientation: usize::from(p.orientation & 3),
@@ -498,10 +534,11 @@ pub(super) fn decode(
         insignificant: count,
     };
     let mut contexts = Decoder::initial_contexts();
-    for segment in segments {
-        decode_segment(&mut block, segment, p, &mut contexts, budget)?;
-    }
-    Ok(block.samples)
+    let decoded = segments
+        .iter()
+        .try_for_each(|segment| decode_segment(&mut block, segment, p, &mut contexts, budget));
+    states.values = block.states;
+    decoded.map(|()| block.samples)
 }
 
 fn decode_segment_inner(
@@ -599,9 +636,33 @@ fn decode_segment(
 #[cfg(test)]
 mod tests {
     use super::{
-        Block, EAST_NEGATIVE, NEGATIVE, NEIGHBOURS, NORTH_NEGATIVE, SOUTH_NEGATIVE, Sample,
-        WEST_NEGATIVE,
+        Block, Budget, EAST_NEGATIVE, NEGATIVE, NEIGHBOURS, NORTH_NEGATIVE, SOUTH_NEGATIVE, Sample,
+        States, WEST_NEGATIVE,
     };
+
+    /// One state buffer serves every code-block of a decode: it is charged
+    /// as it grows past the largest block so far and never again for a
+    /// block no larger, and each block's states start zeroed.
+    #[test]
+    fn code_block_states_are_charged_once_for_the_largest_block() {
+        let limits = pagura_core::Limits {
+            decoded_bytes: 34 * 34 * 2,
+            decode_work: 34 * 34,
+            ..pagura_core::Limits::default()
+        };
+        let mut budget = Budget::new(&limits);
+        let mut states = States::default();
+        for count in [34 * 34, 6 * 6, 34 * 34, 18 * 10] {
+            let mut values = states.take(count, &mut budget).unwrap();
+            assert_eq!(values.len(), count);
+            assert!(values.iter().all(|&state| state == 0));
+            values.fill(u16::MAX);
+            states.values = values;
+        }
+        assert_eq!(states.charged, 34 * 34);
+        // A larger block is charged for its growth, which this budget refuses.
+        assert!(states.take(34 * 34 + 1, &mut budget).is_err());
+    }
 
     /// Each sample's state holds exactly its in-block neighbours'
     /// significance, and its orthogonal neighbours' negative signs, as a
