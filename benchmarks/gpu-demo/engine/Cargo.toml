@@ -1,0 +1,27 @@
+[package]
+name = "pagura-gpu-demo"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# An experimental host, never a product dependency.
+[workspace]
+
+[dependencies]
+pagura-codec = { path = "../../../crates/pagura-codec" }
+pagura-color = { path = "../../../crates/pagura-color" }
+pagura-core = { path = "../../../crates/pagura-core" }
+pagura-data = { path = "../../../crates/pagura-data" }
+pagura-document = { path = "../../../crates/pagura-document" }
+pagura-interpret = { path = "../../../crates/pagura-interpret" }
+pagura-image = { path = "../../../crates/pagura-image" }
+pagura-paint = { path = "../../../crates/pagura-paint", features = ["gpu-demo"] }
+pagura-raster = { path = "../../../crates/pagura-raster" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+overflow-checks = true
+
+[lints.rust]
+unsafe_code = "forbid"

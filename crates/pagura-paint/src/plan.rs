@@ -165,6 +165,9 @@ pub(crate) struct Run {
 /// One glyph placement of a [`Run`].
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Glyph {
+    /// Source-order identity for the optional GPU view adapter.
+    #[cfg(feature = "gpu-demo")]
+    pub(crate) serial: u32,
     /// Its shape in the coverage producer.
     pub(crate) shape: u32,
     /// The pixels it can cover.

@@ -23,5 +23,7 @@ mod testing;
 
 pub use execute::{Rendering, Scratch};
 
+#[cfg(feature = "gpu-demo")]
+pub use prepare::gpu;
 pub use prepare::{Charges, Completion, PreparedScene, prepare};
 pub use request::{OverprintMode, RenderRequest};

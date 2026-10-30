@@ -15,6 +15,8 @@ mod empty_fill;
 pub mod features;
 mod flatten;
 mod geometry;
+#[cfg(feature = "gpu-demo")]
+pub use band::gpu;
 mod path;
 mod pixmap;
 mod quantize;

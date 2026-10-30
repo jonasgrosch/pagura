@@ -8,6 +8,10 @@ publish.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Experimental host-side execution of the existing exact N16 span program.
+gpu-demo = ["pagura-raster/gpu-demo"]
+
 [lints]
 workspace = true
 

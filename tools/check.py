@@ -21,7 +21,7 @@ UV_LINT = ["uv", "run", *OFFLINE, "--only-group", "lint"]
 # platform behaviour, so only Linux runs them; each set rebuilds the graph.
 FEATURE_MATRIX = [
     (CARGO + [step, *OFFLINE, "-p", crate, features, "--all-targets", *tail], {})
-    for crate in ("pagura", "pagura-cli", "pagura-data")
+    for crate in ("pagura", "pagura-cli", "pagura-data", "pagura-paint")
     for features in ("--no-default-features", "--all-features")
     for step, tail in (("clippy", ["--", "-D", "warnings"]), ("test", []))
 ] + [
