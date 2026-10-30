@@ -206,3 +206,33 @@ refusal of one more. Newly admitted renders must match the unchanged
 renderer with only `function_work` raised; a prior refusal is not a
 performance baseline. Rendering arithmetic and per-sample charging are
 unchanged.
+
+## Amendment, 2026-10-30: bounded work rises from optional accelerations
+
+An optional acceleration is a route that produces the same bytes as the
+route it shortcuts and that preparation may skip, such as a stroke's spine
+of proven-covered cells. Until now such a route had to leave the smallest
+budget at which a render succeeds unchanged. For memory that is achievable:
+optional storage is admitted only while the mandatory route still fits. For
+work it is not always achievable. An acceleration's savings depend on the
+data, so on a row where it proves little its own work comes on top of the
+full mandatory work, and the mandatory remainder cannot be bounded in advance.
+
+1. **Execution never exceeds its reservation.** Unchanged. An acceleration
+   charges every unit it spends, and spent work is never refunded.
+2. **Memory stays strict.** The smallest `render_bytes` at which a render
+   succeeds never rises because of an acceleration.
+3. **Work may rise by a stated bound.** An acceleration may raise the
+   smallest rasterization work at which a fill succeeds (its `raster_work`,
+   and the same units reserved in `render_work`) by at most its own optional
+   work. That bound is a formula over quantities the acceleration knows
+   before it runs, such as the capsules a spine covers. It is written next
+   to the acceleration's code, and debug builds and tests assert it against
+   what the acceleration actually charged.
+4. **Unbounded accelerations stay out.** A route whose extra work cannot be
+   bounded before it runs, for example because it depends on crossings not
+   yet found, must still leave the minimum unchanged.
+5. **Evidence.** A change that uses this amendment states its bound, the
+   largest rise measured on its pages, and a probe that scans budgets.
+   Success is not monotone in a budget, so bisection can report a false
+   minimum.
