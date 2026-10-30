@@ -88,6 +88,7 @@ struct Outlined {
 #[derive(Clone, Copy)]
 enum Borrowed<'a> {
     Lines(&'a [Line], FillRule),
+    Canonical(&'a super::clip::Paths),
     Glyph {
         source: rounding::Source<'a>,
         paths: &'a super::clip::Paths,
@@ -606,7 +607,7 @@ fn interval(
             match constant(paths, hulls, strips, pixel, work)? {
                 State::Inside => continue,
                 State::Outside => return Ok((0.0, 0.0)),
-                State::Linear => Borrowed::Lines(paths.lines(), FillRule::NonZero),
+                State::Linear => Borrowed::Canonical(paths),
                 State::Curved => {
                     active_curve = true;
                     source
@@ -632,6 +633,26 @@ fn interval(
                             (work, bytes),
                         )?,
                 );
+            }
+            Borrowed::Canonical(paths) => {
+                rules.push(FillRule::NonZero);
+                let start = pieces.len();
+                paths.pieces(pixel.y, group, (&mut pieces, bytes), work)?;
+                work.charge(pieces.len().saturating_sub(start))?;
+                for piece in pieces.get_mut(start..).unwrap_or_default() {
+                    let (line, tail) = rounding::localized_line(piece.line, pixel);
+                    error = rounding::outward(
+                        error
+                            + rounding::edge_error(line, tail, [0.0, 0.0, 1.0, 1.0])
+                            + rounding::edge_error(
+                                line,
+                                line.interpolation_error(),
+                                [0.0, 0.0, 1.0, 1.0],
+                            ),
+                    );
+                    *piece = Piece::new(line, 0.0, group)
+                        .ok_or(Error::limit("unresolved clip localization interval"))?;
+                }
             }
             Borrowed::Lines(lines, rule) => {
                 rules.push(rule);

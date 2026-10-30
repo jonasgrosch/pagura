@@ -69,10 +69,6 @@ pub(crate) struct Paths {
 }
 
 impl Paths {
-    pub(super) fn lines(&self) -> &[Line] {
-        &self.lines
-    }
-
     /// The paths' chains, when every path is convex.
     pub(crate) fn convex(&self) -> Option<&[Convex]> {
         (!self.convex.is_empty()).then_some(self.convex.as_slice())

@@ -308,7 +308,7 @@
         "paint_stencils/tiling-flat-half-area",
         "paint_stencils/tiling-nested-ordinary-refused",
         "paint_stencils/tiling-nested-image-stencil",
-        "pagura API render::nested_patterned_glyph_stays_explicit_before_any_output_in_both_modes",
+        "pagura API render::nested_patterned_glyphs_preserve_true_curves_in_both_modes",
         "pagura API render::nested_tiling_preserves_the_independent_half_area_in_both_modes",
         "pagura-paint prepare::tests::pattern_stencils::nested_stencil_geometry_has_bounded_ancestor_chains",
         "paint_nested_stencils/fill-one-level",
