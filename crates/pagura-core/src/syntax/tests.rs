@@ -3,10 +3,10 @@
 
 use super::{Origin, Parser, hex_digit};
 use crate::repairs::{
-    DICTIONARY_CLOSER, DICTIONARY_OPENER, KEY_SOLIDUS, LEADING_ZERO_REFERENCE, NAME_ESCAPE,
-    ZERO_REFERENCE,
+    DICTIONARY_CLOSER, DICTIONARY_OPENER, HEX_DIGIT, KEY_SOLIDUS, LEADING_ZERO_REFERENCE,
+    NAME_ESCAPE, NUMBER_SIGN, ZERO_REFERENCE,
 };
-use crate::{ErrorKind, Limits, Name, ObjectId, Position, Recovery, Value};
+use crate::{Diagnostic, ErrorKind, Limits, Name, ObjectId, Position, Recovery, Value};
 
 fn parse(data: &[u8]) -> crate::Result<Value> {
     Parser::new(data, Origin::Buffer, Limits::default()).parse()
@@ -166,6 +166,8 @@ fn lexical_repairs_are_positioned_and_strict_errors_keep_their_tags() {
         (b"0 0 R", ZERO_REFERENCE),
         (b"<< /A 1 ) >>", DICTIONARY_CLOSER),
         (b"<< << /A 1 >>", DICTIONARY_OPENER),
+        (b"-", NUMBER_SIGN),
+        (b"<4!1>", HEX_DIGIT),
     ] {
         let mut strict = Parser::new(bytes, Origin::File, Limits::default());
         assert_eq!(strict.parse().unwrap_err().repair, Some(tag));
@@ -241,6 +243,45 @@ fn braces_are_regular_characters_in_ordinary_pdf_names() {
     assert_eq!(parser.take_diagnostics(), []);
     assert!(!super::is_delimiter(b'{'));
     assert!(!super::is_delimiter(b'}'));
+}
+
+#[test]
+fn lone_signs_read_as_zero_and_other_hex_bytes_are_skipped() {
+    let mut parser = Parser::new(b"- + [-] <48!4> <4!!8>", Origin::File, Limits::default())
+        .with_recovery(Recovery::Repair);
+    assert_eq!(parser.parse().unwrap(), Value::Integer(0));
+    assert_eq!(parser.parse().unwrap(), Value::Integer(0));
+    assert_eq!(
+        parser.parse().unwrap(),
+        Value::Array(vec![Value::Integer(0)])
+    );
+    for expected in [[0x48, 0x40].as_slice(), &[0x48]] {
+        assert_eq!(parser.parse().unwrap(), Value::String(expected.to_vec()));
+    }
+    let repairs: Vec<_> = parser
+        .take_diagnostics()
+        .iter()
+        .map(Diagnostic::repair)
+        .collect();
+    // One hexadecimal repair is kept however many bytes are skipped.
+    assert_eq!(
+        repairs,
+        [
+            Some(NUMBER_SIGN),
+            Some(NUMBER_SIGN),
+            Some(NUMBER_SIGN),
+            Some(HEX_DIGIT)
+        ]
+    );
+    for bytes in [b"-.".as_slice(), b"--", b"+-1", b"."] {
+        assert!(
+            Parser::new(bytes, Origin::File, Limits::default())
+                .with_recovery(Recovery::Repair)
+                .parse()
+                .is_err(),
+            "{bytes:?}"
+        );
+    }
 }
 
 #[test]
