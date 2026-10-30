@@ -99,23 +99,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         if !draws(self.needs()) {
             return Ok(());
         }
-        // Missing geometry must not hide supplied artwork. A Popup without
-        // an AP is already inert in the flat-page appearance policy; only
-        // that case can be skipped without inventing coordinates or paint.
-        if subtype == b"Popup"
-            && document.optional(d, b"AP")?.is_none()
-            && d.get(b"Rect")
-                .map(|value| document.resolve(value))
-                .transpose()?
-                .is_none_or(Value::is_null)
-        {
-            document.repair(
-                Diagnostic::new(
-                    pagura_appearance::repairs::POPUP_MISSING_RECT,
-                    "popup without Rect or appearance skipped in flat-page viewing",
-                )
-                .in_object_opt(value.as_reference()),
-            )?;
+        if skip_inert_popup(document, d, subtype.as_bytes(), value.as_reference())? {
             return Ok(());
         }
         let rect = rectangle(document, d, b"Rect")?;
@@ -330,6 +314,34 @@ impl FontSource for SessionFonts<'_, '_> {
     fn provider(&self) -> Option<&dyn Provider> {
         self.0.provider()
     }
+}
+
+/// Missing geometry cannot hide supplied artwork. Only an inert Popup can
+/// be skipped without inventing coordinates or paint, with an explicit repair.
+fn skip_inert_popup(
+    document: &Document,
+    annotation: &Dictionary,
+    subtype: &[u8],
+    object: Option<ObjectId>,
+) -> Result<bool> {
+    if subtype != b"Popup"
+        || document.optional(annotation, b"AP")?.is_some()
+        || annotation
+            .get(b"Rect")
+            .map(|value| document.resolve(value))
+            .transpose()?
+            .is_some_and(|value| !value.is_null())
+    {
+        return Ok(false);
+    }
+    document.repair(
+        Diagnostic::new(
+            pagura_appearance::repairs::POPUP_MISSING_RECT,
+            "popup without Rect or appearance skipped in flat-page viewing",
+        )
+        .in_object_opt(object),
+    )?;
+    Ok(true)
 }
 
 /// A rectangle entry.
