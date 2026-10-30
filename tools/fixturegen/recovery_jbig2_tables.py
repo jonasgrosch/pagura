@@ -145,7 +145,9 @@ def records(name, encoded, *, repair=False, error=False, stencil=False, before_e
     if repair:extra.update(repair_object=6 if origin=='globals' else 5,repair_offset=offset)
     if first_repair:extra.update(first_repair_object=6 if origin=='globals' else 5,first_repair_offset=offset)
     if error:
-        yield Case(name,pdf,OPEN,(REQUIREMENT,),'Malformed table/reference/flags remain errors',strict_valid=False,extra={**extra,'render_error':'syntax'})
+        # scan.strict audits repair use: an ordinary fatal Syntax error alone
+        # does not clear that audit. Rendering still refuses in both modes.
+        yield Case(name,pdf,OPEN,(REQUIREMENT,),'Malformed table/reference/flags remain errors',strict_valid=not before_error,extra={**extra,'render_error':'syntax'})
     else:
         color = (255,0,0) if stencil else (0,0,0)
         rectangles = [((2+x,2+height-1-y,1,1),color) for y,row in enumerate(rows) for x,bit in enumerate(row) if bit]
