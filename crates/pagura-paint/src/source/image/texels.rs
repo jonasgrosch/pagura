@@ -739,11 +739,9 @@ impl Texels for OpacityTexels<'_> {
                     && packed.width() == sample_index(u64::from(width)) =>
             {
                 let bits = packed.row(sample_index(u64::from(row))).unwrap_or(&[]);
-                for (out, x) in out.iter_mut().zip(first..end) {
-                    let x = sample_index(u64::from(x));
-                    let code = bits.get(x / 8).map_or(0, |byte| (byte >> (7 - x % 8)) & 1);
-                    *out = table.get(usize::from(code)).copied().unwrap_or(0.0);
-                }
+                let opacity = |code: usize| table.get(code).copied().unwrap_or(0.0);
+                let first = sample_index(u64::from(first));
+                packed_opacities(bits, first, (opacity(0), opacity(1)), out);
             }
             _ => sample_row(self, (row, width), (first, end), out),
         }
@@ -759,6 +757,33 @@ impl Texels for OpacityTexels<'_> {
         if let Some(value) = sum.first_mut() {
             *value += self.opacity.at(self.mask, index) * weight;
         }
+    }
+}
+
+/// The opacities of one-bit samples `first..` of a packed row `bits` (most
+/// significant bit first) into `out`: `clear` for code 0 and `set` for 1,
+/// with samples past the row's bytes reading code 0. Whole bytes are read
+/// once for their eight samples.
+fn packed_opacities(bits: &[u8], first: usize, (clear, set): (f64, f64), out: &mut [f64]) {
+    let code = |x: usize| bits.get(x / 8).map_or(0, |byte| (byte >> (7 - x % 8)) & 1);
+    let opacity = |code: u8| if code == 0 { clear } else { set };
+    // Samples before the first byte boundary, then whole bytes, then the
+    // samples after the last one.
+    let lead = ((8 - first % 8) % 8).min(out.len());
+    let (head, rest) = out.split_at_mut(lead);
+    for (out, x) in head.iter_mut().zip(first..) {
+        *out = opacity(code(x));
+    }
+    let byte = (first + lead) / 8;
+    let (whole, tail) = rest.as_chunks_mut::<8>();
+    for (index, chunk) in whole.iter_mut().enumerate() {
+        let bits = bits.get(byte + index).copied().unwrap_or(0);
+        for (k, out) in chunk.iter_mut().enumerate() {
+            *out = opacity((bits << k) >> 7);
+        }
+    }
+    for (out, x) in tail.iter_mut().zip((byte + whole.len()) * 8..) {
+        *out = opacity(code(x));
     }
 }
 
@@ -1658,8 +1683,28 @@ impl Texels for MemoTexels<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Indexed, Key, MemoLayout, SampleKeys};
+    use super::{Indexed, Key, MemoLayout, SampleKeys, packed_opacities};
     use pagura_core::Meter;
+
+    /// Reading packed rows a byte at a time gives each sample its own
+    /// code's opacity, from any first sample, and code 0 past the row.
+    #[test]
+    fn packed_opacities_read_each_sample_code() {
+        let bits = [0b1011_0010_u8, 0xff, 0x00, 0b0101_1100, 0x81];
+        for first in 0..24 {
+            for len in 0..30 {
+                let mut out = vec![-1.0; len];
+                packed_opacities(&bits, first, (0.25, 0.75), &mut out);
+                let expected: Vec<f64> = (first..first + len)
+                    .map(|x| {
+                        let code = bits.get(x / 8).map_or(0, |byte| (byte >> (7 - x % 8)) & 1);
+                        if code == 0 { 0.25 } else { 0.75 }
+                    })
+                    .collect();
+                assert_eq!(out, expected, "first {first}, len {len}");
+            }
+        }
+    }
 
     #[test]
     fn small_sources_need_no_capacity_discovery_allocation() {
