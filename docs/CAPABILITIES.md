@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 335 registered requirement IDs map to capability rows in the ledger.
+All 336 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery
