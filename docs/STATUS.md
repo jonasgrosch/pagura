@@ -32,6 +32,11 @@ centre set (T.88 6.3.5.6, Figures 14–15). The decoder and independent encoder
 now map that symbolic state through their own template bit order; geometric
 expected bitmaps remain unchanged when the TPGR streams are re-encoded.
 
+Raw JPEG 2000 codestreams in PDF images require the reported
+`jpx.raw-codestream` viewing repair, an explicit PDF colour space and no
+embedded-opacity request. Strict mode requires full JPX framing (7.4.9).
+This does not infer missing colour/channel metadata or extend codec coverage.
+
 | Area | Implemented | Remaining boundary |
 |---|---|---|
 | Rendering architecture | One interpreter with negotiated device needs; separate text device; appearance generation in `pagura-appearance`; cached resolution-independent scenes; source-order preparation, per-buffer N16/F32/F64 storage and one band executor; exact rendering only | Additional output/hit-testing devices, persistent resumable jobs and broader scheduling. `Accuracy::Competitive` and the former rendering pipelines have been removed. Architecture alone does not establish complete PDF feature coverage. |

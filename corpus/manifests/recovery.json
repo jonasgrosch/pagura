@@ -115,6 +115,162 @@
       "tolerance": 0
     },
     {
+      "id": "recovery/jpx-raw-gray",
+      "kind": "pdf",
+      "description": "jpx raw gray",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-gray.pdf",
+      "sha256": "e4e4b9d00499ab8661af965884127e3f6eab5c363a07ffc65801c29847b5b6d0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.raw-codestream"
+      ],
+      "oracle": "corpus/generated/recovery/jpx-raw-gray.ppm",
+      "oracle_sha256": "ca63e8c892f9c41f7d5b4bb10c464ed5bc9bbe7d3af7dcc3946334fc679c71dc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jpx-raw-gray-no-space",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-gray-no-space.pdf",
+      "sha256": "c9905d477b92ed2dcf439c817d27973ba704d70295222aa4341527f96e96c5c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-gray-opacity",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-gray-opacity.pdf",
+      "sha256": "70c56813d0bdc0ce4da21617df4c776ead2f3b754c828cb4bbea4b8511c7e0f3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-gray-truncated",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-gray-truncated.pdf",
+      "sha256": "323eac0d9600c5538dd40f9c657b8be393787ef0549758ea19592b4405ce37ac",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-rgb",
+      "kind": "pdf",
+      "description": "jpx raw rgb",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb.pdf",
+      "sha256": "7d2311b384d1aea377b9140fd790d5f03bfc8c5c3a4c2ffa9595fdc4cce7564f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.raw-codestream"
+      ],
+      "oracle": "corpus/generated/recovery/jpx-raw-rgb.ppm",
+      "oracle_sha256": "2cea5e9520d14052dbf1ffbb50ec9425c01b90e1f7a34f4e0ea4577c1750a98b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jpx-raw-rgb-no-space",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb-no-space.pdf",
+      "sha256": "c994a0b024acf8aea2cf8d7b91b9dc40d97518746150ca8df22ebbb268b5d299",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-rgb-opacity",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb-opacity.pdf",
+      "sha256": "353c044157f36281e79ee3a98c4dae7a0b88b0c5d030693a5471a9caf46ded86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-rgb-truncated",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb-truncated.pdf",
+      "sha256": "e1866fcba38601126baed89a39442f858afb45db0146d466288980231efdf77f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-rgb-subsampled",
+      "kind": "pdf",
+      "description": "jpx raw rgb subsampled",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb-subsampled.pdf",
+      "sha256": "9ed158ca3447533b5d88dda145bdb66968e77e24fe2b8f90fc1e51d5cd6e8a78",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.raw-codestream"
+      ],
+      "oracle": "corpus/generated/recovery/jpx-raw-rgb-subsampled.ppm",
+      "oracle_sha256": "0a086379e71520a69daab6f18915bc34d79084dba6b1fef1064140285cf05340",
+      "dpi": 72,
+      "width": 4,
+      "height": 4,
+      "tolerance": 0
+    },
+    {
       "id": "recovery/pattern-coloured-base-no-operands",
       "kind": "pdf",
       "description": "pattern coloured base no operands",

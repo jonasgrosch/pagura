@@ -272,7 +272,7 @@ fn codec_of(
             Codec::Jbig2(globals)
         }
         Some((ImageCodec::Jpx, _)) => {
-            let jpx = Jpx::read(data, dict, &header.initial)?;
+            let jpx = Jpx::read(data, dict, &header.initial, document.recovery())?;
             let description = jpx.describe(
                 data,
                 (header.width, header.height, header.declared_components),

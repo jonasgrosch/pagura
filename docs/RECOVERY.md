@@ -31,6 +31,19 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   combination operators, framing, cycles and all work/storage budgets retain
   their checks; failed decoding never returns a partial bitmap.
 
+- `jpx.raw-codestream` (7.4.9): viewing may decode an unboxed JPEG 2000
+  codestream using an explicit PDF image colour space. This is a reported
+  repair of the required full-file framing, not conforming JPX input.
+  Missing colour spaces and embedded-opacity requests stay errors. Dimensions,
+  components, sampling geometry, complete codestream syntax and all resource
+  limits retain their existing validation; no colour or opacity metadata is
+  guessed. Strict mode rejects the same unboxed input. An explicit PDF
+  colour space remains authoritative (7.4.9), including subsampled RGB;
+  T.800 A.5.1/B.2 component grid steps do not imply YCbCr. A reader that
+  infers YCbCr from sampling ratios can disagree and is not a pixel oracle
+  for this policy; the subsampled fixture derives pixels from stated RGB
+  sample arrays and grid placement.
+
 - `asn1.ber-set-order` (X.690 11.6; RFC 5652 5.1): retain BER SET OF source
   order with a diagnostic. Signed attributes, certificates and DER entry
   points remain strict. BER length, indefinite-container and OCTET STRING
