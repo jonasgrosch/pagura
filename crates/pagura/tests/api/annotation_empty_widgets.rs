@@ -121,3 +121,36 @@ fn empty_membership_proof_obeys_the_existing_navigation_work_limit() {
         ErrorKind::Limit
     );
 }
+
+#[test]
+fn legacy_empty_ancestry_comparisons_are_bounded_by_traversal_work() {
+    for work in [100, 2000] {
+        let document = Document::open(
+            fixture("annotation_empty_widgets", "legacy-long-ancestry.pdf"),
+            &OpenOptions {
+                limits: pagura::Limits {
+                    depth: 256,
+                    traversal_work: work,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let result = pagura::render_page(
+            &document,
+            document.page(0).unwrap(),
+            &RenderOptions::from_dpi(72.0),
+        );
+        if work == 100 {
+            let error = result.unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit);
+            assert_eq!(error.message, "widget ancestry work budget exceeded");
+        } else {
+            assert_eq!(
+                ppm(&result.unwrap()),
+                fixture("annotation_empty_widgets", "legacy-long-ancestry.ppm")
+            );
+        }
+    }
+}

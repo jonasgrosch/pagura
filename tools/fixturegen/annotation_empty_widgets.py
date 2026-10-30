@@ -66,6 +66,11 @@ def cases():
         yield Case(label,pdf(o),OPEN,(REQUIREMENT,),
                    'Empty content does not bypass missing/repeated membership or cyclic ancestry',
                    extra={'render_error':error})
+    o=objects();o[1].pop('AcroForm');o[11]['Parent']=ref(12)
+    for n in range(12,52):o[n]={'Parent':ref(n+1)} if n<51 else {}
+    yield Case('legacy-long-ancestry',pdf(o),RENDER,(REQUIREMENT,),
+               'A bounded40-parent legacy chain remains geometric; low traversal work must also bound its membership comparisons',
+               oracle=frame())
     o=objects();o[11]['V']='AB';o[10]['XFA']=b'inert XFA data'
     yield Case('nonempty-xfa',pdf(o),UNSUPPORTED,(REQUIREMENT,),
                'A nonempty source value retains the existing XFA generation boundary',feature='form.xfa')
