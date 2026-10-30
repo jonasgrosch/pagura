@@ -143,6 +143,10 @@ geometric rectangles. A tiling child's clip includes the stencil and the
 outer mark's clip chain, so mask and child geometry are intersected before
 coverage quantization; the result is not multiplied by the stencil coverage
 again. Shading stencils use the same geometry with existing shading sampling.
+Ordinary nested tiling under an inherited stencil remains unsupported: its
+ordinary outer mark coverage would apply fractional mask coverage twice.
+Nested image stencils already propagate the complete geometric intersection;
+transparency groups apply the inherited clip once through their children.
 Interpolated patterned masks remain unsupported. Inherited clip identities
 include their stencil chain; source paths and capacities are metered and
 released after planning. Cell marks retain ADR 0004's per-pixel compositing

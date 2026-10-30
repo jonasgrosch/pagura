@@ -137,6 +137,35 @@ def different_masks():
                 oracle=oracle(masks, ink, None, RED), extra={"tolerance": 1})
 
 
+def nested_tiling_cases():
+    """A half-area sample distinguishes a mask applied once from twice.
+
+    A red full-cell pattern is geometrically identical whether specified
+    directly or through another pattern. Ordinary nested tiling is refused
+    until its outer geometry can propagate without multiplying mask coverage
+    again. A nested image stencil has that geometric path already.
+    """
+    common = b"/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 2 /BBox [0 0 16 16] /XStep 16 /YStep 16 "
+    solid = stream(b"1 0 0 rg 0 0 16 16 re f", common+b"/Resources << >>")
+    mask = stream(b"\0", b"/Type /XObject /Subtype /Image /Width 1 /Height 1 /ImageMask true /BitsPerComponent 1")
+    resources = b"<< /Pattern << /P 5 0 R >> /XObject << /I 6 0 R >> >>"
+    content = b"/Pattern cs /P scn 1 0 0 1 4.5 4 cm /I Do"
+    half = [rectangle(F(9, 2), F(4), F(11, 2), F(5))]
+    expected = oracle(half, [rectangle(F(0), F(0), F(16), F(16))], None, RED)
+    yield Case("tiling-flat-half-area", page(content, [solid, mask, solid], resources), RENDER,
+               ("paint-image-masks",), "One opaque red stencil covers exactly half of two boundary pixels",
+               oracle=expected, extra={"tolerance": 1})
+    nested = stream(b"/Pattern cs /Q scn 0 0 16 16 re f", common+b"/Resources << /Pattern << /Q 7 0 R >> >>")
+    yield Case("tiling-nested-ordinary-refused", page(content, [nested, mask, solid], resources), UNSUPPORTED,
+               ("paint-image-masks",), "Valid ordinary nested tiling is explicitly unsupported under an inherited stencil",
+               feature="pattern.image-mask")
+    nested_image = stream(b"/Pattern cs /Q scn 16 0 0 16 0 0 cm /J Do",
+                          common+b"/Resources << /Pattern << /Q 7 0 R >> /XObject << /J 8 0 R >> >>")
+    yield Case("tiling-nested-image-stencil", page(content, [nested_image, mask, solid, mask], resources), RENDER,
+               ("paint-image-masks",), "Nested image stencils preserve the full inherited geometric intersection",
+               oracle=expected, extra={"tolerance": 1})
+
+
 def cases():
     aligned = (F(12), F(0), F(0), F(10), F(2), F(3))
     fractional = (F(21, 2), F(7, 2), F(-3, 2), F(19, 2), F(13, 4), F(9, 4))
@@ -155,3 +184,4 @@ def cases():
     yield control("colored-alpha", "colored", aligned, alpha=F(1, 2))
     yield control("colored-nested-soft-mask", "colored", aligned, nested=True, soft=True)
     yield different_masks()
+    yield from nested_tiling_cases()

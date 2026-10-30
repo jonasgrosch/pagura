@@ -25,6 +25,9 @@
     "paint_stencils/colored-empty",
     "paint_stencils/colored-alpha",
     "paint_stencils/colored-nested-soft-mask",
-    "paint_stencils/colored-different-masks"
+    "paint_stencils/colored-different-masks",
+    "paint_stencils/tiling-flat-half-area",
+    "paint_stencils/tiling-nested-ordinary-refused",
+    "paint_stencils/tiling-nested-image-stencil"
   ]
 }

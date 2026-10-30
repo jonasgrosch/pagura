@@ -411,6 +411,12 @@ impl Planner<'_> {
         (covered, compositing): (Covered, Compositing),
         budget: &mut Budget,
     ) -> Result<()> {
+        if scope.stencil_clip.is_some() && !spec.stencil {
+            return Err(Error::unsupported(
+                pagura_interpret::features::PATTERN_IMAGE_MASK,
+                "ordinary nested tiling under a patterned stencil is not implemented",
+            ));
+        }
         let serial = self.serial;
         let mut inner = scope.clone();
         if spec.stencil
