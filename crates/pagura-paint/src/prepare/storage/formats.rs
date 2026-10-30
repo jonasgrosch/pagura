@@ -2,7 +2,7 @@
 //! outwards by the error bounds of their stores, then widened to F64 from
 //! the outermost buffer inwards.
 
-use super::{Buffer, Dynamic, Survey};
+use super::{Buffer, Survey};
 use crate::format::Format;
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::DeviceRect;
@@ -35,12 +35,16 @@ pub(super) const APART_COMPARISONS: usize = 1 << 22;
 
 /// Whether an N16 page admits `buffer`'s dynamic stores: at most one at
 /// any pixel, each injecting less than the room an N16 pixel leaves
-/// (ADR 0004 §6). Children and masks are resolved first.
+/// (ADR 0004 §6). Footprints are page-level device bounds, so the answer
+/// does not depend on the region. Children and masks are resolved first.
 pub(super) fn n16_admits(
     buffer: &Buffer,
     resolved: &[Option<(Format, f64)>],
     bytes: &mut Meter,
 ) -> Result<bool> {
+    if buffer.dynamics.len() != buffer.dynamic || buffer.dynamic > FOOTPRINTS {
+        return Ok(false);
+    }
     let bound = |node: usize| {
         resolved
             .get(node)
@@ -55,22 +59,7 @@ pub(super) fn n16_admits(
         let mask = store.mask.map_or(0.0, |m| 256.0 / 255.0 * bound(m));
         257.0 * (store.eta + child + mask) <= N16_ROOM
     });
-    // At most FOOTPRINTS rectangles: a sweep never compares more pairs.
-    let mut comparisons = FOOTPRINTS * FOOTPRINTS;
-    Ok(fits && disjoint_footprints(buffer, |store| store.rect, &mut comparisons, bytes)?)
-}
-
-/// Whether every dynamic store of `buffer` has a footprint and no two share
-/// a pixel, by `footprint`, within `comparisons` (false past them).
-/// Footprints are page-level device bounds, so the answer does not depend
-/// on the region.
-pub(super) fn disjoint_footprints(
-    buffer: &Buffer,
-    footprint: impl Fn(&Dynamic) -> DeviceRect,
-    comparisons: &mut usize,
-    bytes: &mut Meter,
-) -> Result<bool> {
-    if buffer.dynamics.len() != buffer.dynamic || buffer.dynamic > FOOTPRINTS {
+    if !fits {
         return Ok(false);
     }
     let mut rects = Vec::new();
@@ -79,28 +68,64 @@ pub(super) fn disjoint_footprints(
         buffer
             .dynamics
             .iter()
-            .map(footprint)
+            .map(|store| store.rect)
             .filter(|rect| !rect.is_empty()),
     );
-    let admitted = disjoint(&mut rects, comparisons, bytes)?;
+    // At most FOOTPRINTS rectangles: a sweep never compares more pairs.
+    let admitted = disjoint(&mut rects, |_| true, bytes)?;
     let released = rects.capacity() * size_of::<DeviceRect>();
     drop(rects);
     bytes.refund(released);
     Ok(admitted)
 }
 
-/// Whether no two rectangles share a pixel, spending one of `comparisons`
-/// on each rectangle a sweep step visits; false once they run out.
-fn disjoint(rects: &mut [DeviceRect], comparisons: &mut usize, bytes: &mut Meter) -> Result<bool> {
+/// Whether every dynamic store of knockout `buffer` has a footprint and no
+/// two share a pixel, within `comparisons` (false past them). Footprints are
+/// page-level device bounds, so the answer does not depend on the region.
+pub(super) fn disjoint_members(
+    buffer: &Buffer,
+    comparisons: &mut usize,
+    bytes: &mut Meter,
+) -> Result<bool> {
+    let footprints = &buffer.footprints;
+    if buffer.dynamics.len() != buffer.dynamic
+        || footprints.len() != buffer.dynamic
+        || buffer.dynamic > FOOTPRINTS
+    {
+        return Ok(false);
+    }
+    let mut rects = Vec::new();
+    bytes.reserve_capacity(&mut rects, footprints.len())?;
+    rects.extend(footprints.iter().copied().filter(|rect| !rect.is_empty()));
+    let spend = |visited: usize| match comparisons.checked_sub(visited) {
+        Some(left) => {
+            *comparisons = left;
+            true
+        }
+        None => false,
+    };
+    let admitted = disjoint(&mut rects, spend, bytes)?;
+    let released = rects.capacity() * size_of::<DeviceRect>();
+    drop(rects);
+    bytes.refund(released);
+    Ok(admitted)
+}
+
+/// Whether no two rectangles share a pixel; false once `spend` refuses the
+/// rectangles a sweep step visits.
+fn disjoint(
+    rects: &mut [DeviceRect],
+    mut spend: impl FnMut(usize) -> bool,
+    bytes: &mut Meter,
+) -> Result<bool> {
     rects.sort_unstable_by_key(|r| r.x0);
     let mut active: Vec<DeviceRect> = Vec::new();
     let mut disjoint = true;
     for rect in rects.iter() {
-        let Some(left) = comparisons.checked_sub(active.len()) else {
+        if !spend(active.len()) {
             disjoint = false;
             break;
-        };
-        *comparisons = left;
+        }
         active.retain(|other| other.x1 > rect.x0);
         if active
             .iter()
@@ -252,15 +277,13 @@ mod tests {
         buffer.stores = 1;
         buffer.dynamic = 1;
         fixture.reserve_capacity(&mut buffer.dynamics, 1).unwrap();
-        let rect = DeviceRect {
-            x0: 0,
-            y0: 0,
-            x1: 2,
-            y1: 2,
-        };
         buffer.dynamics.push(Dynamic {
-            rect,
-            apart: rect,
+            rect: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 2,
+                y1: 2,
+            },
             eta: 1.0,
             child: None,
             mask: None,

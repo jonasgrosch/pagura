@@ -9,7 +9,7 @@
 mod formats;
 mod hulls;
 
-use formats::{APART_COMPARISONS, F64_STORE, FOOTPRINTS, MARGIN, disjoint_footprints};
+use formats::{APART_COMPARISONS, F64_STORE, FOOTPRINTS, MARGIN, disjoint_members};
 use hulls::{Outlines, extent, glyph_footprints, hulls, unite};
 
 use crate::format::Format;
@@ -229,9 +229,6 @@ impl Context {
 struct Dynamic {
     /// Device pixels, conservatively.
     rect: DeviceRect,
-    /// Device pixels for the disjoint-member identity: a glyph placement's
-    /// own, else `rect`.
-    apart: DeviceRect,
     /// Its own error, in levels.
     eta: f64,
     /// The child whose result it composites.
@@ -278,6 +275,10 @@ struct Buffer {
     masks: Vec<(usize, usize)>,
     /// Its dynamic stores, by footprint.
     dynamics: Vec<Dynamic>,
+    /// In a knockout group, the pixels of each of `dynamics` that the
+    /// disjoint-member identity compares: a glyph placement's own, else its
+    /// `rect`. Kept until the identity is decided.
+    footprints: Vec<DeviceRect>,
     /// The device pixels its stores can reach.
     extent: Option<bounds::Hull>,
     /// Plain groups of opaque members that flatten into it if its knockout
@@ -376,6 +377,7 @@ impl Survey<'_> {
             children: Vec::new(),
             masks: Vec::new(),
             dynamics: Vec::new(),
+            footprints: Vec::new(),
             extent: None,
             pending: Vec::new(),
             transfer: false,
@@ -475,10 +477,13 @@ impl Survey<'_> {
         // is (1 - α) b + α c: every store dynamic gives every member a
         // footprint.
         if target.knockout() && target.normal && target.stores == target.dynamic {
-            let comparisons = &mut self.comparisons;
-            let apart = disjoint_footprints(target, |store| store.apart, comparisons, bytes)?;
+            let apart = disjoint_members(target, &mut self.comparisons, bytes)?;
             self.buffers[buffer].apart_members = apart;
         }
+        let footprints = std::mem::take(&mut self.buffers[buffer].footprints);
+        let released = footprints.capacity() * size_of::<DeviceRect>();
+        drop(footprints);
+        bytes.refund(released);
         let pending = std::mem::take(&mut self.buffers[buffer].pending);
         if !self.buffers[buffer].knockout() {
             for &(key, child) in &pending {
@@ -612,15 +617,17 @@ impl Survey<'_> {
             target.eta += eta * count as f64;
             if target.dynamics.len() <= FOOTPRINTS {
                 bytes.reserve_capacity(&mut target.dynamics, rects.len())?;
-                target
-                    .dynamics
-                    .extend(rects.iter().enumerate().map(|(i, &rect)| Dynamic {
-                        rect,
-                        apart: stores.apart.get(i).copied().unwrap_or(rect),
-                        eta,
-                        child: cell,
-                        mask,
-                    }));
+                target.dynamics.extend(rects.iter().map(|&rect| Dynamic {
+                    rect,
+                    eta,
+                    child: cell,
+                    mask,
+                }));
+                if target.knockout_attribute {
+                    bytes.reserve_capacity(&mut target.footprints, rects.len())?;
+                    let own = |(i, &rect)| stores.apart.get(i).copied().unwrap_or(rect);
+                    target.footprints.extend(rects.iter().enumerate().map(own));
+                }
             }
         }
         let released = rects.capacity() * size_of::<DeviceRect>();
@@ -706,11 +713,14 @@ impl Survey<'_> {
         bytes.reserve_capacity(&mut target.dynamics, 1)?;
         target.dynamics.push(Dynamic {
             rect,
-            apart: rect,
             eta: 0.0,
             child: Some(child),
             mask,
         });
+        if target.knockout_attribute {
+            bytes.reserve_capacity(&mut target.footprints, 1)?;
+            target.footprints.push(rect);
+        }
         target.stores = target.stores.saturating_add(1);
         target.dynamic = target.dynamic.saturating_add(1);
         target.normal &= state.blend == BlendMode::Normal;
