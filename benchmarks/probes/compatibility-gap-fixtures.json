@@ -9,6 +9,8 @@
     "recovery_state/unmatched-ET-in-saved-state",
     "recovery_state/balanced-control",
     "recovery_state/unmatched-retains-state",
-    "recovery_state/closed-text-glyph-control"
+    "recovery_state/closed-text-glyph-control",
+    "content/syntax-Q",
+    "paint/text-end-without-begin"
   ]
 }
