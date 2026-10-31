@@ -131,6 +131,20 @@ def recovery_cases():
             name = 'repair-optional-' + label + '-' + policy.decode()
             geometry = [] if label == 'unregistered' and policy == b'AnyOff' else full
             yield repaired(name, pdf, tag, geometry, requirements=('content-optional',))
+    # A closing operator without its opening one is ignored, operands no
+    # operator takes at the end are dropped, and an EI directly after inline
+    # data its header measures is accepted; the content around them runs.
+    for label, operator, tag in [('Q', b'Q', 'graphics-unopened'), ('ET', b'ET', 'text-unopened'),
+                                 ('EMC', b'EMC', 'marked-unopened')]:
+        yield repaired('repair-unopened-' + label, page(operator + b' ' + red), tag, full)
+    # A form's Q cannot restore the state its page saved before drawing it.
+    yield repaired('repair-unopened-Q-form',
+                   form_pdf(content=b'Q 1 0 0 rg 0 0 4 4 re f', page_content=b'q 0 0 1 rg /Fm Do 0 0 2 2 re f Q'),
+                   'graphics-unopened', [((2, 2, 4, 4), RED), ((0, 0, 2, 2), BLUE)])
+    yield repaired('repair-operands-unused', page(red + b' 1 2 /Name'), 'operands-unused', full)
+    yield repaired('repair-inline-ei-unspaced',
+                   page(b'q 8 0 0 8 0 0 cm BI /W 1 /H 1 /CS /RGB /BPC 8 ID \xff\x00\x00EI Q'),
+                   'inline-ei-space', full)
 
 
 def cases():
@@ -213,6 +227,11 @@ def cases():
             yield Case(name, single_page([command], media_box=b"[0 0 64 64]"), RENDER,
                        ("content-explicit-operators",), "Unmatched saved graphics state is reported at sequence end",
                        oracle=opaque_rectangles(64,64,[]), repairs=("content.graphics-unclosed",), strict_valid=False)
+            continue
+        if name == "syntax-Q":
+            yield Case(name, single_page([command], media_box=b"[0 0 64 64]"), RENDER,
+                       ("content-explicit-operators",), "Q without q: strict mode fails; repair mode ignores it",
+                       oracle=opaque_rectangles(64,64,[]), repairs=("content.graphics-unopened",), strict_valid=False)
             continue
         yield Case(name, single_page([command], media_box=b"[0 0 8 8]" if name=="transfer" else b"[0 0 64 64]", resources=b"<< /ExtGState << /GS << /TR [] >> >> >>" if name=="transfer" else b"<< >>"), OPEN, ("content-explicit-operators",), "Valid file with malformed page content", extra={"api":"compile_page", "render_error":"Syntax"})
     yield Case("recursive-form", form_pdf(content=b"/Self Do", form_resources=b"<< /XObject << /Self 5 0 R >> >>"), OPEN, ("content-forms",), "Recursive form must return Cycle", extra={"api":"compile_page", "render_error":"Cycle"})

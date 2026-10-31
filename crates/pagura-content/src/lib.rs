@@ -23,4 +23,4 @@ use operator::Operator;
 
 pub use content::Content;
 pub use op::{ColorOperands, Dash, Op, Painting, Properties, Rule, TextArray, TextItem, TextItems};
-pub use reader::{Operation, Reader};
+pub use reader::{InlineData, Operation, Reader};

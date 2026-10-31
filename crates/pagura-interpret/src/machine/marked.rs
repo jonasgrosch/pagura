@@ -6,6 +6,7 @@
 use super::form::resource;
 use super::{Machine, Scope, Text};
 use crate::device::{Device, Marked, MarkedText};
+use crate::repairs;
 use pagura_content::{Op, Properties};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Position, Recovery, Result, Value,
@@ -65,12 +66,16 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         })
     }
 
-    /// `EMC`.
+    /// `EMC`; without an open sequence in its content sequence it is ignored,
+    /// a reported repair.
     pub(super) fn end_marked(&mut self, scope: &mut Scope) -> Result<()> {
-        scope.visible = scope
-            .marked
-            .pop()
-            .ok_or(Error::syntax("EMC without marked content"))?;
+        let Some(visible) = scope.marked.pop() else {
+            return self.repair(
+                repairs::MARKED_UNOPENED,
+                "EMC without BMC or BDC ignored (14.6)",
+            );
+        };
+        scope.visible = visible;
         if self.structure(scope) {
             self.device.marked(&Marked::End)?;
         }

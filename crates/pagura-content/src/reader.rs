@@ -87,6 +87,17 @@ impl<'c> Reader<'c> {
         (self.taken || self.operands.is_empty()) && self.compatibility == 0
     }
 
+    /// Discards the operands no operator has taken, returning whether there
+    /// were any: at the end of a content sequence they can only be dropped.
+    pub fn discard_operands(&mut self) -> bool {
+        if self.taken || self.operands.is_empty() {
+            return false;
+        }
+        self.operands.clear();
+        self.buffers.clear();
+        true
+    }
+
     /// The next operation, charging one unit of `tokens` per token, or
     /// `None` at the end of the content.
     ///
@@ -394,7 +405,9 @@ impl<'c> Reader<'c> {
     /// Reads the data of the inline image whose header [`Self::next`] just
     /// yielded, and the `EI` after it. `length` receives the bytes from the
     /// start of the data to the end of the content and returns the data's
-    /// length, which depends on the image's filters and framing.
+    /// length, which depends on the image's filters and framing. An `EI`
+    /// directly after the data, without white space, is read and marked in
+    /// [`InlineData::unspaced`] for the caller to report or reject.
     ///
     /// # Errors
     ///
@@ -404,7 +417,7 @@ impl<'c> Reader<'c> {
     pub fn inline_image_data(
         &mut self,
         length: impl FnOnce(&[u8]) -> Result<usize>,
-    ) -> Result<&'c [u8]> {
+    ) -> Result<InlineData<'c>> {
         let (offset, start) = self
             .inline
             .take()
@@ -417,7 +430,7 @@ impl<'c> Reader<'c> {
         &mut self,
         start: usize,
         length: impl FnOnce(&[u8]) -> Result<usize>,
-    ) -> Result<&'c [u8]> {
+    ) -> Result<InlineData<'c>> {
         let data = self.data;
         let image = data
             .get(start..)
@@ -429,22 +442,37 @@ impl<'c> Reader<'c> {
         if end > data.len() {
             return Err(Error::syntax("offset outside input").at(Position::Buffer(end)));
         }
-        if data.get(end).is_none_or(|&b| !is_whitespace(b)) {
+        let Some(&next) = data.get(end) else {
             return Err(Error::syntax("inline image requires EI"));
-        }
-        let at = skip(data, end);
+        };
+        let spaced = is_whitespace(next);
+        let at = if spaced { skip(data, end) } else { end };
         let word = word(data, at);
-        if word.is_empty() {
+        if spaced && word.is_empty() {
             return Err(Error::syntax("expected token").at(Position::Buffer(at)));
         }
         if word != b"EI" {
             return Err(Error::syntax("inline image requires EI"));
         }
         self.position = at + word.len();
-        image
+        let data = image
             .get(..length)
-            .ok_or(Error::syntax("truncated inline data"))
+            .ok_or(Error::syntax("truncated inline data"))?;
+        Ok(InlineData {
+            data,
+            unspaced: !spaced,
+        })
     }
+}
+
+/// The data of an inline image, read by [`Reader::inline_image_data`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InlineData<'c> {
+    /// The image data, as long as its header and filters determine.
+    pub data: &'c [u8],
+    /// Whether `EI` follows the data without the white space that separates
+    /// tokens (7.2.3), which only a reported repair accepts.
+    pub unspaced: bool,
 }
 
 /// Opens or closes a compatibility section for `BX` and `EX`.

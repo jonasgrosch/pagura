@@ -735,21 +735,6 @@
       "render_error": "syntax"
     },
     {
-      "id": "paint/text-end-without-begin",
-      "kind": "pdf",
-      "description": "text end without begin",
-      "expected": "open",
-      "requirements": [
-        "paint-text-errors"
-      ],
-      "path": "corpus/generated/paint/text-end-without-begin.pdf",
-      "sha256": "bcb3ab026c4b1c2bada611c4f7b60516e7db80fefc11b2e729fff5669a43471b",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "syntax"
-    },
-    {
       "id": "paint/text-unfinished",
       "kind": "pdf",
       "description": "text unfinished",
@@ -868,6 +853,27 @@
       "strict_valid": true,
       "repairs": [],
       "render_error": "syntax"
+    },
+    {
+      "id": "paint/text-end-without-begin",
+      "kind": "pdf",
+      "description": "ET without BT: strict mode fails; repair mode ignores it",
+      "expected": "render",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-end-without-begin.pdf",
+      "sha256": "b13bddf32f7d2b3f449f5199f90868f0ad1405a656cec74798ba79e1eb7ad8ef",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.text-unopened"
+      ],
+      "oracle": "corpus/generated/paint/text-end-without-begin.ppm",
+      "oracle_sha256": "47be1b94a5502e9eda650ea5961632f20417fa44d9053f3dccc23c75858a0627",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
     },
     {
       "id": "paint/image-page-rgb",
