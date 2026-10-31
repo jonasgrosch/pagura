@@ -373,7 +373,7 @@
     "crates/pagura-content/src/repairs.rs": "6051c316d3806007ea5b7b03e2d90cc8490ea37671411509b2a6ab26ad7af867",
     "crates/pagura-interpret/src/machine/image.rs": "431b96848e5b18c34d46a9a80d39c8d6ac21e4e57b4a3257de55e1e177b24112",
     "tools/fixturegen/paint_inline_framing.py": "1b4c696d58206cac7ab9c1a9f3220a3f28e7a1eba1412c0b165d0edcf5dee838",
-    "crates/pagura/tests/api/tags.rs": "3acd2f314d3329bff6d70ae2262043a73ee3cee627b1fecdc9663bc03f30bc7c",
+    "crates/pagura/tests/api/tags.rs": "7dc8337b99a269eeb182b2f7de7218b498a1f01d9c27802cb6ecf25ea0247099",
     "crates/pagura-image/src/repairs.rs": "224880b05bd92fe284641bb85b91d165dad56e450e5566c3421cb265d9bc75e9",
     "crates/pagura-image/tests/jp2_palette.rs": "4adb9bcb685cd1f68666b7ee2a6539d858ffdfe222f66e0653eabc769cd3e742",
     "tools/fixturegen/jp2_palette.py": "1ee53a5116ee56fc44c735021966c4df67d52aa08fbfd31f1a9a077f600a1b7e",
