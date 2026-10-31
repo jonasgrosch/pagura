@@ -1,0 +1,56 @@
+{
+  "integer-v1": {
+    "api": {
+      "rust": "adapter.rs",
+      "package": "pagura-image-repair-qualification"
+    },
+    "memory_native": {
+      "rust": "memory_native.rs",
+      "package": "calibrated-blackpoint-memory-lifecycle"
+    },
+    "memory_wasi": {
+      "rust": "memory_wasi.rs",
+      "package": "calibrated-blackpoint-memory-lifecycle"
+    },
+    "runtime": {
+      "rust": "runtime-integer-v1.rs",
+      "package": "calibrated-blackpoint-runtime-qualification"
+    }
+  },
+  "inline-v2": {
+    "api": {
+      "rust": "adapter.rs",
+      "package": "pagura-image-repair-qualification"
+    },
+    "memory_native": {
+      "rust": "memory_native.rs",
+      "package": "curved-stencil-memory-lifecycle"
+    },
+    "memory_wasi": {
+      "rust": "memory_wasi.rs",
+      "package": "curved-stencil-memory-lifecycle"
+    },
+    "runtime": {
+      "rust": "runtime-inline-v2.rs",
+      "package": "curved-stencil-runtime-qualification"
+    }
+  },
+  "cid-v1": {
+    "api": {
+      "rust": "adapter.rs",
+      "package": "pagura-image-repair-qualification"
+    },
+    "memory_native": {
+      "rust": "memory_native.rs",
+      "package": "curved-stencil-memory-lifecycle"
+    },
+    "memory_wasi": {
+      "rust": "memory_wasi.rs",
+      "package": "curved-stencil-memory-lifecycle"
+    },
+    "runtime": {
+      "rust": "runtime-cid-v1.rs",
+      "package": "curved-stencil-runtime-qualification"
+    }
+  }
+}
