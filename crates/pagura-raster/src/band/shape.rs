@@ -1302,6 +1302,16 @@ fn doubt(
 /// Where the certificate located a polygon's doubt within its rows: the
 /// stretches between its windows pass their pieces to the resolver as
 /// certified runs, which it emits as sides unswept.
+///
+/// A run's bounds cut none of its row's pieces, so the chunks swept beside
+/// it split no piece more finely than the row's sweep without it. Its own
+/// pieces are emitted once each, where that sweep may drop a pair that
+/// coincide running opposite ways. A row therefore keeps at most as many
+/// more resolved sides as it has pieces wholly within its certified runs,
+/// which debug builds check against the row resolved without them; a
+/// shape keeps at most that many more lines, each of a line's bytes and
+/// its cells' work, and its resolved lines may double once more as they
+/// grow.
 struct Located {
     windows: Windows,
     /// The winding off the pieces outside the windows: 0 or this sign.
@@ -1592,6 +1602,8 @@ fn resolve_pieces(
     work.charge(pieces.len())?;
     sides.clear();
     let top = f64::from(y);
+    #[cfg(debug_assertions)]
+    let passed = passed_pieces(pieces, resolver.runs());
     resolver.row_proven(
         pieces,
         rules,
@@ -1599,8 +1611,53 @@ fn resolve_pieces(
         &mut *spare,
         (sides, Meters { work, bytes }),
     )?;
+    #[cfg(debug_assertions)]
+    if passed > 0 {
+        check_split((pieces, rules, top), sides.len(), passed);
+    }
     resolver.give_up(spare, resolved.push_need(sides.len()), bytes);
     resolved.push(y, sides, bytes)
+}
+
+/// The pieces wholly within the certified ones of `runs`.
+#[cfg(debug_assertions)]
+fn passed_pieces(pieces: &[Piece], runs: &[(f64, f64, Run)]) -> usize {
+    pieces
+        .iter()
+        .filter(|p| {
+            let (a, b) = (p.line.x(p.lo), p.line.x(p.hi));
+            runs.iter().any(|&(lo, hi, run)| {
+                matches!(run, Run::Certified(_)) && lo <= a.min(b) && a.max(b) <= hi
+            })
+        })
+        .count()
+}
+
+/// Checks that a row's `sides`, resolved passing `passed` pieces over in
+/// certified runs, are at most that many more than without the runs.
+/// Debug builds only, on unmetered scratch.
+#[cfg(debug_assertions)]
+fn check_split((pieces, rules, top): (&[Piece], &[FillRule], f64), sides: usize, passed: usize) {
+    let mut plain = Vec::new();
+    let (mut work, mut bytes) = (
+        Meter::new(usize::MAX, "check"),
+        Meter::new(usize::MAX, "check"),
+    );
+    let meters = Meters {
+        work: &mut work,
+        bytes: &mut bytes,
+    };
+    if Resolver::default()
+        .row(pieces, rules, top, (&mut plain, meters))
+        .is_err()
+    {
+        return;
+    }
+    debug_assert!(
+        sides <= plain.len() + passed,
+        "row {top}: {sides} sides passing {passed} pieces over, {} without",
+        plain.len()
+    );
 }
 
 #[cfg(test)]
