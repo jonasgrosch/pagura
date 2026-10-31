@@ -141,22 +141,31 @@ impl<'c> Reader<'c> {
         }
         let content = self.content;
         let (operator, offset) = loop {
+            let end = self.position;
             self.position = skip(self.data, self.position);
             let offset = self.position;
             let Some(&byte) = self.data.get(offset) else {
+                // The operand before may run into the cut if nothing ends it.
+                if end == self.data.len() && self.runs_into_cut(end, None) {
+                    self.end_at_cut();
+                }
                 return Ok(None);
             };
-            let token = self.token(byte, offset, tokens);
-            if self.runs_into_cut(offset, token.as_ref().err()) {
-                self.end_at_cut();
-                return Ok(None);
-            }
-            match token {
+            match self.token(byte, offset, tokens) {
                 Ok(Some(operator)) => break (operator, offset),
                 Ok(None) => {}
+                Err(error) if self.runs_into_cut(offset, Some(&error)) => {
+                    self.end_at_cut();
+                    return Ok(None);
+                }
                 Err(error) => return Err(content.locate(error, offset)),
             }
         };
+        // So may an operator that reaches the end; looked up once per operation.
+        if self.position == self.data.len() && self.runs_into_cut(offset, None) {
+            self.end_at_cut();
+            return Ok(None);
+        }
         self.taken = true;
         if operator == Operator::BeginInlineImage {
             let header = self.inline_header(offset, tokens);
