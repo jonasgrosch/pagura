@@ -357,6 +357,22 @@ impl Plan {
         spots.fill(1.0);
     }
 
+    /// [`Self::convert_curved_rounded`] of three components into RGB
+    /// resolved once, where the conversion is a matrix/TRC profile's alone
+    /// into encoded sRGB with no spot channels; `None` otherwise.
+    pub(super) fn curved_rgb(&self, channels: usize) -> Option<CurvedRgb> {
+        let icc = self.icc()?;
+        if icc.profile.curved_inputs(icc.intent) != Some(3)
+            || icc.count != 3
+            || !matches!(icc.encode, Encode::Rgb)
+            || channels != 3
+        {
+            return None;
+        }
+        let (matrix, scale) = icc.profile.curved_matrix(icc.intent)?;
+        Some(CurvedRgb { matrix, scale })
+    }
+
     /// [`Self::convert_rounded`] of components already through
     /// [`Self::curve`].
     pub(super) fn convert_curved_rounded(
@@ -630,9 +646,43 @@ fn enclose_clip(
     Ok(clipped)
 }
 
+/// [`Converter::convert_curved_rounded`] of a matrix/TRC profile's three
+/// curved components into encoded sRGB, with its stages resolved once: the
+/// same arithmetic in the same order, without finding the stages again.
+///
+/// [`Converter::convert_curved_rounded`]: crate::Converter::convert_curved_rounded
+#[derive(Debug, Clone, Copy)]
+pub struct CurvedRgb {
+    matrix: cie::Matrix,
+    /// The absolute intent's factor for each XYZ value.
+    scale: Option<[f64; 3]>,
+}
+
+impl CurvedRgb {
+    /// The encoded sRGB of `curved`, kept to `round` as
+    /// [`Converter::convert_curved_rounded`] keeps it, bit for bit.
+    ///
+    /// [`Converter::convert_curved_rounded`]: crate::Converter::convert_curved_rounded
+    #[inline]
+    pub fn convert_rounded(&self, curved: [f64; 3], round: impl Fn(f64) -> u32) -> [f64; 3] {
+        let mut xyz = cie::map(self.matrix, curved);
+        if let Some(scale) = self.scale {
+            for (value, scale) in xyz.iter_mut().zip(scale) {
+                *value *= scale;
+            }
+        }
+        cie::linear_srgb(cie::map(cie::D50_TO_D65, xyz)).map(|v| encode_rounded(v, &round))
+    }
+}
+
 /// The encoding of linear value `v`, or where `round` of it is all that
 /// matters, a value that rounds alike, found without the transfer function's
 /// power where its bounds ([`cie::encode_estimate`]) decide the rounding.
+#[expect(
+    clippy::inline_always,
+    reason = "a colour's channels find their bounds side by side, not one call after another"
+)]
+#[inline(always)]
 fn encode_rounded(v: f64, round: &impl Fn(f64) -> u32) -> f64 {
     match cie::encode_estimate(v) {
         Some([low, high]) if round(low) == round(high) => low,

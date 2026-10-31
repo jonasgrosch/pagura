@@ -76,6 +76,17 @@ impl Scratch {
             Self::Contour(_) => {}
         }
     }
+
+    /// Reads rows of texels converted the `to` way from now on, where
+    /// they were converted the `from` way, keeping the rows of others
+    /// apart. Only nearest samples, which only separable plans hold rows
+    /// of, convert other than exactly: upright bilinear rows are always
+    /// exact.
+    pub(super) fn select(&mut self, from: u8, to: u8) {
+        if let Self::Separable(scratch) = self {
+            scratch.select(from, to);
+        }
+    }
 }
 
 impl Sampling {

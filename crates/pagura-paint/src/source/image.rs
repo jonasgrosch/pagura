@@ -407,9 +407,11 @@ impl ImageSampler {
 
     /// Keeps the values of each component's codes through the conversion's
     /// first stage ([`texels::Curved`]) for texels converted while
-    /// painting, charged to `bytes` where it has room for them. They are
-    /// optional, admitted once the page's own storage is charged: without
-    /// them texels convert directly, to the same values.
+    /// painting, and where three of them alone give a texel's colour, the
+    /// rest of its conversion into RGB resolved once, each charged to
+    /// `bytes` where it has room. They are optional, admitted once the
+    /// page's own storage is charged: without them texels convert
+    /// directly, to the same values.
     pub(crate) fn admit_curves(&mut self, bytes: &mut Meter) {
         let Some(prepared) = self.prepared.as_deref_mut() else {
             return;
@@ -422,7 +424,17 @@ impl ImageSampler {
         } = &mut prepared.plan
             && paint.1.converts_while_painting()
         {
-            paint.0.curved = curved(&paint.0, samples, bytes);
+            let colors = &mut paint.0;
+            colors.curved = curved(colors, samples, bytes);
+            let plain =
+                colors.maxima.len() == 3 && colors.key.is_none() && colors.embedded.is_none();
+            if let Some(curved) = &mut colors.curved
+                && plain
+                && let Some(rgb) = colors.convert.curved_rgb()
+                && bytes.charge(size_of::<pagura_color::CurvedRgb>()).is_ok()
+            {
+                curved.keep_rgb(rgb);
+            }
         }
     }
 
@@ -657,11 +669,7 @@ impl ImageSampler {
         let mut storage = std::mem::take(&mut scratch.summed);
         let summed = scratch::grown(&mut storage, len * stride);
         let mode = prepared.texel_mode(paint, pixels);
-        // Rows held for texels converted otherwise must not serve these.
-        if scratch.mode != mode {
-            scratch.plan.reset();
-            scratch.mode = mode;
-        }
+        scratch.select(mode);
         prepared.texels((plan, paint), pixels, scratch, (lanes, mode), summed);
         let straight = Straight {
             summed,
@@ -861,19 +869,15 @@ impl Prepared {
         if !paint.opaque(&self.image.image) || self.geometry.mode() == Mode::Bilinear {
             return false;
         }
-        if self.nearest_words((plan, paint), pixels, scratch, out) {
+        let mode = self.word_mode(paint);
+        scratch.select(mode);
+        if self.nearest_words((plan, paint), pixels, scratch, mode, out) {
             return true;
         }
         let len = out.len();
         let mut storage = std::mem::take(&mut scratch.summed);
         let values = scratch::grown(&mut storage, len * lanes);
-        self.texels(
-            (plan, paint),
-            pixels,
-            scratch,
-            (lanes, TexelMode::Exact),
-            values,
-        );
+        self.texels((plan, paint), pixels, scratch, (lanes, mode), values);
         let texels = values.as_chunks::<5>().0;
         // A footprint that misses the image leaves its pixel transparent.
         let opaque = texels.iter().all(|texel| texel[3] == 1.0);
@@ -892,9 +896,9 @@ impl Prepared {
     }
 
     /// [`Self::texel_words`] of upright nearest samples of an unmasked
-    /// memoized image, written as its texel rows are read, without the
-    /// texels' alpha and shape between: false, with nothing written, for
-    /// other images and placements. (Unmasked table images placed upright
+    /// memoized image, converted by `mode` and written as its texel rows are
+    /// read, without the texels' alpha and shape between: false, with
+    /// nothing written, for other images and placements. (Unmasked table images placed upright
     /// sample by codes.) Out of line, so that the path of other sources
     /// stays as it was.
     #[inline(never)]
@@ -903,6 +907,7 @@ impl Prepared {
         (plan, paint): (&Sampling, &Paint),
         pixels: Pixels<'_>,
         scratch: &mut ImageScratch,
+        mode: TexelMode,
         out: &mut [[u16; 4]],
     ) -> bool {
         let (Paint::Colors(paint), None) = (paint, &self.mask) else {
@@ -913,7 +918,7 @@ impl Prepared {
         };
         let image = &self.image.image;
         MemoTexels::new(image, &paint.0, None, memo).is_some_and(|texels| {
-            let texels = texels.converting(TexelMode::Exact);
+            let texels = texels.converting(mode);
             plan.words(&self.geometry, pixels, &mut scratch.plan, &texels, out)
         })
     }
@@ -934,6 +939,23 @@ impl Prepared {
                 if copies && matches!(paint.1, Strategy::Memo(_)) && paint.0.convert.rounds() =>
             {
                 TexelMode::Rounded
+            }
+            _ => TexelMode::Exact,
+        }
+    }
+
+    /// How [`Self::texel_words`] converts the span's texels: each to a
+    /// value of the same N16 word as its exact colour where every pixel
+    /// copies one texel as its word (nearest samples of a memoized image);
+    /// otherwise exactly.
+    fn word_mode(&self, paint: &Paint) -> TexelMode {
+        match paint {
+            Paint::Colors(paint)
+                if self.geometry.mode() == Mode::Nearest
+                    && matches!(paint.1, Strategy::Memo(_))
+                    && paint.0.convert.rounds() =>
+            {
+                TexelMode::Words
             }
             _ => TexelMode::Exact,
         }
