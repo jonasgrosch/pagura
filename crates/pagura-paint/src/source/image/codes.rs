@@ -284,6 +284,89 @@ impl Lanes {
         });
     }
 
+    /// [`Self::write_codes`] of lanes of two codes that are not opaque, such
+    /// as a stencil's: each pixel's straight colours, alpha and shape copied
+    /// from those of its code, formed once per span for one, three or four
+    /// colour channels. Out of line, so that the store's span loop, where
+    /// `write_codes` is inlined, compiles as it did.
+    #[inline(never)]
+    fn write_two_codes(
+        &self,
+        codes: &[u8],
+        n: usize,
+        out: &mut SpanColors,
+        mut shape: Option<&mut Vec<f64>>,
+    ) {
+        let copied = match self.channels {
+            1 => self.two_codes::<1, 3>(codes, n, out, shape.as_deref_mut()),
+            3 => self.two_codes::<3, 5>(codes, n, out, shape.as_deref_mut()),
+            4 => self.two_codes::<4, 6>(codes, n, out, shape.as_deref_mut()),
+            _ => false,
+        };
+        if !copied {
+            self.write_codes(codes, n, out, shape);
+        }
+    }
+
+    /// [`Self::write_two_codes`] for `C` colour channels of `L` lanes (with
+    /// alpha and shape) that all follow the one component; false when the
+    /// lanes are not of that shape.
+    fn two_codes<const C: usize, const L: usize>(
+        &self,
+        codes: &[u8],
+        n: usize,
+        out: &mut SpanColors,
+        shape: Option<&mut Vec<f64>>,
+    ) -> bool {
+        let Ok(table) = <&[[f64; 256]; L]>::try_from(self.table.as_slice()) else {
+            return false;
+        };
+        if self.channels != C || C + 2 != L || n == 0 || self.component.iter().any(|&c| c != 0) {
+            return false;
+        }
+        // Each code's straight colours, alpha and shape, as `emit` forms
+        // them; a code past the two has every lane's value zero, and so all
+        // of them.
+        let texel = |code: usize| {
+            let mut texel: [f64; L] = std::array::from_fn(|lane| table[lane][code]);
+            let (premultiplied, rest) = texel.split_at_mut(C);
+            let alpha = rest[0];
+            for value in premultiplied {
+                *value = if alpha == 1.0 {
+                    *value
+                } else if alpha > 0.0 {
+                    *value / alpha
+                } else {
+                    0.0
+                };
+            }
+            texel
+        };
+        let texels = [texel(0), texel(1), [0.0; L]];
+        let pixels = codes.chunks_exact(n);
+        let len = pixels.len();
+        out.colors.resize(len * C, 0.0);
+        out.alpha.clear();
+        out.alpha.resize(len, 0.0);
+        let mut shape = shape;
+        if let Some(shape) = shape.as_deref_mut() {
+            shape.clear();
+            shape.resize(len, 0.0);
+        }
+        let colors = out.colors.as_chunks_mut::<C>().0;
+        for (index, ((pixel, colors), alpha)) in pixels.zip(colors).zip(&mut out.alpha).enumerate()
+        {
+            let code = pixel.first().map_or(2, |&code| usize::from(code.min(2)));
+            let (straight, rest) = texels[code].split_at(C);
+            colors.copy_from_slice(straight);
+            *alpha = rest[0];
+            if let Some(own) = shape.as_deref_mut().and_then(|shape| shape.get_mut(index)) {
+                *own = rest[1];
+            }
+        }
+        true
+    }
+
     /// The colours of opaque pixels from their average codes, `N` per pixel,
     /// for `L` lanes; false when the lanes are not of that shape.
     fn affine_opaque<const N: usize, const L: usize>(
@@ -753,8 +836,13 @@ impl Codes {
         };
         let n = rows.width();
         if self.separable.nearest() {
+            let lanes = &self.lanes;
             self.separable.gather(&rows, pixels, scratch, |codes| {
-                self.lanes.write_codes(codes, n, out, shape);
+                if lanes.opaque || lanes.maximum != 1 {
+                    lanes.write_codes(codes, n, out, shape);
+                } else {
+                    lanes.write_two_codes(codes, n, out, shape);
+                }
             });
             return;
         }
@@ -1076,6 +1164,66 @@ mod tests {
                     );
                     let context =
                         format!("{channels} channels, {codes} codes, ends {:?}", lane.ends);
+                    assert_eq!(bits(&fast.colors), bits(&general.colors), "{context}");
+                    assert_eq!(bits(&fast.alpha), bits(&general.alpha), "{context}");
+                    assert_eq!(bits(&fast_shape), bits(&general_shape), "{context}");
+                }
+            }
+        }
+    }
+
+    /// Lanes of two codes that are not opaque write, from each pixel's
+    /// code, exactly the span the general route writes: stencils upright
+    /// and inverted and lanes of any ends, both codes and codes past them,
+    /// alone or followed by their complements.
+    #[test]
+    fn two_code_spans_are_the_general_route_bit_for_bit() {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            f64::from(u32::try_from(state >> 40).unwrap()) / f64::from(1u32 << 24)
+        };
+        let samples: Vec<u8> = (0..=u8::MAX).chain((0..=u8::MAX).rev()).collect();
+        for channels in [1_usize, 3, 4] {
+            let lanes = channels + 2;
+            let color: Vec<f64> = (0..channels).map(|_| next()).collect();
+            let upright = |l: usize| (0.0, color.get(l).copied().unwrap_or(1.0));
+            let inverted = |l: usize| (color.get(l).copied().unwrap_or(1.0), 0.0);
+            let ends: [Vec<(f64, f64)>; 3] = [
+                (0..lanes).map(upright).collect(),
+                (0..lanes).map(inverted).collect(),
+                (0..lanes).map(|_| (next(), next())).collect(),
+            ];
+            for ends in ends {
+                let table: Vec<f64> = ends
+                    .iter()
+                    .map(|e| e.0)
+                    .chain(ends.iter().map(|e| e.1))
+                    .collect();
+                let meter = &mut Meter::new(usize::MAX, "test");
+                let lane = Lanes::single(&table, lanes, 2, false, meter)
+                    .unwrap()
+                    .unwrap();
+                for n in [1, 2] {
+                    let (mut fast, mut general) = (SpanColors::default(), SpanColors::default());
+                    let (mut fast_shape, mut general_shape) = (vec![7.0; 3], Vec::new());
+                    lane.write_two_codes(&samples, n, &mut fast, Some(&mut fast_shape));
+                    lane.emit(
+                        samples.chunks_exact(n),
+                        &mut general,
+                        Some(&mut general_shape),
+                        |codes, values| {
+                            for ((value, &component), table) in
+                                values.iter_mut().zip(&lane.component).zip(&lane.table)
+                            {
+                                let code = codes.get(component).copied().unwrap_or(0);
+                                *value = table[usize::from(code)];
+                            }
+                        },
+                    );
+                    let context = format!("{channels} channels, {n} a pixel, ends {ends:?}");
                     assert_eq!(bits(&fast.colors), bits(&general.colors), "{context}");
                     assert_eq!(bits(&fast.alpha), bits(&general.alpha), "{context}");
                     assert_eq!(bits(&fast_shape), bits(&general_shape), "{context}");
