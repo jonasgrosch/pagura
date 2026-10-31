@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Joint qualified-slice interactions append20 single-page contracts; two clean-page0/repaired-page1 documents are qualified separately at both page indices. Includes21 literal-null annotation contracts; all previous selectors remain in order. Includes the complete checked-CID selectors; all previous selectors remain in order.",
+  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Joint qualified-slice interactions append20 single-page contracts; two clean-page0/repaired-page1 documents are qualified separately at both page indices. Includes21 literal-null annotation contracts; all previous selectors remain in order. Includes the complete checked-CID selectors; all previous selectors remain in order. Includes bounded calculator branch selectors; all previous selectors remain in order.",
   "cases": [
     "rich_annotations/plain-72",
     "rich_annotations/stored-72",
@@ -1684,6 +1684,26 @@
     "text/paint-checked-cid-bolditalic-CIDFontType0",
     "text/paint-legacy-cid-bolditalic-CIDFontType0",
     "text/paint-checked-cid-bolditalic-CIDFontType2",
-    "text/paint-legacy-cid-bolditalic-CIDFontType2"
+    "text/paint-legacy-cid-bolditalic-CIDFontType2",
+    "calculator_branches/piecewise-endpoints",
+    "calculator_branches/two-depth-endpoints",
+    "calculator_branches/bounded-ge",
+    "calculator_branches/bounded-le",
+    "calculator_branches/bounded-gt",
+    "calculator_branches/bounded-lt",
+    "calculator_branches/clamped-domain-red",
+    "calculator_branches/existing-same-depth",
+    "calculator_branches/piecewise-axial",
+    "calculator_branches/output-mismatch",
+    "calculator_branches/negative-domain-empty-path",
+    "calculator_branches/unknown-copy",
+    "calculator_branches/unknown-index",
+    "calculator_branches/numeric-underflow",
+    "calculator_branches/wrong-result-type",
+    "calculator_branches/wrong-condition-type",
+    "calculator_branches/stack-overflow",
+    "calculator_branches/piecewise-square",
+    "calculator_branches/piecewise-square-direct-twin",
+    "calculator_branches/shared-function-pages"
   ]
 }

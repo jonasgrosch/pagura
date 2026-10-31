@@ -407,6 +407,61 @@ fn function_work_is_reserved_per_sample() {
 }
 
 #[test]
+fn varying_depth_calculator_reserves_its_worst_path_for_every_sample() {
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let function = Function::calculator(pagura_color::CalculatorFunction {
+        domain: vec![[0.0, 1.0]], range: vec![[0.0, 1.0]; 3],
+        program: Arc::from(&b"{dup 0 ge {dup 1 sub abs 0.005 lt {pop 0.934 0.1935 0.1406 -5} if} if 0 ge {1 0 0} if}"[..]),
+    }, &limits).unwrap();
+    assert_eq!(function.cost(), 20);
+    let parsed = Parsed {
+        name: String::from("bounded calculator"),
+        space: Arc::new(ColorSpace::DeviceRgb),
+        function: Some(ShadingFunction::Single(Arc::new(function))),
+        kind: ShadingKind::Radial {
+            start: Point::new(0.0, 0.0),
+            start_radius: 0.0,
+            end: Point::new(0.0, 0.0),
+            end_radius: 8.0,
+            domain: [0.0, 1.0],
+            extend: [true, true],
+        },
+        bbox: None,
+        antialias: true,
+        background: None,
+        old_mesh: Vec::new(),
+    };
+    let shading = parts(&parsed, true);
+    let prepare = || {
+        ShadingSource::new(
+            &shading,
+            Transform::IDENTITY,
+            &context,
+            Use::Operator,
+            (
+                &mut Meter::new(limits.render_bytes, "test bytes"),
+                &mut Meter::new(usize::MAX, "test functions"),
+            ),
+        )
+        .unwrap()
+    };
+    let mut bytes = Meter::new(limits.render_bytes, "test bytes");
+    let mut exact = Meter::new(80_000, "bounded calculator work");
+    prepare()
+        .reserve((1000, context.region), (&mut bytes, &mut exact))
+        .unwrap();
+    assert_eq!(exact.used(), 80_000);
+    let mut tight = Meter::new(79_999, "bounded calculator work");
+    let error = prepare()
+        .reserve((1000, context.region), (&mut bytes, &mut tight))
+        .unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(error.message, "bounded calculator work");
+}
+
+#[test]
 fn refused_ramp_storage_keeps_attempted_function_work() {
     let target = Target::new(Process::Rgb);
     let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());

@@ -221,6 +221,25 @@ types per branch); a program that cannot be validated fails in preparation and
 arithmetic faults get defined results. Budgets are per render, so a whole page
 can reach a limit that its tiles do not.
 
+The original Type 4 proof remains first. Only its
+`Unsupported(function.calculator)` outcome may qualify through an additional
+fixed two-slot frontier joined by stack depth. Real-value facts start from
+validated finite Domain bounds, to which evaluation clips inputs, and from
+literals. Ordered comparisons use only separated intervals; arithmetic drops
+unproved bounds and no input correlation is inferred. Every surviving endpoint
+must contain the declared numeric result count. Unknown stack counts,
+incompatible kinds, a third depth and any failed proof retain the complete
+original refusal. Original Syntax and Limit outcomes are not reconsidered.
+Each syntax subtree is visited once with at most two abstract states; together
+with the original checker, an instruction has at most three abstract operator
+applications. Copies and joins stay bounded by the 100-entry stack. This is an
+algorithmic bound, not a wall-clock or memory-neutrality claim: the larger cold
+kind representation and additional proof need actual cost/memory evidence.
+Runtime/register evaluation, arithmetic and the meaning of `function_work`
+are unchanged; the maximum reaching prefix, including copy/roll moves, is
+reserved before execution.
+
+
 ### 8. The Store
 
 `pagura_core::Store` owns every reusable byte of rendering under one budget:

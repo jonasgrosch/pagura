@@ -1,11 +1,13 @@
 # Capability and evidence status
 
 This source combines certified opaque-black tiling, calibrated BlackPoint metadata
-with compensation disabled, unmatched-EMC recovery and literal-null annotation
-members checked Minion CID source-Unicode fallback, and complete single-page JBIG2 packaging repair. The original component evidence retains its exact source provenance;
-this selected union still requires its own accuracy, all-page, parity, cost,
-memory and exact-head CI qualification. No aggregate gain follows by summing
-component branches. Referenced null annotations remain errors in this source.
+with compensation disabled, unmatched-EMC recovery, literal-null annotation
+members, checked Minion CID source-Unicode fallback, complete single-page JBIG2
+packaging repair and bounded Type 4 calculator branch proofs. Component evidence
+retains its exact source provenance. This selected union requires its own
+accuracy, all-page, parity, cost, memory and exact-head CI qualification; no
+aggregate gain follows by summing branches. Referenced null annotations remain
+errors in this source.
 
 Pagura has substantial rendering, reading, form-filling and incremental-writing
 support. It is **not a complete PDF implementation**, and feature parity with
@@ -226,3 +228,13 @@ requirement entry and this page together. Record library, renderer, CLI, host
 and viewer availability separately. Replace a historical scoreboard only with
 an actual run that records the new source/binary/corpus identities. Unknown or
 untested competitor cells remain open in the parity plan; they are never a pass.
+
+
+Type 4 calculator source support additionally proves at most two intermediate
+stack depths using validated, evaluator-clamped Domain facts. Independent
+endpoint, full RGB/RGBA, shared-function later-page, work-reservation and
+native/WASI parity controls define this subset. Unknown stack counts,
+incompatible joins, a third depth and unproved correlations remain explicitly
+unsupported; original Syntax/Limit outcomes remain. This source inventory does
+not claim a public-page admission, a performance/memory result or full Type 4
+coverage; exact-head qualification is separate.

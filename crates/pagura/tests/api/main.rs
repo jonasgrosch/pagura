@@ -5,6 +5,7 @@
 mod annotation_compat;
 mod annotation_empty_widgets;
 mod annotations;
+mod calculator;
 mod document;
 mod editing;
 mod facade;
