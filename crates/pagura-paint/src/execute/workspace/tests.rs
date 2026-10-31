@@ -178,6 +178,7 @@ fn page_pointer(page: &PageBuffer) -> *const u8 {
         PageBuffer::F64(values) => values.as_ptr().cast(),
         PageBuffer::N16(values) => values.as_ptr().cast(),
         PageBuffer::F32(values) => values.as_ptr().cast(),
+        PageBuffer::F32Cmyk(values) => values.as_ptr().cast(),
     }
 }
 

@@ -69,6 +69,9 @@ pub(crate) enum PageBuffer {
     N16(Vec<[u16; 4]>),
     /// Premultiplied RGBA levels with the background embedded.
     F32(Vec<[f32; 4]>),
+    /// Premultiplied CMYK and alpha levels, transparent where nothing was
+    /// stored: output composites them over the background.
+    F32Cmyk(Vec<[f32; 5]>),
 }
 
 /// Page pixels and the dirty rows that output must drain and restore
@@ -123,6 +126,7 @@ impl PageBuffer {
         match format {
             Format::F64 => layout.stride() * size_of::<f64>(),
             Format::N16 => size_of::<[u16; 4]>(),
+            Format::F32 if cmyk(layout) => size_of::<[f32; 5]>(),
             Format::F32 => size_of::<[f32; 4]>(),
         }
     }
@@ -142,6 +146,7 @@ impl PageBuffer {
         Ok(match format {
             Format::F64 => Self::F64(allocate(pixels.saturating_mul(layout.stride()))?),
             Format::N16 => Self::N16(allocate(pixels)?),
+            Format::F32 if cmyk(layout) => Self::F32Cmyk(allocate(pixels)?),
             Format::F32 => Self::F32(allocate(pixels)?),
         })
     }
@@ -154,7 +159,8 @@ impl PageBuffer {
                 recycle(values, pixels.saturating_mul(layout.stride()))
             }
             (Self::N16(values), Format::N16) => recycle(values, pixels),
-            (Self::F32(values), Format::F32) => recycle(values, pixels),
+            (Self::F32(values), Format::F32) if !cmyk(layout) => recycle(values, pixels),
+            (Self::F32Cmyk(values), Format::F32) if cmyk(layout) => recycle(values, pixels),
             _ => false,
         };
         fits.then_some(self)
@@ -171,6 +177,7 @@ impl PageBuffer {
             Self::F64(values) => grow(values, count * stride, 0.0),
             Self::N16(pixels) => grow(pixels, count, words),
             Self::F32(pixels) => grow(pixels, count, levels),
+            Self::F32Cmyk(pixels) => grow(pixels, count, [0.0; 5]),
         }
     }
 
@@ -187,6 +194,7 @@ impl PageBuffer {
             Self::F64(values) => fill(values, range.start * stride..range.end * stride, 0.0),
             Self::N16(pixels) => fill(pixels, range, background.map(|b| u16::from(b) * 257)),
             Self::F32(pixels) => fill(pixels, range, background.map(f32::from)),
+            Self::F32Cmyk(pixels) => fill(pixels, range, [0.0; 5]),
         }
     }
 
@@ -195,8 +203,14 @@ impl PageBuffer {
             Self::F64(values) => values.capacity() * size_of::<f64>(),
             Self::N16(words) => words.capacity() * size_of::<[u16; 4]>(),
             Self::F32(levels) => levels.capacity() * size_of::<[f32; 4]>(),
+            Self::F32Cmyk(levels) => levels.capacity() * size_of::<[f32; 5]>(),
         }
     }
+}
+
+/// Narrow storage of `layout` holds CMYK and alpha levels.
+fn cmyk(layout: Layout) -> bool {
+    layout.process == pagura_color::Process::Cmyk
 }
 
 fn fill<T: Copy>(values: &mut [T], range: std::ops::Range<usize>, value: T) {

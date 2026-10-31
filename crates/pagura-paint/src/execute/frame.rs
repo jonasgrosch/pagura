@@ -233,8 +233,8 @@ pub(crate) const CHANNELS: usize = 4 + crate::plan::MAX_SPOTS;
 
 impl Read<'_> {
     /// The premultiplied colour of pixel `index` of `buffer`, as unit
-    /// values, written over as many of `colors` as the buffer holds (three
-    /// for narrow buffers), and its alpha; `colors` keeps its values and
+    /// values, written over as many of `colors` as the buffer holds (all but
+    /// the last lane for narrow buffers), and its alpha; `colors` keeps its values and
     /// the alpha is 0 where the buffer does not hold the pixel.
     pub(crate) fn pixel(
         &self,
@@ -245,9 +245,10 @@ impl Read<'_> {
     ) -> f64 {
         let n = layout.channels();
         let stride = layout.stride();
-        let narrow = |values: [f64; 4], colors: &mut [f64]| {
-            copy_values(colors, &values[..3]);
-            values[3]
+        let narrow = |values: &[f64], colors: &mut [f64]| {
+            let (alpha, values) = values.split_last().unwrap_or((&0.0, &[]));
+            copy_values(colors, values);
+            *alpha
         };
         let wide = |values: &[f64], begin: usize, colors: &mut [f64]| {
             values.get(begin..begin + stride).map_or(0.0, |pixel| {
@@ -260,14 +261,17 @@ impl Read<'_> {
             (Buffer::Levels(offset), _) => self
                 .levels
                 .get(offset + index)
-                .map_or(0.0, |v| narrow(v.map(|l| f64::from(l) / 255.0), colors)),
+                .map_or(0.0, |v| narrow(&v.map(|l| f64::from(l) / 255.0), colors)),
             (Buffer::Page, PageBuffer::F64(values)) => wide(values, index * stride, colors),
             (Buffer::Page, PageBuffer::N16(words)) => words
                 .get(index)
-                .map_or(0.0, |w| narrow(w.map(|v| f64::from(v) / 65535.0), colors)),
+                .map_or(0.0, |w| narrow(&w.map(|v| f64::from(v) / 65535.0), colors)),
             (Buffer::Page, PageBuffer::F32(levels)) => levels
                 .get(index)
-                .map_or(0.0, |v| narrow(v.map(|l| f64::from(l) / 255.0), colors)),
+                .map_or(0.0, |v| narrow(&v.map(|l| f64::from(l) / 255.0), colors)),
+            (Buffer::Page, PageBuffer::F32Cmyk(levels)) => levels
+                .get(index)
+                .map_or(0.0, |v| narrow(&v.map(|l| f64::from(l) / 255.0), colors)),
         }
     }
 
@@ -310,6 +314,12 @@ impl Read<'_> {
                 |l: f32| f64::from(l) / 255.0,
                 lanes,
             ),
+            (Buffer::Page, PageBuffer::F32Cmyk(levels)) => narrow(
+                pixels,
+                levels.get(first..),
+                |l: f32| f64::from(l) / 255.0,
+                lanes,
+            ),
         }
     }
 }
@@ -342,19 +352,19 @@ fn wide((out, layout): (&mut [f64], Layout), values: Option<&[f64]>, source: Lay
     }
 }
 
-/// [`wide`] of narrow pixels, three colours and alpha each, as unit
+/// [`wide`] of narrow pixels, colours and then alpha each, as unit
 /// values.
-fn narrow<'a, T: Copy>(
+fn narrow<'a, T: Copy, const N: usize>(
     pixels: impl Iterator<Item = &'a mut [f64]>,
-    values: Option<&[[T; 4]]>,
+    values: Option<&[[T; N]]>,
     unit: impl Fn(T) -> f64,
     (channels, n): (usize, usize),
 ) {
     for (pixel, value) in pixels.zip(values.unwrap_or_default()) {
         let value = value.map(&unit);
-        for (out, &v) in pixel.iter_mut().zip(&value[..3]).take(channels) {
+        for (out, &v) in pixel.iter_mut().zip(&value[..N - 1]).take(channels) {
             *out = v;
         }
-        pixel[n] = value[3];
+        pixel[n] = value[N - 1];
     }
 }

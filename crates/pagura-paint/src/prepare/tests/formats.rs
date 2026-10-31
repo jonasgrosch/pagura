@@ -2,7 +2,7 @@
 
 use crate::format::Format;
 use crate::testing::{Build, check, mark, rect_path};
-use pagura_color::Process;
+use pagura_color::{ColorSpace, Process};
 use pagura_core::Limits;
 use pagura_interpret::{
     BlendMode, GlyphSource, GlyphsNode, GroupAttributes, GroupId, MaskKind, Node, OutlineKey,
@@ -68,6 +68,39 @@ fn opaque_pages_store_n16_and_translucent_ones_f32() {
     check(&b);
     b.rect(group, [5.5, 1.0, 6.5, 2.0], red, mark(StateId(0)));
     assert_eq!(formats(&b)[0], Format::F32);
+}
+
+#[test]
+fn normal_cmyk_pages_store_f32_within_a_level() {
+    // Opaque, translucent and overlapping inks and a flattened CMYK group on
+    // a CMYK page: F32 levels, never N16, within one level of the reference.
+    let mut b = Build::new(8.0, 4.0);
+    b.scene.groups[0].attributes.space = Some(Process::Cmyk);
+    let ink = b.color(ColorSpace::DeviceCmyk, &[0.1, 0.6, 0.3, 0.2]);
+    let other = b.color(ColorSpace::DeviceCmyk, &[0.7, 0.0, 0.5, 0.05]);
+    let half = b.state(|s| s.alpha = 0.5);
+    let third = b.state(|s| s.alpha = 0.3);
+    b.rect(PAGE, [0.5, 0.5, 7.5, 3.5], ink, mark(StateId(0)));
+    b.rect(PAGE, [0.25, 0.75, 5.0, 3.25], other, mark(half));
+    b.rect(PAGE, [3.0, 0.0, 8.0, 2.5], ink, mark(third));
+    let group = b.transparency(PAGE, GroupAttributes::default(), mark(StateId(0)));
+    b.rect(group, [1.0, 1.0, 6.0, 3.0], other, mark(half));
+    assert_eq!(formats(&b), [Format::F32]);
+    check(&b);
+    // A group in RGB reaches the page through a conversion: it stays F64.
+    let rgb = GroupAttributes {
+        space: Some(Process::Rgb),
+        ..GroupAttributes::default()
+    };
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    let converted = b.transparency(PAGE, rgb, mark(half));
+    b.rect(converted, [2.0, 0.5, 4.0, 3.5], red, mark(StateId(0)));
+    assert_eq!(formats(&b), [Format::F32, Format::F64]);
+    check(&b);
+    // Another blend mode keeps the page F64.
+    let multiply = b.state(|s| s.blend = BlendMode::Multiply);
+    b.rect(PAGE, [0.0, 0.0, 2.0, 2.0], ink, mark(multiply));
+    assert_eq!(formats(&b)[0], Format::F64);
 }
 
 #[test]

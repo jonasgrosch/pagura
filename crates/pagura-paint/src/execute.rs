@@ -41,7 +41,8 @@ mod tests;
 enum Direct<'a> {
     N16(StoreOut<'a, [u16; 4]>),
     Dynamic(StoreOut<'a, Dynamic>),
-    F32(StoreOut<'a, Levels>),
+    F32(StoreOut<'a, Levels<4>>),
+    F32Cmyk(StoreOut<'a, Levels<5>>),
     F64(WideOut<'a>),
 }
 
@@ -119,6 +120,13 @@ impl<'a> Direct<'a> {
                     background.map(f32::from),
                 ),
             )),
+            // A CMYK page starts transparent: output adds the background.
+            (PageBuffer::F32Cmyk(page), _) => Self::F32Cmyk(StoreOut::new(
+                page,
+                extents,
+                frame.rect,
+                (Levels(kernel::levels(color), alpha), [0.0; 5]),
+            )),
             (PageBuffer::F64(page), _) if alpha == 1.0 => Self::F64(WideOut {
                 page,
                 extents,
@@ -145,6 +153,7 @@ impl<'a> Direct<'a> {
             Self::N16(out) => emit(out, rasterize),
             Self::Dynamic(out) => emit(out, rasterize),
             Self::F32(out) => emit(out, rasterize),
+            Self::F32Cmyk(out) => emit(out, rasterize),
             Self::F64(out) => {
                 rasterize(out);
                 std::mem::take(&mut out.stored)
@@ -533,7 +542,10 @@ fn fill_colors(
     // A mark stores into F32 levels through `kernel::level` alone.
     let levels = match frame.buffer {
         Buffer::Levels(_) => true,
-        Buffer::Page => matches!(ws.page.pixels(), PageBuffer::F32(_)),
+        Buffer::Page => matches!(
+            ws.page.pixels(),
+            PageBuffer::F32(_) | PageBuffer::F32Cmyk(_)
+        ),
         Buffer::Wide(_) => false,
     };
     let pixels = Pixels {
@@ -620,7 +632,7 @@ fn overwrite(
             .get_mut(start..start + len)
             .is_some_and(write)
             .then_some(()),
-        PageBuffer::F64(_) | PageBuffer::F32(_) => None,
+        PageBuffer::F64(_) | PageBuffer::F32(_) | PageBuffer::F32Cmyk(_) => None,
     };
     if stored.is_some() {
         let column = x - frame.rect.x0;
@@ -681,24 +693,24 @@ impl Stores for Dynamic {
     }
 }
 
-/// F32 levels at a constant alpha.
+/// F32 levels of `N` lanes at a constant alpha.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct Levels([f32; 4], f64);
+pub(super) struct Levels<const N: usize>([f32; N], f64);
 
-impl Stores for Levels {
-    type Pixel = [f32; 4];
+impl<const N: usize> Stores for Levels<N> {
+    type Pixel = [f32; N];
 
-    fn opaque(self) -> Option<[f32; 4]> {
+    fn opaque(self) -> Option<[f32; N]> {
         (self.1 == 1.0).then_some(self.0)
     }
 
     #[inline]
-    fn uniform(self, pixels: &mut [[f32; 4]], c: u8) {
+    fn uniform(self, pixels: &mut [[f32; N]], c: u8) {
         kernel::store_f32_uniform(pixels, (self.0, self.1), c);
     }
 
     #[inline]
-    fn runs(self, pixels: &mut [[f32; 4]], coverage: &[u8]) -> Option<(usize, usize)> {
+    fn runs(self, pixels: &mut [[f32; N]], coverage: &[u8]) -> Option<(usize, usize)> {
         kernel::store_f32_runs(pixels, (self.0, self.1), coverage)
     }
 }
@@ -1276,10 +1288,20 @@ fn page(
                 levels(pixels, colors, sources.alpha, kind);
             }
         }
+        PageBuffer::F32Cmyk(values) => {
+            if let Some(pixels) = values.get_mut(start..start + len) {
+                levels(pixels, colors, sources.alpha, kind);
+            }
+        }
     }
 }
 
-fn levels(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f64], kind: Store<'_>) {
+fn levels<const N: usize>(
+    pixels: &mut [[f32; N]],
+    colors: &Colors<'_>,
+    alpha: &[f64],
+    kind: Store<'_>,
+) {
     match kind {
         Store::Mark(_) => kernel::store_f32(pixels, colors, alpha),
         Store::Result => kernel::dynamic_f32(pixels, colors, alpha),

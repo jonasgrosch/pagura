@@ -76,6 +76,11 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mu
                             crate::kernel::f32_bytes(row, levels);
                         }
                     }
+                    PageBuffer::F32Cmyk(levels) => {
+                        if let Some(levels) = levels.get(first..end) {
+                            cmyk_levels(output, row, levels);
+                        }
+                    }
                     PageBuffer::F64(values) => {
                         let stride = output.layout.stride();
                         let pixels = values.get(first * stride..).unwrap_or_default();
@@ -132,6 +137,38 @@ fn plain<'a, const N: usize>(
             over(output.background, process::rgb(process, &straight), alpha)
         };
         last = Some((color, alpha, *out));
+    }
+}
+
+/// [`plain`] of a row of a CMYK page's F32 levels, in f64: a pixel's
+/// straight values are its colour levels over its alpha level, by at most
+/// one division (none for an opaque pixel).
+fn cmyk_levels(output: &Output, row: &mut [[u8; 4]], levels: &[[f32; 5]]) {
+    let mut last: Option<([f32; 5], [u8; 4])> = None;
+    for (out, &pixel) in row.iter_mut().zip(levels) {
+        if let Some((previous, bytes)) = last
+            && previous
+                .iter()
+                .zip(&pixel)
+                .all(|(a, b)| a.to_bits() == b.to_bits())
+        {
+            *out = bytes;
+            continue;
+        }
+        let [c, m, y, k, alpha] = pixel.map(f64::from);
+        *out = if alpha == 0.0 {
+            output.background
+        } else {
+            let unit = if alpha == 255.0 {
+                1.0 / 255.0
+            } else {
+                1.0 / alpha
+            };
+            let straight = [c, m, y, k].map(|v| (v * unit).clamp(0.0, 1.0));
+            let rgb = process::rgb(Process::Cmyk, &straight);
+            over(output.background, rgb, alpha * (1.0 / 255.0))
+        };
+        last = Some((pixel, *out));
     }
 }
 
@@ -272,6 +309,52 @@ mod tests {
                 quantize_unit(0.5 + 64.0 / 255.0 * 0.5),
             ]
         );
+    }
+
+    #[test]
+    fn cmyk_levels_round_their_exact_conversion() {
+        // Levels on and between whole values, transparent and translucent
+        // pixels, values past alpha and repeated pixels: every byte is a
+        // nearest rounding of a value within 1e-9 of the exact conversion.
+        let output = Output {
+            layout: crate::plan::Layout {
+                process: Process::Cmyk,
+                spots: 0,
+            },
+            background: [255, 128, 0, 192],
+            spots: Vec::new(),
+            transfers: Vec::new(),
+        };
+        let samples = [0.0, 1.0, 63.75, 127.5, 200.25, 255.0];
+        let levels: Vec<[f32; 5]> = (0..96)
+            .map(|k| {
+                let pick = |i: usize| samples[(k / 2 + i) % samples.len()];
+                let alpha = [255.0, 127.5, 0.0, 63.75][k / 8 % 4];
+                [pick(0), pick(1), pick(2), pick(3), alpha]
+            })
+            .collect();
+        let mut row = vec![[0; 4]; levels.len()];
+        cmyk_levels(&output, &mut row, &levels);
+        let background = output.background.map(|b| f64::from(b) / 255.0);
+        for (bytes, pixel) in row.iter().zip(&levels) {
+            let [c, m, y, k, alpha] = pixel.map(|l| f64::from(l) / 255.0);
+            if alpha == 0.0 {
+                assert_eq!(*bytes, output.background);
+                continue;
+            }
+            let straight = [c, m, y, k].map(|v| (v / alpha).clamp(0.0, 1.0));
+            let rgb = process::rgb(Process::Cmyk, &straight);
+            let exact = [0, 1, 2]
+                .map(|i| rgb[i] * alpha + background[i] * (1.0 - alpha))
+                .into_iter()
+                .chain([alpha + background[3] * (1.0 - alpha)]);
+            for (&byte, value) in bytes.iter().zip(exact) {
+                assert!(
+                    (f64::from(byte) - 255.0 * value).abs() <= 0.5 + 1e-9,
+                    "{pixel:?}"
+                );
+            }
+        }
     }
 
     #[test]
