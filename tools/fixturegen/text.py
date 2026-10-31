@@ -99,7 +99,7 @@ def cases():
     yield from tolerance_cases()
     yield from strict_substitution_cases()
     for case in original_cases():
-        if case.name.startswith("unicode-") and ".error" in case.files:
+        if isinstance(case, Vector) and case.name.startswith("unicode-") and ".error" in case.files:
             from dataclasses import replace
             files = dict(case.files)
             if case.name in ("unicode-cid-code-length","unicode-simple-source-length"):
@@ -962,6 +962,8 @@ def bundled_cases():
     lock = json.loads((data/"lock.json").read_text())
     yield from symbol_substitute_cases(data, lock)
     yield from cid_substitute_cases(data, lock)
+    from .text_checked_cid import cases as checked_cid_cases
+    yield from checked_cid_cases(data, lock)
     names = []
     aliases = {
         "Helvetica": ["Arial", "ArialMT", "Arial,Regular"],

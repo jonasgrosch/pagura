@@ -175,6 +175,36 @@ face (Arimo, Tinos or Cousine) draws the font:
 
 Other families, including unknown or non-Latin names, keep the refusal.
 
+### Checked CID-only Minion fallback (amended 2026-10-31)
+
+Horizontal non-embedded CIDFontType0/2 fonts naming MinionPro Regular,
+Bold, Italic or BoldItalic may use the corresponding provider-supplied
+Times face (bundled Tinos). Exact PostScript names are recognized, optionally
+preceded by a six-uppercase-letter subset tag. This is a reader-chosen visual
+fallback: Tinos is metric-compatible with Times, **not with Minion**. It
+does not reproduce the original Minion outlines. PDF W/DW remain the only
+source of advances.
+
+This additional family requires an available outline program and a usable
+source ToUnicode map. Every used source code, including invisible text,
+must have a non-notdef Encoding mapping and map to exactly one Unicode scalar with
+an available nonzero substitute glyph. Glyph selection uses the original
+code, never a CID, a notdef replacement, extracted fallback text or a
+substitute glyph index. A valid space glyph with an empty outline is
+accepted. A missing identity, ligature needing shaping or unavailable glyph
+fails explicitly with `font.non-embedded`; no successful blank substitute
+is returned. Validation also applies when the caller requests no extraction
+text, and uses the existing decoding work/item/string budgets.
+
+This route is restricted to Identity or unnamed collections and horizontal
+writing. It adds no simple-font alias or inferred simple-font metrics.
+Unknown families/styles, vertical forms and embedded-font precedence keep
+their existing behavior. Existing standard aliases retain the earlier
+reported partial-coverage policy; their outputs are not reinterpreted by
+this addition. Substitution remains an informational `font.substituted`
+diagnostic in both Strict and Repair modes. Malformed CMap repairs still
+require the existing explicit recovery permission.
+
 as a diagnostic, never silent, and a document's own embedded program wins
 whenever it is usable.
 

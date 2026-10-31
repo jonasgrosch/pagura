@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Joint qualified-slice interactions append20 single-page contracts; two clean-page0/repaired-page1 documents are qualified separately at both page indices. Includes21 literal-null annotation contracts; all previous selectors remain in order.",
+  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Joint qualified-slice interactions append20 single-page contracts; two clean-page0/repaired-page1 documents are qualified separately at both page indices. Includes21 literal-null annotation contracts; all previous selectors remain in order. Includes the complete checked-CID selectors; all previous selectors remain in order.",
   "cases": [
     "rich_annotations/plain-72",
     "rich_annotations/stored-72",
@@ -1668,6 +1668,22 @@
     "recovery_annotations/after-null-boolean",
     "recovery_annotations/after-null-bbox",
     "recovery_annotations/after-null-cycle",
-    "recovery_annotations/after-null-subtype"
+    "recovery_annotations/after-null-subtype",
+    "text/paint-checked-cid-regular-CIDFontType0",
+    "text/paint-legacy-cid-regular-CIDFontType0",
+    "text/paint-checked-cid-regular-CIDFontType2",
+    "text/paint-legacy-cid-regular-CIDFontType2",
+    "text/paint-checked-cid-bold-CIDFontType0",
+    "text/paint-legacy-cid-bold-CIDFontType0",
+    "text/paint-checked-cid-bold-CIDFontType2",
+    "text/paint-legacy-cid-bold-CIDFontType2",
+    "text/paint-checked-cid-italic-CIDFontType0",
+    "text/paint-legacy-cid-italic-CIDFontType0",
+    "text/paint-checked-cid-italic-CIDFontType2",
+    "text/paint-legacy-cid-italic-CIDFontType2",
+    "text/paint-checked-cid-bolditalic-CIDFontType0",
+    "text/paint-legacy-cid-bolditalic-CIDFontType0",
+    "text/paint-checked-cid-bolditalic-CIDFontType2",
+    "text/paint-legacy-cid-bolditalic-CIDFontType2"
   ]
 }

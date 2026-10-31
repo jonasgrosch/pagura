@@ -87,10 +87,12 @@ pub(crate) enum Source {
     },
     /// A Latin standard face drawing a non-embedded Identity CIDFont with a
     /// Latin family name: each code's ToUnicode text selects the glyph
-    /// (ADR 0009). Without a usable ToUnicode map nothing is drawn.
+    /// (ADR 0009). Coverage policy distinguishes the original aliases from
+    /// additional families that must identify every used glyph.
     UnicodeSubstitute {
         program: Arc<FontProgram>,
         to_unicode: Option<Arc<CMap>>,
+        coverage: UnicodeCoverage,
     },
     Type3 {
         procedures: BTreeMap<Name, ObjectId>,
@@ -103,6 +105,15 @@ pub(crate) enum Source {
         ownership: Ownership,
         cid_map: Option<CidToGidMap>,
     },
+}
+
+/// Whether a Unicode-directed substitute may leave a code without a glyph.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum UnicodeCoverage {
+    /// Existing standard aliases retain their reported incomplete coverage.
+    Partial,
+    /// Additional named families require complete coverage of every used code.
+    Required,
 }
 
 /// Who owns an outline program, for storage estimates (ADR 0012).
@@ -436,6 +447,14 @@ impl PdfFont {
                 } else {
                     None
                 };
+                if self.requires_unicode_coverage()
+                    && mapped.is_none_or(|cid| cid == crate::cid::Cid::NOTDEF)
+                {
+                    return Err(Error::unsupported(
+                        features::NON_EMBEDDED,
+                        "checked CID substitute requires a non-notdef Encoding mapping for every used code",
+                    ));
+                }
                 // Collection Unicode belongs to the CID the code maps to, not
                 // to a notdef substitute (9.10.2).
                 let collection = mapped.and_then(|cid| unicode?.collection(cid));
@@ -445,6 +464,13 @@ impl PdfFont {
         };
         let text = unicode.and_then(|unicode| unicode.text(code).or_else(|| fallback.cloned()));
         let length = text.as_deref().map_or(0, str::len);
+        let shape = self.shape(code, selector, name, || fallback.map(GlyphText::as_str));
+        if self.requires_unicode_coverage() && matches!(shape, crate::GlyphShape::Blank) {
+            return Err(Error::unsupported(
+                features::NON_EMBEDDED,
+                "checked CID substitute requires single-scalar Unicode and an available glyph for every used code",
+            ));
+        }
         let glyph = Glyph {
             code: code.value,
             byte_len: code.len,
@@ -453,9 +479,19 @@ impl PdfFont {
                 .then(|| self.metrics.vertical(selector)),
             word_space: code.len == 1 && code.value == 32,
             unicode: text,
-            shape: self.shape(code, selector, name, || fallback.map(GlyphText::as_str)),
+            shape,
         };
         Ok((glyph, length))
+    }
+
+    fn requires_unicode_coverage(&self) -> bool {
+        matches!(
+            self.source,
+            Source::UnicodeSubstitute {
+                coverage: UnicodeCoverage::Required,
+                ..
+            }
+        )
     }
 }
 

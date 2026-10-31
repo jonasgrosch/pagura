@@ -33,6 +33,7 @@ impl PdfFont {
             Source::UnicodeSubstitute {
                 program,
                 to_unicode,
+                ..
             } => to_unicode
                 .as_ref()
                 .and_then(|map| map.text(code))

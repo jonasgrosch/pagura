@@ -13,7 +13,7 @@
   "source_files": {
     ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e",
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "benchmarks/probes/compatibility-gap-fixtures.json": "e214ecd075ed308bce615499939c05259a289c21f21fffcecf5e2b5784c926c1",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "5e40ed21cec089d6303f55b1024170cb60f0922ddb07b23fee33f6d93f441e4e",
     "corpus/manifests/annotation_compat.json": "91f6e05cb4d9ad220e2d6be0f41b7d86047b839ec46f27430562d15bc2cd6323",
     "corpus/manifests/annotation_display.json": "2b2418bd5a8f5be67188a57bde3beaa642d029f2f280b4f754fcb659bf73b0ab",
     "corpus/manifests/annotation_empty_widgets.json": "8b205c65420c3057eca24a4d9e23b7391f54c32eea4af25fa8d20a448ca7d02f",
@@ -217,11 +217,11 @@
     "crates/pagura-render/src/options.rs": "131de2afe8e6ee17a96f3f1432f76861608b9558b5dad53ffed0e68779452c31",
     "crates/pagura-text/src/cmap.rs": "74684da05e8e13c4fae27e8bd9272aa57fd9bdc982645e407ca73e5756bfa8b4",
     "crates/pagura-text/src/features.rs": "488e4cab6c106cd3df8d3722c23b8d7add6674891350c2a8aa45e523b8ce0e1c",
-    "crates/pagura-text/src/font.rs": "bdf5cf2f606dc08ae88b759535b2b9b5227c03e67158c3726fcdf107d768901c",
+    "crates/pagura-text/src/font.rs": "9b5b6a72f65be63fd19759b43bdb465183e6723fff54d1f6c57170b4cdf30e30",
     "crates/pagura-text/src/font/load.rs": "535fd40d2f39d0f50c93da0a8ae6f8004370c3d306b020f8e2d60f4a9c367696",
     "crates/pagura-text/src/program.rs": "ad680d8cd79866257aba181bf16761b537f7dfb6c7de7a372118d55718501dde",
     "crates/pagura-text/src/substitute.rs": "1a8cef1d0c58721e61ccdbf30d677aeed03053a2cdc2f9994013577685434db4",
-    "crates/pagura-text/src/substitute/cid.rs": "6ba76ff13c02b40134d03a60ca260aa9b6900edb6a6c936aa1ef9996fcb8d8ad",
+    "crates/pagura-text/src/substitute/cid.rs": "2561b798cf2973246c839b9af1facf1caaf94e8a73fcb715dde96064f8a3f0b3",
     "crates/pagura-write/src/lib.rs": "c51a1ce95091e024ba999884b6b1f558f9723426f0c7b248cf079887d1fdbb54",
     "crates/pagura/examples/compatibility_gap_parity.rs": "6d18cdb9b86cab85572566701948f0caa8d24c932c22783adfab38c0909c9f31",
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
@@ -262,7 +262,7 @@
     "references/requirements/recovery.json": "93121bf9cbae405568a7eada75e5b8975a3b92cee34d948ad40047291a40acfd",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
-    "references/requirements/text.json": "53c61115f4eb08edb9f720a08637be22b5a9aa9d425db34115b368005e420c10",
+    "references/requirements/text.json": "681d08f67b77d5ee3830ab0d369b554dcd970a2138fc9fe9edc1601b8be37bb3",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "4c148dcbf9942c1c79f9e09308548a72bc1cf7d05aca7252a0d3b1a61916ce65",
@@ -316,8 +316,8 @@
     "crates/pagura/tests/font_bindings.rs": "2ddd6b59ed4271776ed65c458c7db754a37ec93020b8edc1c87a0a594becf423",
     "crates/pagura/tests/font_collections.rs": "49578948011d7f637e416bec660be5deba2d7d98ca7f95adef13e0f01f59404c",
     "docs/RECOVERY.md": "896c86b77a30a7f05f2a5ba5e841fb7a70ea4c27c387865226f66a846abbb95f",
-    "docs/STATUS.md": "c7d74a5a7e40ccdf6c2849934078ae71b5e6f9626298696275e4d2099278555f",
-    "docs/adr/0009-text-and-fonts.md": "cbd5a8bb2a677caa3027fe7169e2d1800dfdaea66a288fe71b72d7cd95efeed6",
+    "docs/STATUS.md": "3088f4f5ae02efaaa2a1f0c93380a10a97b277dce9e0e27e7bb730e0a581b8bf",
+    "docs/adr/0009-text-and-fonts.md": "f54752ed4bf4325cea780c80c7fd1e5fceb1741c3ac62e31c5360d75a296ee19",
     "tools/fixturegen/font.py": "6f3f2980a7f6dac67c7aefdc24dbe6fe420c75e3aa8500b56d42aa95e1af80a6",
     "tools/fixturegen/font_bindings.py": "0ffc33d7db6e802aab012f0e5b13e182c87c16b0e53239375f25501c736a38a8",
     "tools/fixturegen/font_collections.py": "e4ef683ffdab5f862ea3e3c5bbfec838faf0be873984d14214347135cc3f4c48",
@@ -392,7 +392,11 @@
     "crates/pagura/examples/null_annotation_parity.rs": "e938059436c33fad2c110ae53903a4ec17108a589325fc8aad65134bb7af709e",
     "tools/null_annotation_parity.mjs": "c21d38f339a629f71d0c16f0b8ccf628de2832da9a77822ef86adb7031a54606",
     ".github/workflows/null-annotation-parity.yml": "abcd9c6530885f0a10f87ff38197f76206f85683c35be6fe092ccb437a6052e1",
-    "benchmarks/probes/null-annotation-fixtures.json": "d4e3d179340e7835032cc219e5f1ee7b39b7e6069f1ad338679ed0334f6dd902"
+    "benchmarks/probes/null-annotation-fixtures.json": "d4e3d179340e7835032cc219e5f1ee7b39b7e6069f1ad338679ed0334f6dd902",
+    "crates/pagura-text/src/font/shape.rs": "c6c8a98ae5a385604cdb335d94b2dc509f67b45274555191e264ec233951b433",
+    "crates/pagura-text/src/substitute/family.rs": "e3c0861c1f21ecf6d05b58ccc64476f7aba9a3b52e00c75eac9d4b6014836928",
+    "crates/pagura-text/tests/fonts/checked_cid.rs": "94db6dba75a80c1205acbeeac1ca32ac6bac6ef258aefcc67d1000569c92e3d7",
+    "corpus/manifests/text.json": "e117a2eca28a07290300ce33addca6b2b3ef0af599bf626c3c341ac4a28cfac9"
   },
   "capabilities": [
     {
@@ -783,21 +787,36 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works.",
-      "remaining": "Vertical substituted glyph forms/metrics and unavailable provider/collection coverage.",
+      "implemented": "Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works. Exact-name horizontal MinionPro Identity CID fallback requires complete used-code Encoding/Unicode/glyph coverage and retains PDF W/DW; it is an explicit visual substitute.",
+      "remaining": "Vertical substituted glyph forms/metrics and unavailable provider/collection coverage. Original Minion appearance equivalence, multi-scalar shaping and unknown Minion names/styles are not supplied by this policy.",
       "sources": [
         "crates/pagura-text/src/substitute/cid.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-text/src/font.rs",
+        "crates/pagura-text/src/font/shape.rs",
+        "crates/pagura-text/src/substitute/family.rs"
       ],
-      "tests": [],
+      "tests": [
+        "crates/pagura-text/tests/fonts/checked_cid.rs"
+      ],
       "requirements": [
         "paint-bundled-cjk-substitute",
         "text-cid-substitution",
-        "text-font-substitution"
+        "text-font-substitution",
+        "text-checked-cid-substitution"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "text/paint-checked-cid-regular-CIDFontType0",
+        "text/paint-checked-cid-regular-CIDFontType2",
+        "text/paint-checked-cid-bold-CIDFontType0",
+        "text/paint-checked-cid-bold-CIDFontType2",
+        "text/paint-checked-cid-italic-CIDFontType0",
+        "text/paint-checked-cid-italic-CIDFontType2",
+        "text/paint-checked-cid-bolditalic-CIDFontType0",
+        "text/paint-checked-cid-bolditalic-CIDFontType2"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
