@@ -109,7 +109,7 @@ def cases():
         ("trailing-token", None, {"suffix": b" null\n"}, "syntax"),
         ("generation-mismatch", None, {"generation": 1}, "syntax"),
     ]:
-        repairs = (TAG,) if name == "integer-max" else ()
+        repairs = (TAG,) if name == "integer-max" else ("object.end-missing",) if name == "name" else ()
         yield Case(name, page(value, data_eol=False, **options), OPEN, REQUIREMENT,
                    "Invalid or unusable source cannot become a partial page",
                    strict_valid=not repairs, repairs=repairs, extra={"render_error": error})

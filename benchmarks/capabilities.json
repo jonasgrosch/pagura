@@ -363,13 +363,13 @@
     "tools/fixturegen/recovery_jbig2_tables.py": "fbb6298b31889911541b6d1153c01a4cc6ee130f73cf7d2b8bda169211c8edfb",
     "tools/image_repair_observe.mjs": "51159b6caf9945fb8367ca6aa6de610de05124462de176058b51eadc3b75185e",
     "tools/image_repair_parity.mjs": "118fb24047bbb90b646b87e2eef7a1f9f133e2a1702b4acc6b5c21d3ed26f0e1",
-    "corpus/manifests/integer_separator.json": "def6a151e62cccef343c82e2ae66da14a48dfac66dd7c550210fe246b9c52583",
+    "corpus/manifests/integer_separator.json": "e267fbf0738b4f8fc3ccf541b8517f01b12cf4efa97a06d97a261b612d92c6d8",
     "crates/pagura-document/src/object.rs": "0f15c51dd2007f64aaab9d3837b75c100146bd83c922d54b001e17533347b3b2",
     "crates/pagura-document/src/object/recovery.rs": "1bcfa5b24f5805d2afec9f7d6811e4030e046d0fb6c2c7b52ab2eca334ff16f6",
     "crates/pagura-document/src/repairs.rs": "d6282e6dccf11d3f5c95754fe7a6a437baf70e985d26c338bc8a9c56ea4dc097",
     "crates/pagura-document/tests/integer_separator.rs": "cb8101749f0265a39de94b08e9a42aa78bb5ffce44e5172327e724764c984ccd",
     "crates/pagura/tests/api/tags.rs": "c7daaf8254843b8200391aa6f647c59016050d67944c98ed7515dd50d2696a94",
-    "tools/fixturegen/integer_separator.py": "2c80ec03263808f26c12584f47bb9048054f56ae09fc7ff66837d60bd8590833"
+    "tools/fixturegen/integer_separator.py": "227c6aaa540eb7130a6a6e74ae5c8b9b72681732b2596fd37725872218558868"
   },
   "capabilities": [
     {

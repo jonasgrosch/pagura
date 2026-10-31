@@ -309,8 +309,10 @@
       "path": "corpus/generated/integer_separator/name.pdf",
       "sha256": "e26c36647fa685d3eb7104db102ffcb8fc36655c3f8db1db10960d8d89c14d16",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "object.end-missing"
+      ],
       "render_error": "syntax"
     },
     {
