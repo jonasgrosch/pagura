@@ -699,7 +699,7 @@ impl Spare for Proofs {
 /// The sides of row `top..top + 1` under the nonzero rule, with the chunks
 /// within the column ranges `proven` passed over, and the work they took of
 /// the row's meter.
-fn proven_sides(pieces: &[Piece], top: f64, proven: &[(f64, f64)]) -> (Vec<Line>, usize) {
+fn proven_sides(pieces: &[Piece], top: f64, proven: &[(f64, f64, Run)]) -> (Vec<Line>, usize) {
     let (sides, work, _) = proven_sides_within(pieces, top, (proven, usize::MAX));
     (sides, work)
 }
@@ -709,7 +709,7 @@ fn proven_sides(pieces: &[Piece], top: f64, proven: &[(f64, f64)]) -> (Vec<Line>
 fn proven_sides_within(
     pieces: &[Piece],
     top: f64,
-    (proven, own): (&[(f64, f64)], usize),
+    (proven, own): (&[(f64, f64, Run)], usize),
 ) -> (Vec<Line>, usize, usize) {
     let mut out = Vec::new();
     let mut work = Meter::new(usize::MAX, "work");
@@ -818,7 +818,7 @@ fn covered_cells(pieces: &[Piece], sides: &[Line], top: f64, (first, last): (f64
 
 /// The ranges to pass over in row `top..top + 1` of `pieces`: the runs of
 /// cells the full sweep leaves covered.
-fn oracle_ranges(pieces: &[Piece], full: &[Line], top: f64) -> Vec<(f64, f64)> {
+fn oracle_ranges(pieces: &[Piece], full: &[Line], top: f64) -> Vec<(f64, f64, Run)> {
     let (lo, hi) = pieces
         .iter()
         .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), p| {
@@ -832,12 +832,12 @@ fn oracle_ranges(pieces: &[Piece], full: &[Line], top: f64) -> Vec<(f64, f64)> {
         if covered_cells(pieces, full, top, (c, c)) {
             run = Some(run.map_or((c, c), |(first, _)| (first, c)));
         } else if let Some((first, last)) = run.take() {
-            ranges.push((first, last + 1.0));
+            ranges.push((first, last + 1.0, Run::Proven));
         }
         c += 1.0;
     }
     if let Some((first, last)) = run {
-        ranges.push((first, last + 1.0));
+        ranges.push((first, last + 1.0, Run::Proven));
     }
     ranges
 }
@@ -1119,7 +1119,7 @@ fn spines_prove_only_covered_cells_and_keep_every_side() {
             cover.row(top, usize::MAX, &mut ranges, &mut bytes).unwrap();
             if !ranges.is_empty() {
                 let (full, _) = proven_sides(&pieces, top, &[]);
-                for &(left, right) in &ranges {
+                for &(left, right, _) in &ranges {
                     assert!(
                         covered_cells(&pieces, &full, top, (left, right - 1.0)),
                         "case {case} row {top}: {left}..{right} {stroke:?}"
@@ -1134,4 +1134,77 @@ fn spines_prove_only_covered_cells_and_keep_every_side() {
     }
     assert!(strokes > 100, "{strokes}");
     assert!(proven > 10_000.0, "{proven}");
+}
+
+/// Disjoint quadrilaterals in one column range beside fans in another, one
+/// way round or the other, in rows of more than 64 pieces: emitting the
+/// quadrilaterals' pieces as sides of a certified range, with the fans'
+/// covered cells passed over or not, gives each cell the full sweep's area.
+/// A certified range starting or ending inside a quadrilateral is narrowed
+/// to leave it out, in one pass for two ranges in a row.
+#[test]
+fn certified_chunks_emit_the_full_sweeps_sides() {
+    let mut rng = Lcg(2_032);
+    let mut emitted = 0;
+    for case in 0..120_usize {
+        let mut lines = Vec::new();
+        for _ in 0..=case % 3 {
+            let centre = (rng.grid(4.0, 32, 4), rng.grid(-0.5, 17, 8));
+            let r = rng.grid(2.0, 32, 4);
+            lines.extend(fan(
+                centre,
+                r / 8.0,
+                (24 + rng.next() % 32, r),
+                rng.grid(0.0, 64, 8),
+            ));
+        }
+        // Quadrilaterals three columns apart from x = 40 on, through the row
+        // or ending in it, reversed in odd cases. Their sides slant across a
+        // column each.
+        let reversed = case % 2 == 1;
+        let count = 8 + rng.next() % 30;
+        for k in 0..count {
+            let x = 40.0 + 3.0 * f64::from(k);
+            let top = rng.grid(-1.0, 16, 8);
+            let bottom = top + rng.grid(0.25, 16, 8);
+            let mut corners = vec![
+                (x + rng.grid(0.0, 8, 8), top),
+                (x + 1.0 + rng.grid(0.0, 8, 8), bottom),
+                (x + 2.0 + rng.grid(0.0, 8, 8), bottom),
+                (x + 1.0 + rng.grid(0.0, 8, 8), top),
+            ];
+            if reversed {
+                corners.reverse();
+            }
+            lines.extend(polygon(&corners, 0));
+        }
+        let pieces = pieces(&lines);
+        // Their left sides run down, so coverage starts at them, unless
+        // reversed.
+        let sign = if reversed { -1 } else { 1 };
+        let (full, _) = proven_sides(&pieces, 0.0, &[]);
+        let mut runs = if case % 3 == 0 {
+            oracle_ranges(&pieces, &full, 0.0)
+        } else {
+            Vec::new()
+        };
+        runs.retain(|r| r.1 <= 39.0);
+        // Some ranges start within the first quadrilateral, and some rows
+        // hold two, the first ending within a later one.
+        let start = if case % 3 == 1 { 41.0 } else { 40.0 };
+        let end = 40.0 + 3.0 * f64::from(count);
+        if case % 4 == 2 {
+            let middle = 40.0 + 3.0 * f64::from(count / 2);
+            runs.push((start, middle + 1.0, Run::Certified(sign)));
+            runs.push((middle + 2.0, end, Run::Certified(sign)));
+        } else {
+            runs.push((start, end, Run::Certified(sign)));
+        }
+        let (sides, _) = proven_sides(&pieces, 0.0, &runs);
+        same_cells(&sides, &full, 0.0, &format!("case {case} {runs:?}"));
+        if pieces.len() > CHUNK {
+            emitted += count;
+        }
+    }
+    assert!(emitted > 1_000, "{emitted}");
 }
