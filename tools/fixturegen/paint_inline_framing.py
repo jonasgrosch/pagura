@@ -70,6 +70,7 @@ def cases():
         content = PREFIX+b"q 16 0 0 8 4 4 cm BI "+dictionary+b" ID "+payload+b"EI Q"
         yield Case(name, page(content), OPEN, REQUIREMENT,
                    "A known encoded boundary must not authorize missing-sample padding",
+                   strict_valid=False, repairs=(REPAIR,),
                    extra={"render_error": "syntax"})
     # Existing, explicitly reported padding is a separate retention scope.
     # These separated twins must not become new public-page admissions.

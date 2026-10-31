@@ -305,8 +305,10 @@
       "path": "corpus/generated/paint_inline_framing/short-length.pdf",
       "sha256": "41dc04fbbedaa3abc962ae004691a3220fd5cdc6a7f01d3ad9a2a23ed2ccab48",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -320,8 +322,10 @@
       "path": "corpus/generated/paint_inline_framing/excess-length.pdf",
       "sha256": "b2f34eceaf859968c3fdd0398a6706669998d7fccc5a092e5b0abb962d260f40",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -335,8 +339,10 @@
       "path": "corpus/generated/paint_inline_framing/short-asciihex.pdf",
       "sha256": "ad4860771aa9ddf3d0ad6a6c8eb655f7065aa7deee7f3c00cf83e1aed5f35c5c",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -350,8 +356,10 @@
       "path": "corpus/generated/paint_inline_framing/short-runlength.pdf",
       "sha256": "53bb25aebf8de37498a2b6c74f87d0cb635c996e3c7a2b82f141af97409570ef",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -365,8 +373,10 @@
       "path": "corpus/generated/paint_inline_framing/short-packed-rows.pdf",
       "sha256": "c6e7dbd9084813560cc9c3dded7783f8116949138b2c8bcc3fe20b6e2339f323",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -380,8 +390,10 @@
       "path": "corpus/generated/paint_inline_framing/short-row-padding.pdf",
       "sha256": "1337daae98732a3f859a2bdf7d29a17b8c703589f338eecc455923435a2d859d",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -395,8 +407,10 @@
       "path": "corpus/generated/paint_inline_framing/short-sixteen-bit.pdf",
       "sha256": "48672cae9bafa2c5195a1e334d2089b2551c8952b2731f140645c1b7bd872e56",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -410,8 +424,10 @@
       "path": "corpus/generated/paint_inline_framing/excess-asciihex.pdf",
       "sha256": "a739fae12b48a339b5523930fa8f7c17718283a59a810e2e570016a0f632d12c",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -425,8 +441,10 @@
       "path": "corpus/generated/paint_inline_framing/excess-runlength.pdf",
       "sha256": "e498e088b01db0002cd4a6a89058c4c13aaee5875f3a951987c265048a8dbf00",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -440,8 +458,10 @@
       "path": "corpus/generated/paint_inline_framing/invalid-asciihex.pdf",
       "sha256": "3f4088c50563c6193b5cec36a60df2fb24476b5d06eb6ad567416d0ed1f9313b",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
@@ -455,8 +475,10 @@
       "path": "corpus/generated/paint_inline_framing/invalid-runlength.pdf",
       "sha256": "e61de1377115e5960b3aa4a777b6f0e800cbe28bb895dfe47dd5ba8764687d47",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
       "render_error": "syntax"
     },
     {
