@@ -215,3 +215,39 @@ is the project reading of 7.10.2. Transfer-region selection follows
 default transfer, including through indirect references. A fractional boundary involving a nondefault
 transfer still fails explicitly: averaging colour before region selection would
 lose the correlation needed for nonlinear transfer functions.
+
+
+## Original classic records during Size-fault reconstruction
+
+The `object.integer-separator` policy also applies during the existing reported
+`xref.rebuilt` traversal when one complete classic section fails only because
+its positive `/Size` does not cover its recorded IDs (7.5.4–7.5.5, Table15).
+This is an ADR0003 repair policy; it does not make the malformed index a valid
+source revision or rewrite `/Size`.
+
+The new authority requires a pristine header, no other source-repair diagnostic,
+no `/Prev`, `/XRefStm` or `/Encrypt` entry, and exact original physical headers
+for the complete parsed record map. Corrected offsets and all-free maps supply
+no authority. Only a header the existing monotonic scanner already visits may
+recover its complete unsigned integer/endobj scalar within the original next
+physical-header/xref bound. There is no alternate traversal or raw-record/index
+merge; headers in skipped streams, strings and comments stay skipped. Ordinary
+later scanned definitions retain their existing precedence. Lazy access requires
+the final effective object/generation/offset to match the original record too.
+A deferred scalar diagnostic is committed only after successful ordinary slot
+insertion. Declined proofs preserve their old values/errors and stream recovery.
+
+The moved record map, physical-boundary vector and owning metadata are charged
+to the same aggregate `document_bytes` account before retention and slot
+allocation. Tiny caller budgets may refuse the additional required metadata;
+resource failures never retry through a cheaper unaccounted path. A newly
+available exact Length such as `i64::MAX` must retain its value and hit the
+existing portable stream cap, even when the old missing-value path inferred a
+shorter extent. No clamp or extra stream-length fallback is authorized.
+
+Rebuilt history still has no valid source revisions. Strict reopening retains
+the original primary error and source position; signature change analysis
+remains inconclusive on repaired source, and modified incremental saving keeps
+its repaired-base refusal. No-op saving preserves the original bytes. These
+scope, policy and source-byte contracts are independent of cryptographic
+integrity and of full corpus/render qualification.

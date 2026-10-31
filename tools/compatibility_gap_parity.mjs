@@ -9,9 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { WASI } from 'node:wasi';
 
 if (process.argv[2] === '--wasi') {
-  const [, , , module, input, output, mode, dpi, cap] = process.argv;
+  const [, , , module, input, output, mode, dpi, ...tail] = process.argv;
   const wasi = new WASI({version:'preview1', returnOnExit:true,
-    args:['compatibility-gap', input, output, mode, dpi, ...(cap===undefined?[]:[cap])],
+    args:['compatibility-gap', input, output, mode, dpi, ...tail],
     preopens:{'/source':resolve('.'), '/scratch':process.env.COMPATIBILITY_GAP_SCRATCH}});
   const instance = await WebAssembly.instantiate(await WebAssembly.compile(readFileSync(module)),
     {wasi_snapshot_preview1:wasi.wasiImport});
@@ -59,7 +59,8 @@ if (process.argv[2] === '--wasi') {
           const localOutput=join(scratch,stem);
           const input=name==='native'?resolve(c.path):`/source/${c.path}`;
           const output=name==='native'?localOutput:`/scratch/${stem}`;
-          const r=spawnSync(command[0],[...command.slice(1),input,output,mode,String(c.dpi??72), ...(c.runtime_limits?.stream_bytes===undefined?[]:[String(c.runtime_limits.stream_bytes)])],
+          const r=spawnSync(command[0],[...command.slice(1),input,output,mode,String(c.dpi??72), ...(c.runtime_limits?.stream_bytes===undefined?[]:[String(c.runtime_limits.stream_bytes)]),
+            ...(c.document_queries??[]).map(q=>`query=${q.object[0]}:${q.object[1]}:${q.expected}${q.value===undefined||q.value===null?'':':'+String(q.value)}`)],
             {cwd:root,encoding:'utf8',timeout:60000,env:{...process.env,COMPATIBILITY_GAP_SCRATCH:scratch}});
           assert(!r.error,`${stem}: ${r.error}`);
           const rejectedRepair=mode==='strict' && !c.strict_valid && c.repairs.length>0;
@@ -68,11 +69,25 @@ if (process.argv[2] === '--wasi') {
             for(const tag of c.repairs) assert(r.stdout.split('\n').includes(tag),`${stem}: missing ${tag}`);
             for(const tag of c.information??[]) assert(r.stdout.split('\n').includes(tag),`${stem}: missing information ${tag}`);
             compare(localOutput,c.oracle,c.tolerance??0);
+            if(c.document_queries?.length) assert(r.stdout.split('\n').includes('document-query-contracts=pass'),`${stem}: direct object contracts`);
           } else {
             assert.equal(r.status,1,`${stem}: expected refusal: ${r.stderr}`);
             assert(!existsSync(localOutput),`${stem}: partial output after refusal`);
             if(mode==='strict' && c.strict_error_tag) assert(r.stderr.includes(c.strict_error_tag),`${stem}: strict source tag`);
-            if(rejectedRepair) assert(c.repairs.some(tag=>r.stderr.includes(tag)),`${stem}: strict repair tag`);
+            const contract=c.mode_errors?.[mode];
+            if(contract) {
+              assert(r.stderr.includes(`kind: ${contract.kind}`),`${stem}: declared mode error kind`);
+              if(contract.message!==undefined) assert(r.stderr.includes(`message: ${JSON.stringify(contract.message)}`),`${stem}: mode message`);
+              if(contract.file_position!==undefined) assert(r.stderr.includes(`position: File(${contract.file_position})`),`${stem}: source offset`);
+              if(Object.hasOwn(contract,'object')) {
+                const expected=contract.object===null?'object: None':`object: Some(ObjectId { number: ${contract.object[0]}, generation: ${contract.object[1]} })`;
+                assert(r.stderr.includes(expected),`${stem}: original error object`);
+              }
+              if(Object.hasOwn(contract,'repair')) {
+                const expected=contract.repair===null?'repair: None':`repair: Some(Repair(${JSON.stringify(contract.repair)}))`;
+                assert(r.stderr.includes(expected),`${stem}: original refused repair`);
+              }
+            } else if(rejectedRepair) assert(c.repairs.some(tag=>r.stderr.includes(tag)),`${stem}: strict repair tag`);
             else if(c.expected==='unsupported') assert(r.stderr.includes(c.feature),`${stem}: feature tag`);
             else {
               const kind = {syntax:'Syntax', limit:'Limit', cycle:'Cycle', 'invalid-argument':'InvalidArgument'}[(c.runtime_expected_error_kind??c.render_error)?.toLowerCase()];
@@ -80,6 +95,7 @@ if (process.argv[2] === '--wasi') {
               assert(r.stderr.includes(kind),`${stem}: error kind; actual stderr: ${r.stderr}`);
             }
           }
+          assert.equal(hash(c.path),c.sha256,`${stem}: immutable source bytes`);
         }
       }
     }

@@ -59,6 +59,7 @@ pub struct Document {
     trailer: Dictionary,
     slots: BTreeMap<ObjectId, Slot>,
     revisions: Vec<Revision>,
+    original: Option<Arc<xref::original::OriginalRecords>>,
     object_streams: BTreeMap<u32, OnceLock<Result<object::stream::Contents>>>,
     security: Option<security::Security>,
     /// Sorted offsets where physical objects and revisions start.

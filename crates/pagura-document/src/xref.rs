@@ -1,5 +1,6 @@
 //! File structure and cross-reference data (ISO 32000-2 clauses 7.5.2–7.5.8).
 
+pub(crate) mod original;
 pub(crate) mod rebuild;
 pub(crate) mod stream;
 
@@ -59,6 +60,7 @@ pub(crate) struct XrefTable {
     pub(crate) trailer: Dictionary,
     pub(crate) revisions: Vec<Revision>,
     pub(crate) origin: XrefOrigin,
+    pub(crate) original: Option<std::sync::Arc<original::OriginalRecords>>,
 }
 
 /// Where cross-reference data came from.
@@ -153,6 +155,66 @@ pub(crate) fn read(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<XrefTable> {
+    read_sections(
+        bytes,
+        header,
+        limits,
+        diagnostics,
+        &mut OriginalCapture::Discard,
+    )
+}
+
+/// Opening may carry source evidence alongside the original structural error.
+pub(crate) enum OpenRead {
+    Parsed(XrefTable),
+    Failed {
+        error: Error,
+        original: Option<std::sync::Arc<original::OriginalRecords>>,
+    },
+}
+
+enum OriginalCapture {
+    Discard,
+    Retain(Option<std::sync::Arc<original::OriginalRecords>>),
+}
+
+pub(crate) fn read_with_original(
+    bytes: &[u8],
+    header: usize,
+    limits: &Limits,
+    header_diagnostics: &Diagnostics,
+    diagnostics: &mut Diagnostics,
+) -> OpenRead {
+    if diagnostics.mode() == pagura_core::Recovery::Strict
+        || !header_diagnostics.as_slice().is_empty()
+    {
+        return match read(bytes, header, limits, diagnostics) {
+            Ok(table) => OpenRead::Parsed(table),
+            Err(error) => OpenRead::Failed {
+                error,
+                original: None,
+            },
+        };
+    }
+    let mut capture = OriginalCapture::Retain(None);
+    let result = read_sections(bytes, header, limits, diagnostics, &mut capture);
+    let original = match capture {
+        OriginalCapture::Discard => None,
+        OriginalCapture::Retain(original) => original,
+    };
+    match result {
+        Ok(table) => OpenRead::Parsed(table),
+        Err(error) => OpenRead::Failed { error, original },
+    }
+}
+
+fn read_sections(
+    bytes: &[u8],
+    header: usize,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+    capture: &mut OriginalCapture,
+) -> Result<XrefTable> {
     let start = find_startxref(bytes, limits, diagnostics)?.ok_or(
         Error::syntax("missing startxref near the end of the file").at(Position::File(bytes.len())),
     )?;
@@ -214,13 +276,21 @@ pub(crate) fn read(
             section.entries.extend(supplement.entries);
             section.kind = RevisionKind::Hybrid;
         }
+        let entries = merge_section(
+            &mut table,
+            &mut section,
+            offset,
+            shift,
+            ReadSource {
+                bytes,
+                limits,
+                diagnostics,
+            },
+            capture,
+        )?;
         let Section {
-            entries,
-            trailer,
-            kind,
-            end,
+            trailer, kind, end, ..
         } = section;
-        let entries = merge_entries(&mut table, entries, &trailer, offset, shift)?;
         for (key, value) in &trailer {
             if !table.trailer.contains_key(key.as_bytes()) {
                 table.trailer.insert(key.clone(), value.clone());
@@ -345,23 +415,86 @@ pub(crate) fn nearby_tokens(bytes: &[u8], offset: usize) -> impl Iterator<Item =
     })
 }
 
+#[derive(Clone, Copy)]
+struct ReadSource<'a> {
+    bytes: &'a [u8],
+    limits: &'a Limits,
+    diagnostics: &'a Diagnostics,
+}
+
+fn merge_section(
+    table: &mut XrefTable,
+    section: &mut Section,
+    offset: usize,
+    shift: usize,
+    source: ReadSource<'_>,
+    capture: &mut OriginalCapture,
+) -> Result<BTreeMap<u32, XrefEntry>> {
+    let entries = std::mem::take(&mut section.entries);
+    match merge_entries(table, entries, &section.trailer, offset, shift) {
+        Ok(entries) => Ok(entries),
+        Err(MergeFailure::Invalid(error)) => Err(error),
+        Err(MergeFailure::SizeCoverage { entries, size }) => {
+            if let OriginalCapture::Retain(original) = capture
+                && table.revisions.is_empty()
+                && table.entries.is_empty()
+                && section.kind == RevisionKind::Table
+                && shift == 0
+                && !section.trailer.contains_key(b"Prev")
+                && !section.trailer.contains_key(b"XRefStm")
+                && !section.trailer.contains_key(b"Encrypt")
+                && source.diagnostics.as_slice().is_empty()
+            {
+                *original = original::OriginalRecords::retain(
+                    source.bytes,
+                    entries,
+                    offset,
+                    section.end,
+                    size,
+                    source.limits,
+                )?;
+            }
+            Err(size_coverage_error(offset))
+        }
+    }
+}
+
+fn size_coverage_error(offset: usize) -> Error {
+    Error::syntax("trailer Size does not cover cross-reference entries").at(Position::File(offset))
+}
+
+enum MergeFailure {
+    Invalid(Error),
+    SizeCoverage {
+        entries: BTreeMap<u32, XrefEntry>,
+        size: usize,
+    },
+}
+
+impl From<Error> for MergeFailure {
+    fn from(error: Error) -> Self {
+        Self::Invalid(error)
+    }
+}
+
 fn merge_entries(
     table: &mut XrefTable,
     mut entries: BTreeMap<u32, XrefEntry>,
     trailer: &Dictionary,
     offset: usize,
     shift: usize,
-) -> Result<BTreeMap<u32, XrefEntry>> {
+) -> std::result::Result<BTreeMap<u32, XrefEntry>, MergeFailure> {
     let size = integer_offset(trailer, b"Size")?.ok_or(Error::syntax("trailer Size is missing"))?;
     if size == 0
         || entries
             .keys()
             .any(|&number| u64::from(number) >= size as u64)
     {
-        return Err(
-            Error::syntax("trailer Size does not cover cross-reference entries")
-                .at(Position::File(offset)),
-        );
+        return Err(if size == 0 {
+            MergeFailure::Invalid(size_coverage_error(offset))
+        } else {
+            MergeFailure::SizeCoverage { entries, size }
+        });
     }
     // The newest section already owns a complete ordered map. With physical
     // offsets the effective table copies it whole instead of inserting each key.
