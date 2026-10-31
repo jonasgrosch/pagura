@@ -55,7 +55,7 @@ fn transpose_samples(
 ) -> Result<Samples> {
     Ok(match samples {
         Samples::Bytes(values) => {
-            Samples::Bytes(values_transposed(values, size, components, limits)?)
+            Samples::Bytes(values_transposed(values, size, components, limits)?.into())
         }
         Samples::Words(values) => {
             Samples::Words(values_transposed(values, size, components, limits)?)
@@ -333,7 +333,7 @@ mod tests {
                     u32::try_from(width).unwrap(),
                     u32::try_from(height).unwrap(),
                     n,
-                    Samples::Bytes(bytes),
+                    Samples::Bytes(bytes.into()),
                 );
                 let turned = original.transposed(&limits).unwrap();
                 assert_eq!(

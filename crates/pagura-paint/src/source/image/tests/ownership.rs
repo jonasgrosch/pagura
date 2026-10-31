@@ -11,7 +11,7 @@ use pagura_raster::Transform;
 
 #[test]
 fn rgb_codes_drop_the_original_converter_and_tables() {
-    let image = image((2, 2), 3, 8, Samples::Bytes(vec![0; 12]));
+    let image = image((2, 2), 3, 8, Samples::Bytes(vec![0; 12].into()));
     let geometry = geometry::Geometry::new((2, 2), false, Transform::scale(0.125, 0.125)).unwrap();
     let mut bytes = meter();
     let mut functions = meter();
@@ -63,7 +63,7 @@ fn rgb_codes_drop_the_original_converter_and_tables() {
 
 #[test]
 fn non_affine_stencil_keeps_its_selected_bilinear_separable() {
-    let mut image = image((2, 2), 1, 1, Samples::Bytes(vec![0, 1, 1, 0]));
+    let mut image = image((2, 2), 1, 1, Samples::Bytes(vec![0, 1, 1, 0].into()));
     image.kind = ImageKind::Stencil { inverted: false };
     let geometry = geometry::Geometry::new((2, 2), true, Transform::scale(0.125, 0.125)).unwrap();
     assert!(matches!(
@@ -98,7 +98,7 @@ fn non_affine_stencil_keeps_its_selected_bilinear_separable() {
 
 #[test]
 fn work_refusal_precedes_stencil_recolouring_allocation() {
-    let mut image = image((2, 2), 1, 1, Samples::Bytes(vec![0, 1, 1, 0]));
+    let mut image = image((2, 2), 1, 1, Samples::Bytes(vec![0, 1, 1, 0].into()));
     image.kind = ImageKind::Stencil { inverted: false };
     let geometry = geometry::Geometry::new((2, 2), false, Transform::scale(0.125, 0.125)).unwrap();
     let mut bytes = meter();
@@ -167,7 +167,7 @@ fn code_table_function_fees_remain_after_converter_is_dropped() {
             (2, 2),
             1,
             8,
-            Samples::Bytes(vec![0, 1, 2, 3]),
+            Samples::Bytes(vec![0, 1, 2, 3].into()),
         )));
         let mut bytes = meter();
         bytes

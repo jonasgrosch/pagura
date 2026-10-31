@@ -3,14 +3,13 @@
 
 use super::header::{Codec, Header};
 use super::{Layout, Orientation};
-use crate::{DecodedImage, MaskKind, Samples, dispatch, fax_image, parameters as p};
+use crate::{DecodedImage, MaskKind, Samples, SharedBytes, dispatch, fax_image, parameters as p};
 use pagura_core::{Diagnostics, Error, Limits, Result};
-use std::borrow::Cow;
 
 /// Decodes `data` as `header` describes it, in `layout` and `orientation`.
 pub(crate) fn decode(
     header: &Header,
-    data: &[u8],
+    data: &SharedBytes,
     (layout, orientation): (Layout, Orientation),
     limits: &Limits,
     diagnostics: &mut Diagnostics,
@@ -25,7 +24,7 @@ pub(crate) fn decode(
         height,
         components,
         bits_per_component: 1,
-        samples: Samples::Bytes(Vec::new()),
+        samples: Samples::Bytes(SharedBytes::default()),
         kind: header.initial.clone(),
         decode: None,
         mask: MaskKind::None,
@@ -37,12 +36,8 @@ pub(crate) fn decode(
         }
         Codec::None => {
             image.bits_per_component = bits;
-            image.samples = dispatch::unfiltered(
-                Cow::Borrowed(data),
-                (width, height, components, bits),
-                limits,
-                diagnostics,
-            )?;
+            image.samples =
+                dispatch::unfiltered(data, (width, height, components, bits), limits, diagnostics)?;
         }
         Codec::Dct(params) => {
             // A baseline YCbCr frame decodes faster into its native planes;
@@ -111,7 +106,7 @@ fn interleave(samples: &mut Samples, limits: &Limits) -> Result<()> {
             return Err(Error::syntax("JPEG planes do not cover the image"));
         }
     }
-    *samples = Samples::Bytes(bytes);
+    *samples = Samples::Bytes(bytes.into());
     Ok(())
 }
 

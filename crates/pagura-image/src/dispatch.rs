@@ -1,26 +1,24 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
-use crate::{DecodedImage, Samples, dct, jbig2, parameters as p};
+use crate::{DecodedImage, Samples, SharedBytes, dct, jbig2, parameters as p};
 use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
 use pagura_document::Document;
 
 /// Samples of unfiltered image data. Whole bytes of exactly the declared
-/// extent are the samples themselves when the data is owned.
+/// extent are the samples themselves, shared with `data` under the budget
+/// unpacking them would meet; other data are unpacked into samples of their
+/// own.
 pub(crate) fn unfiltered(
-    data: std::borrow::Cow<'_, [u8]>,
+    data: &SharedBytes,
     (width, height, components, bits): (u32, u32, u8, u8),
     limits: &pagura_core::Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<Samples> {
     let count = usize::try_from(u64::from(width) * u64::from(height) * u64::from(components)).ok();
-    Ok(match data {
-        std::borrow::Cow::Owned(mut bytes) if bits == 8 && count == Some(bytes.len()) => {
-            bytes.shrink_to_fit();
-            Samples::Bytes(bytes)
-        }
-        data => {
-            p::unpack_with_diagnostics(&data, width, height, components, bits, limits, diagnostics)?
-        }
-    })
+    if bits == 8 && count == Some(data.len()) {
+        p::budget(width, height, components, bits, limits)?;
+        return Ok(Samples::Bytes(data.clone()));
+    }
+    p::unpack_with_diagnostics(data, width, height, components, bits, limits, diagnostics)
 }
 
 /// The data of the `JBIG2Globals` stream of an image whose JBIG2 filter has
@@ -151,7 +149,7 @@ pub(crate) fn decode_dct(
                     )
                     .at(pagura_core::Position::Buffer(0)),
                 )?;
-                image.samples = Samples::Bytes(samples);
+                image.samples = Samples::Bytes(samples.into());
                 return Ok(false);
             }
             return Err(error);
@@ -166,7 +164,7 @@ pub(crate) fn decode_dct(
             "JPEG metadata disagrees with image dictionary",
         ));
     }
-    image.samples = Samples::Bytes(decoded.samples);
+    image.samples = Samples::Bytes(decoded.samples.into());
     Ok(false)
 }
 
@@ -188,7 +186,7 @@ fn native_samples(
                 image.height as usize,
                 image.components,
             ),
-            Samples::Bytes(image.samples),
+            Samples::Bytes(image.samples.into()),
         ),
     };
     let declared = if transposed {

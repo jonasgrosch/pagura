@@ -63,10 +63,12 @@ mod jpx_channels;
 mod jpx_image;
 mod mask;
 mod parameters;
+mod shared;
 mod source;
 mod stream;
 mod transpose;
 
+pub use shared::SharedBytes;
 pub use source::{
     DecodeRequest, Decoded, ImageId, ImageSource, Layout, Orientation, Reduce, SampleRect,
     SourceMask,
@@ -134,7 +136,9 @@ pub struct ImageAlpha {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Samples {
     /// Ordinary 1/2/4/8-bit values, or JPX values of 1–8 bits, in one byte.
-    Bytes(Vec<u8>),
+    /// Unfiltered 8-bit data of exactly the image's extent are these values
+    /// themselves, shared with the source rather than copied.
+    Bytes(SharedBytes),
     /// Ordinary 16-bit values, or JPX values of 9–16 bits.
     Words(Vec<u16>),
     /// Interleaved JPX values whose colour components have different

@@ -188,7 +188,7 @@ fn decode_arrays_stencils_and_inline_abbreviations() {
         &[0b0001_1000, 0b1110_0100],
     )
     .unwrap();
-    assert_eq!(image.samples, Samples::Bytes(vec![0, 1, 2, 3, 2, 1]));
+    assert_eq!(image.samples, Samples::Bytes(vec![0, 1, 2, 3, 2, 1].into()));
     assert_eq!(image.decode, Some(vec![1., 0.]));
     assert!(image.interpolate);
     assert_eq!(inline_data_length(&dict, b"12 EI Q").unwrap(), 2);
@@ -302,7 +302,11 @@ fn dictionary_vector(name: &str, params: &BTreeMap<String, String>, expected: &[
         return;
     }
     let image = result.unwrap_or_else(|e| panic!("{name}: {e}"));
-    assert_eq!(image.samples, Samples::Bytes(expected.to_vec()), "{name}");
+    assert_eq!(
+        image.samples,
+        Samples::Bytes(expected.to_vec().into()),
+        "{name}"
+    );
     if let Some(mask) = params.get("mask") {
         assert_eq!(
             image.mask,
@@ -385,7 +389,11 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
         return;
     }
     let image = result.unwrap_or_else(|e| panic!("{name}: {e}"));
-    assert_eq!(image.samples, Samples::Bytes(expected.to_vec()), "{name}");
+    assert_eq!(
+        image.samples,
+        Samples::Bytes(expected.to_vec().into()),
+        "{name}"
+    );
     if let Some(inverted) = params.get("stencil") {
         assert_eq!(
             image.kind,
@@ -460,7 +468,7 @@ fn sample_vector(name: &str, p: &BTreeMap<String, String>, expected: &[u8]) {
     );
     let bytes = match decoded.samples {
         Samples::Planar(_) | Samples::Packed(_) => unreachable!("interleaved layout"),
-        Samples::Bytes(v) => v,
+        Samples::Bytes(v) => v.to_vec(),
         Samples::Words(v) | Samples::Mixed { values: v, .. } => {
             v.iter().flat_map(|v| v.to_be_bytes()).collect()
         }

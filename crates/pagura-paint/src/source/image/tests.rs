@@ -33,7 +33,7 @@ fn prepared_with_budget(
     color: Option<&[f64]>,
     bytes: &mut pagura_core::Meter,
 ) -> pagura_core::Result<ImageSampler> {
-    let mut decoded = image((5, 3), 1, 8, Samples::Bytes(vec![0; 15]));
+    let mut decoded = image((5, 3), 1, 8, Samples::Bytes(vec![0; 15].into()));
     if stencil {
         decoded.kind = ImageKind::Stencil { inverted: false };
         decoded.bits_per_component = 1;
@@ -240,7 +240,8 @@ fn bytes(count: usize, bits: u8, seed: u32) -> Samples {
         codes(count, bits, seed)
             .into_iter()
             .map(|v| u8::try_from(v).unwrap())
-            .collect(),
+            .collect::<Vec<u8>>()
+            .into(),
     )
 }
 
@@ -622,7 +623,7 @@ fn packed_stencils_sample_as_their_bytes_bit_for_bit() {
     for inverted in [false, true] {
         for color in [None, Some(vec![0.3, 0.7, 0.123_456_789])] {
             let packed = stencil(Samples::Packed(packed.clone()), inverted, &color);
-            let bytes = stencil(Samples::Bytes(Vec::clone(&bytes)), inverted, &color);
+            let bytes = stencil(Samples::Bytes(Vec::clone(&bytes).into()), inverted, &color);
             for unit_to_device in placements(21, 9) {
                 let (a, b) = (
                     sampler(&packed, unit_to_device, 3),
@@ -727,7 +728,12 @@ fn spans_are_uniform(sampler: &ImageSampler, unit_to_device: Transform) -> bool 
 
 #[test]
 fn one_texel_images_sampled_nearest_are_uniform() {
-    let rgb = case(image((1, 1), 3, 8, Samples::Bytes(vec![40, 200, 77])));
+    let rgb = case(image(
+        (1, 1),
+        3,
+        8,
+        Samples::Bytes(vec![40, 200, 77].into()),
+    ));
     let placements = placements(1, 1);
     let uniform = placements
         .iter()
@@ -751,7 +757,7 @@ fn one_texel_images_sampled_nearest_are_uniform() {
     );
     assert_eq!(repaired.repairs().len(), 1);
     for inverted in [false, true] {
-        let mut stencil = image((1, 1), 1, 1, Samples::Bytes(vec![0]));
+        let mut stencil = image((1, 1), 1, 1, Samples::Bytes(vec![0].into()));
         stencil.kind = ImageKind::Stencil { inverted };
         let mut case = case(stencil);
         case.space = None;
@@ -773,7 +779,7 @@ fn one_texel_images_sampled_nearest_are_uniform() {
         (2, 1),
         3,
         8,
-        Samples::Bytes(vec![40, 200, 77, 40, 200, 77]),
+        Samples::Bytes(vec![40, 200, 77, 40, 200, 77].into()),
     ));
     assert!(
         sampler(&wide, magnified, 3)
@@ -1151,7 +1157,8 @@ fn rows_and_tables_sum_as_samples_do() {
                     1 => u8::try_from(v >> 8).unwrap(),
                     _ => 255,
                 })
-                .collect(),
+                .collect::<Vec<u8>>()
+                .into(),
         ),
     );
     let mut cases = Vec::new();
@@ -1380,7 +1387,7 @@ fn indexed_sources_sample_as_their_memo_does() {
         ),
         3,
         8,
-        Samples::Bytes(samples),
+        Samples::Bytes(samples.into()),
     );
     let mut keyed = case(rgb.clone());
     keyed.key = Some(vec![[150, 255], [0, 40], [0, 255]]);

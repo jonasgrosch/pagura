@@ -255,7 +255,7 @@ pub(crate) fn unpack_with_diagnostics(
         }
         values
     };
-    Ok(Samples::Bytes(values))
+    Ok(Samples::Bytes(values.into()))
 }
 
 /// One-bit, one-component samples kept in their padded rows, with the same

@@ -1667,7 +1667,7 @@ mod tests {
             (1, 1),
             3,
             8,
-            pagura_image::Samples::Bytes(vec![1, 2, 3]),
+            pagura_image::Samples::Bytes(vec![1, 2, 3].into()),
         );
         let mut layout = MemoLayout::new(
             Key {
@@ -1728,7 +1728,7 @@ mod tests {
             (3000, 1),
             3,
             8,
-            pagura_image::Samples::Bytes(colors),
+            pagura_image::Samples::Bytes(colors.into()),
         );
         let key = Key {
             components: 3,

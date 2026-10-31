@@ -161,7 +161,7 @@ fn empty() -> DecodedImage {
         height: 1,
         bits_per_component: 0,
         components: 0,
-        samples: Samples::Bytes(Vec::new()),
+        samples: Samples::Bytes(crate::SharedBytes::default()),
         kind: ImageKind::Color { color_space: None },
         decode: None,
         mask: MaskKind::None,
@@ -253,7 +253,7 @@ fn unused_opacity_layout_is_ignored() {
     };
     let mut image = empty();
     jpx_image::adapt(placed(decoded), 0, &mut image, &Limits::default()).unwrap();
-    assert_eq!(image.samples, Samples::Bytes(vec![12, 26]));
+    assert_eq!(image.samples, Samples::Bytes(vec![12, 26].into()));
     assert_eq!(image.mask, MaskKind::None);
 }
 
@@ -392,7 +392,7 @@ fn short_eight_bit_data_ends_in_zero_samples() {
         &mut diagnostics,
     )
     .unwrap();
-    assert_eq!(samples, Samples::Bytes(vec![7, 8, 9, 0]));
+    assert_eq!(samples, Samples::Bytes(vec![7, 8, 9, 0].into()));
     assert_eq!(
         diagnostics.as_slice()[0].repair(),
         Some(crate::tags::DATA_SHORT)

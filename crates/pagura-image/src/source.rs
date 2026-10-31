@@ -7,12 +7,13 @@ mod header;
 #[cfg(test)]
 mod tests;
 
-use crate::{DecodedImage, ImageKind};
+use crate::{DecodedImage, ImageKind, SharedBytes};
 use header::{Codec, Header};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Position, Recovery, Result, Value,
 };
 use pagura_document::{Document, IndirectObject};
+use std::borrow::Cow;
 use std::sync::Arc;
 
 /// The identity of an image source within one document: never an address
@@ -77,7 +78,9 @@ pub struct ImageSource {
     /// `None` for an inline image, whose positions stay relative to its data.
     origin: Option<Position>,
     header: Arc<Header>,
-    data: Arc<[u8]>,
+    /// The data up to the codec: decoded data owned as decoded, raw stream
+    /// data copied once.
+    data: SharedBytes,
     recovery: Recovery,
 }
 
@@ -203,6 +206,14 @@ impl From<DecodedImage> for Decoded {
     }
 }
 
+/// `data` kept for sharing: decoded data without a copy, raw stream data
+/// copied once.
+fn shared(data: Cow<'_, [u8]>) -> SharedBytes {
+    let mut data = data.into_owned();
+    data.shrink_to_fit();
+    SharedBytes::new(data)
+}
+
 impl ImageSource {
     /// Reads and validates an image XObject (8.9.5) without decoding its
     /// samples: its dictionary, mask and data up to its codec. Repairs of
@@ -230,7 +241,7 @@ impl ImageSource {
             id: ImageId::Object(id),
             origin: Some(origin),
             header: Arc::new(header),
-            data: data.into(),
+            data: shared(data),
             recovery: document.recovery(),
         })
     }
@@ -257,7 +268,7 @@ impl ImageSource {
             id,
             origin: None,
             header: Arc::new(header),
-            data: data.into(),
+            data: shared(data),
             recovery: document.recovery(),
         })
     }

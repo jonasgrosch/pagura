@@ -405,7 +405,7 @@ fn interleave(
                 Ok(())
             },
         )?;
-        return Ok(Samples::Bytes(values));
+        return Ok(Samples::Bytes(values.into()));
     }
     let mut values = Vec::with_capacity(count);
     each_sample(
@@ -555,7 +555,7 @@ fn interleave_plain(
                 );
             }
         }
-        return Ok(Samples::Bytes(values));
+        return Ok(Samples::Bytes(values.into()));
     }
     let mut values = Vec::with_capacity(count);
     for i in 0..pixels {
@@ -753,7 +753,7 @@ mod row_scratch_tests {
                     height: 7,
                     bits_per_component: 8,
                     components: 3,
-                    samples: Samples::Bytes(Vec::new()),
+                    samples: Samples::Bytes(crate::SharedBytes::default()),
                     kind: ImageKind::EmbeddedColor {
                         color: jpx::JpxColor::Enumerated(16),
                     },

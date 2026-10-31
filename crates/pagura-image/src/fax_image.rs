@@ -55,7 +55,7 @@ pub(crate) fn decode(
             *sample = (byte >> (7 - x % 8)) & 1;
         }
     }
-    Ok(Samples::Bytes(samples))
+    Ok(Samples::Bytes(samples.into()))
 }
 
 #[cfg(test)]

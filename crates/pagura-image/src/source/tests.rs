@@ -3,7 +3,7 @@
 
 use super::{DecodeRequest, ImageSource, Layout, Orientation, Reduce, SourceMask};
 use crate::{ImageKind, MaskKind, Samples};
-use pagura_core::{ObjectId, Recovery, Value};
+use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Value};
 use pagura_document::{Document, OpenOptions};
 
 /// A PDF whose objects 3 and onwards are the given streams, each as
@@ -82,9 +82,91 @@ fn sources_outlive_their_document_and_expose_masks_without_decoding() {
     let decoded = source
         .decode(&DecodeRequest::FULL, &limits, Recovery::Strict)
         .unwrap();
-    assert_eq!(decoded.image.samples, Samples::Bytes(samples));
+    assert_eq!(decoded.image.samples, Samples::Bytes(samples.into()));
     assert_eq!(decoded.image.mask, MaskKind::Soft(ObjectId::new(4, 0)));
     assert_eq!(decoded.diagnostics.len(), 0);
+}
+
+#[test]
+fn samples_of_exactly_the_image_extent_are_the_sources_data() {
+    let samples: Vec<u8> = (0..12).collect();
+    let flate = pagura_codec::flate::compress(
+        &samples,
+        pagura_codec::flate::Level::Default,
+        &Limits::default(),
+    )
+    .unwrap();
+    let rgb = "/Type /XObject /Subtype /Image /Width 2 /Height 2 /BitsPerComponent 8 \
+               /ColorSpace /DeviceRGB";
+    let document = open(pdf(&[
+        (&format!("{rgb} /Filter /FlateDecode"), &flate),
+        (rgb, &samples[..10]),
+        (
+            "/Type /XObject /Subtype /Image /Width 4 /Height 1 /BitsPerComponent 4 \
+             /ColorSpace /DeviceGray",
+            &[0x12, 0x34],
+        ),
+    ]));
+    let limits = document.limits();
+    let bytes = |source: &ImageSource| {
+        let decoded = source
+            .decode(&DecodeRequest::FULL, &limits, Recovery::Repair)
+            .unwrap();
+        let Samples::Bytes(bytes) = decoded.image.samples else {
+            panic!("byte samples");
+        };
+        bytes
+    };
+    // The inflated stream is kept as inflated, and its bytes are the samples.
+    let inflated = source(&document, 3);
+    assert_eq!(inflated.data.capacity(), samples.len());
+    let shared = bytes(&inflated);
+    assert!(shared.shares(&inflated.data));
+    assert_eq!(shared.as_slice(), samples.as_slice());
+    assert_eq!(crate::deferred::storage_bytes(&Samples::Bytes(shared)), 12);
+    // Short data are padded, and packed samples unpacked, into bytes of
+    // their own.
+    let short = source(&document, 4);
+    let padded = bytes(&short);
+    assert!(!padded.shares(&short.data));
+    assert_eq!(padded.as_slice(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0]);
+    let packed = source(&document, 5);
+    let unpacked = bytes(&packed);
+    assert!(!unpacked.shares(&packed.data));
+    assert_eq!(unpacked.as_slice(), [1, 2, 3, 4]);
+}
+
+#[test]
+fn shared_samples_meet_the_budget_unpacked_samples_meet() {
+    // Twelve 8-bit samples, the data byte for byte, and twelve 4-bit ones.
+    let document = open(pdf(&[
+        (
+            "/Type /XObject /Subtype /Image /Width 2 /Height 2 /BitsPerComponent 8 \
+             /ColorSpace /DeviceRGB",
+            &[7; 12],
+        ),
+        (
+            "/Type /XObject /Subtype /Image /Width 4 /Height 3 /BitsPerComponent 4 \
+             /ColorSpace /DeviceGray",
+            &[0x77; 6],
+        ),
+    ]));
+    for number in [3, 4] {
+        let source = source(&document, number);
+        let decode = |decoded_bytes| {
+            let limits = Limits {
+                decoded_bytes,
+                ..document.limits()
+            };
+            source.decode(&DecodeRequest::FULL, &limits, Recovery::Strict)
+        };
+        assert!(decode(12).is_ok(), "object {number}");
+        assert_eq!(
+            decode(11).unwrap_err().kind,
+            ErrorKind::Limit,
+            "object {number}"
+        );
+    }
 }
 
 #[test]
