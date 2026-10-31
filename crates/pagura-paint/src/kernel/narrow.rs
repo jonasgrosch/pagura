@@ -509,14 +509,50 @@ pub(crate) fn level(value: f64) -> f32 {
 /// tests.
 #[inline]
 pub(crate) fn certified_level(value: f64, radius: f64) -> Option<f32> {
+    let (level, certain) = certify(value, margin(radius));
+    certain.then_some(level)
+}
+
+/// [`certified_level`] of each of `values`, for one `radius`: each one's
+/// level into `levels`, clearing `certain` where it is not certain. The
+/// margin is found once and no test branches, so that the run vectorizes.
+#[inline]
+pub(crate) fn certified_run<const N: usize>(
+    values: &[f64; N],
+    radius: f64,
+    levels: &mut [f32; N],
+    certain: &mut [bool; N],
+) {
+    let margin = margin(radius);
+    for ((&value, level), certain) in values.iter().zip(levels).zip(certain) {
+        let (found, sure) = certify(value, margin);
+        *level = found;
+        *certain &= sure;
+    }
+}
+
+/// The margin `m` of [`certified_level`] for `radius`.
+#[inline]
+fn margin(radius: f64) -> f64 {
     const SLACK: f64 = 1.0 / (1_u64 << 43) as f64;
+    255.0 * radius + SLACK
+}
+
+/// The level [`certified_level`] gives for `value` with margin `margin`,
+/// and whether it is certain.
+#[expect(
+    clippy::needless_bitwise_bool,
+    reason = "both tests run without a branch, so a run of them vectorizes"
+)]
+#[inline]
+fn certify(value: f64, margin: f64) -> (f32, bool) {
     let scaled = value.clamp(0.0, 1.0) * 255.0;
     let nearest = single(scaled);
     let truncated = nearest.to_bits() - u32::from(f64::from(nearest) > scaled);
     let low = f64::from(f32::from_bits(truncated));
     let high = f64::from(f32::from_bits(truncated.wrapping_add(1)));
-    let margin = 255.0 * radius + SLACK;
-    (scaled - margin > low && scaled + margin < high).then(|| f32::from_bits(truncated | 1))
+    let certain = (scaled - margin > low) & (scaled + margin < high);
+    (f32::from_bits(truncated | 1), certain)
 }
 
 #[cfg(test)]

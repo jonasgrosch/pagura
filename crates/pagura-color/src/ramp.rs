@@ -91,6 +91,23 @@ impl Piece<'_> {
         }
     }
 
+    /// [`Self::evaluate`] at each of `inputs`, every one held: channel `c`
+    /// at `inputs[j]` into `output[c][j]`, bit for bit as [`Self::evaluate`]
+    /// writes it. Channel by channel, so that each channel's run
+    /// vectorizes.
+    #[inline]
+    pub fn evaluate_each<const N: usize>(
+        &self,
+        inputs: &[f64; N],
+        output: &mut [[f64; N]; MAX_RAMP_CHANNELS],
+    ) {
+        for (out, term) in output.iter_mut().zip(self.terms) {
+            for (out, &x) in out.iter_mut().zip(inputs) {
+                *out = horner(term.k, x - term.centre);
+            }
+        }
+    }
+
     /// How far channel `channel`'s evaluated value may lie from the exact
     /// one: zero for a constant term, which is exact, and otherwise the
     /// bound `2R + S·error` of [`Ramp::piece`], rounded up, at most

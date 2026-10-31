@@ -8,9 +8,10 @@
 mod narrow;
 
 pub(crate) use narrow::{
-    UNIT, certified_level, dynamic_f32, dynamic_n16, dynamic_n16_runs, dynamic_n16_uniform,
-    f32_bytes, full, level, levels, n16_bytes, opaque_word, overwrite_n16, store_f32,
-    store_f32_runs, store_f32_uniform, store_n16, store_n16_runs, store_n16_uniform, targets, word,
+    UNIT, certified_level, certified_run, dynamic_f32, dynamic_n16, dynamic_n16_runs,
+    dynamic_n16_uniform, f32_bytes, full, level, levels, n16_bytes, opaque_word, overwrite_n16,
+    store_f32, store_f32_runs, store_f32_uniform, store_n16, store_n16_runs, store_n16_uniform,
+    targets, word,
 };
 
 use crate::blend::{Blend, BlendVisitor, Normal, with_blend};
