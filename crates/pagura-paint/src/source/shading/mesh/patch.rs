@@ -12,10 +12,9 @@
 //! [`MAX_WORK`] boxes; past that, it keeps the best root found so far. Both
 //! are defined results where evaluation used to fail.
 
-use super::super::Input;
 use super::Bounds;
-use pagura_core::{Meter, Result};
 use pagura_raster::Point;
+use std::num::NonZeroU8;
 
 /// The most subdivision boxes one sample of one patch visits.
 pub(super) const MAX_WORK: usize = 4096;
@@ -25,10 +24,123 @@ pub(super) struct Patch {
     /// `p_ij` at `4 · j + i`, `i` indexing `u`: the transpose of the
     /// scene's layout, as the evaluation reads it.
     points: [Point; 16],
-    /// Corner values at `p00`, `p03`, `p33`, `p30`, `values` each.
-    colors: Box<[f64]>,
     regular: bool,
     bounds: Bounds,
+    /// None where the bounds alone test samples.
+    hull: Option<Hull>,
+}
+
+/// The convex hull of a patch's control points, which holds its surface:
+/// each surface point is an affine combination of them with nonnegative
+/// Bernstein weights.
+#[derive(Debug, Clone, Copy)]
+struct Hull {
+    /// The indices of its corners in the patch's points, anticlockwise.
+    corners: [u8; 14],
+    len: NonZeroU8,
+}
+
+impl Hull {
+    /// Andrew's monotone chain over `points`. A hull of fewer than three
+    /// corners (collinear or non-finite points) or of more than fourteen
+    /// (control points mostly in convex position) is not kept, nor one that
+    /// fills more than 63/64 of `bounds`, as a rectangular patch's does: it
+    /// would exclude almost no samples at the cost of a test for each.
+    fn new(points: &[Point; 16], bounds: Bounds) -> Option<Self> {
+        let rectangle = (bounds.hi.x - bounds.lo.x) * (bounds.hi.y - bounds.lo.y);
+        let fills = |twice_area: f64| 32.0 * twice_area > 63.0 * rectangle;
+        // The control points extreme along the diagonals, anticlockwise,
+        // span a quadrilateral within the hull: where it fills the bounds,
+        // so does the hull, which is then not built.
+        let mut quad = [points[0]; 4];
+        for &p in &points[1..] {
+            if p.x + p.y < quad[0].x + quad[0].y {
+                quad[0] = p;
+            }
+            if p.x - p.y > quad[1].x - quad[1].y {
+                quad[1] = p;
+            }
+            if p.x + p.y > quad[2].x + quad[2].y {
+                quad[2] = p;
+            }
+            if p.x - p.y < quad[3].x - quad[3].y {
+                quad[3] = p;
+            }
+        }
+        if fills(turn(quad[0], quad[1], quad[2]) + turn(quad[0], quad[2], quad[3])) {
+            return None;
+        }
+        let mut sorted: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        sorted.sort_unstable_by(|&a, &b| {
+            let (a, b) = (points[usize::from(a)], points[usize::from(b)]);
+            a.x.total_cmp(&b.x).then(a.y.total_cmp(&b.y))
+        });
+        let at = |i: u8| points[usize::from(i)];
+        let mut chain = [0_u8; 32];
+        let mut len = 0;
+        for &i in &sorted {
+            while len >= 2 && turn(at(chain[len - 2]), at(chain[len - 1]), at(i)) <= 0.0 {
+                len -= 1;
+            }
+            chain[len] = i;
+            len += 1;
+        }
+        let lower = len + 1;
+        for &i in sorted.iter().rev().skip(1) {
+            while len >= lower && turn(at(chain[len - 2]), at(chain[len - 1]), at(i)) <= 0.0 {
+                len -= 1;
+            }
+            chain[len] = i;
+            len += 1;
+        }
+        // The upper chain ends where the lower one began.
+        len = len.saturating_sub(1);
+        let finite = points.iter().all(|p| p.x.is_finite() && p.y.is_finite());
+        let count = u8::try_from(len)
+            .ok()
+            .filter(|n| finite && (3..=14).contains(n))
+            .and_then(NonZeroU8::new)?;
+        // Twice its area, as a fan of triangles from its first corner.
+        let fan = chain[1..len].windows(2);
+        if fills(fan.map(|w| turn(at(chain[0]), at(w[0]), at(w[1]))).sum()) {
+            return None;
+        }
+        let mut corners = [0; 14];
+        corners[..len].copy_from_slice(&chain[..len]);
+        Some(Self {
+            corners,
+            len: count,
+        })
+    }
+
+    /// Whether `p` lies within the margin of the hull of `points`: on the
+    /// inner side of every edge, or nearer its line than the margin. The
+    /// margin is 2⁻²⁰ of the extent of `bounds`, beyond the roots Newton's
+    /// method accepts and the centres of the 2⁻²⁴ boxes that subdivision
+    /// yields, which lie within sub-patches' control points and so within
+    /// the hull.
+    fn holds(&self, points: &[Point; 16], bounds: Bounds, p: Point) -> bool {
+        let corners = &self.corners[..usize::from(self.len.get())];
+        corners
+            .iter()
+            .zip(corners.iter().cycle().skip(1))
+            .all(|(&a, &b)| {
+                let (a, b) = (points[usize::from(a)], points[usize::from(b)]);
+                let side = turn(a, b, p);
+                side >= 0.0 || {
+                    let extent = (bounds.hi.x - bounds.lo.x) + (bounds.hi.y - bounds.lo.y);
+                    let margin = extent * f64::powi(2.0, -20);
+                    let (dx, dy) = (b.x - a.x, b.y - a.y);
+                    side * side <= margin * margin * (dx * dx + dy * dy)
+                }
+            })
+    }
+}
+
+/// Twice the signed area of `a`, `b`, `c`: positive where `c` lies left of
+/// `a` to `b`.
+fn turn(a: Point, b: Point, c: Point) -> f64 {
+    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
 }
 
 /// The state of one sample's subdivision.
@@ -39,75 +151,77 @@ struct Search {
 }
 
 impl Patch {
-    pub(super) fn new(
-        patch: &pagura_interpret::Patch,
-        values: usize,
-        bytes: &mut Meter,
-    ) -> Result<Self> {
-        let mut colors = super::super::allocate(4 * values, bytes)?;
-        for (corner, out) in patch
-            .colors
-            .iter()
-            .zip(colors.chunks_exact_mut(values.max(1)))
-        {
-            for (out, &v) in out.iter_mut().zip(corner.iter()) {
-                *out = v;
-            }
-        }
+    pub(super) fn new(patch: &pagura_interpret::Patch) -> Self {
         let points = transpose(patch.points);
-        Ok(Self {
+        let bounds = Bounds::points(points);
+        Self {
             points,
-            colors: colors.into(),
             regular: injective(&points),
-            bounds: Bounds::points(points),
-        })
+            bounds,
+            hull: Hull::new(&points, bounds),
+        }
     }
 
     pub(super) fn bounds(&self) -> Bounds {
         self.bounds
     }
 
+    /// Bytes a patch and its corner values hold.
     pub(super) fn bytes(values: usize) -> usize {
         size_of::<Self>() + 4 * values * 8
     }
 
-    /// Bilinear interpolation of the corner values at the parameters of
-    /// `p`, if the patch covers it.
-    /// Whether a sample at `p` searches this patch: only one within the
-    /// bounds of its control points, which hold its whole surface.
+    /// Whether a sample at `p` may search this patch: only one within the
+    /// bounds of its control points and their convex hull, which hold its
+    /// whole surface. Its reservation counts a search where this holds, and
+    /// sampling searches nowhere else.
     pub(super) fn holds(&self, p: Point) -> bool {
-        self.bounds.contains(p)
+        self.bounds.contains(p) && self.hull_holds(p)
     }
 
-    pub(super) fn sample(&self, p: Point, values: usize, out: &mut Input) -> bool {
-        if !self.holds(p) {
-            return false;
+    /// Whether the patch's hull, if it keeps one, holds `p`.
+    fn hull_holds(&self, p: Point) -> bool {
+        self.hull
+            .as_ref()
+            .is_none_or(|hull| hull.holds(&self.points, self.bounds, p))
+    }
+
+    /// Whether the patch keeps a hull to test samples against.
+    #[cfg(test)]
+    pub(super) fn has_hull(&self) -> bool {
+        self.hull.is_some()
+    }
+
+    /// The surface point at parameters `u`, `v`.
+    #[cfg(test)]
+    pub(super) fn surface(&self, u: f64, v: f64) -> Point {
+        evaluate(&self.points, u, v).0
+    }
+
+    /// The parameters of `p` on the patch, if it covers it.
+    ///
+    /// Newton's method on a regular patch runs before the hull test: its
+    /// roots lie within the margin of the hull, and most samples of a
+    /// regular patch need nothing else.
+    pub(super) fn parameters(&self, p: Point) -> Option<(f64, f64)> {
+        if !self.bounds.contains(p) {
+            return None;
         }
-        let mut best = if self.regular {
+        let best = if self.regular {
             inverse(&self.points, p)
         } else {
             None
         };
-        if best.is_none() {
-            let mut search = Search {
-                point: p,
-                best: None,
-                work: 0,
-            };
-            search.run(self.points, [0.0, 0.0, 1.0, 1.0], 0);
-            best = search.best;
+        if best.is_some() || !self.hull_holds(p) {
+            return best;
         }
-        let Some((u, v)) = best else {
-            return false;
+        let mut search = Search {
+            point: p,
+            best: None,
+            work: 0,
         };
-        let corner = |c: usize, i: usize| self.colors.get(c * values + i).copied().unwrap_or(0.0);
-        for (i, out) in out.iter_mut().enumerate().take(values) {
-            *out = (1.0 - u) * (1.0 - v) * corner(0, i)
-                + (1.0 - u) * v * corner(1, i)
-                + u * v * corner(2, i)
-                + u * (1.0 - v) * corner(3, i);
-        }
-        true
+        search.run(self.points, [0.0, 0.0, 1.0, 1.0], 0);
+        search.best
     }
 }
 

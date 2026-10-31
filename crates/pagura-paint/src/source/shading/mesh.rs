@@ -22,6 +22,8 @@ pub(super) struct Mesh {
     values: usize,
     triangles: Vec<Triangle>,
     patches: Vec<patch::Patch>,
+    /// The patches' corner values, `4 · values` each.
+    patch_colors: Vec<f64>,
     /// Primitive `i` is triangle `i` or patch `i`: a mesh has one kind.
     kind: Kind,
     grid: Grid,
@@ -97,6 +99,7 @@ impl Mesh {
             grid,
             triangles,
             patches: Vec::new(),
+            patch_colors: Vec::new(),
             kind: Kind::Triangles,
         })
     }
@@ -104,8 +107,14 @@ impl Mesh {
     pub(super) fn patches(source: &[Patch], values: usize, bytes: &mut Meter) -> Result<Self> {
         let mut patches = Vec::new();
         bytes.reserve(&mut patches, source.len())?;
+        let mut patch_colors = Vec::new();
+        bytes.reserve(&mut patch_colors, source.len().saturating_mul(4 * values))?;
         for patch in source {
-            patches.push(patch::Patch::new(patch, values, bytes)?);
+            patches.push(patch::Patch::new(patch));
+            for corner in &patch.colors {
+                let corner = corner.iter().copied().chain(std::iter::repeat(0.0));
+                patch_colors.extend(corner.take(values));
+            }
         }
         let mut bounds = Vec::new();
         bytes.reserve(&mut bounds, patches.len())?;
@@ -119,14 +128,15 @@ impl Mesh {
             grid,
             triangles: Vec::new(),
             patches,
+            patch_colors,
             kind: Kind::Patches,
         })
     }
 
     /// The most geometry work units a sample at `point` costs: one per
     /// primitive its cell lists, except the most a search costs for each
-    /// patch whose bounds hold the sample (only those search), and one for
-    /// an empty cell.
+    /// patch that [holds](patch::Patch::holds) the sample (only those
+    /// search), and one for an empty cell.
     pub(super) fn work_at(&self, point: Point) -> usize {
         let cell = self.grid.cell(point);
         let searched = match self.kind {
@@ -139,6 +149,22 @@ impl Mesh {
         (cell.len() - searched)
             .saturating_add(searched.saturating_mul(patch::MAX_WORK))
             .max(1)
+    }
+
+    /// Bilinear interpolation of patch `index`'s corner values, `values`
+    /// each at `p00`, `p03`, `p33` and `p30`, at parameters `u`, `v`.
+    fn interpolate(&self, index: usize, (u, v): (f64, f64), out: &mut Input) {
+        let (values, first) = (self.values, 4 * self.values * index);
+        let corner = |c: usize, i: usize| {
+            let at = first + c * values + i;
+            self.patch_colors.get(at).copied().unwrap_or(0.0)
+        };
+        for (i, out) in out.iter_mut().enumerate().take(values) {
+            *out = (1.0 - u) * (1.0 - v) * corner(0, i)
+                + (1.0 - u) * v * corner(1, i)
+                + u * v * corner(2, i)
+                + u * (1.0 - v) * corner(3, i);
+        }
     }
 
     /// Bytes the prepared mesh holds.
@@ -158,10 +184,13 @@ impl Sampler for Mesh {
                     .triangles
                     .get(index)
                     .is_some_and(|t| t.sample(point, self.values, input)),
-                Kind::Patches => self
-                    .patches
-                    .get(index)
-                    .is_some_and(|p| p.sample(point, self.values, input)),
+                Kind::Patches => match self.patches.get(index).and_then(|p| p.parameters(point)) {
+                    Some(parameters) => {
+                        self.interpolate(index, parameters, input);
+                        true
+                    }
+                    None => false,
+                },
             };
             if hit {
                 return true;
@@ -421,7 +450,8 @@ mod tests {
         };
         let mut bytes = Meter::new(1 << 20, "mesh test");
         let mesh = Mesh::patches(&[square(8.0), square(1.0)], 1, &mut bytes).unwrap();
-        let mut input = Input::default();
+        // A square's hull fills its bounds: none is kept.
+        assert!(mesh.patches.iter().all(|p| !p.has_hull()));
         let (mut missed, mut total) = (0, 0);
         for y in 0..32 {
             for x in 0..32 {
@@ -433,9 +463,9 @@ mod tests {
                     .count();
                 for &i in listed {
                     let patch = &mesh.patches[i as usize];
-                    // A patch whose bounds miss the sample cannot cover it.
+                    // A patch that does not hold the sample cannot cover it.
                     if !patch.holds(point) {
-                        assert!(!patch.sample(point, 1, &mut input));
+                        assert!(patch.parameters(point).is_none());
                     }
                 }
                 let work = mesh.work_at(point);
@@ -446,6 +476,37 @@ mod tests {
         }
         assert!(missed > 0);
         assert!(total < 32 * 32 * 2 * patch::MAX_WORK);
+    }
+
+    #[test]
+    fn a_sample_outside_a_patch_hull_reserves_no_search_and_misses() {
+        // A thin strip along the diagonal: its bounds hold far more than
+        // its control points' hull.
+        let strip = Patch {
+            points: std::array::from_fn(|k| {
+                let (i, j) = (u8::try_from(k % 4).unwrap(), u8::try_from(k / 4).unwrap());
+                let (i, j) = (f64::from(i), f64::from(j));
+                Point::new(i + 0.1 * j, i - 0.1 * j)
+            }),
+            colors: std::array::from_fn(|_| Components::from_slice(&[0.5])),
+        };
+        let mut bytes = Meter::new(1 << 20, "mesh test");
+        let mesh = Mesh::patches(&[strip], 1, &mut bytes).unwrap();
+        let patch = &mesh.patches[0];
+        assert!(patch.has_hull());
+        // The hull holds every point of the surface.
+        for v in 0..=8 {
+            for u in 0..=8 {
+                let point = patch.surface(f64::from(u) / 8.0, f64::from(v) / 8.0);
+                assert!(patch.holds(point), "{u}/8, {v}/8");
+            }
+        }
+        // A point within its bounds but far from the strip is neither
+        // reserved a search nor sampled.
+        let off = Point::new(0.2, 2.5);
+        assert!(patch.bounds().contains(off) && !patch.holds(off));
+        assert_eq!(mesh.work_at(off), mesh.grid.cell(off).len().max(1));
+        assert!(patch.parameters(off).is_none());
     }
 
     #[test]
