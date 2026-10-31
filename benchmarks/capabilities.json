@@ -51,7 +51,7 @@
     "crates/pagura-document/src/forms/fill.rs": "dc05f4089de3799237281ec6ee56fcbb04fbf80b2cb622311dcf06c41b92990f",
     "crates/pagura-document/src/forms/fill/text.rs": "b61117f6a332c9be9e1df70dc022e5cc6a4b5aac6e2744914e220be5015d6419",
     "crates/pagura-document/src/history.rs": "5e6d7191963736e1a0689f28f3a4d16d93f2f443b108f5d5df7e8ef02b07180a",
-    "crates/pagura-document/src/lib.rs": "a4349008f89b40facb682e60505d9bba57fecbcf48d64cca2984f00575a179aa",
+    "crates/pagura-document/src/lib.rs": "cca69bfe0ebf291e29cb0faed41d2e0fc1e9453ec574a94f94d1859d47d4a504",
     "crates/pagura-document/src/load.rs": "c4d1639daf7f46742438c831b882d90d448ae2ef5332db53c9ea766b5ed97864",
     "crates/pagura-document/src/navigation.rs": "bfad182ebe03026084e27c849ee17f2e6fabdc62b1d6deb35c2601982922c45e",
     "crates/pagura-document/src/navigation/actions.rs": "92f49843f5d88df1e1d7c75e7e1ba7bc4c03497d49ab7fdcc355c07881d18bcd",
@@ -103,7 +103,7 @@
     "crates/pagura-interpret/src/dump.rs": "9af4c6ef19ca9f2c3c41a29cd5afc2769422706cb5a7aed471ac165170fcf776",
     "crates/pagura-interpret/src/features.rs": "7e5a38d35b2250c7e352e0ae74cc14b61325aad361c4e75cd93af5a0a84c7e5f",
     "crates/pagura-interpret/src/lib.rs": "4fee62ce36e00bb76d99ba852a2179ae9a9fd1de6249bb77cae0a1a87983d302",
-    "crates/pagura-interpret/src/machine/annotations.rs": "258a4b488ab721b2fac962ebd4b7160b927e9a76e7ab0f0ae38f717a158ffade",
+    "crates/pagura-interpret/src/machine/annotations.rs": "d1512f4358083265624627b2f2c3b93218059b4c5afdc69018219ba8d430f6b9",
     "crates/pagura-interpret/src/machine/extgstate.rs": "b434259c3831d7dab8da80f28507519f1042c501bded4353d96823361b31527f",
     "crates/pagura-interpret/src/machine/form.rs": "c7339375a5c88f8be5fd0f5c20be8fc31eff38d033efd1772bac70940c8fce83",
     "crates/pagura-interpret/src/machine/image/describe.rs": "37a614ca83376150926a58dc22c64ad9436e06d1732872e173a1f78166ef35e0",
@@ -188,7 +188,14 @@
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
+    "crates/pagura-document/src/annotations.rs": "43ed37ffd646c87273f929190baa1eef6daed472af94ca6cf7474fe32ac2431e",
+    "crates/pagura-document/src/repairs.rs": "e0848ff68be8fa5e91f999e1548e8ddd6ea89cb1b1a912159797cfa2258bd45e",
+    "crates/pagura-document/src/navigation/links.rs": "37293c348289ead2b1a8a1e9af7f22a9a597ea4572f67d1c637ece506e037647",
+    "crates/pagura-document/src/signatures/roles.rs": "91546bbb0d5c9769f17f72c8567834618308536141efb65c666f646ac01398b2",
+    "crates/pagura/tests/api/annotations.rs": "0965de9b0a1414182aca2c426e5d27680e20c4a71f4e5d1889709b6b289aba4d",
+    "corpus/manifests/recovery_annotations.json": "6521cd56a04335ee3ac0b52d033d628159cf6d5e57e100d73c0b70cd662dfd02",
+    "references/requirements/recovery_annotations.json": "d8d23df1498edc085a62e3108060c9bbcb2008b7bd12e38a6a66961ce28a54a2"
   },
   "capabilities": [
     {
@@ -206,17 +213,20 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction.",
+      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. Shared literal-null Annots member recovery is reported; unresolved members retain validation failures.",
       "remaining": "Current-corpus recovery classification; external resources require a host contract.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-document/src/features.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-document/src/annotations.rs",
+        "crates/pagura-document/src/repairs.rs"
       ],
       "tests": [
-        "crates/pagura/tests/api/document.rs"
+        "crates/pagura/tests/api/document.rs",
+        "crates/pagura/tests/api/annotations.rs"
       ],
       "requirements": [
         "catalog-identity-recovery",
@@ -244,9 +254,32 @@
         "syntax-classic-xref",
         "undefined-reference-null",
         "xref-lazy-offset-validation",
-        "xref-streams"
+        "xref-streams",
+        "recovery-annotation-null-entry"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "recovery_annotations/clean",
+        "recovery_annotations/empty",
+        "recovery_annotations/leading",
+        "recovery_annotations/middle",
+        "recovery_annotations/trailing",
+        "recovery_annotations/repeated",
+        "recovery_annotations/null-only",
+        "recovery_annotations/reverse-order",
+        "recovery_annotations/indirect-array",
+        "recovery_annotations/many-nulls",
+        "recovery_annotations/indirect-null",
+        "recovery_annotations/undefined-reference",
+        "recovery_annotations/wrong-generation",
+        "recovery_annotations/boolean",
+        "recovery_annotations/number",
+        "recovery_annotations/string",
+        "recovery_annotations/nested-array",
+        "recovery_annotations/after-null-boolean",
+        "recovery_annotations/after-null-bbox",
+        "recovery_annotations/after-null-cycle",
+        "recovery_annotations/after-null-subtype"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
@@ -875,7 +908,8 @@
       "feature": "Annotation appearance synthesis",
       "owners": [
         "pagura-appearance",
-        "pagura-interpret"
+        "pagura-interpret",
+        "pagura-document"
       ],
       "surfaces": {
         "library": "partial",
@@ -883,24 +917,49 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Stored appearances, Link/Square borders, Text icons and supported empty widgets.",
+      "implemented": "Stored appearances, Link/Square borders, Text icons and supported empty widgets. Rendering can report and skip literal null Annots members before continuing original ordered validation.",
       "remaining": "Other subtype appearances, richer borders, nonempty/rotated widgets and interaction states.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
         "crates/pagura-interpret/src/machine/annotations.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-document/src/annotations.rs"
       ],
       "tests": [
-        "crates/pagura-appearance/src/annotation/tests.rs"
+        "crates/pagura-appearance/src/annotation/tests.rs",
+        "crates/pagura/tests/api/annotations.rs"
       ],
       "requirements": [
         "content-annotation-generation",
         "content-annotation-view",
-        "content-annotations"
+        "content-annotations",
+        "recovery-annotation-null-entry"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "recovery_annotations/clean",
+        "recovery_annotations/empty",
+        "recovery_annotations/leading",
+        "recovery_annotations/middle",
+        "recovery_annotations/trailing",
+        "recovery_annotations/repeated",
+        "recovery_annotations/null-only",
+        "recovery_annotations/reverse-order",
+        "recovery_annotations/indirect-array",
+        "recovery_annotations/many-nulls",
+        "recovery_annotations/indirect-null",
+        "recovery_annotations/undefined-reference",
+        "recovery_annotations/wrong-generation",
+        "recovery_annotations/boolean",
+        "recovery_annotations/number",
+        "recovery_annotations/string",
+        "recovery_annotations/nested-array",
+        "recovery_annotations/after-null-boolean",
+        "recovery_annotations/after-null-bbox",
+        "recovery_annotations/after-null-cycle",
+        "recovery_annotations/after-null-subtype"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
@@ -1364,17 +1423,20 @@
         "host": "missing",
         "viewer": "missing"
       },
-      "implemented": "Historical discovery, ByteRange/revision coverage and structural DocMDP/FieldMDP classification.",
+      "implemented": "Historical discovery, ByteRange/revision coverage and structural DocMDP/FieldMDP classification. Literal-null annotation recovery preserves original bytes and surviving reference order; ambiguous signed graphs remain Inconclusive.",
       "remaining": "Encrypted/repaired history and remaining transforms/exceptions; integrate results with save permission enforcement. No signature inspection command or host request is exposed.",
       "sources": [
         "crates/pagura-document/src/signatures.rs",
         "crates/pagura-document/src/signatures/model.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-document/src/annotations.rs",
+        "crates/pagura-document/src/signatures/roles.rs"
       ],
       "tests": [
-        "crates/pagura-document/src/signatures/change_tests.rs"
+        "crates/pagura-document/src/signatures/change_tests.rs",
+        "crates/pagura/tests/api/annotations.rs"
       ],
       "requirements": [
         "signature-byte-range",
@@ -1382,9 +1444,21 @@
         "signature-permitted-changes",
         "signature-results",
         "signature-revision-coverage",
-        "signature-transforms"
+        "signature-transforms",
+        "recovery-annotation-null-entry"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "recovery_annotations/signature-clean-annotation",
+        "recovery_annotations/signature-clean-content",
+        "recovery_annotations/signature-clean-signing",
+        "recovery_annotations/signature-signed-null-annotation",
+        "recovery_annotations/signature-signed-null-content",
+        "recovery_annotations/signature-signed-null-signing",
+        "recovery_annotations/signature-added-null-annotation",
+        "recovery_annotations/signature-added-null-content",
+        "recovery_annotations/signature-added-null-signing",
+        "recovery_annotations/signature-historical-reference"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
@@ -1545,7 +1619,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Typed trees, destinations, outlines, links and labels; host reading requests and browser navigation.",
+      "implemented": "Typed trees, destinations, outlines, links and labels; host reading requests and browser navigation. Link traversal shares reported literal-null member recovery while retaining surviving dictionary identity and raw-entry work.",
       "remaining": "CLI export, navigation mutation and additional host-approved action types.",
       "sources": [
         "crates/pagura-document/src/navigation.rs",
@@ -1554,19 +1628,45 @@
         "web/reading_view.mjs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-document/src/annotations.rs",
+        "crates/pagura-document/src/navigation/links.rs"
       ],
       "tests": [
-        "crates/pagura/tests/api/document.rs"
+        "crates/pagura/tests/api/document.rs",
+        "crates/pagura/tests/api/annotations.rs"
       ],
       "requirements": [
         "navigation-destinations",
         "navigation-labels",
         "navigation-links",
         "navigation-outlines",
-        "navigation-trees"
+        "navigation-trees",
+        "recovery-annotation-null-entry"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "recovery_annotations/clean",
+        "recovery_annotations/empty",
+        "recovery_annotations/leading",
+        "recovery_annotations/middle",
+        "recovery_annotations/trailing",
+        "recovery_annotations/repeated",
+        "recovery_annotations/null-only",
+        "recovery_annotations/reverse-order",
+        "recovery_annotations/indirect-array",
+        "recovery_annotations/many-nulls",
+        "recovery_annotations/indirect-null",
+        "recovery_annotations/undefined-reference",
+        "recovery_annotations/wrong-generation",
+        "recovery_annotations/boolean",
+        "recovery_annotations/number",
+        "recovery_annotations/string",
+        "recovery_annotations/nested-array",
+        "recovery_annotations/after-null-boolean",
+        "recovery_annotations/after-null-bbox",
+        "recovery_annotations/after-null-cycle",
+        "recovery_annotations/after-null-subtype"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",
