@@ -194,10 +194,10 @@
     "crates/pagura-document/src/repairs.rs": "5e04d392a03c67660813b51b9def7314fcb90e5fe1fd128a9ecc9337fb9ed79c",
     "crates/pagura-document/tests/integer_separator.rs": "cb8101749f0265a39de94b08e9a42aa78bb5ffce44e5172327e724764c984ccd",
     "crates/pagura/tests/api/tags.rs": "c7daaf8254843b8200391aa6f647c59016050d67944c98ed7515dd50d2696a94",
-    "corpus/manifests/integer_separator.json": "def6a151e62cccef343c82e2ae66da14a48dfac66dd7c550210fe246b9c52583",
+    "corpus/manifests/integer_separator.json": "e267fbf0738b4f8fc3ccf541b8517f01b12cf4efa97a06d97a261b612d92c6d8",
     "crates/pagura/examples/compatibility_gap_parity.rs": "1af63fcfcaccef10b383c674156d5c593b895057ba94dfcd0cf4033f0e9d8829",
     "tools/compatibility_gap_parity.mjs": "6dfe0d6c830544fcc5a3273585ec0a63ab42bf5ea769da6db4e1c29920e6d543",
-    "tools/fixturegen/integer_separator.py": "2c80ec03263808f26c12584f47bb9048054f56ae09fc7ff66837d60bd8590833",
+    "tools/fixturegen/integer_separator.py": "227c6aaa540eb7130a6a6e74ae5c8b9b72681732b2596fd37725872218558868",
     "benchmarks/probes/compatibility-gap-fixtures.json": "ef8edb716e74d7979b9a51705fc18c68802b95ad640de83022ad8e5abeedb083",
     ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e"
   },
