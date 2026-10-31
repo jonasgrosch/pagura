@@ -16,7 +16,9 @@ use crate::token::{self, skip, word};
 use crate::{Content, Op, Operator};
 use pagura_core::repairs::{LEADING_ZERO_REFERENCE, ZERO_REFERENCE};
 use pagura_core::syntax::{Origin, Parser, is_whitespace};
-use pagura_core::{Diagnostic, Dictionary, Error, Limits, Meter, Position, Result, Value};
+use pagura_core::{
+    Diagnostic, Diagnostics, Dictionary, Error, Limits, Meter, Position, Result, Value,
+};
 
 /// The most operands one operator takes, with room for long `SCN` lists:
 /// DeviceN's 32 components and a pattern name.
@@ -405,11 +407,37 @@ impl<'c> Reader<'c> {
         &mut self,
         length: impl FnOnce(&[u8]) -> Result<usize>,
     ) -> Result<&'c [u8]> {
+        self.inline_data(length, None)
+    }
+
+    /// Reads inline image data with reported framing repairs (8.9.7).
+    /// The caller determines the exact encoded length as for
+    /// [`Self::inline_image_data`]. Repair mode permits only a missing
+    /// white-space byte immediately before a complete `EI` token at that
+    /// boundary. No data byte is inserted, removed or searched for.
+    ///
+    /// # Errors
+    ///
+    /// The same errors as [`Self::inline_image_data`], including strict
+    /// rejection of the separator repair through `diagnostics`.
+    pub fn inline_image_data_with_diagnostics(
+        &mut self,
+        length: impl FnOnce(&[u8]) -> Result<usize>,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<&'c [u8]> {
+        self.inline_data(length, Some(diagnostics))
+    }
+
+    fn inline_data(
+        &mut self,
+        length: impl FnOnce(&[u8]) -> Result<usize>,
+        diagnostics: Option<&mut Diagnostics>,
+    ) -> Result<&'c [u8]> {
         let (offset, start) = self
             .inline
             .take()
             .ok_or(Error::invalid_argument("no inline image header is pending"))?;
-        self.image_data(start, length)
+        self.image_data(start, length, diagnostics)
             .map_err(|error| self.content.locate(error, offset))
     }
 
@@ -417,6 +445,7 @@ impl<'c> Reader<'c> {
         &mut self,
         start: usize,
         length: impl FnOnce(&[u8]) -> Result<usize>,
+        diagnostics: Option<&mut Diagnostics>,
     ) -> Result<&'c [u8]> {
         let data = self.data;
         let image = data
@@ -429,16 +458,30 @@ impl<'c> Reader<'c> {
         if end > data.len() {
             return Err(Error::syntax("offset outside input").at(Position::Buffer(end)));
         }
-        if data.get(end).is_none_or(|&b| !is_whitespace(b)) {
+        let separated = data.get(end).is_some_and(|&b| is_whitespace(b));
+        if !separated && diagnostics.is_none() {
             return Err(Error::syntax("inline image requires EI"));
         }
-        let at = skip(data, end);
+        let at = if separated { skip(data, end) } else { end };
         let word = word(data, at);
         if word.is_empty() {
             return Err(Error::syntax("expected token").at(Position::Buffer(at)));
         }
         if word != b"EI" {
             return Err(Error::syntax("inline image requires EI"));
+        }
+        if !separated && let Some(diagnostics) = diagnostics {
+            let position = self.content.position(end);
+            let diagnostic = Diagnostic::new(
+                crate::repairs::EI_SEPARATOR,
+                "white space missing before inline image EI at its framed boundary (8.9.7)",
+            )
+            .at(position);
+            let diagnostic = match position {
+                Position::Stream { object, .. } => diagnostic.in_object(object),
+                _ => diagnostic,
+            };
+            diagnostics.repair(diagnostic)?;
         }
         self.position = at + word.len();
         image

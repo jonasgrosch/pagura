@@ -124,6 +124,12 @@ pub mod tags {
     pub use pagura_interpret::features as content;
 }
 
+/// Stable reported-repair tags, grouped by their owning parser.
+pub mod repairs {
+    /// `inline.`: inline content framing.
+    pub use pagura_interpret::inline_repairs as inline;
+}
+
 use provider::{Provider, default_provider};
 use std::sync::Arc;
 

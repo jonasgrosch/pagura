@@ -394,12 +394,27 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             return Ok(());
         };
         let framing = image::framing(self.document(), dictionary, resources)?;
-        let data =
-            reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
+        let mut diagnostics = pagura_core::Diagnostics::new(self.document().recovery());
+        let data = reader.inline_image_data_with_diagnostics(
+            |data| pagura_image::inline_data_length(&framing, data),
+            &mut diagnostics,
+        );
+        let diagnostics = diagnostics.take();
+        let repaired = diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.repair() == Some(pagura_content::repairs::EI_SEPARATOR));
+        self.document().report(diagnostics);
+        let data = data?;
         if ignored {
             return Ok(());
         }
-        self.inline_image(dictionary, data, resources, scope)
+        self.inline_image(
+            dictionary,
+            data,
+            resources,
+            scope,
+            repaired.then_some(&framing),
+        )
     }
 
     /// Whether the glyph procedure or uncoloured tiling cell `scope` runs

@@ -1,0 +1,703 @@
+{
+  "schema": 2,
+  "area": "paint_inline_framing",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "paint_inline_framing/raw-valid",
+      "kind": "pdf",
+      "description": "Complete four-sample image and downstream green witness; valid",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/raw-valid.pdf",
+      "sha256": "867f9c870e986da24290d3429dfeccf0f92cc6fe31915e11f2aeba7b6f8b4218",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_inline_framing/raw-valid.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/raw-missing-separator",
+      "kind": "pdf",
+      "description": "Complete four-sample image and downstream green witness; missing-separator",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/raw-missing-separator.pdf",
+      "sha256": "a23ccf189f252f12c0b08996ee775e2f0ee055a31887f1cfbb40eccf62cc8576",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/raw-missing-separator.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/length-valid",
+      "kind": "pdf",
+      "description": "Complete four-sample image and downstream green witness; valid",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/length-valid.pdf",
+      "sha256": "81b024a798ddd301ddd8faa220eb455607564982dbfa9387cb43319649ac6bcb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_inline_framing/length-valid.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/length-missing-separator",
+      "kind": "pdf",
+      "description": "Complete four-sample image and downstream green witness; missing-separator",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/length-missing-separator.pdf",
+      "sha256": "0b10687e72ed46a76f20a391b9021259d545e50e033ceb7696d204905f056064",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/length-missing-separator.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/asciihex-valid",
+      "kind": "pdf",
+      "description": "Complete four-sample image and downstream green witness; valid",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/asciihex-valid.pdf",
+      "sha256": "f2523e78b21b98fae48c8ba9f25ea42d4adaf458cd7521117eb9f938a110e28e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_inline_framing/asciihex-valid.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/asciihex-missing-separator",
+      "kind": "pdf",
+      "description": "Complete four-sample image and downstream green witness; missing-separator",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/asciihex-missing-separator.pdf",
+      "sha256": "38d9e0b8bcec2f7a13e9f146f1709d6227a0fe668179f33941d1bedc668bf2c2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/asciihex-missing-separator.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/runlength-valid",
+      "kind": "pdf",
+      "description": "Complete four-sample image and downstream green witness; valid",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/runlength-valid.pdf",
+      "sha256": "de7c926914837403d8637334dadf0840bec8e39e8cfd8d856eeec7f5dfb9e996",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_inline_framing/runlength-valid.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/runlength-missing-separator",
+      "kind": "pdf",
+      "description": "Complete four-sample image and downstream green witness; missing-separator",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/runlength-missing-separator.pdf",
+      "sha256": "ff5cbc043df21aff5f80c2d6c570a7c34b84beb6ec16f8cfd4f720a308e5187a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/runlength-missing-separator.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/type3-valid",
+      "kind": "pdf",
+      "description": "Raw Type3 stencil and downstream witness",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/type3-valid.pdf",
+      "sha256": "856991240c171172b07b41d0c13200420d450033e4fe27a6d5ca2f2c8ae283a9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_inline_framing/type3-valid.ppm",
+      "oracle_sha256": "d0677f68df494c4571c280842c942bbe1c3c43caee5f4568fa6d2ff211e0f28c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/type3-missing-separator",
+      "kind": "pdf",
+      "description": "Raw Type3 stencil and downstream witness",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/type3-missing-separator.pdf",
+      "sha256": "d313a9b3bc94f6266fbf71dec765c33fde64730e4284f8fc77e124e1261dbc90",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/type3-missing-separator.ppm",
+      "oracle_sha256": "d0677f68df494c4571c280842c942bbe1c3c43caee5f4568fa6d2ff211e0f28c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/attached-operator",
+      "kind": "pdf",
+      "description": "Invalid framing after a visible prefix must refuse the whole page",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/attached-operator.pdf",
+      "sha256": "b2606122fa0683b36be6f5ec9c4f41c46aa0bd85e1a19be3f21b7178af117354",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/wrong-token",
+      "kind": "pdf",
+      "description": "Invalid framing after a visible prefix must refuse the whole page",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/wrong-token.pdf",
+      "sha256": "2e901d048f55a43cc36cb62bd92cd838210db58b8bfdfd91dc71980b282a0c74",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/missing-token",
+      "kind": "pdf",
+      "description": "Invalid framing after a visible prefix must refuse the whole page",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/missing-token.pdf",
+      "sha256": "34922930cf9e1822748864acea004679243a1ccdf8eb9f2bb328cd77f8370d9c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/short-data",
+      "kind": "pdf",
+      "description": "Invalid framing after a visible prefix must refuse the whole page",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/short-data.pdf",
+      "sha256": "34922930cf9e1822748864acea004679243a1ccdf8eb9f2bb328cd77f8370d9c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/false-embedded-token",
+      "kind": "pdf",
+      "description": "Invalid framing after a visible prefix must refuse the whole page",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/false-embedded-token.pdf",
+      "sha256": "6a366c7a31a795ba6b82fe8f55f9d8cfe47e1ac2c384a8dd1ec40f0865d86dde",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/comment-before-token",
+      "kind": "pdf",
+      "description": "Invalid framing after a visible prefix must refuse the whole page",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/comment-before-token.pdf",
+      "sha256": "f6b1a7d1509a51784f8bd541e8ee03f119b2ab774ca3ca47980a77be69a331f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/short-length",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/short-length.pdf",
+      "sha256": "41dc04fbbedaa3abc962ae004691a3220fd5cdc6a7f01d3ad9a2a23ed2ccab48",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/excess-length",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/excess-length.pdf",
+      "sha256": "b2f34eceaf859968c3fdd0398a6706669998d7fccc5a092e5b0abb962d260f40",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/short-asciihex",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/short-asciihex.pdf",
+      "sha256": "ad4860771aa9ddf3d0ad6a6c8eb655f7065aa7deee7f3c00cf83e1aed5f35c5c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/short-runlength",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/short-runlength.pdf",
+      "sha256": "53bb25aebf8de37498a2b6c74f87d0cb635c996e3c7a2b82f141af97409570ef",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/short-packed-rows",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/short-packed-rows.pdf",
+      "sha256": "c6e7dbd9084813560cc9c3dded7783f8116949138b2c8bcc3fe20b6e2339f323",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/short-row-padding",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/short-row-padding.pdf",
+      "sha256": "1337daae98732a3f859a2bdf7d29a17b8c703589f338eecc455923435a2d859d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/short-sixteen-bit",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/short-sixteen-bit.pdf",
+      "sha256": "48672cae9bafa2c5195a1e334d2089b2551c8952b2731f140645c1b7bd872e56",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/excess-asciihex",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/excess-asciihex.pdf",
+      "sha256": "a739fae12b48a339b5523930fa8f7c17718283a59a810e2e570016a0f632d12c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/excess-runlength",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/excess-runlength.pdf",
+      "sha256": "e498e088b01db0002cd4a6a89058c4c13aaee5875f3a951987c265048a8dbf00",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/invalid-asciihex",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/invalid-asciihex.pdf",
+      "sha256": "3f4088c50563c6193b5cec36a60df2fb24476b5d06eb6ad567416d0ed1f9313b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/invalid-runlength",
+      "kind": "pdf",
+      "description": "A known encoded boundary must not authorize missing-sample padding",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/invalid-runlength.pdf",
+      "sha256": "e61de1377115e5960b3aa4a777b6f0e800cbe28bb895dfe47dd5ba8764687d47",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint_inline_framing/legacy-separated-short-length",
+      "kind": "pdf",
+      "description": "Existing reported padding retained; excluded from complete-output admissions",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/legacy-separated-short-length.pdf",
+      "sha256": "78cf7e626a6169d68755016d251c0cc8c368d428293a49c3f5d89f6af94b669e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.data-short"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/legacy-separated-short-length.ppm",
+      "oracle_sha256": "6ec23417bb25fa86497dfc6c7d8d28bf6a8fb3c28eb2465c881622889c0aaede",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/legacy-separated-short-asciihex",
+      "kind": "pdf",
+      "description": "Existing reported padding retained; excluded from complete-output admissions",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/legacy-separated-short-asciihex.pdf",
+      "sha256": "0bfe6891af162c79ebd102e280798476c6eb1033d78716489c5dc3fb21db09d9",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.data-short"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/legacy-separated-short-asciihex.ppm",
+      "oracle_sha256": "6ec23417bb25fa86497dfc6c7d8d28bf6a8fb3c28eb2465c881622889c0aaede",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/legacy-separated-short-runlength",
+      "kind": "pdf",
+      "description": "Existing reported padding retained; excluded from complete-output admissions",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/legacy-separated-short-runlength.pdf",
+      "sha256": "ec4d5733dc35bc9fa6cc2f3658cb78aa19e62439f6af45e2390739e3fd8578e7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.data-short"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/legacy-separated-short-runlength.ppm",
+      "oracle_sha256": "6ec23417bb25fa86497dfc6c7d8d28bf6a8fb3c28eb2465c881622889c0aaede",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/legacy-separated-short-packed-rows",
+      "kind": "pdf",
+      "description": "Existing reported padding retained; excluded from complete-output admissions",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/legacy-separated-short-packed-rows.pdf",
+      "sha256": "53653227c1972ec75944dbfdca370d8a28ce049d951e7d2d32912db3d65e2328",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.data-short"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/legacy-separated-short-packed-rows.ppm",
+      "oracle_sha256": "ca0d46a1192c83dd731d9112ceb8ec885869621b77c73f98d7702635349ea5b7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/legacy-separated-short-sixteen-bit",
+      "kind": "pdf",
+      "description": "Existing reported padding retained; excluded from complete-output admissions",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/legacy-separated-short-sixteen-bit.pdf",
+      "sha256": "7d8d5c1649aef3289fff58b81cb551e97c52c25c69b72cfacb336ba615feb84f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.data-short"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/legacy-separated-short-sixteen-bit.ppm",
+      "oracle_sha256": "b5b37f54f3fa5231f7482b0ed84ee0211541aa5a857e8371326fd15eaf6da89c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/named-space-valid",
+      "kind": "pdf",
+      "description": "Named colour-space resource is resolved before completeness proof",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/named-space-valid.pdf",
+      "sha256": "ea9348af434ac9002a13d294a5391f1845fc4332ada09108b61a9448024e2173",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_inline_framing/named-space-valid.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/packed-rows-valid",
+      "kind": "pdf",
+      "description": "Nine bits in each of two rows require four bytes, including row padding",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/packed-rows-valid.pdf",
+      "sha256": "5e2d9fc7d7b19900af6ce0ca4b44efab8fb58d86d04999d6ac0a52991ce1bdd2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_inline_framing/packed-rows-valid.ppm",
+      "oracle_sha256": "74450385f6af74f3c0ba51879fb95c6bdb06567d733d51647c615215f06638da",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/named-space-missing-separator",
+      "kind": "pdf",
+      "description": "Named colour-space resource is resolved before completeness proof",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/named-space-missing-separator.pdf",
+      "sha256": "bc88dfee2c202c813b1f8ea722053a1085c7a80e0c22789be7bd1e172df55ab7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/named-space-missing-separator.ppm",
+      "oracle_sha256": "684225142eac0d208a72dedafe57d461dfc225f38013c5a17a55403b125f0feb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/packed-rows-missing-separator",
+      "kind": "pdf",
+      "description": "Nine bits in each of two rows require four bytes, including row padding",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/packed-rows-missing-separator.pdf",
+      "sha256": "944e5835ff23c9909cbaa357dbba49a789528ce4dbce0d152d52c85f2e358a77",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/packed-rows-missing-separator.ppm",
+      "oracle_sha256": "74450385f6af74f3c0ba51879fb95c6bdb06567d733d51647c615215f06638da",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/ignored-type3-valid",
+      "kind": "pdf",
+      "description": "d1 ignores the disjoint coloured image but retains a later stencil mark",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/ignored-type3-valid.pdf",
+      "sha256": "4458db09f7c067526d1c723c373ed9b9c62532fcd95e6546993a1b8a1668bbff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint_inline_framing/ignored-type3-valid.ppm",
+      "oracle_sha256": "d2461588634cff2a8be0715a1608bb51f168b272bf0b12f4ada9a0dd1ca4dc97",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/ignored-type3-missing-separator",
+      "kind": "pdf",
+      "description": "d1 ignores the disjoint coloured image but retains a later stencil mark",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/ignored-type3-missing-separator.pdf",
+      "sha256": "fcc5ab42321f9ee8a3266c831dbf7fc0dad0d0c4dd3ae2e5ec087180387fd5e3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "inline.ei-separator"
+      ],
+      "oracle": "corpus/generated/paint_inline_framing/ignored-type3-missing-separator.ppm",
+      "oracle_sha256": "d2461588634cff2a8be0715a1608bb51f168b272bf0b12f4ada9a0dd1ca4dc97",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint_inline_framing/ignored-type3-invalid-token",
+      "kind": "pdf",
+      "description": "Ignored coloured image still requires complete token framing",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint_inline_framing/ignored-type3-invalid-token.pdf",
+      "sha256": "a16dc6174a5ebe9ef270b3a2173cc64685338e36344040689cf7bcb6ec44a48a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    }
+  ]
+}
