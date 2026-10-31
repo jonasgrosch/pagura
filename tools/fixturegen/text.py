@@ -99,7 +99,7 @@ def cases():
     yield from tolerance_cases()
     yield from strict_substitution_cases()
     for case in original_cases():
-        if case.name.startswith("unicode-") and ".error" in case.files:
+        if isinstance(case, Vector) and case.name.startswith("unicode-") and ".error" in case.files:
             from dataclasses import replace
             files = dict(case.files)
             if case.name in ("unicode-cid-code-length","unicode-simple-source-length"):
