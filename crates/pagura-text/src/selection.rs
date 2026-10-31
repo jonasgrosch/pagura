@@ -45,6 +45,48 @@ pub(crate) fn truetype(
         .or_else(|| named_fallback(program, code, name, unicode))
 }
 
+/// Recovered descriptors require a source-named selection. Reader-selected
+/// literal-byte/symbol alternatives cannot establish the recovered identity.
+pub(crate) fn truetype_required_named(
+    program: &FontProgram,
+    name: Option<&Name>,
+) -> Option<GlyphId> {
+    let name = name?;
+    let glyph = if program.has_cmap_subtable(CmapSubtable::WindowsUnicode) {
+        required_unicode(name).and_then(|code| mapped(program, CmapSubtable::WindowsUnicode, code))
+    } else if program.has_cmap_subtable(CmapSubtable::MacRoman) {
+        mac_os_code(name.as_bytes()).and_then(|code| mapped(program, CmapSubtable::MacRoman, code))
+    } else {
+        None
+    };
+    glyph
+        .or_else(|| program.glyph_for_name(name.as_bytes()))
+        .filter(|glyph| glyph.0 != 0)
+}
+
+/// Only complete source names prove a scalar. Do not discard a suffix or an
+/// unknown underscore component as the ordinary extraction policy may do.
+fn required_unicode(name: &Name) -> Option<u32> {
+    let name = std::str::from_utf8(name.as_bytes()).ok()?;
+    if let Ok(index) = tables::UNICODE.binary_search_by_key(&name, |entry| entry.0) {
+        return Some(tables::UNICODE[index].1);
+    }
+    let hex = if let Some(hex) = name.strip_prefix("uni").filter(|hex| hex.len() == 4) {
+        hex
+    } else {
+        name.strip_prefix('u')
+            .filter(|hex| (4..=6).contains(&hex.len()))?
+    };
+    if !hex
+        .bytes()
+        .all(|byte| byte.is_ascii_digit() || (b'A'..=b'F').contains(&byte))
+    {
+        return None;
+    }
+    let scalar = u32::from_str_radix(hex, 16).ok()?;
+    char::from_u32(scalar).map(u32::from)
+}
+
 // 9.6.5.4's final paragraph permits reader-selected mappings. Policy: after
 // the normative routes (including post) fail, try Mac Roman by glyph name,
 // then full Windows Unicode, platform 0 Unicode, then the symbol byte route.

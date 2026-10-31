@@ -48,6 +48,10 @@ pub const SYMBOLIC_LATIN_ENCODING: Repair = Repair::new("font.symbolic-latin-enc
 /// name and descriptor would get (ADR 0009); the PDF's widths keep the advances.
 pub const EMBEDDED_UNUSABLE: Repair = Repair::new("font.embedded-unusable");
 
+/// Exact GontDescriptor spelling recovered after unavailable TrueType loading.
+/// The typed matching descriptor and original complete strict-valid program are required.
+pub const DESCRIPTOR_KEY: Repair = Repair::new("font.descriptor-key");
+
 /// Every repair tag defined by this crate.
 pub const ALL: &[Repair] = &[
     CID_TO_GID_IDENTITY,
@@ -58,6 +62,7 @@ pub const ALL: &[Repair] = &[
     CMAP_BLOCK_COUNT,
     CMAP_CODESPACE,
     DESCRIPTOR_FLAGS,
+    DESCRIPTOR_KEY,
     DESCRIPTOR_WEIGHT,
     TYPE3_EMPTY_BOUNDS,
     ENCODING_NAME,

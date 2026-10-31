@@ -31,6 +31,55 @@ pub(crate) fn load(
     load_stream(document, id, key, kind, metrics_font, rendering).map_err(|e| e.in_object(id))
 }
 
+/// Alias proof uses the original complete stream and strict font policy, never
+/// the rendering prefix or reported segment-length/font-program repairs.
+/// Stream reading keeps this document's shared decode/work limits and caches.
+pub(crate) fn load_descriptor_recovery(
+    document: &Document,
+    descriptor: Descriptor<'_>,
+    font: &Dictionary,
+) -> Result<FontProgram> {
+    let id = descriptor
+        .dictionary
+        .get(b"FontFile2")
+        .and_then(Value::as_reference)
+        .ok_or_else(|| Error::syntax("FontFile2 stream reference required"))?;
+    let object = document.object(id)?;
+    let dictionary = object
+        .dictionary()
+        .ok_or_else(|| Error::syntax("font stream dictionary required"))?;
+    let range = object
+        .stream_range()
+        .ok_or_else(|| Error::syntax("font stream required"))?;
+    if length(document, dictionary, b"Length")? != Some(range.len()) {
+        return Err(
+            Error::syntax("recovered font requires its original encoded Length").in_object(id),
+        );
+    }
+    let format = format(document, dictionary, b"FontFile2", FontKind::TrueType, font)?;
+    let declared = length(document, dictionary, b"Length1")?
+        .ok_or_else(|| Error::syntax("TrueType font stream has no valid Length1").in_object(id))?;
+    let data = document.stream_data_sized(object, declared.min(document.limits().decoded_bytes))?;
+    if data.len() != declared {
+        return Err(Error::syntax("TrueType Length1 disagrees with decoded size").in_object(id));
+    }
+    let mut diagnostics = Diagnostics::new(pagura_core::Recovery::Strict);
+    FontProgram::parse_with_diagnostics(
+        std::sync::Arc::<[u8]>::from(data),
+        format,
+        &document.limits(),
+        &mut diagnostics,
+    )
+    .map_err(|error| {
+        error
+            .within(Position::Stream {
+                object: id,
+                offset: 0,
+            })
+            .in_object(id)
+    })
+}
+
 fn load_stream(
     document: &Document,
     id: ObjectId,

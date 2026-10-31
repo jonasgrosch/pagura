@@ -2110,6 +2110,92 @@
         "expectations": "Python zlib constructs a valid CMap stream and the fixture flips one checksum bit. A separate stream dictionary omits the solidus from an otherwise unused key. Both repaired maps decode A to Z with the same glyph and advance.",
         "verdict": "Independent strict rejection and exact repaired mapping expectations; no executable output supplies expected values."
       }
+    },
+    {
+      "id": "text-descriptor-key-recovery",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "Narrow reported GontDescriptor spelling recovery after original typed TrueType unavailability; complete source program parsed with Strict font policy and actually used source-named nonzero glyph outlines validated before successful decode caching.",
+      "tests": [
+        "recovery_font_descriptor/descriptor-canonical",
+        "recovery_font_descriptor/descriptor-alias",
+        "recovery_font_descriptor/descriptor-canonical-null",
+        "recovery_font_descriptor/descriptor-canonical-malformed",
+        "recovery_font_descriptor/descriptor-wrong-name",
+        "recovery_font_descriptor/descriptor-wrong-case",
+        "recovery_font_descriptor/descriptor-wrong-subset",
+        "recovery_font_descriptor/descriptor-wrong-type",
+        "recovery_font_descriptor/descriptor-missing-type",
+        "recovery_font_descriptor/descriptor-missing-program",
+        "recovery_font_descriptor/descriptor-program-not-stream",
+        "recovery_font_descriptor/descriptor-malformed-program",
+        "recovery_font_descriptor/descriptor-wrong-subtype",
+        "recovery_font_descriptor/descriptor-different-key",
+        "recovery_font_descriptor/descriptor-later-error",
+        "recovery_font_descriptor/selection-named-windows-holes",
+        "recovery_font_descriptor/selection-named-post-B",
+        "recovery_font_descriptor/selection-named-mac-B",
+        "recovery_font_descriptor/selection-encoding-vs-symbol-byte",
+        "recovery_font_descriptor/selection-encoding-vs-symbol-byte-tounicode",
+        "recovery_font_descriptor/selection-legacy-encoding-byte-fallback",
+        "recovery_font_descriptor/selection-actually-missing",
+        "recovery_font_descriptor/selection-explicit-gid-zero",
+        "recovery_font_descriptor/selection-missing-tounicode-cannot-rescue",
+        "recovery_font_descriptor/selection-invisible-missing",
+        "recovery_font_descriptor/selection-visible-prefix-same-string",
+        "recovery_font_descriptor/selection-visible-prefix-separate-strings",
+        "recovery_font_descriptor/selection-visible-prefix-TJ",
+        "recovery_font_descriptor/selection-form-after-prefix",
+        "recovery_font_descriptor/selection-later-shared-font",
+        "recovery_font_descriptor/selection-empty-unselected-holes",
+        "recovery_font_descriptor/selection-raw-absent-encoding",
+        "recovery_font_descriptor/selection-raw-symbolic",
+        "recovery_font_descriptor/selection-ambiguous-flags",
+        "recovery_font_descriptor/selection-legacy-raw-absent-encoding",
+        "recovery_font_descriptor/selection-legacy-raw-symbolic",
+        "recovery_font_descriptor/selection-strict-sfnt-version",
+        "recovery_font_descriptor/selection-strict-used-glyph",
+        "recovery_font_descriptor/selection-strict-invisible-glyph",
+        "recovery_font_descriptor/selection-decoded-length-mismatch",
+        "recovery_font_descriptor/selection-encoded-length-mismatch",
+        "recovery_font_descriptor/selection-valid-empty-nonzero-space",
+        "recovery_font_descriptor/selection-unknown-encoding",
+        "recovery_font_descriptor/selection-unknown-base-encoding",
+        "recovery_font_descriptor/selection-absent-base-encoding",
+        "recovery_font_descriptor/selection-mismatched-widths",
+        "recovery_font_descriptor/selection-source-encoding-hole",
+        "recovery_font_descriptor/selection-legacy-encoding-hole",
+        "recovery_font_descriptor/selection-partial-source-glyph-name",
+        "recovery_font_descriptor/selection-legacy-partial-glyph-name",
+        "recovery_font_descriptor/selection-uni-scalar",
+        "recovery_font_descriptor/selection-u-scalar",
+        "recovery_font_descriptor/selection-u-leading-zero-scalar",
+        "recovery_font_descriptor/selection-glyph-name-suffix",
+        "recovery_font_descriptor/selection-multi-scalar-name",
+        "recovery_font_descriptor/selection-surrogate-name",
+        "recovery_font_descriptor/selection-out-of-range-name",
+        "recovery_font_descriptor/selection-short-uni-name",
+        "recovery_font_descriptor/selection-legacy-glyph-name-suffix",
+        "recovery_font_descriptor/selection-descriptor-bbox-witness",
+        "recovery_font_descriptor/selection-canonical-descriptor-bbox-witness",
+        "recovery_font_descriptor/selection-invalid-supplied-bbox",
+        "recovery_font_descriptor/selection-cyclic-supplied-bbox",
+        "recovery_font_descriptor/selection-legacy-invalid-bbox",
+        "pagura/tests/api/font_descriptor.rs",
+        "pagura/tests/api/tags.rs"
+      ],
+      "normative_context": {
+        "reference": "iso32000-2-full-text",
+        "clauses": [
+          "9.6.2",
+          "9.6.6.4",
+          "9.8.1",
+          "9.8.2"
+        ],
+        "scope": "FontDescriptor, source Encoding and Widths remain authoritative. GontDescriptor is not a conforming alias; its explicit reported use is project recovery policy, not a new ISO rule."
+      },
+      "gaps": "Only exact matching typed descriptors, unambiguous Nonsymbolic TrueType, explicit known Named encoding/base, exact Widths extent and sole complete FontFile2. Canonical rawkey presence blocks recovery. Raw/symbolic/unknown or missing names, GID0 and invalid selected outlines remain refusals. No arbitrary font substitution, ToUnicode rescue, source rewriting or general alias search.",
+      "accounting": "Original caller Limits apply to complete parse and each Strict selected-outline operation; existing retained-font/cache estimates include immutable selection policy. Failed retries and concurrent cache misses can repeat proof work; no unconditional256-outline global bound. Performance/memory qualification is separate."
     }
   ],
   "primary_text_review": {
@@ -2246,6 +2332,11 @@
         "120"
       ],
       "behaviour": "While choosing an unknown non-embedded Latin face, report and ignore an invalid optional weight, preserving normal default 400 and independent descriptor flags. Strict rejects with the tag."
+    },
+    {
+      "tag": "font.descriptor-key",
+      "clauses": [],
+      "behaviour": "Repair-only exact supplied descriptor binding after typed original unavailability. Strict keeps its original full error without this tag. Tag is published only after complete loader success; actually used code coverage is enforced later by fallible decode. Ordinary tentative document reads may cache/report their own diagnostics; no rollback is claimed."
     }
   ]
 }

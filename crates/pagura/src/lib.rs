@@ -91,6 +91,8 @@ pub use pagura_document::forms;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
+/// Reported recovery of the exact GontDescriptor font key after unavailable loading.
+pub use pagura_text::repairs::DESCRIPTOR_KEY as FONT_DESCRIPTOR_KEY;
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,
