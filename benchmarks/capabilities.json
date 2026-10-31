@@ -91,7 +91,7 @@
     "crates/pagura-image/src/jbig2/mod.rs": "c7d30129f999bcb8fe77f44fa212f93436736922f714ef601add924ece83e5c6",
     "crates/pagura-image/src/jbig2/symbol.rs": "a6208a6ef9a1fc52bbec1439d5776065d0f6e2e166832685aa2706bbd11dab93",
     "crates/pagura-image/src/jbig2/text.rs": "657f4867588db7eb7a89cc26db71098a6586b7cfdc77e515ca1ab5d0ed38ab11",
-    "crates/pagura-image/src/jpx/boxes.rs": "0db041f020b692f7f29a60b3752fae236f4f4743dd6cc0fc909b732043d64594",
+    "crates/pagura-image/src/jpx/boxes.rs": "dc0e1724864a45767480274af2db3d4f687e71f4aa3458e0bedbb5dddca1db19",
     "crates/pagura-image/src/jpx/codestream.rs": "3daaa8049a78c0037e213798e3a5745c3a5704862eb91c511f403d6b55597a31",
     "crates/pagura-image/src/jpx/coding.rs": "5aac836ecb8b3f63d134fa26d86a0c9d8e3f25c83539df9c88d5ffa0b2149abf",
     "crates/pagura-image/src/jpx/mod.rs": "091b97a9728e9e6d414667eefeb00e8ae39a7f34618ef036ec86f5f70c20e788",
@@ -146,7 +146,7 @@
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
-    "crates/pagura/src/lib.rs": "8957891da773217d57e291c1ea4e016fb865115d8e1ee7e16b9ff7173a38a5c2",
+    "crates/pagura/src/lib.rs": "b43cc10583b80e6d0151ce77947a158c75d96e86e99d9954cc5feed1cca9c004",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
     "crates/pagura/tests/api/document.rs": "e5ecf107fdb648e90faf90e13b5703aeb151afbd7ad1cb7ea6e59c8548a5a102",
@@ -175,7 +175,7 @@
     "references/requirements/paint.json": "76d93b9e6579b261f55a39730ced3d602f5dc677bd1f842c6b386806106b9bb8",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
-    "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
+    "references/requirements/recovery.json": "b7405d09362308a8e838b74810931206ba98551ee659162f874d30486fdc8d30",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "b486b86c6c94cf97d8e0bd704cd8fd08d2aabc68745f2c48fe965fda9a1c4f46",
@@ -188,7 +188,15 @@
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
+    "crates/pagura-image/src/lib.rs": "08c02375c823e2699c94af09656f65e91190444ce7b65445a84cdf5aa2ed4a4c",
+    "crates/pagura-image/src/repairs.rs": "4943e27a347ca6cd6c60009a15b203e128fb65e6e7308dffa4982fd330cf60c5",
+    "crates/pagura-image/tests/jp2_palette.rs": "4adb9bcb685cd1f68666b7ee2a6539d858ffdfe222f66e0653eabc769cd3e742",
+    "tools/fixturegen/jp2_palette.py": "1ee53a5116ee56fc44c735021966c4df67d52aa08fbfd31f1a9a077f600a1b7e",
+    "crates/pagura/examples/compatibility_gap_parity.rs": "6d18cdb9b86cab85572566701948f0caa8d24c932c22783adfab38c0909c9f31",
+    "tools/compatibility_gap_parity.mjs": "e5ca17f5a4c4a418a173ef1a7081d507e181c44d3bc2d7ff6f85913e043891e1",
+    "corpus/manifests/jp2_palette.json": "cfc970a02deaebefc81f581f69e2ed1f38310c7eb3c903877dcfe3a9a2e7b46d",
+    "crates/pagura/tests/api/tags.rs": "f7cf0f3094647c41da3a9c59a30a8c1c2914ef54c1dd7acf7610c6a4cb3652e5"
   },
   "capabilities": [
     {
@@ -489,7 +497,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1.",
+      "implemented": "JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1. Reported JP2 palette-padding recovery retains declared precision and signed codes; Strict refuses.",
       "remaining": "Residual JPEG, CCITT, JBIG2 and JPX subvariants are enumerated in the tag dispositions; baseline-supported valid cases still need G01 fixtures.",
       "sources": [
         "crates/pagura-image/src/features.rs",
@@ -497,9 +505,18 @@
         "crates/pagura-image/src/jpx/mod.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-image/src/jpx/boxes.rs",
+        "crates/pagura-image/src/repairs.rs",
+        "crates/pagura-image/src/lib.rs"
       ],
-      "tests": [],
+      "tests": [
+        "crates/pagura-image/tests/jp2_palette.rs",
+        "tools/fixturegen/jp2_palette.py",
+        "crates/pagura/examples/compatibility_gap_parity.rs",
+        "tools/compatibility_gap_parity.mjs",
+        "crates/pagura/tests/api/tags.rs"
+      ],
       "requirements": [
         "decoder-output-cap",
         "filter-ascii85",
@@ -573,9 +590,39 @@
         "jpx-tiles",
         "jpx-wavelet",
         "predictor-png",
-        "predictor-tiff"
+        "predictor-tiff",
+        "recovery-jpx-palette-padding"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "jp2_palette/gray-signed1-conforming",
+        "jp2_palette/gray-signed1-padding",
+        "jp2_palette/gray-unsigned4-conforming",
+        "jp2_palette/gray-unsigned4-padding",
+        "jp2_palette/rgb-mixed-small-conforming",
+        "jp2_palette/rgb-mixed-small-padding",
+        "jp2_palette/rgb-mixed-wide-conforming",
+        "jp2_palette/rgb-mixed-wide-padding",
+        "jp2_palette/rgb-full16-conforming",
+        "jp2_palette/rgb-full16-meaningful-high-conforming",
+        "jp2_palette/indexed-override-conforming",
+        "jp2_palette/indexed-override-padding",
+        "jp2_palette/mixed-padding-external-alpha",
+        "jp2_palette/raw-index-opacity-control",
+        "jp2_palette/short-palette-conforming",
+        "jp2_palette/short-palette-padding",
+        "jp2_palette/missing-mapping-conforming",
+        "jp2_palette/missing-mapping-padding",
+        "jp2_palette/missing-eoc-conforming",
+        "jp2_palette/missing-eoc-padding",
+        "jp2_palette/bad-component-conforming",
+        "jp2_palette/bad-component-padding",
+        "jp2_palette/opacity-1-conforming",
+        "jp2_palette/opacity-1-padding",
+        "jp2_palette/opacity-2-conforming",
+        "jp2_palette/opacity-2-padding",
+        "jp2_palette/opacity-2-premultiplied-conforming",
+        "jp2_palette/opacity-2-premultiplied-padding"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",

@@ -32,3 +32,15 @@ fn rendering_tags_are_unique_and_well_formed() {
     );
     assert_eq!(tags::image::JPEG_PROCESS.as_str(), "jpeg.process");
 }
+
+#[test]
+fn image_repairs_are_exposed_through_the_facade() {
+    let repair = pagura::repairs::image::JPX_PALETTE_PADDING;
+    assert_eq!(repair.as_str(), "jpx.palette-padding");
+    assert!(pagura::repairs::image::ALL.contains(&repair));
+    let mut seen = Vec::new();
+    for repair in pagura::repairs::image::ALL {
+        assert!(!seen.contains(repair), "duplicate repair {repair:?}");
+        seen.push(*repair);
+    }
+}
