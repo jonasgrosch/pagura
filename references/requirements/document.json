@@ -816,7 +816,7 @@
         "integer_separator/joined-source-like",
         "integer_separator/unterminated-comment-boundary"
       ],
-      "gaps": "Repair only a top-level unsigned integer joined to complete endobj within its exact current generation-aware xref/physical boundary span. No stream extent inference, object reconstruction, signs, real/exponent syntax, references, nested values or ambiguous suffix tokens."
+      "gaps": "Repair only a top-level unsigned integer joined to complete endobj within its exact current generation-aware xref/physical boundary span. The separately specified original-record-scalar-reconstruction policy is the sole reconstruction extension. No stream extent inference, signs, real/exponent syntax, references, nested values or ambiguous suffix tokens."
     },
     {
       "id": "stream-length-budget-portability",
@@ -840,6 +840,26 @@
         "integer_separator/caller-cap-plus1"
       ],
       "gaps": "ADR0016 reader resource policy: compare parsed nonnegative Length with unchanged Limits.stream_bytes before usize conversion on native/WASM. Negative/malformed/cyclic and in-cap extent handling remain unchanged. Runtime lower-caller-cap probes are separate from canonical default-limit full-page oracles; no default cap increases."
+    },
+    {
+      "id": "original-record-scalar-reconstruction",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.2.3",
+        "7.3.3",
+        "7.3.10",
+        "7.5.4",
+        "7.5.5"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document/tests/original_records.rs",
+        "pagura/tests/api/original_records.rs",
+        "corpus/manifests/original_records.json",
+        "pagura/examples/compatibility_gap_parity.rs",
+        "tools/compatibility_gap_parity.mjs"
+      ],
+      "gaps": "Reported ADR0003 policy, not normative validation: after an otherwise pristine unencrypted single classic section fails only positive Size coverage, retain exact original records under document_bytes. Only the existing scanner visit plus exact original identity/physical span can repair a complete unsigned integer/endobj token. No raw-offset traversal/index merge, corrected offsets, fake payload headers, extra header repairs, Prev/XRefStm/Encrypt, or all-free authority. Original Size/bytes, Strict errors, invalid rebuilt history and save guards remain; exact admitted Length values still hit existing caps. Full corpus/platform qualification is separate."
     }
   ]
 }

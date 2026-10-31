@@ -1,0 +1,1655 @@
+{
+  "schema": 2,
+  "area": "original_records",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "original_records/undersized-joined",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/undersized-joined.pdf",
+      "sha256": "587355e25305c3cf49965b79c255d2647061452cf90a3a06583cdc5b04b49289",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/original_records/undersized-joined.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": true,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "integer",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "original_records/undersized-separated",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/undersized-separated.pdf",
+      "sha256": "cbd8107ca62457343f63b1ffdb012374fad61d54a0d68ea7461b2cb8903cdf2a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/original_records/undersized-separated.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 309,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "integer",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "original_records/positive-generation",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/positive-generation.pdf",
+      "sha256": "3c7c0009ada60ff8f90d9eca6e22b4237389b3f176881067ed01eee373ad5f2f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/original_records/positive-generation.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        7
+      ],
+      "original_record_authority": true,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            7
+          ],
+          "expected": "integer",
+          "value": 22
+        },
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/sparse-original",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/sparse-original.pdf",
+      "sha256": "1ee8a53b4280cc9ed6b4bff74fa36cb049748a82a5fbaa361fae2e8bf9ba1e87",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/original_records/sparse-original.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 314,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        1000,
+        0
+      ],
+      "original_record_authority": true,
+      "document_queries": [
+        {
+          "object": [
+            1000,
+            0
+          ],
+          "expected": "integer",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "original_records/sparse-original-max",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/sparse-original-max.pdf",
+      "sha256": "efee20868918e66524f97d48809bf265e8182b22c64bacb207f4737d97556d1e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/original_records/sparse-original-max.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 326,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        4294967295,
+        0
+      ],
+      "original_record_authority": true,
+      "document_queries": [
+        {
+          "object": [
+            4294967295,
+            0
+          ],
+          "expected": "integer",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "original_records/omitted-content-joined",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/omitted-content-joined.pdf",
+      "sha256": "f40537f663b3c0f31f49a99ebc1cbad63b5658c4d56e78062f6bb4bf60852323",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/original_records/omitted-content-joined.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": true,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "integer",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "original_records/omitted-content-separated",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/omitted-content-separated.pdf",
+      "sha256": "bbed336b837f3c7c6050defb69ba50a30d4dc35a3e4bc777a7e1481980b8a3ff",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/original_records/omitted-content-separated.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 309,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "integer",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "original_records/omitted-scalar-joined",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/omitted-scalar-joined.pdf",
+      "sha256": "4576c81dd786880c676b931a4b535f4d908438482ee384a6b7a2eb4aff348d35",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/omitted-scalar-joined.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/wrong-scalar-offset",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/wrong-scalar-offset.pdf",
+      "sha256": "321d4ca2c3ecf374fee4e21ece12438ad88e9646d4ab9a11dfd44e88b7fd8376",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/wrong-scalar-offset.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/generation-mismatch",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/generation-mismatch.pdf",
+      "sha256": "c7ace104b2f1382d337b8e9ad4ff3a4fbb2291755641fc13ccf24171e212c3df",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/generation-mismatch.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/duplicate-original-record",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/duplicate-original-record.pdf",
+      "sha256": "bb736fea1e2aea5f470a599ea7d35a5d81eb9254865349d91557fa586f6b76ea",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/duplicate-original-record.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "subsections overlap",
+          "repair": null,
+          "file_position": 479,
+          "object": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/negative-scalar",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/negative-scalar.pdf",
+      "sha256": "689da4d8834d2fffbde26d1f46a3e6fe7421a3f1b32df9adef0a5c95efef6e48",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/negative-scalar.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 309,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/real-scalar",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/real-scalar.pdf",
+      "sha256": "c0030019cc6d984ad514e3c04f60282ba47393ca13c1de994dc05a5682bd7257",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/real-scalar.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 310,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/reference-scalar",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/reference-scalar.pdf",
+      "sha256": "ebf8bdeb8f8330c9bcd8716615eb10c41ac59097486b139a7a7442ef8ee2ab72",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/reference-scalar.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 311,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/array-scalar",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/array-scalar.pdf",
+      "sha256": "e843006058a65adbae4866234926e51cc036599bbb7dee8b44552fef312f622c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/array-scalar.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 310,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "array",
+          "value": 21
+        }
+      ]
+    },
+    {
+      "id": "original_records/name-scalar",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/name-scalar.pdf",
+      "sha256": "1bccd27093c91d8db7e602491905a633b1ef746fb449a4632b799e527551f6aa",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected",
+        "object.end-missing"
+      ],
+      "oracle": "corpus/generated/original_records/name-scalar.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 309,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "name",
+          "value": "21endobj"
+        }
+      ]
+    },
+    {
+      "id": "original_records/string-scalar",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/string-scalar.pdf",
+      "sha256": "70ce056a2c5849b8da53590aa4364d0e02e9e1f12618a050e5001cbdea0c7f66",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/string-scalar.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 310,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "string",
+          "value": "21"
+        }
+      ]
+    },
+    {
+      "id": "original_records/integer-overflow",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/integer-overflow.pdf",
+      "sha256": "ed7ac604376de83b25478dc81341590c2566e938944683b1f2bd33517c6cf395",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/integer-overflow.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 325,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/i64-max-scalar",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "open",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/i64-max-scalar.pdf",
+      "sha256": "f0a6f81b793f0212bf395b9aca6022c50cef9fbd2f32d2bdc0ae0eefca1f97d5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.integer-separator"
+      ],
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 325,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": true,
+      "render_error": "limit",
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "integer",
+          "value": "9223372036854775807"
+        }
+      ]
+    },
+    {
+      "id": "original_records/comment-suffix-newline",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/comment-suffix-newline.pdf",
+      "sha256": "027292cd1d41e54cb0f6fbb4fc4f64f36162171e5459e9f1454a8acb97f1845a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/original_records/comment-suffix-newline.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 325,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": true,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "integer",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "original_records/comment-suffix-unterminated",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/comment-suffix-unterminated.pdf",
+      "sha256": "f0d443b7f01dc5ca9e08b54e5c52a6a1e91549b559256800f4ab25f65f11fd82",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/comment-suffix-unterminated.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 325,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/prev-present",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/prev-present.pdf",
+      "sha256": "d49a9e0f8ca06d4341027b7b12101b6988ad92ae3be28eaaa6b80a200a23ccaf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/prev-present.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/xrefstm-present",
+      "kind": "pdf",
+      "description": "Existing scanner visitation and exact original records; declined proofs retain prior bounded stream recovery",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/xrefstm-present.pdf",
+      "sha256": "2062c9fc5b47eedc1c56a3dcef2dd291cbd938a424e9746d948e77980ea6fa5b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/xrefstm-present.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "cross-reference stream Type must be XRef",
+          "repair": null,
+          "file_position": 0,
+          "object": [
+            1,
+            0
+          ]
+        }
+      },
+      "original_scalar": [
+        5,
+        0
+      ],
+      "original_record_authority": false,
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "original_records/size-valid-joined",
+      "kind": "pdf",
+      "description": "Unchanged primary-index scalar control",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/size-valid-joined.pdf",
+      "sha256": "8b5dad8104f3bccc87d8c34a16d1608fc183ee6653f673f082f11d835ea1572b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/original_records/size-valid-joined.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "original_scalar": [
+        5,
+        0
+      ],
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "integer",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "original_records/size-valid-separated",
+      "kind": "pdf",
+      "description": "Unchanged primary-index scalar control",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/size-valid-separated.pdf",
+      "sha256": "48c83f3a411196a7c77c84cd4d87ff8eb4bfa7578667e0fc500385952ce881a5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/original_records/size-valid-separated.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "original_scalar": [
+        5,
+        0
+      ],
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "integer",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "original_records/joined-then-clean-override",
+      "kind": "pdf",
+      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "expected": "open",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/joined-then-clean-override.pdf",
+      "sha256": "4f4ce6a66bd89341bf0a8fcb4176b07c5c1ad8838642fa704e9bc478de1c72eb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.integer-separator"
+      ],
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 326,
+          "object": null,
+          "repair": null
+        },
+        "repair": {
+          "kind": "Syntax",
+          "message": "stream Length crosses an object boundary",
+          "file_position": 351,
+          "object": [
+            4,
+            0
+          ],
+          "repair": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "integer",
+          "value": 99
+        }
+      ],
+      "render_error": "syntax"
+    },
+    {
+      "id": "original_records/joined-then-generation-override",
+      "kind": "pdf",
+      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/joined-then-generation-override.pdf",
+      "sha256": "aa7aac560e06732eacdfd38e5faa4211290f6d33b7385b4f6452df3288b35edb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.integer-separator",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/joined-then-generation-override.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 326,
+          "object": null,
+          "repair": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            5,
+            1
+          ],
+          "expected": "integer",
+          "value": 99
+        },
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/fake-header-in-stream",
+      "kind": "pdf",
+      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/fake-header-in-stream.pdf",
+      "sha256": "94dd25c091db3e038a1021a5b343f6576aebb35a667ad8499cd9181df424e5a5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/original_records/fake-header-in-stream.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 375,
+          "object": null,
+          "repair": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            7,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/fake-header-in-string",
+      "kind": "pdf",
+      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/fake-header-in-string.pdf",
+      "sha256": "1384d533c44e6caee63266671326579d96d82c2fa0cba00a2398eb0d8312e894",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/original_records/fake-header-in-string.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 354,
+          "object": null,
+          "repair": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            7,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/fake-header-in-comment",
+      "kind": "pdf",
+      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/fake-header-in-comment.pdf",
+      "sha256": "ff98e2b84560c0dcd6ef12b1addf6d10ae13c4f688d8d5eb770cf7118d38179a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/original_records/fake-header-in-comment.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 355,
+          "object": null,
+          "repair": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            7,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/fake-header-in-name",
+      "kind": "pdf",
+      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/fake-header-in-name.pdf",
+      "sha256": "fff979912660f601eee4d84ef500817137fa7ae43f6a80d7a4f51c3e78e65334",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/original_records/fake-header-in-name.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 350,
+          "object": null,
+          "repair": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            7,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/encrypt-null",
+      "kind": "pdf",
+      "description": "Pristine header, absent Encrypt and useful physical-record scope; no new original authority",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/encrypt-null.pdf",
+      "sha256": "94238361dcfc694873181963b96b963482275687c57706cf143ed6c01b5e2eb6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/encrypt-null.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/encrypt-undefined-reference",
+      "kind": "pdf",
+      "description": "Pristine header, absent Encrypt and useful physical-record scope; no new original authority",
+      "expected": "invalid",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/encrypt-undefined-reference.pdf",
+      "sha256": "673ede43fd0236574c422d0e10856b845235899fc0ed5aa74fca978272b9cde8",
+      "pages": null,
+      "strict_valid": false,
+      "repairs": [],
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        },
+        "repair": {
+          "kind": "Syntax",
+          "message": "expected a dictionary",
+          "repair": null,
+          "object": [
+            99,
+            0
+          ]
+        }
+      },
+      "render_error": "syntax"
+    },
+    {
+      "id": "original_records/header-extra-format",
+      "kind": "pdf",
+      "description": "Pristine header, absent Encrypt and useful physical-record scope; no new original authority",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/header-extra-format.pdf",
+      "sha256": "2b7c521bed9aec7370363a7982c3758b3746571549b49cf874cadb346da33115",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-format",
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/header-extra-format.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": "file.header-format",
+          "file_position": 8,
+          "object": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/leading-junk-physical-offsets",
+      "kind": "pdf",
+      "description": "Pristine header, absent Encrypt and useful physical-record scope; no new original authority",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/leading-junk-physical-offsets.pdf",
+      "sha256": "85cbbb1f0b42a0e456fcc4b0602450f6e98d5175828f87de310800a547d284ca",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-offset",
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/leading-junk-physical-offsets.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": "file.header-offset",
+          "file_position": 5,
+          "object": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/leading-junk-relative-offsets",
+      "kind": "pdf",
+      "description": "Pristine header, absent Encrypt and useful physical-record scope; no new original authority",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/leading-junk-relative-offsets.pdf",
+      "sha256": "2474cb3cad3217437ebe1d94fa432b84b54826dabab8a5c5db8f54aeefffd509",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-offset",
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/leading-junk-relative-offsets.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": "file.header-offset",
+          "file_position": 5,
+          "object": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/missing-pdf-header",
+      "kind": "pdf",
+      "description": "Pristine header, absent Encrypt and useful physical-record scope; no new original authority",
+      "expected": "invalid",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/missing-pdf-header.pdf",
+      "sha256": "b526734be046b271123c2d524263269e6964c98f0e4b7f2c98a2233b0ae2ee0c",
+      "pages": null,
+      "strict_valid": false,
+      "repairs": [],
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "missing or unknown PDF header",
+          "repair": null,
+          "file_position": 0,
+          "object": null
+        },
+        "repair": {
+          "kind": "Syntax",
+          "message": "missing or unknown PDF header",
+          "repair": null,
+          "file_position": 0,
+          "object": null
+        }
+      },
+      "render_error": "syntax"
+    },
+    {
+      "id": "original_records/all-free-size-coverage",
+      "kind": "pdf",
+      "description": "Pristine header, absent Encrypt and useful physical-record scope; no new original authority",
+      "expected": "render",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/all-free-size-coverage.pdf",
+      "sha256": "9a3264f12d7af0747446d3f46b4ddff9d8d2ead756fb44fb155b1398b6ee3850",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/all-free-size-coverage.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "message": "trailer Size does not cover cross-reference entries",
+          "file_position": 308,
+          "object": null,
+          "repair": null
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    }
+  ]
+}

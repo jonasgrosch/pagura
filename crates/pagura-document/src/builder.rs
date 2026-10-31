@@ -28,18 +28,37 @@ pub(crate) fn open(bytes: Arc<[u8]>, options: &OpenOptions) -> Result<Document> 
     let mut diagnostics = Diagnostics::new(options.recovery);
     let header = xref::header(&bytes, &mut diagnostics)?;
     let mut attempt = Diagnostics::new(options.recovery);
-    let primary = xref::read(&bytes, header, &options.limits, &mut attempt).and_then(|table| {
-        let reported = diagnostics
-            .as_slice()
-            .iter()
-            .cloned()
-            .chain(attempt.take())
-            .collect();
-        DocumentBuilder::new(Arc::clone(&bytes), options, table, reported)?.build(&options.password)
-    });
+    let (primary, original) =
+        match xref::read_with_original(&bytes, header, &options.limits, &diagnostics, &mut attempt)
+        {
+            xref::OpenRead::Parsed(table) => {
+                let reported = diagnostics
+                    .as_slice()
+                    .iter()
+                    .cloned()
+                    .chain(attempt.take())
+                    .collect();
+                (
+                    DocumentBuilder::new(Arc::clone(&bytes), options, table, reported)
+                        .and_then(|builder| builder.build(&options.password)),
+                    None,
+                )
+            }
+            xref::OpenRead::Failed { error, original } => (Err(error), original),
+        };
     match primary {
         Err(error) if options.recovery == Recovery::Repair && xref::structural(&error) => {
-            let table = rebuild::read(&bytes, &options.limits, &mut diagnostics, error.position)?;
+            let mut table = match original.as_deref() {
+                Some(original) => rebuild::read_with_original(
+                    &bytes,
+                    &options.limits,
+                    &mut diagnostics,
+                    error.position,
+                    original,
+                )?,
+                None => rebuild::read(&bytes, &options.limits, &mut diagnostics, error.position)?,
+            };
+            table.original = original;
             DocumentBuilder::new(bytes, options, table, diagnostics.take())?
                 .build(&options.password)
         }
@@ -56,6 +75,7 @@ pub(crate) struct DocumentBuilder {
     trailer: Dictionary,
     slots: BTreeMap<ObjectId, Slot>,
     revisions: Vec<Revision>,
+    original: Option<Arc<xref::original::OriginalRecords>>,
     object_streams: BTreeMap<u32, OnceLock<Result<object::stream::Contents>>>,
     security: Option<security::Security>,
     diagnostics: diagnostics::Log,
@@ -70,7 +90,10 @@ impl DocumentBuilder {
         table: XrefTable,
         reported: Vec<Diagnostic>,
     ) -> Result<Self> {
-        let retained = Arc::new(memory::Budget::new(options.limits.document_bytes));
+        let retained = table.original.as_ref().map_or_else(
+            || Arc::new(memory::Budget::new(options.limits.document_bytes)),
+            |original| Arc::clone(original.budget()),
+        );
         Self::assemble(
             bytes.into(),
             options.limits,
@@ -145,6 +168,7 @@ impl DocumentBuilder {
             trailer: table.trailer,
             slots,
             revisions: table.revisions,
+            original: table.original,
             object_streams,
             security: None,
             diagnostics,
@@ -200,6 +224,7 @@ impl DocumentBuilder {
             trailer: self.trailer,
             slots: self.slots,
             revisions: self.revisions,
+            original: self.original,
             object_streams: self.object_streams,
             security: self.security,
             boundaries: OnceLock::new(),
@@ -293,6 +318,7 @@ impl Document {
             trailer,
             mut slots,
             revisions,
+            original,
             mut object_streams,
             security,
             diagnostics,
@@ -313,6 +339,7 @@ impl Document {
             trailer,
             slots,
             revisions,
+            original,
             object_streams,
             security,
             diagnostics: diagnostics
