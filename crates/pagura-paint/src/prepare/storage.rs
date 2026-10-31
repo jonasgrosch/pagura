@@ -146,8 +146,7 @@ impl Survey<'_> {
         let transfers = self.transfers;
         let transfer_gate = self.buffers[page].transfer;
         let buffer = &mut self.buffers[page];
-        buffer.forced |=
-            inputs.simulate || inputs.page.process != Process::Rgb || page_knockout || transfers;
+        buffer.forced |= inputs.simulate || page_knockout || transfers;
         let mut resolved = Vec::new();
         bytes.reserve_capacity(&mut resolved, self.buffers.len())?;
         resolved.resize(self.buffers.len(), None);
@@ -355,7 +354,7 @@ impl Survey<'_> {
         self.buffers.push(Buffer {
             layout,
             page: false,
-            forced: self.inputs.simulate || layout.process != Process::Rgb,
+            forced: self.inputs.simulate,
             knockout_attribute: knockout,
             opaque_members: true,
             later_opaque: true,
@@ -666,7 +665,9 @@ impl Survey<'_> {
             .map(|mask| self.mask(mask, parent_layout.process, (context, depth), bytes))
             .transpose()?;
         let buffer = &mut self.buffers[child];
-        buffer.forced |= state.blend.amplifies() || knockout || !transparent;
+        // A result converted into its parent's space stays F64 (ADR 0004 §6).
+        buffer.forced |=
+            state.blend.amplifies() || knockout || !transparent || layout != parent_layout;
         let rect = self.pixels(extent);
         let target = &mut self.buffers[parent];
         target.extent = unite(target.extent, extent);

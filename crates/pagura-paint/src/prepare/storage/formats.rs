@@ -4,6 +4,7 @@
 
 use super::{Buffer, Survey};
 use crate::format::Format;
+use pagura_color::Process;
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::DeviceRect;
 
@@ -22,6 +23,10 @@ pub(super) const F64_STORE: f64 = 1.0 / 1_099_511_627_776.0;
 
 /// The F32 admission limit, in levels.
 const F32_LIMIT: f64 = 0.5 - 1.0 / 4096.0;
+
+/// How far a CMYK page's output conversion amplifies the errors of its
+/// stored levels: one each for a colour channel and black, two for alpha.
+const CMYK_OUTPUT: f64 = 4.0;
 
 /// The room an N16 buffer leaves for dynamic stores, in words.
 const N16_ROOM: f64 = 0.5 - 1.0 / 68_719_476_736.0;
@@ -97,6 +102,17 @@ fn disjoint(rects: &mut [DeviceRect], bytes: &mut Meter) -> Result<bool> {
     Ok(disjoint)
 }
 
+/// Narrow storage holds `buffer`'s layout: RGB, or for the page CMYK without
+/// spot channels (ADR 0004 §6). A layout is the buffer's own, so it does not
+/// pass to the buffer a group flattens into.
+fn narrow_layout(buffer: &Buffer) -> bool {
+    match buffer.layout.process {
+        Process::Rgb => true,
+        Process::Cmyk => buffer.page && buffer.layout.spots == 0,
+        Process::Gray => false,
+    }
+}
+
 impl Survey<'_> {
     /// Chooses formats from the innermost buffer outwards and records each
     /// buffer's error bound in levels.
@@ -125,15 +141,18 @@ impl Survey<'_> {
         }
         let stores = buffer.stores as f64;
         let wide = (stores * F64_STORE + MARGIN + injected, Format::F64);
-        let n16 = !buffer.forced && buffer.page && n16_admits(buffer, resolved, bytes)?;
+        // N16 stores RGB alone; a CMYK page's output amplifies its errors.
+        let rgb = buffer.layout.process == Process::Rgb;
+        let n16 = !buffer.forced && buffer.page && rgb && n16_admits(buffer, resolved, bytes)?;
+        let amplified = if rgb { 1.0 } else { CMYK_OUTPUT };
         let f32_bound =
             PI + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64) + injected;
-        let (bound, format) = if buffer.forced {
+        let (bound, format) = if buffer.forced || !narrow_layout(buffer) {
             wide
         } else if n16 {
             // The page's bound is never used as a child's.
             (0.5, Format::N16)
-        } else if f32_bound <= F32_LIMIT {
+        } else if amplified * f32_bound <= F32_LIMIT {
             (f32_bound + MARGIN, Format::F32)
         } else {
             wide
@@ -254,5 +273,54 @@ mod tests {
             Format::F64
         );
         assert_eq!(no_scratch.used(), 0);
+    }
+
+    #[test]
+    fn cmyk_pages_admit_f32_at_a_quarter_of_the_bound() {
+        // Pages whose F32 bound is about 0.2 or 0.1 levels: CMYK output
+        // amplifies it four times, so only the smaller one admits CMYK.
+        let build = Build::new(4.0, 4.0);
+        let cases = [
+            (Process::Rgb, 26_000, Format::F32),
+            (Process::Cmyk, 26_000, Format::F64),
+            (Process::Cmyk, 13_000, Format::F32),
+            (Process::Gray, 13_000, Format::F64),
+        ];
+        for (process, dynamic, format) in cases {
+            let mut survey = Survey {
+                scene: &build.scene,
+                inputs: Inputs {
+                    page: Layout { process, spots: 0 },
+                    simulate: false,
+                    policy: false,
+                    depth: 64,
+                    transform: build.transform(),
+                    pixels: build.page(),
+                    user_unit: 1.0,
+                },
+                buffers: Vec::new(),
+                groups: FastMap::default(),
+                masks: FastMap::default(),
+                cells: FastMap::default(),
+                open: Vec::new(),
+                outlines: FastMap::default(),
+                transfers: false,
+            };
+            let mut bytes = Meter::new(1 << 20, "admission fixture");
+            let node = survey
+                .buffer(survey.inputs.page, false, &mut bytes)
+                .unwrap();
+            let buffer = &mut survey.buffers[node];
+            buffer.page = true;
+            buffer.theta = 1.0;
+            buffer.stores = dynamic + 1;
+            buffer.dynamic = dynamic;
+            let mut resolved = vec![None];
+            let (admitted, _) = survey.resolve(node, &mut resolved, 0, &mut bytes).unwrap();
+            assert_eq!(
+                admitted, format,
+                "{process:?} with {dynamic} dynamic stores"
+            );
+        }
     }
 }

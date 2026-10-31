@@ -180,25 +180,27 @@ pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &
     dynamic(pixels, colors, alpha, 65535.0, round_u16, f64::from);
 }
 
-/// Stores of three-value colours at `alpha` over `pixels`: each run at full
-/// opacity by `opaque`, every other pixel by `one`.
-fn by_runs<T>(
-    (pixels, values, alpha): (&mut [T], &[f64], &[f64]),
-    opaque: impl Fn(&mut [T], &[f64]),
-    one: impl Fn(&mut T, &[f64], f64),
+/// Stores of colours at `alpha` over `pixels`, a value per colour lane of
+/// a pixel (all but its last, alpha): each run at full opacity by `opaque`,
+/// every other pixel by `one`.
+fn by_runs<T, const N: usize>(
+    (pixels, values, alpha): (&mut [[T; N]], &[f64], &[f64]),
+    opaque: impl Fn(&mut [[T; N]], &[f64]),
+    one: impl Fn(&mut [T; N], &[f64], f64),
 ) {
-    let len = pixels.len().min(alpha.len()).min(values.len() / 3);
+    let c = N - 1;
+    let len = pixels.len().min(alpha.len()).min(values.len() / c);
     if full(&alpha[..len]) {
-        opaque(&mut pixels[..len], &values[..len * 3]);
+        opaque(&mut pixels[..len], &values[..len * c]);
         return;
     }
     let mut k = 0;
     while k < len {
         let run = alpha[k..len].iter().take_while(|&&a| a == 1.0).count();
-        opaque(&mut pixels[k..k + run], &values[k * 3..(k + run) * 3]);
+        opaque(&mut pixels[k..k + run], &values[k * c..(k + run) * c]);
         k += run;
         let rest = alpha[k..len].iter().take_while(|&&a| a != 1.0).count();
-        let colors = values[k * 3..(k + rest) * 3].as_chunks::<3>().0;
+        let colors = values[k * c..(k + rest) * c].chunks_exact(c);
         for ((pixel, color), &a) in pixels[k..k + rest].iter_mut().zip(colors).zip(&alpha[k..]) {
             one(pixel, color, a);
         }
@@ -247,9 +249,15 @@ pub(crate) fn full(alpha: &[f64]) -> bool {
 
 /// A dynamic store into F32 levels: `(1 − a)·x + a·t` for the target
 /// `t = 255·c` evaluated in f64 and rounded once to f32.
-pub(crate) fn dynamic_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f64]) {
-    if let Colors::Strided { values, stride: 3 } = *colors {
-        let one = |pixel: &mut [f32; 4], color: &[f64], a: f64| {
+pub(crate) fn dynamic_f32<const N: usize>(
+    pixels: &mut [[f32; N]],
+    colors: &Colors<'_>,
+    alpha: &[f64],
+) {
+    if let Colors::Strided { values, stride } = *colors
+        && stride == N - 1
+    {
+        let one = |pixel: &mut [f32; N], color: &[f64], a: f64| {
             mix_dynamic(pixel, targets(color, 255.0), a, single, f64::from);
         };
         by_runs((pixels, values, alpha), overwrite_dynamic_f32, one);
@@ -258,30 +266,30 @@ pub(crate) fn dynamic_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &
     dynamic(pixels, colors, alpha, 255.0, single, f64::from);
 }
 
-/// Dynamic F32 stores of opaque colours, three values a pixel, at full
+/// Dynamic F32 stores of opaque colours, a value per colour lane, at full
 /// opacity: `(1 − a)·x + a·t` is `0·x + t`, rounded once.
-fn overwrite_dynamic_f32(pixels: &mut [[f32; 4]], values: &[f64]) {
-    for (pixel, color) in pixels.iter_mut().zip(values.as_chunks::<3>().0) {
-        for (out, target) in pixel.iter_mut().zip(targets(color, 255.0)) {
+fn overwrite_dynamic_f32<const N: usize>(pixels: &mut [[f32; N]], values: &[f64]) {
+    for (pixel, color) in pixels.iter_mut().zip(values.chunks_exact(N - 1)) {
+        for (out, target) in pixel.iter_mut().zip(targets::<N>(color, 255.0)) {
             *out = single(0.0 * f64::from(*out) + target);
         }
     }
 }
 
-fn dynamic<T: Copy>(
-    pixels: &mut [[T; 4]],
+fn dynamic<T: Copy, const N: usize>(
+    pixels: &mut [[T; N]],
     colors: &Colors<'_>,
     alpha: &[f64],
     scale: f64,
     round: impl Fn(f64) -> T,
     widen: impl Fn(T) -> f64,
 ) {
-    let store = |pixel: &mut [T; 4], targets: [f64; 4], a: f64| {
+    let store = |pixel: &mut [T; N], targets: [f64; N], a: f64| {
         mix_dynamic(pixel, targets, a, &round, &widen);
     };
     match *colors {
         Colors::Constant(color) => {
-            let targets = targets(color, scale);
+            let targets = targets::<N>(color, scale);
             for (pixel, &a) in pixels.iter_mut().zip(alpha) {
                 store(pixel, targets, a);
             }
@@ -300,16 +308,19 @@ fn dynamic<T: Copy>(
 
 /// The targets of a dynamic store of `color`: its clamped values and full
 /// alpha on `0 .. scale`.
-pub(crate) fn targets(color: &[f64], scale: f64) -> [f64; 4] {
-    let at = |i: usize| color.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0) * scale;
-    [at(0), at(1), at(2), scale]
+pub(crate) fn targets<const N: usize>(color: &[f64], scale: f64) -> [f64; N] {
+    let mut targets = [scale; N];
+    for (i, target) in targets.iter_mut().take(N - 1).enumerate() {
+        *target = color.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0) * scale;
+    }
+    targets
 }
 
 /// One dynamic store, `(1 − a)·x + a·t` rounded once; none at `a = 0`.
 #[inline]
-fn mix_dynamic<T: Copy>(
-    pixel: &mut [T; 4],
-    targets: [f64; 4],
+fn mix_dynamic<T: Copy, const N: usize>(
+    pixel: &mut [T; N],
+    targets: [f64; N],
     a: f64,
     round: impl Fn(f64) -> T,
     widen: impl Fn(T) -> f64,
@@ -372,7 +383,11 @@ pub(crate) const UNIT: [f64; 256] = {
 /// [`store_f32`] of a constant colour's `target` levels at one coverage
 /// byte `c` for every pixel: the opacity `c / 255 · alpha` a span's
 /// coverage and constant alpha give it.
-pub(crate) fn store_f32_uniform(pixels: &mut [[f32; 4]], (target, alpha): ([f32; 4], f64), c: u8) {
+pub(crate) fn store_f32_uniform<const N: usize>(
+    pixels: &mut [[f32; N]],
+    (target, alpha): ([f32; N], f64),
+    c: u8,
+) {
     let alpha = single(UNIT[usize::from(c)] * alpha);
     for pixel in pixels {
         lerp(pixel, target, alpha);
@@ -382,9 +397,9 @@ pub(crate) fn store_f32_uniform(pixels: &mut [[f32; 4]], (target, alpha): ([f32;
 /// [`store_f32_uniform`] at `coverage`, which leaves pixels at zero as they
 /// are. Returns the pixels from the first to past the last one with
 /// coverage, if any. `pixels` and `coverage` have equal lengths.
-pub(crate) fn store_f32_runs(
-    pixels: &mut [[f32; 4]],
-    (target, alpha): ([f32; 4], f64),
+pub(crate) fn store_f32_runs<const N: usize>(
+    pixels: &mut [[f32; N]],
+    (target, alpha): ([f32; N], f64),
     coverage: &[u8],
 ) -> Option<(usize, usize)> {
     let first = coverage.iter().position(|&c| c != 0)?;
@@ -398,10 +413,16 @@ pub(crate) fn store_f32_runs(
 
 /// Stores `colors` at `alpha` into F32 levels on 0..255: full opacity
 /// overwrites, other stores evaluate `x += a·(t − x)` in f32.
-pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f64]) {
-    if let Colors::Strided { values, stride: 3 } = *colors {
+pub(crate) fn store_f32<const N: usize>(
+    pixels: &mut [[f32; N]],
+    colors: &Colors<'_>,
+    alpha: &[f64],
+) {
+    if let Colors::Strided { values, stride } = *colors
+        && stride == N - 1
+    {
         // At full opacity the store is the target's levels.
-        let one = |pixel: &mut [f32; 4], color: &[f64], a: f64| {
+        let one = |pixel: &mut [f32; N], color: &[f64], a: f64| {
             lerp(pixel, levels(color), single(a));
         };
         by_runs((pixels, values, alpha), overwrite_f32, one);
@@ -426,33 +447,43 @@ pub(crate) fn store_f32(pixels: &mut [[f32; 4]], colors: &Colors<'_>, alpha: &[f
     }
 }
 
-/// The levels of opaque colours, three values a pixel, over `pixels`: a
+/// The levels of opaque colours, a value per colour lane, over `pixels`: a
 /// store at full opacity, [`levels`] of each colour. Eight pixels at a time,
-/// their 24 values convert as one run, which vectorizes.
-fn overwrite_f32(pixels: &mut [[f32; 4]], values: &[f64]) {
+/// their values convert as one run, which vectorizes.
+fn overwrite_f32<const N: usize>(pixels: &mut [[f32; N]], values: &[f64]) {
+    let c = N - 1;
     let (blocks, last) = pixels.as_chunks_mut::<8>();
-    let (colors, rest) = values.as_chunks::<24>();
+    let colors = values.chunks_exact(8 * c);
+    let rest = colors.remainder();
     for (block, color) in blocks.iter_mut().zip(colors) {
-        let mut levels = [0.0; 24];
+        let mut levels = [0.0; 8 * (MAX_LANES - 1)];
         for (out, &value) in levels.iter_mut().zip(color) {
             *out = level(value);
         }
-        for (pixel, levels) in block.iter_mut().zip(levels.as_chunks::<3>().0) {
-            *pixel = [levels[0], levels[1], levels[2], 255.0];
+        for (pixel, levels) in block.iter_mut().zip(levels.chunks_exact(c)) {
+            *pixel = [255.0; N];
+            pixel[..c].copy_from_slice(levels);
         }
     }
-    for (pixel, color) in last.iter_mut().zip(rest.as_chunks::<3>().0) {
+    for (pixel, color) in last.iter_mut().zip(rest.chunks_exact(c)) {
         *pixel = levels(color);
     }
 }
 
-/// The F32 levels of an opaque colour.
-pub(crate) fn levels(color: &[f64]) -> [f32; 4] {
-    let at = |i: usize| level(color.get(i).copied().unwrap_or(0.0));
-    [at(0), at(1), at(2), 255.0]
+/// The most lanes of an F32 pixel: CMYK and alpha.
+const MAX_LANES: usize = 5;
+
+/// The F32 levels of an opaque colour: a level per colour lane, then full
+/// alpha.
+pub(crate) fn levels<const N: usize>(color: &[f64]) -> [f32; N] {
+    let mut levels = [255.0; N];
+    for (i, out) in levels.iter_mut().take(N - 1).enumerate() {
+        *out = level(color.get(i).copied().unwrap_or(0.0));
+    }
+    levels
 }
 
-fn lerp(pixel: &mut [f32; 4], target: [f32; 4], alpha: f32) {
+fn lerp<const N: usize>(pixel: &mut [f32; N], target: [f32; N], alpha: f32) {
     if alpha == 1.0 {
         *pixel = target;
         return;
@@ -641,6 +672,59 @@ mod tests {
                 .map(|_| [0; 4].map(|_: u8| f32::from(u8::try_from(next() % 256).unwrap_or(0))))
                 .collect();
             let bits = |pixels: &[[f32; 4]]| -> Vec<[u32; 4]> {
+                pixels.iter().map(|p| p.map(f32::to_bits)).collect()
+            };
+            let (mut a, mut b) = (levels.clone(), levels.clone());
+            dynamic_f32(&mut a, &runs, &alpha);
+            dynamic_f32(&mut b, &general, &alpha);
+            assert_eq!(bits(&a), bits(&b), "dynamic f32 {case}");
+            let (mut a, mut b) = (levels.clone(), levels);
+            store_f32(&mut a, &runs, &alpha);
+            store_f32(&mut b, &general, &alpha);
+            assert_eq!(bits(&a), bits(&b), "f32 {case}");
+        }
+    }
+
+    #[test]
+    fn cmyk_stores_by_runs_are_stores_by_pixel() {
+        // Five lanes: four colour values a pixel take the runs, five the
+        // general loops, and both give the same levels.
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let unit = |random: u64| f64::from(u32::try_from(random % 1_000_001).unwrap_or(0)) / 1e6;
+        for case in 0..400 {
+            let len = case % 37;
+            let alpha: Vec<f64> = (0..len)
+                .map(|k| match (k / 5 + case) % 3 {
+                    0 => 1.0,
+                    1 => unit(next()),
+                    _ => [0.0, 1.0, 0.5][k % 3],
+                })
+                .collect();
+            let colors: Vec<f64> = (0..len * 4).map(|_| unit(next()) * 1.2 - 0.1).collect();
+            let padded: Vec<f64> = colors
+                .chunks(4)
+                .flat_map(|c| [c[0], c[1], c[2], c[3], 0.0])
+                .collect();
+            let (runs, general) = (
+                Colors::Strided {
+                    values: &colors,
+                    stride: 4,
+                },
+                Colors::Strided {
+                    values: &padded,
+                    stride: 5,
+                },
+            );
+            let levels: Vec<[f32; 5]> = (0..len)
+                .map(|_| [0; 5].map(|_: u8| f32::from(u8::try_from(next() % 256).unwrap_or(0))))
+                .collect();
+            let bits = |pixels: &[[f32; 5]]| -> Vec<[u32; 5]> {
                 pixels.iter().map(|p| p.map(f32::to_bits)).collect()
             };
             let (mut a, mut b) = (levels.clone(), levels.clone());

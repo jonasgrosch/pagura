@@ -437,7 +437,7 @@ format costs bandwidth, not page-sized memory.
   that receives a store with a blend mode other than Normal or with a
   transfer function, and every soft mask with a transfer function; buffers
   with spot channels and every buffer under overprint simulation; buffers
-  whose blending space is not RGB; knockout groups, except those whose
+  whose blending space is not RGB, except a page in CMYK; knockout groups, except those whose
   members after the first have opacity equal to their shape (opaque
   members), which composite as source-over: the first meets the group's
   initial backdrop, where knockout is source-over at any opacity, as the
@@ -462,8 +462,10 @@ and u: one integer rounding of at most 127/255 words. The initial value
 background and within half a word otherwise. The output is the nearest byte
 of u/257, which is never a tie, so it adds at most 128/257 levels.
 
-F32 stores four f32 channels of levels on 0..255, 16 bytes per pixel.
-Inexact source levels are encoded with round-to-odd, which keeps their side
+F32 stores four f32 channels of levels on 0..255, 16 bytes per pixel; a CMYK
+page stores five, its additive C, M, Y and K levels and alpha, 20 bytes per
+pixel, starts transparent, and output converts each pixel in f64 from its
+levels. Inexact source levels are encoded with round-to-odd, which keeps their side
 of a following nearest-byte boundary; exact levels stay exact. Full-opacity
 stores overwrite; other stores evaluate x += a (t - x) with separate
 roundings. Let ρ = 2^-17 levels, one rounding below 256, and
@@ -515,6 +517,19 @@ the positive opacity of the contracting stores. The buffer is admitted when
 the 2^-12 margin covers f64 source evaluation, and the final nearest byte
 adds at most half a level. A stack of 270,000 stores of opacity 3/2^27
 therefore stays F64.
+
+**CMYK pages.** Output gives a pixel of a CMYK page with additive levels c
+and k (one colour channel and black, premultiplied) and alpha α the value
+max(min(c, α) + min(k, α) - α, 0) + b (1 - α/255) for a background level b,
+and min is the clamp of straight values to one. Its partial derivatives are
+at most 1 in c and in k and at most 2 in α, so storage errors within E levels
+in each channel move it by at most 4E. A CMYK page is therefore admitted to
+F32 when four times the left side of the F32 inequality is at most
+1/2 - 2^-12 levels, the f64 conversion staying within the margin. N16 has no
+CMYK form. Group and soft-mask buffers in CMYK, and every buffer whose
+result reaches its parent through a conversion between blending spaces,
+stay F64; a CMYK page's F64 children inject into it as above, channel by
+channel.
 
 **Children.** A child buffer B, a group or a soft mask, reaches its parent as
 one dynamic store at each pixel it touches, evaluated in f64 from B's stored
@@ -571,7 +586,8 @@ Normal and transfer functions in a buffer, whose results depend on the
 backdrop in a way the lemma does not model; non-isolated groups whose content
 is not all Normal, because removing the backdrop divides by the group's
 alpha; knockout groups other than the opaque-member identity; non-RGB
-blending spaces, spot channels and overprint simulation, whose conversions
+blending spaces other than a CMYK page, spot channels and overprint
+simulation, whose conversions
 and spot accumulation the lemma does not cover; and promotion of byte-stored
 chunks to N16 (ADR 0034), which needs a bound for a start already rounded to
 bytes and work aligned to a global chunk grid.
