@@ -19,6 +19,15 @@ use crate::stroke::{Cover, Spine, Tiling};
 use crate::{FillRule, Path, Stroke, Transform, features};
 use pagura_core::{Error, Limits, Meter, Result};
 
+/// The fewest points of a polygon whose doubt is located within its rows:
+/// four times the most pieces of a row the resolver sweeps whole.
+const LOCATED_POINTS: usize = 4 * PROVEN_PIECES;
+
+/// The most pieces of a row whose certified runs are passed over. In rows
+/// of more, the regions cut around runs as narrow as their windows leave
+/// sweeps carrying more breaks than the passes save.
+const PASSED_PIECES: usize = 64 * PROVEN_PIECES;
+
 /// The message of every preparation work budget error.
 pub(crate) const RASTER_WORK: &str = "raster work budget exceeded";
 
@@ -525,11 +534,17 @@ impl Shape {
         let before = before_rows(polygon.vertices(), rows, (checked, frame.rect.is_some()));
         give_up(spine, before, bytes);
         // Where the doubt lies in a row is the polygon's: lines a frame cuts
-        // no longer bound the chains it was found among. Its windows may
-        // hold what the bytes left keep beyond all the shape stores before
-        // its rows, and are the shape's from then on, given up before any
-        // storage of its own.
-        let windows = (frame.rect.is_none() && frame.paths.is_none())
+        // no longer bound the chains it was found among. A stroke's spine
+        // proves its rows on work of its own, which windows leave alone,
+        // and the rows of a polygon of fewer points than `LOCATED_POINTS`
+        // hold too few pieces for the runs passed over to repay locating.
+        // Windows may hold what the bytes left keep beyond all the shape
+        // stores before its rows, and are the shape's from then on, given
+        // up before any storage of its own.
+        let windows = (frame.rect.is_none()
+            && frame.paths.is_none()
+            && spine.is_none()
+            && polygon.points.len() >= LOCATED_POINTS)
             .then(|| bytes.remaining().saturating_sub(before));
         let polygon_bytes = polygon.heap_bytes();
         let Doubt {
@@ -568,7 +583,8 @@ impl Shape {
             }
             None => lines,
         };
-        let Some(bounds) = frame.bounds(lines.iter().flat_map(|l| [l.a, l.b])) else {
+        let Some(bounds) = edges::hull(&lines).and_then(|hull| frame.bounds(hull.into_iter()))
+        else {
             return Ok(None);
         };
         let width = super::row::width(options.area.region.x1)?;
@@ -1385,9 +1401,8 @@ impl Spare for Option<Located> {
     }
 }
 
-/// The optional storage of a shape's rows: its spine's cover and the
-/// certificate's windows, given up together. Their runs are passed over on
-/// the cover's work where it has one.
+/// The optional storage of a shape's rows: its spine's cover or the
+/// certificate's windows, which only a shape without a spine locates.
 struct Optional<'a> {
     cover: &'a mut Option<Cover>,
     located: &'a mut Option<Located>,
@@ -1539,7 +1554,7 @@ fn resolve(
         // their own work or the bytes do not fit, the windows are given up,
         // and the rows after are resolved as without them.
         if let (1, Some(held)) = (groups, &mut *optional.located)
-            && pieces.len() > PROVEN_PIECES
+            && (PROVEN_PIECES + 1..=PASSED_PIECES).contains(&pieces.len())
             && held
                 .row(
                     y,

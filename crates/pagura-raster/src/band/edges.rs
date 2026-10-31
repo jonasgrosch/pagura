@@ -632,6 +632,20 @@ impl Polygon {
     }
 }
 
+/// The least and greatest coordinates of the ends of `lines`; `None` for
+/// none.
+pub(crate) fn hull(lines: &[Line]) -> Option<[Point; 2]> {
+    let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
+    let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
+    for l in lines {
+        lo.x = lesser(lo.x, lesser(l.a.x, l.b.x));
+        lo.y = lesser(lo.y, lesser(l.a.y, l.b.y));
+        hi.x = greater(hi.x, greater(l.a.x, l.b.x));
+        hi.y = greater(hi.y, greater(l.a.y, l.b.y));
+    }
+    (lo.x <= hi.x && lo.y <= hi.y).then_some([lo, hi])
+}
+
 /// A device rectangle `[left, right] × [top, bottom]` of real coordinates.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Bounds {

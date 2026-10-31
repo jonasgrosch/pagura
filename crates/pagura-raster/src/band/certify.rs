@@ -138,9 +138,11 @@ impl Windows {
             + self.ranges.capacity() * size_of::<[f64; 2]>()
     }
 
-    /// Starts recording `row`, closing the one before.
+    /// Starts recording `row`, closing the one before. Once locating has
+    /// stopped no row is recorded: the one open then stays unlisted, in
+    /// doubt across its width.
     fn open(&mut self, row: i64) {
-        if self.open.is_some_and(|(open, _)| open == row) {
+        if self.stopped || self.open.is_some_and(|(open, _)| open == row) {
             return;
         }
         self.close();
@@ -150,6 +152,9 @@ impl Windows {
 
     /// Leaves rows up to `last` unlocated, the open one among them.
     fn lose(&mut self, last: i64) {
+        if self.stopped {
+            return;
+        }
         if let Some((_, located)) = &mut self.open {
             *located = false;
         }
@@ -159,6 +164,9 @@ impl Windows {
     /// Keeps the open row's ranges, sorted and merged, if all its doubt was
     /// located.
     fn close(&mut self) {
+        if self.stopped {
+            return;
+        }
         let Some((row, located)) = self.open.take() else {
             return;
         };
