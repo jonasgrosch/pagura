@@ -140,7 +140,7 @@ def cases():
                        ("fake-header-in-comment", "comment"), ("fake-header-in-name", "name")]:
         data, xref = visitor(kind)
         override = kind in ["override", "generation-override"]
-        repairs = (REBUILT, INTEGER) if override else (REBUILT,)
+        repairs = (REBUILT,)
         if override:
             repairs += (LENGTH,)
         queries = ([{"object": [5, 0], "expected": "integer", "value": 99}] if kind == "override" else

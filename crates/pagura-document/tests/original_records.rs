@@ -189,6 +189,7 @@ fn ordinary_later_definitions_own_the_final_identity_and_source() {
             );
         }
         assert_eq!(document.revisions(), []);
+        assert!(!has_integer_repair(&document));
     }
 }
 
