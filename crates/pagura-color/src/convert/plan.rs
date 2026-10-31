@@ -665,13 +665,38 @@ impl CurvedRgb {
     /// [`Converter::convert_curved_rounded`]: crate::Converter::convert_curved_rounded
     #[inline]
     pub fn convert_rounded(&self, curved: [f64; 3], round: impl Fn(f64) -> u32) -> [f64; 3] {
+        self.linear(curved).map(|v| encode_rounded(v, &round))
+    }
+
+    /// Bounds `[low, high]` of each channel of the encoded sRGB of
+    /// `curved`, between which [`Converter::convert_curved`] computes it:
+    /// [`cie::encode_estimate`] of the same linear value, or that value
+    /// encoded where the estimate gives none.
+    ///
+    /// [`Converter::convert_curved`]: crate::Converter::convert_curved
+    #[inline]
+    pub fn encoded_bounds(&self, curved: [f64; 3]) -> [[f64; 2]; 3] {
+        self.linear(curved).map(|v| {
+            cie::encode_estimate(v).unwrap_or_else(|| {
+                let exact = cie::encode(v);
+                [exact, exact]
+            })
+        })
+    }
+
+    /// The linear sRGB of `curved`: [`Profile::linear_curved`]'s arithmetic
+    /// in the same order.
+    ///
+    /// [`Profile::linear_curved`]: crate::icc::Profile::linear_curved
+    #[inline]
+    fn linear(&self, curved: [f64; 3]) -> [f64; 3] {
         let mut xyz = cie::map(self.matrix, curved);
         if let Some(scale) = self.scale {
             for (value, scale) in xyz.iter_mut().zip(scale) {
                 *value *= scale;
             }
         }
-        cie::linear_srgb(cie::map(cie::D50_TO_D65, xyz)).map(|v| encode_rounded(v, &round))
+        cie::linear_srgb(cie::map(cie::D50_TO_D65, xyz))
     }
 }
 

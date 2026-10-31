@@ -26,6 +26,9 @@ pub(crate) struct Scratch {
     /// How the texels of the rows `plan` reads were converted
     /// ([`Self::select`]).
     mode: texels::TexelMode,
+    /// The memo of [`texels::TexelMode::Bounds`] texels (prototype;
+    /// unmetered).
+    pub(super) bounds: Option<Box<texels::Memo>>,
 }
 
 impl Layout {
@@ -55,6 +58,7 @@ impl Layout {
             summed: allocate(self.summed)?,
             fused: allocate(self.fused)?,
             mode: texels::TexelMode::Exact,
+            bounds: None,
         })
     }
 }

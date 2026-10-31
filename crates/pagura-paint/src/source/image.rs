@@ -620,7 +620,7 @@ impl ImageSampler {
         pixels: Pixels<'_>,
         scratch: &mut ImageScratch,
         out: &mut SpanColors,
-        shape: Option<&mut Vec<f64>>,
+        mut shape: Option<&mut Vec<f64>>,
     ) {
         let len = pixels.len;
         let channels = self.channels;
@@ -648,6 +648,11 @@ impl ImageSampler {
                 return;
             }
         };
+        if pixels.precision == crate::source::Precision::Level
+            && self.fill_bounds(pixels, scratch, out, shape.as_deref_mut())
+        {
+            return;
+        }
         let lanes = channels + 2;
         let mask = prepared.mask.as_ref();
         // A mask on the image's grid averages ahead of the texels; another
@@ -687,6 +692,145 @@ impl ImageSampler {
             _ => straight.write::<0>(out, shape),
         }
         scratch.summed = storage;
+    }
+}
+
+/// Pixels [`ImageSampler::fill_bounds`] certified and fell back on
+/// (prototype counters).
+static BOUNDS_STATS: [std::sync::atomic::AtomicU64; 2] = [
+    std::sync::atomic::AtomicU64::new(0),
+    std::sync::atomic::AtomicU64::new(0),
+];
+
+impl ImageSampler {
+    /// [`Self::fill`] of a span kept to F32 levels by bounds of its texels
+    /// (prototype): area averages of an unmasked RGB image placed
+    /// separably, whose curved values convert through [`texels::Curved`]'s
+    /// RGB step. The lower and the upper bounds of each texel's encoded
+    /// colour are averaged as the exact texels are, by the same
+    /// non-negative weights in the same order, so the exact average lies
+    /// between them; where both give one F32 level, the lower bound is
+    /// that level's value. Other pixels take their exact colour, as a span
+    /// of one pixel gives it. False, with nothing written, for other spans.
+    #[inline(never)]
+    fn fill_bounds(
+        &self,
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        out: &mut SpanColors,
+        mut shape: Option<&mut Vec<f64>>,
+    ) -> bool {
+        let Some(prepared) = self.prepared.as_deref() else {
+            return false;
+        };
+        let Plan::Texels {
+            sampling: plan @ Sampling::Separable(_),
+            paint: Paint::Colors(paint),
+        } = &prepared.plan
+        else {
+            return false;
+        };
+        let (Strategy::Memo(layout), 3, None, Mode::Area) = (
+            &paint.1,
+            self.channels,
+            prepared.mask.as_ref(),
+            prepared.geometry.mode(),
+        ) else {
+            return false;
+        };
+        if !paint.0.curved.as_ref().is_some_and(texels::Curved::has_rgb) {
+            return false;
+        }
+        let image = &prepared.image.image;
+        let len = pixels.len;
+        let stride = 8;
+        scratch.select(TexelMode::Bounds);
+        let ImageScratch {
+            plan: storage,
+            fused,
+            bounds,
+            summed,
+            ..
+        } = scratch;
+        if bounds.is_none() {
+            let Ok(memo) = layout.bounds().make() else {
+                return false;
+            };
+            *bounds = Some(Box::new(memo));
+        }
+        let Some(memo) = bounds.as_deref_mut() else {
+            return false;
+        };
+        let Some(texels) = MemoTexels::new(image, &paint.0, None, memo) else {
+            return false;
+        };
+        let texels = texels.converting(TexelMode::Bounds);
+        let mut values = std::mem::take(summed);
+        let sums = scratch::grown(&mut values, len * stride);
+        let mut buffers = SamplingBuffers { storage, fused };
+        prepared.sample(plan, pixels, &mut buffers, &texels, sums);
+        out.channels = 3;
+        out.painted = prepared.painted;
+        out.colors.clear();
+        out.colors.resize(len * 3, 0.0);
+        out.alpha.clear();
+        out.alpha.resize(len, 0.0);
+        if let Some(shape) = shape.as_deref_mut() {
+            shape.clear();
+            shape.resize(len, 0.0);
+        }
+        let level = |v: f64| crate::kernel::level(v).to_bits();
+        let mut uncertain = Vec::new();
+        for (index, sum) in sums.chunks_exact(stride).enumerate() {
+            let held = (sum[6], sum[7]);
+            let (mut low, mut high) = ([sum[0], sum[1], sum[2]], [sum[3], sum[4], sum[5]]);
+            let (opacity, own) = straighten(&mut low, held, (None, false));
+            straighten(&mut high, held, (None, false));
+            if (0..3).all(|c| level(low[c]) == level(high[c])) {
+                out.colors[index * 3..index * 3 + 3].copy_from_slice(&low);
+                out.alpha[index] = opacity;
+                if let Some(shape) = shape.as_deref_mut() {
+                    shape[index] = own;
+                }
+            } else {
+                uncertain.push(index);
+            }
+        }
+        *summed = values;
+        let counted = BOUNDS_STATS[0].fetch_add(
+            (len - uncertain.len()) as u64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        BOUNDS_STATS[1].fetch_add(uncertain.len() as u64, std::sync::atomic::Ordering::Relaxed);
+        if counted / 2_000_000 != (counted + len as u64) / 2_000_000
+            && std::env::var_os("LANE_C_BOUNDS").is_some()
+        {
+            eprintln!(
+                "BOUNDS certified {} uncertain {}",
+                BOUNDS_STATS[0].load(std::sync::atomic::Ordering::Relaxed),
+                BOUNDS_STATS[1].load(std::sync::atomic::Ordering::Relaxed)
+            );
+        }
+        // An uncertain pixel's colour, as the exact span of that pixel alone
+        // gives it: the same as in any span (partition invariance).
+        let (mut single, mut single_shape) = (SpanColors::default(), Vec::new());
+        for index in uncertain {
+            let x = pixels.x + u32::try_from(index).unwrap_or(u32::MAX);
+            let one = Pixels {
+                x,
+                y: pixels.y,
+                len: 1,
+                boundary: pixels.boundary.and_then(|b| b.get(index..=index)),
+                precision: crate::source::Precision::Exact,
+            };
+            self.fill(one, scratch, &mut single, Some(&mut single_shape));
+            out.colors[index * 3..index * 3 + 3].copy_from_slice(&single.colors[..3]);
+            out.alpha[index] = single.alpha[0];
+            if let Some(shape) = shape.as_deref_mut() {
+                shape[index] = single_shape[0];
+            }
+        }
+        true
     }
 }
 

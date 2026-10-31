@@ -199,6 +199,10 @@ pub(super) enum TexelMode {
     /// To values whose N16 words ([`crate::kernel::opaque_word`]) are those
     /// of the exact ones, for texels each pixel copies as its word.
     Words,
+    /// To bounds of the exact values, the lower of each channel then the
+    /// upper ([`CurvedRgb::encoded_bounds`]): two values a channel, for
+    /// sums whose rounding the bounds' sums decide.
+    Bounds,
 }
 
 impl TexelMode {
@@ -208,6 +212,7 @@ impl TexelMode {
             Self::Exact => 0,
             Self::Rounded => 1,
             Self::Words => 2,
+            Self::Bounds => 3,
         }
     }
 
@@ -406,8 +411,18 @@ impl Colors {
             return false;
         };
         let curved = [0, 1, 2].map(|i| self.curved_value(curved, i, u16::from(codes[i])));
+        if mode == TexelMode::Bounds {
+            let bounds = rgb.encoded_bounds(curved);
+            let values = bounds.map(|[low, _]| low).into_iter();
+            let values = values.chain(bounds.map(|[_, high]| high)).chain([1.0; 2]);
+            debug_assert_eq!(out.len(), 8);
+            for (out, value) in out.iter_mut().zip(values) {
+                *out = value;
+            }
+            return true;
+        }
         let color = match mode {
-            TexelMode::Exact => return false,
+            TexelMode::Exact | TexelMode::Bounds => return false,
             TexelMode::Rounded => rgb.convert_rounded(curved, level_bits),
             TexelMode::Words => rgb.convert_rounded(curved, word_bits),
         };
@@ -1410,6 +1425,12 @@ impl MemoState {
 }
 
 impl MemoLayout {
+    /// This layout for [`TexelMode::Bounds`] texels of opaque RGB samples:
+    /// six values each (prototype; unmetered).
+    pub(super) fn bounds(self) -> Self {
+        Self { held: 6, ..self }
+    }
+
     fn state(self) -> MemoState {
         if self.replacing {
             MemoState::Replacing
@@ -1696,6 +1717,16 @@ impl<'a> MemoTexels<'a> {
     /// Converts sample `index` into a texel of every lane.
     fn convert(&self, index: usize, components: usize, texel: &mut [f64]) {
         let start = index.saturating_mul(components);
+        if self.mode == TexelMode::Bounds
+            && let Some(&[r, g, b]) = self
+                .samples
+                .colors
+                .get(start..start + 3)
+                .and_then(|c| c.first_chunk())
+            && self.colors.rgb_texel([r, g, b], TexelMode::Bounds, texel)
+        {
+            return;
+        }
         let mut codes = [0u16; MAX_COMPONENTS];
         for (code, &byte) in codes.iter_mut().zip(
             self.samples
@@ -1725,7 +1756,8 @@ impl<'a> MemoTexels<'a> {
 
 impl Texels for MemoTexels<'_> {
     fn lanes(&self) -> usize {
-        self.colors.lanes()
+        // Bounds texels hold two values a colour channel.
+        self.colors.lanes() + usize::from(self.mode == TexelMode::Bounds) * 3
     }
 
     fn opaque(&self) -> bool {
@@ -1737,12 +1769,9 @@ impl Texels for MemoTexels<'_> {
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
-        // Only bilinear and area samples weight texels, and those convert
-        // exactly: their keys carry no tag.
-        debug_assert_eq!(self.mode, TexelMode::Exact);
         let mut memo = self.memo.borrow_mut();
         let components = memo.layout.key.components;
-        let key = self.samples.get(index);
+        let key = self.samples.get(index) | self.tag;
         let held = memo.layout.held;
         let values = memo.get(key, held, |texel| self.convert(index, components, texel));
         for (sum, value) in sum.iter_mut().zip(values) {
@@ -1772,6 +1801,7 @@ impl Texels for MemoTexels<'_> {
                 (3, 4, true) => self.plain_row::<3, 4, true>(&mut memo, start, out),
                 (4, 3, true) => self.plain_row::<4, 3, true>(&mut memo, start, out),
                 (4, 4, true) => self.plain_row::<4, 4, true>(&mut memo, start, out),
+                (3, 6, true) => self.plain_row::<3, 6, true>(&mut memo, start, out),
                 _ => false,
             }
         {
