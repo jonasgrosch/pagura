@@ -24,6 +24,19 @@
         "classic/many-operands"
       ],
       "gaps": "long fuzz campaigns (a bounded smoke run and replayed findings exist) and process-level sandbox/cancellation"
+    },
+    {
+      "id": "explicit-repair-scan",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "Opt-in scan --repair performs one actual Repair pass; schema2/recovery=repair/strict=null never implies a Strict rendering audit. Default scan schema1 and control flow stay unchanged.",
+      "tests": [
+        "pagura-cli scan::tests::unreadable_source_preserves_legacy_bytes_and_has_no_repair_audit",
+        "pagura-cli cli::scan_modes_keep_their_distinct_audit_schemas",
+        "pagura-cli cli::explicit_repair_scan_reports_repairs_and_refusals_without_strict_claims",
+        "tools/test_tools.py ConformanceTests"
+      ],
+      "gaps": "An explicit Repair scan is not full Strict validation, independent pixel accuracy, browser evidence or a compatibility admission. Full Strict errors are checked by actual render/API calls separately."
     }
   ]
 }

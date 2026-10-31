@@ -228,6 +228,27 @@ fn the_other_commands_parse_their_operands() {
     );
 }
 
+#[test]
+fn explicit_repair_is_a_scan_only_opt_in() {
+    assert_eq!(
+        run(&["scan", "--repair", "a.pdf", "144", "--max-pages", "2"]),
+        Ok(Command::Scan {
+            source: source("a.pdf", b"", Recovery::Repair),
+            render: RenderOptions::from_dpi(144.0),
+            max_pages: Some(2),
+        })
+    );
+    for args in [
+        vec!["scan", "--repair", "--repair", "a.pdf"],
+        vec!["scan", "--repair", "--strict", "a.pdf"],
+        vec!["inspect", "--repair", "a.pdf"],
+        vec!["render", "--repair", "a.pdf", "out.ppm"],
+        vec!["--repair", "--version"],
+    ] {
+        assert!(run(&args).is_err(), "{args:?}");
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn paths_need_not_be_utf8_but_text_must_be() {

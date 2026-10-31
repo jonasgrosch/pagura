@@ -17,7 +17,7 @@ usage: pagura inspect [--strict] [--password TEXT] INPUT
               INPUT OUTPUT.ppm [DPI [PAGE]]
        pagura convert [--strict] [--password TEXT] [--overprint MODE] [--timings]
               INPUT OUTPUT_DIR [DPI [FIRST LAST]]
-       pagura scan [--password TEXT] [--overprint MODE] [--max-pages N] INPUT [DPI]
+       pagura scan [--repair] [--password TEXT] [--overprint MODE] [--max-pages N] INPUT [DPI]
        pagura roundtrip [--password TEXT] INPUT OUTPUT
        pagura microbench [--strict] [--password TEXT] [--overprint MODE]
               INPUT OPERATION COUNT [DPI]
@@ -56,6 +56,7 @@ PAGE, FIRST and LAST count from 0; convert names its images from 1
 options:
   --password TEXT  password for encrypted documents (default: empty)
   --strict         reject malformed input instead of repairing it
+  --repair         scan in Repair mode throughout, without a Strict audit
   --overprint MODE simulate overprinting (8.6.7): auto (the default) where
                    the document declares a PDF/X print intent, always, or
                    never
@@ -202,6 +203,7 @@ fn usage(message: impl Into<String>) -> UsageError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Flag {
     Strict,
+    Repair,
     Timings,
     Password,
     Overprint,
@@ -210,8 +212,9 @@ enum Flag {
 }
 
 impl Flag {
-    const ALL: [Self; 6] = [
+    const ALL: [Self; 7] = [
         Self::Strict,
+        Self::Repair,
         Self::Timings,
         Self::Password,
         Self::Overprint,
@@ -222,6 +225,7 @@ impl Flag {
     const fn name(self) -> &'static str {
         match self {
             Self::Strict => "--strict",
+            Self::Repair => "--repair",
             Self::Timings => "--timings",
             Self::Password => "--password",
             Self::Overprint => "--overprint",
@@ -250,6 +254,9 @@ impl Options {
         flag: Flag,
         args: &mut impl Iterator<Item = OsString>,
     ) -> Result<(), UsageError> {
+        if flag == Flag::Repair && self.has(flag) {
+            return Err(usage("--repair may appear only once"));
+        }
         let mut value = || {
             args.next()
                 .ok_or_else(|| usage(format!("{} needs a value", flag.name())))
@@ -271,7 +278,7 @@ impl Options {
                 };
             }
             Flag::MaxPages => self.max_pages = Some(number(&value()?, "--max-pages")?),
-            Flag::Strict | Flag::Timings | Flag::Version => {}
+            Flag::Strict | Flag::Repair | Flag::Timings | Flag::Version => {}
         }
         self.given.push(flag);
         Ok(())
@@ -412,9 +419,16 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
             })
         }
         ("scan", [input, rest @ ..]) if rest.len() <= 1 => {
-            options.allow(name, &[Password, Overprint, MaxPages])?;
+            options.allow(name, &[Password, Overprint, MaxPages, Flag::Repair])?;
             Command::Scan {
-                source: options.source(input, Recovery::Strict),
+                source: options.source(
+                    input,
+                    if options.has(Flag::Repair) {
+                        Recovery::Repair
+                    } else {
+                        Recovery::Strict
+                    },
+                ),
                 render: options.render(rest.first())?,
                 max_pages: options.max_pages,
             }

@@ -28,8 +28,8 @@
     "crates/pagura-appearance/src/form/style.rs": "20e35fa393dede64c02a299c88984a93d35de65292e1b75f3eb518d3ab333db1",
     "crates/pagura-appearance/src/form/update.rs": "24177c14116328da1af78feb6c79e0c3bed611238ff620c2df12e993a6d6c472",
     "crates/pagura-appearance/src/form/variable.rs": "16761101b8a414393c94398eff1c40ad88ddb0596969e6c8b165d29cff02f79b",
-    "crates/pagura-cli/src/args.rs": "a3b99f4113502251bde2384bbc03d6851cc96c1899fc27ca10ad4f6ad74fa348",
-    "crates/pagura-cli/src/commands.rs": "f196523039edec564386798a8cbdc81095fbbdb16fdd0966195243bf361fe461",
+    "crates/pagura-cli/src/args.rs": "466c1884df8f47514c193444999fd21950a27e742b900afb77cfacac779de676",
+    "crates/pagura-cli/src/commands.rs": "7298286f78faa16c5b2879742683c7ae546276f0397fa090fbee8029feaec9fd",
     "crates/pagura-cli/src/password.rs": "600dc9c3973633fa92b14a0a3e452abcc406be456eddb1089ff2e65bf0a2370f",
     "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
@@ -173,7 +173,7 @@
     "references/requirements/jpx.json": "40bb3aa1149dba818966cf4b27168e44cd601a79536a99bcaa8d806208c9ce75",
     "references/requirements/overprint.json": "96b1dce7f12d18d382c253bce93b182cc032c0b9256dae671782dbc7ea00b08f",
     "references/requirements/paint.json": "76d93b9e6579b261f55a39730ced3d602f5dc677bd1f842c6b386806106b9bb8",
-    "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
+    "references/requirements/policy.json": "e2c93be014f695de43b236e7d15737195eed79886bc960509364427ebf44b88b",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
@@ -199,7 +199,14 @@
     "crates/pagura/examples/null_annotation_parity.rs": "e938059436c33fad2c110ae53903a4ec17108a589325fc8aad65134bb7af709e",
     "tools/null_annotation_parity.mjs": "c21d38f339a629f71d0c16f0b8ccf628de2832da9a77822ef86adb7031a54606",
     ".github/workflows/null-annotation-parity.yml": "abcd9c6530885f0a10f87ff38197f76206f85683c35be6fe092ccb437a6052e1",
-    "benchmarks/probes/null-annotation-fixtures.json": "d4e3d179340e7835032cc219e5f1ee7b39b7e6069f1ad338679ed0334f6dd902"
+    "benchmarks/probes/null-annotation-fixtures.json": "d4e3d179340e7835032cc219e5f1ee7b39b7e6069f1ad338679ed0334f6dd902",
+    "crates/pagura-cli/tests/cli.rs": "0d296d83aecb6f1c9511aac5eab7439bddd4bbc9d9d3bd5869fe981d7a88cd27",
+    "tools/conformance.py": "6b7002cfb9cdba7dfbc5161fb4e2539e83cb1f1039a2633d2c658ae0bd1b8ae5",
+    "docs/RECOVERY.md": "f7472f37e0ffd944cbe1feb61cd1c3aea1b6cf31b98cf1fe8c8c552e080b3010",
+    "crates/pagura-cli/src/args/tests.rs": "c8f17c2a56279fd0a633cf1c8982633219290418afcdf81ccd4fff08e6c654b8",
+    "crates/pagura-cli/src/scan.rs": "68e082860e96fadfdcb8c4a9d87c5d51650155ed44dab4857eb7bf99246dae0b",
+    "tools/test_tools.py": "819d44ab1da0f897eb8a4b3b9b9e44e5d30b77353db54338c12bbfef66a44da9",
+    "crates/pagura-cli/src/json.rs": "ec29a36256d2d3f588cc398cfd5184ca2663a6eb4de070aa43ac1718033bea80"
   },
   "capabilities": [
     {
@@ -2298,7 +2305,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy.",
+      "implemented": "Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy. Explicit CLI Repair scans use a distinct schema2 with no implied Strict audit; default scans retain schema1.",
       "remaining": "Current cross-platform/corpus runtime comparison, complete feature denominator and release-qualified performance evidence.",
       "sources": [
         "benchmarks/policy.json",
@@ -2306,9 +2313,18 @@
         "crates/pagura-core/src/lib.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-cli/src/commands.rs",
+        "crates/pagura-cli/src/scan.rs",
+        "crates/pagura-cli/src/json.rs",
+        "tools/conformance.py",
+        "docs/RECOVERY.md"
       ],
-      "tests": [],
+      "tests": [
+        "crates/pagura-cli/src/args/tests.rs",
+        "crates/pagura-cli/tests/cli.rs",
+        "tools/test_tools.py"
+      ],
       "requirements": [
         "bench-corpus-verification",
         "bench-document-conversion",
@@ -2331,7 +2347,8 @@
         "recovery-transfer",
         "recovery-type3",
         "recovery-widgets",
-        "unsupported-is-explicit"
+        "unsupported-is-explicit",
+        "explicit-repair-scan"
       ],
       "fixtures": [],
       "comparisons": {
