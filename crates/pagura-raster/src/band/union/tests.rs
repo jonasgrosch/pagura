@@ -1140,8 +1140,8 @@ fn spines_prove_only_covered_cells_and_keep_every_side() {
 /// way round or the other, in rows of more than 64 pieces: emitting the
 /// quadrilaterals' pieces as sides of a certified range, with the fans'
 /// covered cells passed over or not, gives each cell the full sweep's area.
-/// A certified range starting inside a quadrilateral is narrowed past it,
-/// in one pass for two ranges in a row.
+/// A certified range starting or ending inside a quadrilateral is narrowed
+/// to leave it out, in one pass for two ranges in a row.
 #[test]
 fn certified_chunks_emit_the_full_sweeps_sides() {
     let mut rng = Lcg(2_032);
@@ -1159,7 +1159,8 @@ fn certified_chunks_emit_the_full_sweeps_sides() {
             ));
         }
         // Quadrilaterals three columns apart from x = 40 on, through the row
-        // or ending in it, reversed in odd cases.
+        // or ending in it, reversed in odd cases. Their sides slant across a
+        // column each.
         let reversed = case % 2 == 1;
         let count = 8 + rng.next() % 30;
         for k in 0..count {
@@ -1168,8 +1169,8 @@ fn certified_chunks_emit_the_full_sweeps_sides() {
             let bottom = top + rng.grid(0.25, 16, 8);
             let mut corners = vec![
                 (x + rng.grid(0.0, 8, 8), top),
-                (x + rng.grid(0.0, 8, 8), bottom),
                 (x + 1.0 + rng.grid(0.0, 8, 8), bottom),
+                (x + 2.0 + rng.grid(0.0, 8, 8), bottom),
                 (x + 1.0 + rng.grid(0.0, 8, 8), top),
             ];
             if reversed {
@@ -1189,12 +1190,12 @@ fn certified_chunks_emit_the_full_sweeps_sides() {
         };
         runs.retain(|r| r.1 <= 39.0);
         // Some ranges start within the first quadrilateral, and some rows
-        // hold two, the second starting within a later one.
+        // hold two, the first ending within a later one.
         let start = if case % 3 == 1 { 41.0 } else { 40.0 };
         let end = 40.0 + 3.0 * f64::from(count);
         if case % 4 == 2 {
             let middle = 40.0 + 3.0 * f64::from(count / 2);
-            runs.push((start, middle, Run::Certified(sign)));
+            runs.push((start, middle + 1.0, Run::Certified(sign)));
             runs.push((middle + 2.0, end, Run::Certified(sign)));
         } else {
             runs.push((start, end, Run::Certified(sign)));

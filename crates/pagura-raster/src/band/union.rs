@@ -866,8 +866,8 @@ impl Resolver {
     /// strictly outside the ranges'. A certified range is first narrowed to
     /// the nearest columns within it that no piece straddles, so that none of
     /// its pieces is cut at its bounds: past the straddled run its left bound
-    /// lies in, and back to the start of the one its right bound lies in, in
-    /// one pass over the pieces for the whole row. A spare that cannot pay,
+    /// lies in, and back before the one its right bound lies in, in one pass
+    /// over the pieces for the whole row. A spare that cannot pay,
     /// or whose plan the bytes left do not cover, plans none.
     fn prove(&mut self, (spare, bytes): (&mut dyn Spare, &mut Meter)) -> Result<()> {
         self.optional.regions.clear();
@@ -920,10 +920,22 @@ impl Resolver {
             if let Some(&(a, _)) = straddled.peek()
                 && a <= run.1
             {
-                run.1 = a;
+                // Touching runs merge, so no piece straddles the column
+                // before a run.
+                run.1 = a - 1.0;
             }
         }
         runs.retain(|&(lo, hi, _)| lo < hi);
+        debug_assert!(
+            runs.iter()
+                .filter(|r| r.2 != Run::Proven)
+                .all(|&(lo, hi, _)| {
+                    self.spans
+                        .iter()
+                        .all(|&(first, last, _)| [lo, hi].iter().all(|&c| c <= first || c > last))
+                }),
+            "a certified range's bound straddled: {runs:?}"
+        );
         for (r, &(lo, hi, _)) in runs.iter().enumerate() {
             let before = self.cuts.partition_point(|&c| c < lo);
             let start = before
