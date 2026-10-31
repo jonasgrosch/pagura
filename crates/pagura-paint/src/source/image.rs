@@ -1018,6 +1018,9 @@ impl Prepared {
         if self.nearest_words((plan, paint), pixels, scratch, mode, out) {
             return true;
         }
+        if let Some(written) = self.bounds_words((plan, paint), pixels, scratch, out) {
+            return written;
+        }
         let len = out.len();
         let mut storage = std::mem::take(&mut scratch.summed);
         let values = scratch::grown(&mut storage, len * lanes);
@@ -1037,6 +1040,99 @@ impl Prepared {
         }
         scratch.summed = storage;
         opaque
+    }
+
+    /// [`Self::texel_words`] of area averages by bounds of their texels
+    /// (prototype), as [`ImageSampler::fill_bounds`] keeps F32 levels: a
+    /// pixel whose lower and upper bounds give one N16 word takes it, any
+    /// other the word of its exact average as a span of that pixel alone
+    /// gives it. `None` for other spans.
+    #[inline(never)]
+    fn bounds_words(
+        &self,
+        (plan, paint): (&Sampling, &Paint),
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        out: &mut [[u16; 4]],
+    ) -> Option<bool> {
+        let (Sampling::Separable(_), Paint::Colors(colors), None, Mode::Area) =
+            (plan, paint, self.mask.as_ref(), self.geometry.mode())
+        else {
+            return None;
+        };
+        let Strategy::Memo(layout) = &colors.1 else {
+            return None;
+        };
+        if !colors
+            .0
+            .curved
+            .as_ref()
+            .is_some_and(texels::Curved::has_rgb)
+        {
+            return None;
+        }
+        let image = &self.image.image;
+        let len = out.len();
+        let stride = 8;
+        scratch.select(TexelMode::Bounds);
+        let ImageScratch {
+            plan: storage,
+            fused,
+            bounds,
+            summed,
+            ..
+        } = scratch;
+        if bounds.is_none() {
+            *bounds = Some(Box::new(layout.bounds().make().ok()?));
+        }
+        let memo = bounds.as_deref_mut()?;
+        let texels = MemoTexels::new(image, &colors.0, None, memo)?.converting(TexelMode::Bounds);
+        let mut values = std::mem::take(summed);
+        let sums = scratch::grown(&mut values, len * stride);
+        let mut buffers = SamplingBuffers { storage, fused };
+        self.sample(plan, pixels, &mut buffers, &texels, sums);
+        // As the exact texels' words: none where a pixel's alpha is not 1.
+        let opaque = sums.chunks_exact(stride).all(|sum| sum[6] == 1.0);
+        let mut uncertain = Vec::new();
+        if opaque {
+            let word = crate::kernel::opaque_word;
+            for (index, (pixel, sum)) in out.iter_mut().zip(sums.chunks_exact(stride)).enumerate() {
+                let words = [0, 1, 2].map(|c| (word(sum[c]), word(sum[c + 3])));
+                if words.iter().all(|(low, high)| low == high) {
+                    *pixel = [words[0].0, words[1].0, words[2].0, u16::MAX];
+                } else {
+                    uncertain.push(index);
+                }
+            }
+        }
+        *summed = values;
+        if !opaque {
+            return Some(false);
+        }
+        scratch.select(TexelMode::Exact);
+        let mut texel = [0.0; 5];
+        for index in uncertain {
+            let x = pixels.x + u32::try_from(index).unwrap_or(u32::MAX);
+            let one = Pixels {
+                x,
+                len: 1,
+                ..pixels
+            };
+            self.texels(
+                (plan, paint),
+                one,
+                scratch,
+                (5, TexelMode::Exact),
+                &mut texel,
+            );
+            out[index] = [
+                crate::kernel::opaque_word(texel[0]),
+                crate::kernel::opaque_word(texel[1]),
+                crate::kernel::opaque_word(texel[2]),
+                u16::MAX,
+            ];
+        }
+        Some(true)
     }
 
     /// [`Self::texel_words`] of upright nearest samples of an unmasked

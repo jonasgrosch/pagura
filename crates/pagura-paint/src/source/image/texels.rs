@@ -411,16 +411,6 @@ impl Colors {
             return false;
         };
         let curved = [0, 1, 2].map(|i| self.curved_value(curved, i, u16::from(codes[i])));
-        if mode == TexelMode::Bounds {
-            let bounds = rgb.encoded_bounds(curved);
-            let values = bounds.map(|[low, _]| low).into_iter();
-            let values = values.chain(bounds.map(|[_, high]| high)).chain([1.0; 2]);
-            debug_assert_eq!(out.len(), 8);
-            for (out, value) in out.iter_mut().zip(values) {
-                *out = value;
-            }
-            return true;
-        }
         let color = match mode {
             TexelMode::Exact | TexelMode::Bounds => return false,
             TexelMode::Rounded => rgb.convert_rounded(curved, level_bits),
@@ -430,6 +420,29 @@ impl Colors {
         // a converted texel has, so that none keeps an earlier texel's.
         debug_assert_eq!(out.len(), color.len() + 2);
         for (out, value) in out.iter_mut().zip(color.into_iter().chain([1.0; 2])) {
+            *out = value;
+        }
+        true
+    }
+
+    /// The [`TexelMode::Bounds`] texel of three eight-bit `codes` alone:
+    /// the lower bound of each encoded channel, then the upper, then
+    /// opacity and shape 1 (prototype). False, with nothing written, where
+    /// these colours have no RGB step.
+    #[inline(never)]
+    fn bounds_texel(&self, codes: [u8; 3], out: &mut [f64]) -> bool {
+        let Some((curved, rgb)) = self
+            .curved
+            .as_ref()
+            .and_then(|curved| Some((curved, curved.rgb.as_deref()?)))
+        else {
+            return false;
+        };
+        let curved = [0, 1, 2].map(|i| self.curved_value(curved, i, u16::from(codes[i])));
+        let bounds = rgb.encoded_bounds(curved);
+        let values = bounds.map(|[low, _]| low).into_iter();
+        let values = values.chain(bounds.map(|[_, high]| high)).chain([1.0; 2]);
+        for (out, value) in out.iter_mut().zip(values) {
             *out = value;
         }
         true
@@ -1711,6 +1724,9 @@ impl<'a> MemoTexels<'a> {
     /// stay as they were.
     #[inline(never)]
     fn convert_rgb(&self, codes: [u8; 3], texel: &mut [f64]) -> bool {
+        if self.mode == TexelMode::Bounds {
+            return self.colors.bounds_texel(codes, texel);
+        }
         self.colors.rgb_texel(codes, self.mode, texel)
     }
 
@@ -1723,7 +1739,7 @@ impl<'a> MemoTexels<'a> {
                 .colors
                 .get(start..start + 3)
                 .and_then(|c| c.first_chunk())
-            && self.colors.rgb_texel([r, g, b], TexelMode::Bounds, texel)
+            && self.colors.bounds_texel([r, g, b], texel)
         {
             return;
         }
