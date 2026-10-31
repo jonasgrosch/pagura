@@ -118,7 +118,7 @@
     "crates/pagura-paint/src/execute/transfer.rs": "6dec2a2796f9c0260d076d11b04c070c8a3071adbce2a42b1efa7e5fd6308b50",
     "crates/pagura-paint/src/prepare/finish.rs": "45454e314d9464f56c2181df08fb519b580d853242eb9f6220520b16c417533d",
     "crates/pagura-paint/src/prepare/planner/marks.rs": "5f5c362e01e577a3e7b256805fca8a7289e8cc365610bc553a333ffc64eede8a",
-    "crates/pagura-paint/src/prepare/planner/marks/paints.rs": "370a442ce611e7a87595ab00e15f0556cf2ced8cd1efe20a18eb9a9d3f5cac10",
+    "crates/pagura-paint/src/prepare/planner/marks/paints.rs": "f7a65f7352270cd79d3983604cf4b95e534a16c1143ef30fc1ecb9d689d9e838",
     "crates/pagura-paint/src/prepare/planner/patterns.rs": "1e37d4341ee851c552b43510a9d97280ca62d2086f14659a6b1d680c2f4f95aa",
     "crates/pagura-paint/src/prepare/storage.rs": "3276ac842a06e428cb11f9b9077fca7540d398f468f2186f288026757e18c13b",
     "crates/pagura-paint/src/prepare/tests/formats.rs": "9ab17f8516b64a0da95c13480ce6157ad59575e09046e3693c92547e5fa74d1b",

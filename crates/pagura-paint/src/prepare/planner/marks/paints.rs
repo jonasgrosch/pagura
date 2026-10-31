@@ -94,9 +94,12 @@ impl Planner<'_> {
                 let prepared = Source::image(
                     &node.image,
                     node.transform.then(scope.transform),
-                    stencil
-                        .as_ref()
-                        .map(|(color, painted)| (&**color, *painted)),
+                    (
+                        stencil
+                            .as_ref()
+                            .map(|(color, painted)| (&**color, *painted)),
+                        &self.held,
+                    ),
                     (&context, pixels),
                     ImageBudgets {
                         bytes: &mut budget.bytes,
@@ -161,13 +164,17 @@ impl Planner<'_> {
     ) -> Result<u32> {
         let index = u32::try_from(self.parts.paints.len())
             .map_err(|_| Error::limit("paint count exceeds u32"))?;
-        let payload = paint.bytes();
+        // Decoded images the render holds for earlier draws are paid for.
+        let payload = paint.unheld_bytes(&self.held);
         budget.bytes.charge(payload)?;
         let layout = paint.scratch_layout();
         let retained = (|| {
             budget
                 .work
                 .charge(paint.geometry_work(region, budget.work.remaining()))?;
+            if let Some(sampler) = paint.sampler() {
+                self.held.reserve(sampler, &mut budget.bytes)?;
+            }
             budget.bytes.reserve_capacity(&mut self.parts.paints, 1)?;
             budget.bytes.reserve_capacity(&mut self.parts.slots.of, 1)?;
             budget
@@ -183,6 +190,9 @@ impl Planner<'_> {
                 return Err(error);
             }
         };
+        if let Some(sampler) = paint.sampler() {
+            self.held.hold(sampler);
+        }
         self.repairs.extend_from_slice(paint.repairs());
         self.parts.paints.push(paint);
         self.parts.slots.of.push(slot);

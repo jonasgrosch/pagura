@@ -241,7 +241,7 @@ fn image_source() -> Source {
             Transform::scale(8.0, 2.0),
             &context,
             16,
-            None,
+            (None, &crate::source::HeldImages::default()),
             &mut ImageBudgets {
                 bytes: &mut bytes,
                 work: &mut work,

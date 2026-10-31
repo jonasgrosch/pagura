@@ -46,6 +46,50 @@ pub(crate) struct ImageSampler {
     channels: usize,
 }
 
+/// The decoded images a render's paints hold, by address: the draws of one
+/// image share its decoded samples through the store, so the render pays
+/// for each once however many draws read it.
+#[derive(Debug, Default)]
+pub(crate) struct HeldImages(pagura_core::hash::FastMap<usize, Arc<Decoded>>);
+
+impl HeldImages {
+    /// Whether the render holds `decoded` already.
+    fn holds(&self, decoded: &Arc<Decoded>) -> bool {
+        self.0.contains_key(&Arc::as_ptr(decoded).addr())
+    }
+
+    /// The bytes of `decoded` the render does not hold yet.
+    fn unheld(&self, decoded: &Arc<Decoded>) -> usize {
+        if self.holds(decoded) {
+            0
+        } else {
+            decoded_bytes(&decoded.image)
+        }
+    }
+
+    /// Reserves room for the images of `sampler` the render does not hold
+    /// yet, so that [`Self::hold`] cannot fail.
+    pub(crate) fn reserve(&mut self, sampler: &ImageSampler, bytes: &mut Meter) -> Result<()> {
+        let new = sampler.decoded().filter(|d| !self.holds(d)).count();
+        bytes.reserve_map_capacity(&mut self.0, new)
+    }
+
+    /// Records the decoded images of `sampler`, whose bytes the render has
+    /// charged; the index keeps each, so that its address stays its own.
+    pub(crate) fn hold(&mut self, sampler: &ImageSampler) {
+        for decoded in sampler.decoded() {
+            self.0
+                .entry(Arc::as_ptr(decoded).addr())
+                .or_insert_with(|| Arc::clone(decoded));
+        }
+    }
+
+    /// The bytes of the index, which the render does not keep.
+    pub(crate) fn index_bytes(&self, bytes: &Meter) -> Result<usize> {
+        bytes.map_bytes(&self.0)
+    }
+}
+
 /// The budgets preparing an image charges.
 #[derive(Debug)]
 pub(crate) struct ImageBudgets<'a> {
@@ -307,7 +351,7 @@ impl ImageSampler {
         unit_to_device: Transform,
         context: &PaintContext<'_>,
         pixels: usize,
-        stencil: Option<(&[f64], Painted)>,
+        (stencil, held): (Option<(&[f64], Painted)>, &HeldImages),
         budgets: &mut ImageBudgets<'_>,
     ) -> Result<Self> {
         if !unit_to_device.is_finite() {
@@ -362,9 +406,10 @@ impl ImageSampler {
         let mask = mask
             .map(|mask| decode_request(&mask.source, (Layout::Native, orientation), context))
             .transpose()?;
+        // Decoded images the render holds for earlier draws are paid for.
         let mut memory = Meter::new(budgets.bytes.remaining(), "render memory budget exceeded");
-        memory.charge(decoded_bytes(&decoded.image))?;
-        memory.charge(mask.as_ref().map_or(0, |mask| decoded_bytes(&mask.image)))?;
+        memory.charge(held.unheld(&decoded))?;
+        memory.charge(mask.as_ref().map_or(0, |mask| held.unheld(mask)))?;
         let description = Description {
             space: image.space.as_deref(),
             decode: &image.decode,
@@ -521,6 +566,22 @@ impl ImageSampler {
         self.prepared
             .as_ref()
             .map_or(0, |prepared| prepared.bytes())
+    }
+
+    /// [`Self::bytes`] without the decoded images `held` already holds.
+    pub(crate) fn unheld_bytes(&self, held: &HeldImages) -> usize {
+        self.decoded()
+            .filter(|decoded| held.holds(decoded))
+            .fold(self.bytes(), |bytes, decoded| {
+                bytes.saturating_sub(decoded_bytes(&decoded.image))
+            })
+    }
+
+    /// The decoded images it reads: the image's and its mask's.
+    fn decoded(&self) -> impl Iterator<Item = &Arc<Decoded>> {
+        self.prepared.iter().flat_map(|prepared| {
+            std::iter::once(&prepared.image).chain(prepared.mask.as_ref().map(|mask| &mask.image))
+        })
     }
 
     /// Bytes the optional curve values hold ([`Self::admit_curves`]).

@@ -17,7 +17,7 @@ use pagura_raster::{DeviceRect, Transform};
 mod image;
 mod shading;
 
-pub(crate) use image::{ImageBudgets, ImageSampler, ScratchLayout};
+pub(crate) use image::{HeldImages, ImageBudgets, ImageSampler, ScratchLayout};
 pub(crate) use shading::{BBoxUse, ShadingSource};
 
 /// Working colours of one span: `channels` values per pixel in the target's
@@ -255,6 +255,7 @@ impl Source {
     /// Prepares `image` drawn under `unit_to_device` as
     /// [`ImageSampler::prepare_with`] does; a stencil mask takes its solid
     /// `stencil` colour into its texels, so that they composite exactly.
+    /// The decoded images `held` holds for earlier draws are paid for.
     ///
     /// # Errors
     ///
@@ -262,7 +263,7 @@ impl Source {
     pub(crate) fn image(
         image: &Image,
         unit_to_device: Transform,
-        stencil: Option<(&[f64], Painted)>,
+        (stencil, held): (Option<(&[f64], Painted)>, &HeldImages),
         (context, pixels): (&PaintContext<'_>, usize),
         budgets: ImageBudgets<'_>,
     ) -> Result<Self> {
@@ -276,7 +277,7 @@ impl Source {
             unit_to_device,
             context,
             pixels,
-            stencil,
+            (stencil, held),
             &mut ImageBudgets {
                 bytes: &mut *remaining,
                 work,
@@ -284,7 +285,7 @@ impl Source {
             },
         )?;
         let mut bytes = Meter::new(remaining.remaining(), "render memory budget exceeded");
-        bytes.charge(sampler.bytes())?;
+        bytes.charge(sampler.unheld_bytes(held))?;
         Ok(match sampler.constant(&mut bytes, functions)? {
             Some((color, painted)) => Self::Solid { color, painted },
             None => Self::Image(sampler),
@@ -451,6 +452,22 @@ impl Source {
             Self::Solid { color, .. } => size_of_val::<[f64]>(color),
             Self::Shading(shading) => shading.bytes(),
             Self::Image(image) => image.bytes(),
+        }
+    }
+
+    /// [`Self::bytes`] without the decoded images `held` already holds.
+    pub(crate) fn unheld_bytes(&self, held: &HeldImages) -> usize {
+        match self {
+            Self::Image(image) => image.unheld_bytes(held),
+            _ => self.bytes(),
+        }
+    }
+
+    /// The image sampler, for an image source.
+    pub(crate) fn sampler(&self) -> Option<&ImageSampler> {
+        match self {
+            Self::Image(image) => Some(image),
+            _ => None,
         }
     }
 
