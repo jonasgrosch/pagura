@@ -49,6 +49,16 @@ The source check detects stale evidence and missing ownership, not runtime parit
 | Profiles and document services | PDF 1.x/2.x headers and many shared features; low-level access to document objects; PDF/X declarations influence overprint policy | Complete PDF 2.0 feature coverage; PDF/A and PDF/UA validation; PDF/X conformance; typed attachment/associated-file, portfolio, metadata and richer document-service APIs. Rendering a profile-labelled file is separate from validating or authoring that profile. |
 | Safety and release evidence | Safe Rust and workspace-only product dependencies, bounded APIs, deterministic replay, fuzz drivers, generated independent fixtures, conversion/regression harnesses | Long fuzz campaigns, host/process containment and cancellation evidence, refreshed compatibility reports, non-render operation adapters and the complete controlled performance gate. |
 
+JBIG2 recovery accepts complete sequential file packaging only when its header
+declares one page. All coded data, page dimensions, referrals, EOP and terminal
+EOF remain validated, with original source positions. Unknown-height pages require
+a final stripe with no following region before EOP (T.88 7.4.9). Internal page-0 resources
+must precede page information; late global segments remain refused. A terminal empty EOF1
+after the sole EOP1 has a separate reported association repair. Strict mode
+refuses these PDF-prohibited wrappers. Unknown page counts, random-access and
+multipage files remain refused; no arithmetic termination or EOF bytes are
+synthesized. See `jbig2-single-page-wrapper-recovery` and ADR 0003.
+
 ## Evidence and accuracy
 
 Source entry points and existing tests supporting this reconciliation include:

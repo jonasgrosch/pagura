@@ -1,0 +1,1866 @@
+{
+  "schema": 2,
+  "area": "recovery_jbig2_wrapper",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "recovery_jbig2_wrapper/native-arithmetic-embedded-control",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-embedded-control.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-embedded-control.jb2",
+          "sha256": "90356fb36e9477299f3f611308ea5b93109750ae249f0480b1478771137dc79b"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-embedded-control.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-embedded-control.params",
+          "sha256": "469caeb71c385fc29f0e8dbb48bfc4a1e7ccf6d2348312cbd6676e51af1a884f"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/arithmetic-embedded-control",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/arithmetic-embedded-control.pdf",
+      "sha256": "5d8949ccef19d0cf476a0aed8c6e8273c0ab8f7b67b11d05cd4886747331f7a2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/arithmetic-embedded-control.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-arithmetic-embedded-control"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-arithmetic-embedded-control",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-arithmetic-embedded-control.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-arithmetic-embedded-control.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-arithmetic-file-eof0",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-file-eof0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-file-eof0.jb2",
+          "sha256": "1758cec1b051f592b27c6e0bcd1e29000fc220a8fda1e054638fd29ae575e277"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-file-eof0.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-file-eof0.params",
+          "sha256": "e35bc496b3036e9f7fa8667656d2afdf34ccd3c315a62ef6f2369c2c68987144"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/arithmetic-file-eof0",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/arithmetic-file-eof0.pdf",
+      "sha256": "8d2b6f0cb0a8547f579575b0161e35c8eae48a9dc0a1541452425ac138e87a86",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/arithmetic-file-eof0.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-arithmetic-file-eof0"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-arithmetic-file-eof0",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-arithmetic-file-eof0.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-arithmetic-file-eof0.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-arithmetic-file-eof1",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-file-eof1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-file-eof1.jb2",
+          "sha256": "e81db17fa3c01df29b5a0d282c637a9492971c02580b9b6fb3c97abfa1df4cda"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-file-eof1.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-arithmetic-file-eof1.params",
+          "sha256": "f764d74468295ee4a1db320ff562ba7bbe37aff587e31dbecdb682dacb185216"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/arithmetic-file-eof1",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/arithmetic-file-eof1.pdf",
+      "sha256": "f0dff84dbd721b841d016bfc64980e75ecc9023f5b3a9611fe21d48efd7ed5db",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper",
+        "jbig2.eof-page-association"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/arithmetic-file-eof1.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-arithmetic-file-eof1"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-arithmetic-file-eof1",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-arithmetic-file-eof1.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-arithmetic-file-eof1.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-mmr-embedded-control",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-embedded-control.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-embedded-control.jb2",
+          "sha256": "ff6731ee8590011cc08e4d3b25a9e26a8dd376cd0730a048385b2f9e6029e6bf"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-embedded-control.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-embedded-control.params",
+          "sha256": "469caeb71c385fc29f0e8dbb48bfc4a1e7ccf6d2348312cbd6676e51af1a884f"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/mmr-embedded-control",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/mmr-embedded-control.pdf",
+      "sha256": "954f035c79ba931fea544098461ff04bf487c6263ef606a7c43aa9c98d76baee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/mmr-embedded-control.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-mmr-embedded-control"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-mmr-embedded-control",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-mmr-embedded-control.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-mmr-embedded-control.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-mmr-file-eof0",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-file-eof0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-file-eof0.jb2",
+          "sha256": "81cceceebd41e8292d67a4281d937886c0fa590813c731554f51c548b1288386"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-file-eof0.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-file-eof0.params",
+          "sha256": "e35bc496b3036e9f7fa8667656d2afdf34ccd3c315a62ef6f2369c2c68987144"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/mmr-file-eof0",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/mmr-file-eof0.pdf",
+      "sha256": "b2c083d562965a1629c67b1f36cbf4d0af00f7034c88b389a4f4bc750ba2f6d8",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/mmr-file-eof0.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-mmr-file-eof0"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-mmr-file-eof0",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-mmr-file-eof0.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-mmr-file-eof0.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-mmr-file-eof1",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-file-eof1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-file-eof1.jb2",
+          "sha256": "fbbf21d157198d431e5545540adb82fd07ecfb1f6410a3deaf84c0507f78ac8d"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-file-eof1.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-mmr-file-eof1.params",
+          "sha256": "f764d74468295ee4a1db320ff562ba7bbe37aff587e31dbecdb682dacb185216"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/mmr-file-eof1",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/mmr-file-eof1.pdf",
+      "sha256": "9b438c17eb80ad127a2ddf41be955e9d8057247c7bd8b3b78d891d3c13c17b37",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper",
+        "jbig2.eof-page-association"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/mmr-file-eof1.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-mmr-file-eof1"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-mmr-file-eof1",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-mmr-file-eof1.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-mmr-file-eof1.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-refinement-embedded-control",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-embedded-control.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-embedded-control.jb2",
+          "sha256": "afd1c5a5fc2643e076179cf552819136a7db1ae26c697c2f4e4fdeb357c90fbf"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-embedded-control.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-embedded-control.params",
+          "sha256": "469caeb71c385fc29f0e8dbb48bfc4a1e7ccf6d2348312cbd6676e51af1a884f"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/refinement-embedded-control",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/refinement-embedded-control.pdf",
+      "sha256": "116a710eb8ec0c9d310e50169ac0b5a18bd0685469b9f482234317278f6df063",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/refinement-embedded-control.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-refinement-embedded-control"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-refinement-embedded-control",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-refinement-embedded-control.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-refinement-embedded-control.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-refinement-file-eof0",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-file-eof0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-file-eof0.jb2",
+          "sha256": "22edb5575a1dff1530f9229298d0b1628993c0574fe29ada60e78be4c2dbb94e"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-file-eof0.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-file-eof0.params",
+          "sha256": "e35bc496b3036e9f7fa8667656d2afdf34ccd3c315a62ef6f2369c2c68987144"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/refinement-file-eof0",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/refinement-file-eof0.pdf",
+      "sha256": "9c2eb7162a5d12cf3b113f853edcdd1cfe9cc489c2c715f522c7a08ac9cb98e4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/refinement-file-eof0.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-refinement-file-eof0"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-refinement-file-eof0",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-refinement-file-eof0.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-refinement-file-eof0.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-refinement-file-eof1",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-file-eof1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-file-eof1.jb2",
+          "sha256": "62c3186c4ca17d3842cb5a9ed165c6c2714dedb30a2de0d7ce7828a0e5ac0e79"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-file-eof1.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-refinement-file-eof1.params",
+          "sha256": "f764d74468295ee4a1db320ff562ba7bbe37aff587e31dbecdb682dacb185216"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/refinement-file-eof1",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/refinement-file-eof1.pdf",
+      "sha256": "88011562dc15e1656d69ea5def6a054d2995136b8a6ad18c230cb5084b2b177b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper",
+        "jbig2.eof-page-association"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/refinement-file-eof1.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-refinement-file-eof1"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-refinement-file-eof1",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-refinement-file-eof1.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-refinement-file-eof1.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-striped-file-complete",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-striped-file-complete.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-striped-file-complete.jb2",
+          "sha256": "bf1d839666da27b8d750c246aad0279e5908456e9ba5867e456589c14aa6cb80"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-striped-file-complete.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-striped-file-complete.params",
+          "sha256": "e35bc496b3036e9f7fa8667656d2afdf34ccd3c315a62ef6f2369c2c68987144"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/striped-file-complete",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/striped-file-complete.pdf",
+      "sha256": "19bb4d0b824f036f9d2d7ad33ba0296d60b41269d3cdfe0e5d5ac34b08d6d1e6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/striped-file-complete.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-striped-file-complete"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-striped-file-complete",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-striped-file-complete.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-striped-file-complete.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe.jb2",
+          "sha256": "90442ab49fba3a9b9107cabdebb5842c9b80bfba15510d5569e8e2d2fa7468d8"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-intermediate-after-final-stripe",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-intermediate-after-final-stripe.pdf",
+      "sha256": "378563908a1546baded9578a03ac85cc0e5868b04604046d6d4cc806be55ff5a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-intermediate-after-final-stripe",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-long-page-associations",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-long-page-associations.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-long-page-associations.jb2",
+          "sha256": "368c9d937027ff278d8e0573dc0bfdea7783702f3356a2f32208fe98a42a668b"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-long-page-associations.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-long-page-associations.params",
+          "sha256": "f764d74468295ee4a1db320ff562ba7bbe37aff587e31dbecdb682dacb185216"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/long-page-associations",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/long-page-associations.pdf",
+      "sha256": "fb5097d35761083c58e5c5895bf284d930cab43c234beb94fd950b0722197b2b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper",
+        "jbig2.eof-page-association"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/long-page-associations.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-long-page-associations"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-long-page-associations",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-long-page-associations.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-long-page-associations.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-internal-global-prefix",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-internal-global-prefix.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-internal-global-prefix.jb2",
+          "sha256": "4c56d1b12e8e4a018ebd6efd3b3ebb40b9bec3399923c6095dbc4e3b2044d6d0"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-internal-global-prefix.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-internal-global-prefix.params",
+          "sha256": "e35bc496b3036e9f7fa8667656d2afdf34ccd3c315a62ef6f2369c2c68987144"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/internal-global-prefix",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/internal-global-prefix.pdf",
+      "sha256": "ebb4fb65babeaa15884021cf122db736ffa5225732bd39eed7fedf804802fc45",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/internal-global-prefix.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-internal-global-prefix"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-internal-global-prefix",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-internal-global-prefix.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-internal-global-prefix.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-external-globals",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-external-globals.globals",
+          "sha256": "e4f6a0f391dc5b0d74248b7c457c1925458b46be23ecb5442a6dc3c942a3e060"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-external-globals.jb2",
+          "sha256": "14e7d31a7344b90771a7c9ccfd0b43fd87540df6c321a56eff11ea89120e5ed1"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-external-globals.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-external-globals.params",
+          "sha256": "e35bc496b3036e9f7fa8667656d2afdf34ccd3c315a62ef6f2369c2c68987144"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/external-globals",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/external-globals.pdf",
+      "sha256": "2f27617d8268be5ee2934e62490d0566ac0bf8afe9ee8cfa66d8cc6adb1d7d5f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/external-globals.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-external-globals"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-external-globals",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-external-globals.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-external-globals.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-random-access",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-random-access.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-random-access.jb2",
+          "sha256": "d39ce5a80e05d00c27a13a0e7e62efe7c554d0141b4bf6247e576737648992c1"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-random-access.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-random-access.params",
+          "sha256": "5ad4cd4867744e04b8be787ac749277f018dfdf799287f96fcb5ba097a0c5fee"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-random-access",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-random-access.pdf",
+      "sha256": "64591da43958eeeff0b1ea6c16fca748e82ec466cf8e8f37013f5261151d11a5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-random-access",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-unknown-page-count",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-unknown-page-count.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-unknown-page-count.jb2",
+          "sha256": "994e5c06734690df0e4317ff5d5267af946a7b50faa93baf8cda1880a5918edd"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-unknown-page-count.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-unknown-page-count.params",
+          "sha256": "5ad4cd4867744e04b8be787ac749277f018dfdf799287f96fcb5ba097a0c5fee"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-unknown-page-count",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-unknown-page-count.pdf",
+      "sha256": "715d9bc2601a0798731abbb7d0c35dbc25f82df56b302a265a9e711ed6375488",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-unknown-page-count",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-two-pages",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-two-pages.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-two-pages.jb2",
+          "sha256": "55cb3377025d64b8f1625b6b630bd67463f02f00b2fb8f7320dcd665655d7a51"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-two-pages.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-two-pages.params",
+          "sha256": "5ad4cd4867744e04b8be787ac749277f018dfdf799287f96fcb5ba097a0c5fee"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-two-pages",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-two-pages.pdf",
+      "sha256": "16c82f40c0045864f86763d71f65155e49e2a5172b5b526a684b6aff1651d6d3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-two-pages",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-zero-pages",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-zero-pages.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-zero-pages.jb2",
+          "sha256": "e1624ac61041c1d63f59219676a86b79840e0f193d7453b6935f63d1a62f6ad5"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-zero-pages.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-zero-pages.params",
+          "sha256": "5ad4cd4867744e04b8be787ac749277f018dfdf799287f96fcb5ba097a0c5fee"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-zero-pages",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-zero-pages.pdf",
+      "sha256": "9163cadafade3b458bf04c7ca6921c6f26dd2757f4c2fc9eeb38e53bb0ae8674",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-zero-pages",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-reserved-header-bit",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-reserved-header-bit.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-reserved-header-bit.jb2",
+          "sha256": "99f4dd7e6fc6b5fd33657f17a3168c9b241245f95ca6b9851c5dddf0d4f94108"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-reserved-header-bit.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-reserved-header-bit.params",
+          "sha256": "5ad4cd4867744e04b8be787ac749277f018dfdf799287f96fcb5ba097a0c5fee"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-reserved-header-bit",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-reserved-header-bit.pdf",
+      "sha256": "3784458efecd14b2742191f77d3d9c4f9c8bef05e72babac28591f0f5f7fbfe3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-reserved-header-bit",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-truncated-header",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-truncated-header.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-truncated-header.jb2",
+          "sha256": "6da9998ed4d333bbcfb422bf0638885a74fc781d7a491e3976192c98969545fa"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-truncated-header.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-truncated-header.params",
+          "sha256": "5ad4cd4867744e04b8be787ac749277f018dfdf799287f96fcb5ba097a0c5fee"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-truncated-header",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-truncated-header.pdf",
+      "sha256": "a664d077a410a2697f0ec58c07b84842eaef1715e155fc855e02ffceb59c9749",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-truncated-header",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-missing-end-page",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-end-page.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-end-page.jb2",
+          "sha256": "4adcb268b8d41a78f09ad23712c0f6e811ea7e5f4d14a9eea1278ea11400a863"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-end-page.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-end-page.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-missing-end-page",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-missing-end-page.pdf",
+      "sha256": "062d125e3638e991220fb9dd47faf8746eea39828e3265d636c9340f6f035bc5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-missing-end-page",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-missing-end-file",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-end-file.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-end-file.jb2",
+          "sha256": "e9e67e00d42927c53426a158f1d4f3f97d6e7407bf35402f347ce5a320f7dbae"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-end-file.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-end-file.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-missing-end-file",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-missing-end-file.pdf",
+      "sha256": "8eea9f3536a4c50f572ebbf9e4aa377ee7779e94caf4dad16004f9a93366c52f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-missing-end-file",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-trailing-bytes",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-trailing-bytes.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-trailing-bytes.jb2",
+          "sha256": "ed8ea14e5386d376411078fbe57acd321c3e65924c4efb877a7d839d6426196e"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-trailing-bytes.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-trailing-bytes.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-trailing-bytes",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-trailing-bytes.pdf",
+      "sha256": "33f06ae5e9df2817d7e8482d610634c89456a5a963ca520f5ea4ccb01c25aca6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-trailing-bytes",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-duplicate-end-page",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-duplicate-end-page.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-duplicate-end-page.jb2",
+          "sha256": "e9969836fa150f1319979d1b5706060d8ef1956172b6cdcd63e378876ed5fcbe"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-duplicate-end-page.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-duplicate-end-page.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-duplicate-end-page",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-duplicate-end-page.pdf",
+      "sha256": "8369ae1e117c9eab5a9d74defc3eb06e468e1afd61aa84a70a26ecf0765ec6c6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-duplicate-end-page",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-end-page-before-info",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-before-info.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-before-info.jb2",
+          "sha256": "7c2259d651481833eb72e76dda24246a5f586bc3eb7fa3ae1ab115161cc3cc13"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-before-info.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-before-info.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-end-page-before-info",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-end-page-before-info.pdf",
+      "sha256": "ed33b04b369b0f77d2856a6d5a514bbf12804d38da45dbbc8218426c4c593376",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-end-page-before-info",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-region-after-end-page",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-region-after-end-page.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-region-after-end-page.jb2",
+          "sha256": "0652b103cda5edb5af5e11dddd316d69d8c01a4d8ffae421303afc92a6d7e5b4"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-region-after-end-page.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-region-after-end-page.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-region-after-end-page",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-region-after-end-page.pdf",
+      "sha256": "17bf3e1a8150ac917936d2451dff426efd222d29fe3e019c1216c15d38a1c075",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-region-after-end-page",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-end-page-data",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-data.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-data.jb2",
+          "sha256": "46bbfd1d05c1c77fb71d95ed8e1008d83f818f1ab907bf2aeb6eb0c7777f2a4e"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-data.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-data.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-end-page-data",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-end-page-data.pdf",
+      "sha256": "ddb6d7fc088f125720f441d36b43a5876e6e9a205f3c88fff26231ac60897be5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-end-page-data",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-end-page-referral",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-referral.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-referral.jb2",
+          "sha256": "3a7a3b42a638a174bed4b1e8e3f84ce04251b2a632a95765a2926c77cd66ba4e"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-referral.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-referral.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-end-page-referral",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-end-page-referral.pdf",
+      "sha256": "d6908162eb8d5fbcb0b80260d168a76fa363d4989507dfa1f080f1ca926d8571",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-end-page-referral",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-end-page-association",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-association.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-association.jb2",
+          "sha256": "cdd0832dc428e8b945c633fde2d6bbc78a3e8b16a6b0bdcbbca24093a532f916"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-association.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-page-association.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-end-page-association",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-end-page-association.pdf",
+      "sha256": "a8cf5abb3bd166bbb25affde9f5ffa076493551d16b51395a9a1fefa0fe8caf3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-end-page-association",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-end-file-data",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-data.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-data.jb2",
+          "sha256": "1d04c04c47e7a5e7a29ee7d36521dfcda5feba85c68e055f5d3b5a6a5d85543c"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-data.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-data.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-end-file-data",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-end-file-data.pdf",
+      "sha256": "56df9e858f4512fa558351093701327e5d6f986bf0bb607c5fd7d5d7580ddacf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-end-file-data",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-end-file-referral",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-referral.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-referral.jb2",
+          "sha256": "26d3c6b995918ddb642ee65cddd87fb323c79b20d30281f660d37a5d6b158e73"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-referral.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-referral.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-end-file-referral",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-end-file-referral.pdf",
+      "sha256": "ddd163449b60d8a0cb4275ffef9c9cef6786b4fad822c14daf4b0645680ccd79",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-end-file-referral",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-end-file-other-page",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-other-page.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-other-page.jb2",
+          "sha256": "f948a48b2da82ef67d5b776cffd3643e01ba4abe0f1cbac871961aa6d4558c24"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-other-page.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-end-file-other-page.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-end-file-other-page",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-end-file-other-page.pdf",
+      "sha256": "79e471f0cd0b1938cbd87de3580d98a92c733f75076ea1f26b08b1a056eff18c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-end-file-other-page",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-second-page-info",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-second-page-info.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-second-page-info.jb2",
+          "sha256": "2abc2630b9df7608a1170123c01e0dfb3e1021d753e0ad3b982d535cde2f5ff3"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-second-page-info.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-second-page-info.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-second-page-info",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-second-page-info.pdf",
+      "sha256": "459bb2c9bc8c96de5949423424ecbf0ba214109c7f67d9bbba80287c497dc9de",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-second-page-info",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-late-global",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-late-global.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-late-global.jb2",
+          "sha256": "d49e79f3867df0a458a316a57d5dd31873e6b7ff22504eeb95d13729a1f14773"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-late-global.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-late-global.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-late-global",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-late-global.pdf",
+      "sha256": "c571d0b668a1d8505db916dd445e57202e0cfceecccd1124946db1767b7279a9",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-late-global",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-missing-arithmetic-marker",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-arithmetic-marker.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-arithmetic-marker.jb2",
+          "sha256": "3de020cd068ca8c8218377cc3e40c9101146789f70180829df11e43e19779927"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-arithmetic-marker.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-missing-arithmetic-marker.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-missing-arithmetic-marker",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-missing-arithmetic-marker.pdf",
+      "sha256": "11632fa2e88ed8372d6264722a8f7bc0a7ea4404a6c41ab0090851ea904c5161",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-missing-arithmetic-marker",
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-pdf-dimension-mismatch",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-pdf-dimension-mismatch.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-pdf-dimension-mismatch.jb2",
+          "sha256": "1758cec1b051f592b27c6e0bcd1e29000fc220a8fda1e054638fd29ae575e277"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-pdf-dimension-mismatch.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-pdf-dimension-mismatch.params",
+          "sha256": "e35bc496b3036e9f7fa8667656d2afdf34ccd3c315a62ef6f2369c2c68987144"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-pdf-dimension-mismatch",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-pdf-dimension-mismatch.pdf",
+      "sha256": "ce31a1f2f85fa5b2e86943050b74f5f14fef6ea1ed0fe6dd6b9f448a2b309bec",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-pdf-dimension-mismatch",
+      "render_error": "syntax"
+    }
+  ]
+}
