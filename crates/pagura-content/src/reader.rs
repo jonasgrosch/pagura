@@ -87,6 +87,39 @@ impl<'c> Reader<'c> {
         (self.taken || self.operands.is_empty()) && self.compatibility == 0
     }
 
+    /// Whether the token at `offset` of cut content runs into the cut, which
+    /// may have shortened it: it failed at the end of the data, or it ends
+    /// there without a closing delimiter, as a word, number or name that
+    /// could have continued.
+    fn runs_into_cut(&self, offset: usize, error: Option<&Error>) -> bool {
+        let end = self.data.len();
+        self.content.is_cut()
+            && match error {
+                Some(error) => {
+                    self.failed_at_cut(error) || offset + word(self.data, offset).len() == end
+                }
+                None => {
+                    self.position >= end && !matches!(self.data.last(), Some(b')' | b'>' | b']'))
+                }
+            }
+    }
+
+    /// Whether `error` arose at the end of cut content, for want of the data
+    /// the cut removed.
+    fn failed_at_cut(&self, error: &Error) -> bool {
+        self.content.is_cut()
+            && matches!(error.position, Position::Buffer(at) if at >= self.data.len())
+    }
+
+    /// Ends cut content before the operation the cut left incomplete: its
+    /// operands are discarded with it.
+    fn end_at_cut(&mut self) {
+        self.position = self.data.len();
+        self.operands.clear();
+        self.buffers.clear();
+        self.taken = false;
+    }
+
     /// The next operation, charging one unit of `tokens` per token, or
     /// `None` at the end of the content.
     ///
@@ -108,22 +141,41 @@ impl<'c> Reader<'c> {
         }
         let content = self.content;
         let (operator, offset) = loop {
+            let end = self.position;
             self.position = skip(self.data, self.position);
             let offset = self.position;
             let Some(&byte) = self.data.get(offset) else {
+                // The operand before may run into the cut if nothing ends it.
+                if end == self.data.len() && self.runs_into_cut(end, None) {
+                    self.end_at_cut();
+                }
                 return Ok(None);
             };
             match self.token(byte, offset, tokens) {
                 Ok(Some(operator)) => break (operator, offset),
                 Ok(None) => {}
+                Err(error) if self.runs_into_cut(offset, Some(&error)) => {
+                    self.end_at_cut();
+                    return Ok(None);
+                }
                 Err(error) => return Err(content.locate(error, offset)),
             }
         };
+        // So may an operator that reaches the end; looked up once per operation.
+        if self.position == self.data.len() && self.runs_into_cut(offset, None) {
+            self.end_at_cut();
+            return Ok(None);
+        }
         self.taken = true;
         if operator == Operator::BeginInlineImage {
-            let dictionary = self
-                .inline_header(offset, tokens)
-                .map_err(|error| content.locate(error, offset))?;
+            let header = self.inline_header(offset, tokens);
+            if let Err(error) = &header
+                && self.failed_at_cut(error)
+            {
+                self.end_at_cut();
+                return Ok(None);
+            }
+            let dictionary = header.map_err(|error| content.locate(error, offset))?;
             return Ok(Some(Operation {
                 op: Op::InlineImage(Box::new(dictionary)),
                 offset,
@@ -396,6 +448,9 @@ impl<'c> Reader<'c> {
     /// start of the data to the end of the content and returns the data's
     /// length, which depends on the image's filters and framing.
     ///
+    /// `None` when the content is cut short (see [`Content::cut_short`])
+    /// before the data and its `EI` are whole: the content then ends.
+    ///
     /// # Errors
     ///
     /// Returns the errors of `length` and `Syntax` when `EI` does not follow
@@ -404,7 +459,7 @@ impl<'c> Reader<'c> {
     pub fn inline_image_data(
         &mut self,
         length: impl FnOnce(&[u8]) -> Result<usize>,
-    ) -> Result<&'c [u8]> {
+    ) -> Result<Option<&'c [u8]>> {
         let (offset, start) = self
             .inline
             .take()
@@ -417,7 +472,7 @@ impl<'c> Reader<'c> {
         &mut self,
         start: usize,
         length: impl FnOnce(&[u8]) -> Result<usize>,
-    ) -> Result<&'c [u8]> {
+    ) -> Result<Option<&'c [u8]>> {
         let data = self.data;
         let image = data
             .get(start..)
@@ -426,6 +481,14 @@ impl<'c> Reader<'c> {
         let end = start
             .checked_add(length)
             .ok_or(Error::limit("inline offset overflow"))?;
+        // The cut may have shortened data or an `EI` that reaches it.
+        if self.content.is_cut() {
+            let at = skip(data, end.min(data.len()));
+            if end >= data.len() || at + word(data, at).len() >= data.len() {
+                self.end_at_cut();
+                return Ok(None);
+            }
+        }
         if end > data.len() {
             return Err(Error::syntax("offset outside input").at(Position::Buffer(end)));
         }
@@ -443,6 +506,7 @@ impl<'c> Reader<'c> {
         self.position = at + word.len();
         image
             .get(..length)
+            .map(Some)
             .ok_or(Error::syntax("truncated inline data"))
     }
 }

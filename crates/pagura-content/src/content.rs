@@ -15,6 +15,8 @@ pub struct Content<'a> {
     bytes: Cow<'a, [u8]>,
     /// The offset at which each stream starts, increasing, and its object.
     origins: Vec<(usize, ObjectId)>,
+    /// Whether damaged filter data cut the sequence short at its end.
+    cut: bool,
 }
 
 impl Content<'static> {
@@ -51,7 +53,21 @@ impl Content<'static> {
         Ok(Self {
             bytes: Cow::Owned(bytes),
             origins,
+            cut: false,
         })
+    }
+
+    /// Marks the last stream's data as cut short by damaged filter data
+    /// (`filter.corrupt`): the sequence ends there, and a token that reaches
+    /// the end may be incomplete, so the line feed that would end it is
+    /// removed.
+    #[must_use]
+    pub fn cut_short(mut self) -> Self {
+        if !self.cut && !self.origins.is_empty() {
+            self.bytes.to_mut().pop();
+        }
+        self.cut = true;
+        self
     }
 }
 
@@ -62,7 +78,13 @@ impl<'a> Content<'a> {
         Self {
             bytes: bytes.into(),
             origins: Vec::new(),
+            cut: false,
         }
+    }
+
+    /// Whether damaged filter data cut the sequence short at its end.
+    pub fn is_cut(&self) -> bool {
+        self.cut
     }
 
     /// The concatenated bytes.

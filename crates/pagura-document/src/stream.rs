@@ -34,6 +34,16 @@ pub(crate) fn decoded<'a>(
     decode(document, object.id(), data, &chain, size)
 }
 
+/// As [`decoded`], and whether damaged filter data cut the data short
+/// (`filter.corrupt`, reported).
+pub(crate) fn decoded_damaged<'a>(
+    document: &'a Document,
+    object: &IndirectObject,
+) -> Result<(Cow<'a, [u8]>, bool)> {
+    let (data, chain) = document.prepare_stream(object, &mut Vec::new())?;
+    decode_checked(document, object.id(), data, &chain, 0, true)
+}
+
 /// Applies `chain` to the data of stream `id`, reporting its repairs for
 /// that object. Data that no filter changed keeps its original borrow.
 /// `size` is the expected decoded length, an allocation hint only.

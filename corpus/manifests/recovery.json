@@ -1150,6 +1150,90 @@
       "height": 16
     },
     {
+      "id": "recovery/filter-corrupt-content-open-state",
+      "kind": "pdf",
+      "description": "Marked content and a path that damaged content leaves open end with it",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/filter-corrupt-content-open-state.pdf",
+      "sha256": "774e9ebec93a450dce0106e348809385d2af44496f56d29277441f9f96c516a6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.corrupt"
+      ],
+      "oracle": "corpus/generated/recovery/filter-corrupt-content-open-state.ppm",
+      "oracle_sha256": "d78b2107958870c53d828ef93cf9f47ce93d04cd30fac69036f2a8a51c73ecd3",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "recovery/filter-corrupt-content-open-text",
+      "kind": "pdf",
+      "description": "A text object and a string that damaged content leaves open end with it",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/filter-corrupt-content-open-text.pdf",
+      "sha256": "0afd28b8bb8d7250bce7d4b790053c7ecf0553c92acd3bfa50457bf17bdb5ddb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.corrupt"
+      ],
+      "oracle": "corpus/generated/recovery/filter-corrupt-content-open-text.ppm",
+      "oracle_sha256": "d78b2107958870c53d828ef93cf9f47ce93d04cd30fac69036f2a8a51c73ecd3",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "recovery/filter-corrupt-content-cut-operator",
+      "kind": "pdf",
+      "description": "An operator that reaches the damage may be incomplete and does not run",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/filter-corrupt-content-cut-operator.pdf",
+      "sha256": "df283470296e70dd5f4cc4298da04054f071877cfb29d1e26c9cf26f38d2f7b6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.corrupt"
+      ],
+      "oracle": "corpus/generated/recovery/filter-corrupt-content-cut-operator.ppm",
+      "oracle_sha256": "d78b2107958870c53d828ef93cf9f47ce93d04cd30fac69036f2a8a51c73ecd3",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "recovery/filter-corrupt-content-later-streams",
+      "kind": "pdf",
+      "description": "Content streams after damaged data do not run",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/filter-corrupt-content-later-streams.pdf",
+      "sha256": "8823367d0789fe08e7333fd7744e77759a657835fbd525a982ad3d3d50268dbf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.corrupt"
+      ],
+      "oracle": "corpus/generated/recovery/filter-corrupt-content-later-streams.ppm",
+      "oracle_sha256": "d78b2107958870c53d828ef93cf9f47ce93d04cd30fac69036f2a8a51c73ecd3",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
+    },
+    {
       "id": "recovery/filter-corrupt-image-rows",
       "kind": "pdf",
       "description": "filter corrupt image rows",

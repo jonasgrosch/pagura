@@ -313,7 +313,9 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             };
             result.map_err(|error| content.locate(error, offset))?;
         }
-        if !reader.is_balanced()
+        if content.is_cut() {
+            self.end_cut(scope)?;
+        } else if !reader.is_balanced()
             || !scope.path.is_empty()
             || scope.pending_clip.is_some()
             || scope.text.is_some()
@@ -366,6 +368,22 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             .repair(diagnostic.at(located.position).in_object(object))
     }
 
+    /// Ends what a sequence that damaged filter data cut short left open
+    /// (`filter.corrupt`, reported where the stream was decoded): the text
+    /// object and marked content end as `ET` and `EMC` end them, and an
+    /// unpainted path and its pending clip are discarded.
+    fn end_cut(&mut self, scope: &mut Scope) -> Result<()> {
+        if scope.text.is_some() {
+            self.end_text(scope)?;
+        }
+        scope.path = PathBuilder::new();
+        scope.pending_clip = None;
+        while !scope.marked.is_empty() {
+            self.end_marked(scope)?;
+        }
+        Ok(())
+    }
+
     /// Executes one operation, applying the restrictions of Type 3 glyph
     /// procedures and uncoloured tiling cells first.
     fn operation(&mut self, op: Op<'_>, resources: &Dictionary, scope: &mut Scope) -> Result<()> {
@@ -394,8 +412,11 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             return Ok(());
         };
         let framing = image::framing(self.document(), dictionary, resources)?;
-        let data =
-            reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
+        let Some(data) =
+            reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?
+        else {
+            return Ok(());
+        };
         if ignored {
             return Ok(());
         }
@@ -508,7 +529,13 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         let document = self.document();
         let limits = self.session.limits;
         let build = || -> Result<pagura_core::Built<Content<'static>>> {
-            let content = Content::from_streams([(id, document.stream_data(object)?)], &limits)?;
+            let (data, damaged) = document.stream_data_damaged(object)?;
+            let content = Content::from_streams([(id, data)], &limits)?;
+            let content = if damaged {
+                content.cut_short()
+            } else {
+                content
+            };
             Ok(pagura_core::Built {
                 bytes: content
                     .bytes()
@@ -544,10 +571,19 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         let build = || -> Result<pagura_core::Built<Content<'static>>> {
             let streams = document.content_streams(page)?;
             let mut data = Vec::with_capacity(streams.len());
+            let mut cut = false;
             for stream in &streams {
-                data.push((stream.id(), document.stream_data(stream)?));
+                let (bytes, damaged) = document.stream_data_damaged(stream)?;
+                data.push((stream.id(), bytes));
+                // Damaged data ends the content: what follows is not known
+                // to continue from it, so later streams do not run.
+                if damaged {
+                    cut = true;
+                    break;
+                }
             }
             let content = Content::from_streams(data, &limits)?;
+            let content = if cut { content.cut_short() } else { content };
             Ok(pagura_core::Built {
                 bytes: content
                     .bytes()

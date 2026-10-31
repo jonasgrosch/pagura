@@ -188,7 +188,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         Ok(())
     }
 
-    fn end_text(&mut self, scope: &mut Scope) -> Result<()> {
+    pub(super) fn end_text(&mut self, scope: &mut Scope) -> Result<()> {
         let mut object = scope.text.take().ok_or(Error::syntax("ET without BT"))?;
         if object.saved_depth != scope.saved.len() {
             return Err(Error::syntax("ET crosses graphics state boundary"));

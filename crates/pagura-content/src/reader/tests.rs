@@ -113,7 +113,7 @@ fn inline_images_are_framed_by_the_caller_and_end_with_ei() {
             Ok(3)
         })
         .unwrap();
-    assert_eq!(data, b"\x00\xffx");
+    assert_eq!(data, Some(b"\x00\xffx".as_slice()));
     assert_eq!(reader.next(&mut tokens).unwrap().unwrap().op, Op::Restore);
     assert!(reader.next(&mut tokens).unwrap().is_none());
 
@@ -352,4 +352,65 @@ fn references_fail_as_the_object_parser_reads_them_under_every_budget() {
             }
         }
     }
+}
+
+/// The operators of `bytes` as one stream that damaged filter data cut
+/// short, or the reader's error.
+fn cut(bytes: &[u8]) -> Result<Vec<Operator>> {
+    let content = Content::from_streams(
+        [(ObjectId::new(4, 0), Cow::Borrowed(bytes))],
+        &Limits::default(),
+    )?
+    .cut_short();
+    assert_eq!(content.bytes(), bytes);
+    let mut reader = Reader::new(&content, &Limits::default());
+    let mut tokens = meter();
+    let mut out = Vec::new();
+    while let Some(operation) = reader.next(&mut tokens)? {
+        if let Op::InlineImage(_) = operation.op {
+            out.push(Operator::BeginInlineImage);
+            if reader.inline_image_data(|_| Ok(1))?.is_none() {
+                assert!(reader.next(&mut tokens)?.is_none());
+                break;
+            }
+            continue;
+        }
+        out.push(operator(&operation.op));
+    }
+    Ok(out)
+}
+
+#[test]
+fn cut_content_ends_before_a_token_the_cut_may_have_shortened() {
+    use Operator::{BeginInlineImage, Concatenate, Fill, MoveTo, Save, Stroke};
+    for (bytes, expected) in [
+        // A word at the cut could have continued: `f` may be `f*`, `c` `cm`.
+        (b"0 0 m S f".as_slice(), vec![MoveTo, Stroke]),
+        (b"0 0 m S f ", vec![MoveTo, Stroke, Fill]),
+        (b"q 1 0 0 1 2 3 c", vec![Save]),
+        (b"q 2 0 0 2 0 0 cm r", vec![Save, Concatenate]),
+        (b"q /Na", vec![Save]),
+        (b"q 1.", vec![Save]),
+        // Strings, arrays and dictionaries the cut leaves open.
+        (b"q (ab", vec![Save]),
+        (b"q [1 (a", vec![Save]),
+        (b"q << /A 1", vec![Save]),
+        // A closing delimiter ends a token whole.
+        (b"q (ab)", vec![Save]),
+        // Inline images whose data or `EI` reaches the cut.
+        (b"q BI /W 1 ID \x00", vec![Save, BeginInlineImage]),
+        (b"q BI /W 1 ID \x00 E", vec![Save, BeginInlineImage]),
+        (b"q BI /W 1 ID \x00 EI", vec![Save, BeginInlineImage]),
+        (b"q BI /W 1 /H", vec![Save]),
+    ] {
+        assert_eq!(
+            cut(bytes).unwrap(),
+            expected,
+            "{:?}",
+            bytes.escape_ascii().to_string()
+        );
+    }
+    // Faults before the cut stay errors.
+    assert!(cut(b"q xyz Q f").is_err());
+    assert!(cut(b"q ) Q f").is_err());
 }
