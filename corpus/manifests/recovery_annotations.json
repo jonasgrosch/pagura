@@ -1,0 +1,639 @@
+{
+  "schema": 2,
+  "area": "recovery_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "recovery_annotations/clean",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/clean.pdf",
+      "sha256": "d0586e52ae0031c9490a220120f4e35eece83498f2205b7eab0e63158031b51c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_annotations/clean.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1
+    },
+    {
+      "id": "recovery_annotations/empty",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/empty.pdf",
+      "sha256": "41f6027d4fc701cd66991601e0d158196739765fa7720e53800bb1ddc0b2ffa4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_annotations/empty.ppm",
+      "oracle_sha256": "d454441cf19ce0a2ba00ad732c830eded470a17fc717612510dc085180547a87",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [],
+      "expected_link_count": 0
+    },
+    {
+      "id": "recovery_annotations/leading",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/leading.pdf",
+      "sha256": "7afd905038cdef31dfeae3e632696b310f52d212443207ef20e1afe0fc0f19f3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/leading.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1
+    },
+    {
+      "id": "recovery_annotations/middle",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/middle.pdf",
+      "sha256": "5f92c2eaf466adf110b8a854b884558ab5e3d5feb047b8c6ca71902f1ee0e62b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/middle.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1
+    },
+    {
+      "id": "recovery_annotations/trailing",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/trailing.pdf",
+      "sha256": "b1416e7c3269580fd20fb56ea7445e522b833bad2da351a05368ac00dd4fd8f2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/trailing.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1
+    },
+    {
+      "id": "recovery_annotations/repeated",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/repeated.pdf",
+      "sha256": "32597f1176043c60ccb3f1fe7ef13687ed098d7370ba6d26858a7cf68e06ec50",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/repeated.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1
+    },
+    {
+      "id": "recovery_annotations/null-only",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/null-only.pdf",
+      "sha256": "102ee6f80a02ddfb65e0abca91e99f4d2ba681833ce3b98388e313612245c3bb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/null-only.ppm",
+      "oracle_sha256": "d454441cf19ce0a2ba00ad732c830eded470a17fc717612510dc085180547a87",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [],
+      "expected_link_count": 0
+    },
+    {
+      "id": "recovery_annotations/reverse-order",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/reverse-order.pdf",
+      "sha256": "2b32020de95c508785a5b028701b26524118aebdf018deda9bfdca4724ce5b34",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/reverse-order.ppm",
+      "oracle_sha256": "fefd2296419f07f5fbe5ebd5fa4b2fed3d5b0d58822580ebf1440cf72b4cbd4b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        6,
+        4
+      ],
+      "expected_link_count": 1
+    },
+    {
+      "id": "recovery_annotations/indirect-array",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/indirect-array.pdf",
+      "sha256": "bcf41f5f17a357daf1d60fc43f138b68d222f778cf0564dde87a9b47c96b7325",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/indirect-array.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1
+    },
+    {
+      "id": "recovery_annotations/many-nulls",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/many-nulls.pdf",
+      "sha256": "6317f1d05dd09d861ea00e0aa4744dc2b9cff222019824d2330cab018bd3843d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/many-nulls.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1
+    },
+    {
+      "id": "recovery_annotations/indirect-null",
+      "kind": "pdf",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/indirect-null.pdf",
+      "sha256": "1be0e6b8aeee025b210c10809b7da0934728ed5d4245c83c6ced2435221d0fa2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null-reference"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/indirect-null.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      },
+      "scan_recovery": "repair"
+    },
+    {
+      "id": "recovery_annotations/undefined-reference",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/undefined-reference.pdf",
+      "sha256": "22547f43fff7c098db267a0204bf15cc658479b57a7e2c71cf8042c1bf94737b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_annotations/wrong-generation",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/wrong-generation.pdf",
+      "sha256": "1f38006f5cbc2de50ee917edcbfd3723e5e96e063e9b80a024b625834824d9f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_annotations/boolean",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/boolean.pdf",
+      "sha256": "8b461c6e1a446332a169971759d911eed1a23887a9fef33d4cdec87ab2215a1b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_annotations/number",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/number.pdf",
+      "sha256": "860e3389eb04b3ef65495aea7724abd3e34bc0150a4a5bc6478d1d706bdb0667",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_annotations/string",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/string.pdf",
+      "sha256": "6bbadc9c8c495f762e4e8171fa289dff034dc668c3e8ae8594f5ee97e9021511",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_annotations/nested-array",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/nested-array.pdf",
+      "sha256": "a68ed02c25260e8783474199594dc7ebc5ed6ed88ca4b417a94735539f8df610",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_annotations/after-null-boolean",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/after-null-boolean.pdf",
+      "sha256": "0be508d2e900a518d80bad356a3f3befbc06172b73713aaa391fe3e5c06b914f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_annotations/after-null-bbox",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/after-null-bbox.pdf",
+      "sha256": "2c7621327b1533e168392f9e62fee7a013f7480c2c13c3053384681fe1f95200",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_annotations/after-null-cycle",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/after-null-cycle.pdf",
+      "sha256": "165d343070d4d9dafae8d8bfdb73cf4db3f99555e159f3083e5a9f988eefa76b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "render_error": "cycle"
+    },
+    {
+      "id": "recovery_annotations/after-null-subtype",
+      "kind": "pdf",
+      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "path": "corpus/generated/recovery_annotations/after-null-subtype.pdf",
+      "sha256": "9640e23ee59e87fb7f9e6efcdd5d6a0d425920eff27802d6661b8170b395c161",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null"
+      ],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_annotations/signature-clean-annotation",
+      "kind": "vector",
+      "description": "Authored DocMDP P3 mutation: null recovery cannot establish permission; clean content edits remain forbidden. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-clean-annotation.outcome",
+          "sha256": "2bf0fae7692059ba9910efd8411c3f74c50d99f35263107717b6e870512894c5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-clean-annotation.pdf",
+          "sha256": "2ce518f44f4c82cf099d8a32ae1bf51610e54804dc628b731b42cb8f2585b18a"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    },
+    {
+      "id": "recovery_annotations/signature-clean-content",
+      "kind": "vector",
+      "description": "Authored DocMDP P3 mutation: null recovery cannot establish permission; clean content edits remain forbidden. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-clean-content.outcome",
+          "sha256": "82816bd4b9e5853140ca474de590f58a4c01750ee2a8504892e8b86395acbeb5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-clean-content.pdf",
+          "sha256": "60ff103e157aaa32605bd605e0ee3f826b0989de2c9d949cc3e3a52931b70c9d"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    },
+    {
+      "id": "recovery_annotations/signature-clean-signing",
+      "kind": "vector",
+      "description": "Authored DocMDP P3 mutation: null recovery cannot establish permission; clean content edits remain forbidden. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-clean-signing.outcome",
+          "sha256": "2bf0fae7692059ba9910efd8411c3f74c50d99f35263107717b6e870512894c5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-clean-signing.pdf",
+          "sha256": "fb3567d1ff769e0f9153426358f6275856ee73b68d4a24da3533e44c33952be9"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    },
+    {
+      "id": "recovery_annotations/signature-signed-null-annotation",
+      "kind": "vector",
+      "description": "Authored DocMDP P3 mutation: null recovery cannot establish permission; clean content edits remain forbidden. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-signed-null-annotation.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-signed-null-annotation.pdf",
+          "sha256": "6c3a6c3a69e9411972c5106869696a3c97820c9f57c75ba33b18b4e0a90a6622"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    },
+    {
+      "id": "recovery_annotations/signature-signed-null-content",
+      "kind": "vector",
+      "description": "Authored DocMDP P3 mutation: null recovery cannot establish permission; clean content edits remain forbidden. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-signed-null-content.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-signed-null-content.pdf",
+          "sha256": "3ad6bf9875f1cb8559d3d99f689c2fc5556fe31ace30f6a1e21e081e4601cb8a"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    },
+    {
+      "id": "recovery_annotations/signature-signed-null-signing",
+      "kind": "vector",
+      "description": "Authored DocMDP P3 mutation: null recovery cannot establish permission; clean content edits remain forbidden. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-signed-null-signing.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-signed-null-signing.pdf",
+          "sha256": "147c23e03f9072688f357969159d8e9ee85712996f6698e462f52e7d773112e5"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    },
+    {
+      "id": "recovery_annotations/signature-added-null-annotation",
+      "kind": "vector",
+      "description": "Authored DocMDP P3 mutation: null recovery cannot establish permission; clean content edits remain forbidden. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-added-null-annotation.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-added-null-annotation.pdf",
+          "sha256": "a8282744c25ff5968fb229fb248ae406eb52148af4b48c8fb19f9f19091f0d1d"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    },
+    {
+      "id": "recovery_annotations/signature-added-null-content",
+      "kind": "vector",
+      "description": "Authored DocMDP P3 mutation: null recovery cannot establish permission; clean content edits remain forbidden. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-added-null-content.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-added-null-content.pdf",
+          "sha256": "87df9c0fa14d5e2cbdc72ac5accb5c147a48cc60b2b1491944b77bf87ccbd8d3"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    },
+    {
+      "id": "recovery_annotations/signature-added-null-signing",
+      "kind": "vector",
+      "description": "Authored DocMDP P3 mutation: null recovery cannot establish permission; clean content edits remain forbidden. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-added-null-signing.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-added-null-signing.pdf",
+          "sha256": "5ef9eb9fab0c0fc614cbfccfd45b81982a1d796412e72822742a95afd0167bdc"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    },
+    {
+      "id": "recovery_annotations/signature-historical-reference",
+      "kind": "vector",
+      "description": "Current valid annotation dictionary cannot rescue an invalid signed-revision target with the same identity. Structural policy only; placeholder signature asserts no integrity.",
+      "requirements": [
+        "recovery-annotation-null-entry"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotations/signature-historical-reference.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotations/signature-historical-reference.pdf",
+          "sha256": "6c5a6cb1e71a506650cb9d955fcd3eaaf58d56e650c1c9c02bb8015da66e6e05"
+        }
+      },
+      "driver": "annotation-null-signature-policy"
+    }
+  ]
+}

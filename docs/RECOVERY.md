@@ -24,6 +24,18 @@ older protocol diagnostic snapshots contain repairs only.
 
 Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
+- `pages.annotation-null` (Table 31; 12.5.2): skip a literal null member
+  of a page's Annots array after reporting recovery. Original annotation
+  references, order and raw-array budgets are preserved. Unavailable or chained references remain validation failures; immediate
+  defined Null targets have the separate reported policy below. Strict rejects
+  before skipping; this is not the dictionary-null rule of 7.3.9 and does
+  not normalize the whole Annots field. Rendering, links and signature-role
+  traversal share the document-owned member gate. Signature roles retain
+  the original-byte walk and treat repaired membership as ambiguous;
+  existing strict signed-source reopening and diagnostic guards keep
+  high-level modification analysis Inconclusive. No cryptographic result
+  or original signed byte is changed.
+
 - `asn1.ber-set-order` (X.690 11.6; RFC 5652 5.1): retain BER SET OF source
   order with a diagnostic. Signed attributes, certificates and DER entry
   points remain strict. BER length, indefinite-container and OCTET STRING
@@ -201,3 +213,41 @@ is the project reading of 7.10.2. Transfer-region selection follows
 default transfer, including through indirect references. A fractional boundary involving a nondefault
 transfer still fails explicitly: averaging colour before region selection would
 lose the correlation needed for nonlinear transfer functions.
+
+
+The CLI's default `scan` keeps its strict-first audit and schema 1. Opt-in
+`scan --repair` instead uses one Repair context throughout, sharing the ordinary
+provider, source options, limits and one-pass Store. Its schema 2 always states
+`recovery:"repair"` and `strict:null`, including I/O, opening and page-list
+failures: no full Strict rendering audit was performed. It reports actual
+repairs, information, suppressed-diagnostic count and failures without writing
+images. Conformance fixtures opt in with `scan_recovery:"repair"`; the consumer
+requires that schema/mode and executes a separate actual Strict render. Scan
+JSON exposes kind, feature, repair and message; full Error positions/object
+identity remain separate public-API/parity checks.
+
+
+`pages.annotation-null-reference` is a separate Repair-only reader policy for
+Annots members: the current revision must contain the exact in-use object
+number/generation, and its immediate value must be nonstream Null. The diagnostic
+names that target and its source position. It never follows a reference chain
+or uses undefined/free/different-generation objects as proof. Original source
+bytes, raw-array counts/work, surviving annotation order and dictionary identity
+remain authoritative. Whole-field Annots handling is unchanged.
+
+Strict retains its original untagged expected-dictionary error and full context.
+Rendering, links and signature roles share the gate; later malformed members
+still fail the complete operation. Existing Strict historical-source reopening,
+role ambiguity, diagnostics-to-Inconclusive and incremental-save permission
+guards remain intact. Placeholder signed controls assert no cryptographic
+integrity. The old indirect-null fixture's Repair contract intentionally changes
+under this separate tag; its archived original refusal and all PDF bytes remain
+preserved, and the other30 qualified literal-null contracts remain unchanged.
+
+The immediate defined-null reference policy uses the parsed nonstream value.
+Existing parser recovery can therefore compose: an object body `0 0 R` becomes
+Null through `syntax.reference-zero`, then the annotation gate reports
+`pages.annotation-null-reference`. Strict retains its earlier full parser
+error/tag. The ordinary bounded diagnostic store can suppress either report;
+admission never depends on searching that mutable store. Undefined/free/other
+generations and nonzero reference chains remain required failures.

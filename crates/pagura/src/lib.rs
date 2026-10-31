@@ -91,6 +91,10 @@ pub use pagura_document::forms;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
+/// Reported recovery of literal null members in page annotation arrays.
+pub use pagura_document::repairs::ANNOTATION_NULL as PAGES_ANNOTATION_NULL;
+/// Reported recovery of immediate defined parsed-null annotation references.
+pub use pagura_document::repairs::ANNOTATION_NULL_REFERENCE as PAGES_ANNOTATION_NULL_REFERENCE;
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,

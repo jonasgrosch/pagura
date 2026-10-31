@@ -10,6 +10,7 @@
 //! [`Document::diagnostics`].
 
 mod access;
+mod annotations;
 mod builder;
 mod catalog;
 mod diagnostics;
