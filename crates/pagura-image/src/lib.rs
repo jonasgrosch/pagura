@@ -56,19 +56,6 @@ pub mod tags {
     pub const FILTER_MISMATCH: Repair = Repair::new("image.filter-mismatch");
 }
 
-/// Stable reported repairs of image framing (ADR 0003).
-pub mod repairs {
-    use pagura_core::Repair;
-
-    /// 7.4.9 requires a full JPX file. Viewing may decode an unboxed
-    /// T.800 codestream only with an explicit PDF colour space and no
-    /// embedded-opacity request; metadata is never inferred from channel count.
-    pub const JPX_CODESTREAM: Repair = Repair::new("jpx.raw-codestream");
-
-    /// Every framing repair owned by this module.
-    pub const ALL: &[Repair] = &[JPX_CODESTREAM];
-}
-
 mod dispatch;
 mod fax_image;
 mod filter_rules;
