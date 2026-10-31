@@ -525,7 +525,7 @@ impl Header {
                     signed: source.signed,
                     width: source.width,
                     height: source.height,
-                    samples: budget.filled(source.samples.len(), 0)?,
+                    samples: budget.samples(source.samples.len(), 0)?,
                 };
                 match kind {
                     0 if column == 0 => result.samples.copy_from_slice(&source.samples),

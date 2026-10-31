@@ -149,6 +149,7 @@ fn truncation_and_mutation_never_panic() {
     }
     let limits = Limits {
         decode_work: 100_000,
+        decode_bytes: 1_000_000,
         decoded_bytes: 1_000_000,
         pixels: 4096,
         ..Limits::default()
@@ -175,6 +176,10 @@ fn limits_bound_input_pixels_allocations_and_work() {
             ..Limits::default()
         },
         Limits {
+            decode_bytes: 100,
+            ..Limits::default()
+        },
+        Limits {
             decoded_bytes: 100,
             ..Limits::default()
         },
@@ -193,10 +198,11 @@ fn limits_bound_input_pixels_allocations_and_work() {
 }
 
 #[test]
-fn the_allocation_budget_bounds_live_bytes_not_their_sum() {
+fn working_memory_is_bounded_by_its_live_bytes_and_samples_apart() {
     let data = fixture("jpx", "derived-three-levels.jpx");
-    let decode = |decoded_bytes| {
+    let decode = |decode_bytes, decoded_bytes| {
         let limits = Limits {
+            decode_bytes,
             decoded_bytes,
             ..Limits::default()
         };
@@ -205,7 +211,8 @@ fn the_allocation_budget_bounds_live_bytes_not_their_sum() {
             super::decode_bounded(&data, &mut budget, &super::Options::default(), false).map(drop);
         (result, budget.usage())
     };
-    let (result, (peak, charged)) = decode(Limits::default().decoded_bytes);
+    let defaults = Limits::default();
+    let (result, (peak, charged, samples)) = decode(defaults.decode_bytes, defaults.decoded_bytes);
     result.unwrap();
     // Each resolution's subbands and each code-block's coefficients are
     // freed before the next are allocated.
@@ -213,10 +220,13 @@ fn the_allocation_budget_bounds_live_bytes_not_their_sum() {
         charged > peak,
         "{charged} bytes charged, {peak} live at most"
     );
-    // The live peak is admitted, and a byte less is refused.
-    assert_eq!(decode(peak).0, Ok(()));
-    let (refused, _) = decode(peak - 1);
-    assert_eq!(refused.unwrap_err().kind, ErrorKind::Limit);
+    // The working peak is admitted and a byte less refused, and so are the
+    // output samples under their own budget.
+    assert_eq!(decode(peak, samples).0, Ok(()));
+    for (decode_bytes, decoded_bytes) in [(peak - 1, samples), (peak, samples - 1)] {
+        let (refused, _) = decode(decode_bytes, decoded_bytes);
+        assert_eq!(refused.unwrap_err().kind, ErrorKind::Limit);
+    }
 }
 
 #[test]
@@ -259,6 +269,7 @@ fn reserved_coding_modes_are_rejected() -> Result<(), Box<dyn std::error::Error>
 fn packed_and_progression_boundaries_never_panic() {
     let limits = Limits {
         pixels: 4096,
+        decode_bytes: 2_000_000,
         decoded_bytes: 2_000_000,
         decode_work: 200_000,
         objects: 256,

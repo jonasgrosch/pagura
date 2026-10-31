@@ -720,7 +720,7 @@ fn allocate(size: &Size, budget: &mut Budget<'_>, samples: bool) -> Result<Decod
             width,
             height,
             samples: if samples {
-                budget.filled(area(width, height)?, 0)?
+                budget.samples(area(width, height)?, 0)?
             } else {
                 Vec::new()
             },

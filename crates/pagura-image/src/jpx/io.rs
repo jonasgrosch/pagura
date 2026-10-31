@@ -114,11 +114,13 @@ impl<'a> Reader<'a> {
 
 pub(super) struct Budget<'a> {
     pub limits: &'a Limits,
-    /// Bytes of the allocations charged and not yet freed through
-    /// [`Self::free`].
+    /// Bytes of the working allocations charged and not yet freed through
+    /// [`Self::free`], against `decode_bytes`.
     bytes: usize,
     /// The most `bytes` has been.
     peak: usize,
+    /// Bytes of the output samples, against `decoded_bytes`.
+    samples: usize,
     /// Every allocation's bytes, freed or not.
     #[cfg(test)]
     charged: usize,
@@ -133,6 +135,7 @@ impl<'a> Budget<'a> {
             limits,
             bytes: 0,
             peak: 0,
+            samples: 0,
             #[cfg(test)]
             charged: 0,
             work: 0,
@@ -159,7 +162,7 @@ impl<'a> Budget<'a> {
         self.bytes = self
             .bytes
             .checked_add(bytes)
-            .filter(|&n| n <= self.limits.decoded_bytes)
+            .filter(|&n| n <= self.limits.decode_bytes)
             .ok_or_else(|| Error::limit("JPEG 2000 allocation budget exceeded"))?;
         self.peak = self.peak.max(self.bytes);
         #[cfg(test)]
@@ -178,10 +181,28 @@ impl<'a> Budget<'a> {
         self.bytes = self.bytes.saturating_sub(bytes);
     }
 
-    /// The most bytes live at once, and every allocation's bytes.
+    /// `count` output samples of `value`, charged to `decoded_bytes`
+    /// rather than to the working allocations.
+    pub fn samples<T: Clone>(&mut self, count: usize, value: T) -> Result<Vec<T>> {
+        self.work(count)?;
+        self.samples = count
+            .checked_mul(size_of::<T>())
+            .and_then(|n| self.samples.checked_add(n))
+            .filter(|&n| n <= self.limits.decoded_bytes)
+            .ok_or_else(|| Error::limit("JPEG 2000 sample budget exceeded"))?;
+        let mut result = Vec::new();
+        result
+            .try_reserve_exact(count)
+            .map_err(|_| Error::limit("JPEG 2000 allocation failed"))?;
+        result.resize(count, value);
+        Ok(result)
+    }
+
+    /// The most working bytes live at once, every working allocation's
+    /// bytes, and the output samples' bytes.
     #[cfg(test)]
-    pub fn usage(&self) -> (usize, usize) {
-        (self.peak, self.charged)
+    pub fn usage(&self) -> (usize, usize, usize) {
+        (self.peak, self.charged, self.samples)
     }
 
     pub fn push<T>(&mut self, values: &mut Vec<T>, value: T) -> Result<()> {
