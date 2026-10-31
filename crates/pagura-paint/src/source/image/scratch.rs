@@ -23,8 +23,9 @@ pub(crate) struct Scratch {
     pub(super) memo: Option<Box<texels::Memo>>,
     pub(super) summed: Vec<f64>,
     pub(super) fused: Vec<f64>,
-    /// How the texels of the rows `plan` holds were converted.
-    pub(super) mode: texels::TexelMode,
+    /// How the texels of the rows `plan` reads were converted
+    /// ([`Self::select`]).
+    mode: texels::TexelMode,
 }
 
 impl Layout {
@@ -59,6 +60,16 @@ impl Layout {
 }
 
 impl Scratch {
+    /// Reads rows of texels converted by `mode` from now on
+    /// ([`sampling::Scratch::select`]).
+    #[inline]
+    pub(super) fn select(&mut self, mode: texels::TexelMode) {
+        if self.mode != mode {
+            self.plan.select(self.mode.index(), mode.index());
+            self.mode = mode;
+        }
+    }
+
     /// The capacities this storage was allocated for.
     pub(crate) fn layout(&self) -> Layout {
         self.layout

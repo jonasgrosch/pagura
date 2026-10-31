@@ -15,7 +15,7 @@
 use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
 use super::scratch::allocate;
 use crate::source::copy_values;
-use pagura_color::{ColorSpace, Converter};
+use pagura_color::{ColorSpace, Converter, CurvedRgb, Painted};
 use pagura_core::{Meter, Result};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
 use std::cell::RefCell;
@@ -144,6 +144,10 @@ pub(super) const CURVED_CODES: usize = 256;
 #[derive(Debug)]
 pub(super) struct Curved {
     values: Vec<AtomicU64>,
+    /// Where three curved values alone give a texel's colour (no colour key
+    /// or opacity either), their conversion into RGB resolved once
+    /// ([`Converter::curved_rgb`]), charged as the values are.
+    rgb: Option<Box<CurvedRgb>>,
 }
 
 /// The bits of a value not found yet. A value found with these bits stays
@@ -155,11 +159,23 @@ impl Curved {
     /// capacity the caller has charged.
     pub(super) fn new(components: usize, mut values: Vec<AtomicU64>) -> Self {
         values.extend((0..components * CURVED_CODES).map(|_| AtomicU64::new(UNFOUND)));
-        Self { values }
+        Self { values, rgb: None }
+    }
+
+    /// Keeps `rgb` as [`Self::rgb`], whose bytes the caller has charged.
+    pub(super) fn keep_rgb(&mut self, rgb: CurvedRgb) {
+        self.rgb = Some(Box::new(rgb));
+    }
+
+    /// Whether three curved values alone convert into RGB through a
+    /// conversion resolved once.
+    pub(super) fn has_rgb(&self) -> bool {
+        self.rgb.is_some()
     }
 
     pub(super) fn bytes(&self) -> usize {
         self.values.capacity() * size_of::<AtomicU64>()
+            + self.rgb.as_ref().map_or(0, |_| size_of::<CurvedRgb>())
     }
 
     /// The bytes of `components` components' values.
@@ -180,6 +196,37 @@ pub(super) enum TexelMode {
     /// the exact ones ([`Converter::convert_rounded`]), for texels each
     /// pixel copies as its colour.
     Rounded,
+    /// To values whose N16 words ([`crate::kernel::opaque_word`]) are those
+    /// of the exact ones, for texels each pixel copies as its word.
+    Words,
+}
+
+impl TexelMode {
+    /// A number for each mode, which keeps its texels apart from others'.
+    pub(super) fn index(self) -> u8 {
+        match self {
+            Self::Exact => 0,
+            Self::Rounded => 1,
+            Self::Words => 2,
+        }
+    }
+
+    /// The bits that keep texels converted by this mode apart from others
+    /// in a memo, right above the `bytes` bytes of each sample key, where
+    /// the memo's hash mixes them into the slot as it mixes another byte.
+    fn tag(self, bytes: usize) -> u64 {
+        u64::from(self.index()) << (8 * bytes)
+    }
+}
+
+/// What [`TexelMode::Rounded`] keeps of a value.
+fn level_bits(value: f64) -> u32 {
+    crate::kernel::level(value).to_bits()
+}
+
+/// What [`TexelMode::Words`] keeps of a value.
+fn word_bits(value: f64) -> u32 {
+    u32::from(crate::kernel::opaque_word(value))
 }
 
 /// Per-sample inputs other than the codes: embedded opacity and the soft
@@ -276,13 +323,11 @@ impl Colors {
         }
         let channels = self.convert.target().channels();
         let (color, rest) = out.split_at_mut(channels);
-        let level = |v| crate::kernel::level(v).to_bits();
         let values = &values[..count];
         match (mode, self.curved.is_some()) {
             (TexelMode::Exact, false) => self.convert.convert(values, color),
-            (TexelMode::Rounded, false) => self.convert.convert_rounded(values, color, level),
             (TexelMode::Exact, true) => self.convert.convert_curved(values, color),
-            (TexelMode::Rounded, true) => self.convert.convert_curved_rounded(values, color, level),
+            (rounding, curved) => self.convert_rounding(values, curved, rounding, color),
         };
         for value in color.iter_mut() {
             *value *= alpha;
@@ -319,9 +364,60 @@ impl Colors {
         curved
     }
 
+    /// [`Self::texel_with`]'s colour by a rounding `mode`: `values`,
+    /// through the conversion's first stage already where `curved`. Out of
+    /// line, so that exact texels convert as they did.
+    #[inline(never)]
+    fn convert_rounding(
+        &self,
+        values: &[f64],
+        curved: bool,
+        mode: TexelMode,
+        color: &mut [f64],
+    ) -> Painted {
+        match (mode, curved) {
+            (TexelMode::Words, false) => self.convert.convert_rounded(values, color, word_bits),
+            (TexelMode::Words, true) => self
+                .convert
+                .convert_curved_rounded(values, color, word_bits),
+            (_, false) => self.convert.convert_rounded(values, color, level_bits),
+            (_, true) => self
+                .convert
+                .convert_curved_rounded(values, color, level_bits),
+        }
+    }
+
     /// The texel of the one-component code `code`, for a table.
     fn code_texel(&self, code: u16, out: &mut [f64]) {
         self.texel(&[code], Extra::default(), out);
+    }
+
+    /// [`Self::texel_with`] of three eight-bit `codes` alone by a rounding
+    /// `mode`, through [`Curved::rgb`]: the same values, bit for bit.
+    /// False, with nothing written, where these colours have no such
+    /// conversion.
+    #[inline]
+    fn rgb_texel(&self, codes: [u8; 3], mode: TexelMode, out: &mut [f64]) -> bool {
+        let Some((curved, rgb)) = self
+            .curved
+            .as_ref()
+            .and_then(|curved| Some((curved, curved.rgb.as_deref()?)))
+        else {
+            return false;
+        };
+        let curved = [0, 1, 2].map(|i| self.curved_value(curved, i, u16::from(codes[i])));
+        let color = match mode {
+            TexelMode::Exact => return false,
+            TexelMode::Rounded => rgb.convert_rounded(curved, level_bits),
+            TexelMode::Words => rgb.convert_rounded(curved, word_bits),
+        };
+        // The colour times opacity 1, then opacity and shape 1: every lane
+        // a converted texel has, so that none keeps an earlier texel's.
+        debug_assert_eq!(out.len(), color.len() + 2);
+        for (out, value) in out.iter_mut().zip(color.into_iter().chain([1.0; 2])) {
+            *out = value;
+        }
+        true
     }
 }
 
@@ -837,6 +933,11 @@ pub(super) struct Key {
 }
 
 impl Key {
+    /// The bytes of each sample key.
+    fn bytes(self) -> usize {
+        self.components + usize::from(self.matte) + usize::from(self.embedded)
+    }
+
     /// The key of `image`'s samples painted with `colors`, when every code
     /// it holds has at most eight bits and they fit 64 bits.
     fn new(image: &DecodedImage, colors: &Colors, mask: Option<&DecodedImage>) -> Option<Self> {
@@ -1248,7 +1349,8 @@ fn hash_slot(key: u64, mask: usize) -> usize {
 
 /// Texels by sample key: open addressing into slots that hold a key and
 /// its `held` values together, so that a lookup reads one place. Keys have
-/// at most 48 bits, so each is held exactly as an f64. The initial retention
+/// at most 48 bits, and with the bits of [`TexelMode::tag`] above them at
+/// most 50, so each is held exactly as an f64. The initial retention
 /// limit is one texel per 16 samples, clamped between 4096 and
 /// [`MemoLayout::CAP`] and tightened for small palettes. The retaining table
 /// reserves twice that limit, rounded up to a power of two.
@@ -1283,8 +1385,6 @@ pub(super) struct Memo {
     state: MemoState,
     /// The texel converted last, of every lane.
     spare: [f64; MAX_LANES],
-    /// How the texels held were converted.
-    mode: TexelMode,
 }
 
 /// A free slot: no key is negative.
@@ -1409,7 +1509,6 @@ impl MemoLayout {
             slots,
             state: self.state(),
             spare: [0.0; MAX_LANES],
-            mode: TexelMode::Exact,
         })
     }
 }
@@ -1435,7 +1534,7 @@ impl Memo {
         let stride = 1 + held;
         #[expect(
             clippy::cast_precision_loss,
-            reason = "keys have at most 48 bits, which f64 holds exactly"
+            reason = "keys have at most 50 bits, which f64 holds exactly"
         )]
         let wanted = key as f64;
         let probing = matches!(self.state, MemoState::Probing(_));
@@ -1484,6 +1583,8 @@ pub(super) struct MemoTexels<'a> {
     matte: Option<&'a Opacity>,
     memo: RefCell<&'a mut Memo>,
     mode: TexelMode,
+    /// [`TexelMode::tag`] of `mode`, on every key.
+    tag: u64,
 }
 
 impl<'a> MemoTexels<'a> {
@@ -1503,25 +1604,26 @@ impl<'a> MemoTexels<'a> {
             matte,
             memo: RefCell::new(memo),
             mode: TexelMode::Exact,
+            // Exact texels' keys carry no tag.
+            tag: 0,
         })
     }
 
-    /// These texels converted by `mode`; a memo holding texels converted
-    /// otherwise is emptied first.
+    /// These texels converted by `mode`, under keys of their own in the
+    /// memo.
     pub(super) fn converting(mut self, mode: TexelMode) -> Self {
-        let memo = self.memo.get_mut();
-        if memo.mode != mode {
-            memo.reset();
-            memo.mode = mode;
+        if mode == TexelMode::Exact {
+            return Self { mode, ..self };
         }
-        Self { mode, ..self }
+        let tag = mode.tag(self.memo.get_mut().layout.key.bytes());
+        Self { mode, tag, ..self }
     }
 
     /// The texel of sample `index`, written into `out` (its held values).
     #[inline]
     fn write(&self, memo: &mut Memo, index: usize, out: &mut [f64]) {
         let components = memo.layout.key.components;
-        let key = self.samples.get(index);
+        let key = self.samples.get(index) | self.tag;
         let held = memo.layout.held;
         let values = memo.get(key, held, |texel| self.convert(index, components, texel));
         for (out, &value) in out.iter_mut().zip(values) {
@@ -1531,10 +1633,13 @@ impl<'a> MemoTexels<'a> {
 
     /// [`Texels::row`] from sample `start` on into `out`, `H` held values a
     /// texel, for keys of `N` colour codes alone: one lookup per run of
-    /// equal keys, with fixed-size keys and copies. False, with nothing
-    /// written, where the samples are not all present.
+    /// equal keys, with fixed-size keys and copies. `R` tells whether the
+    /// texels convert by a rounding mode, whose keys carry its tag and
+    /// whose RGB samples may convert through [`Curved::rgb`]; exact texels'
+    /// tag is 0. False, with nothing written, where the samples are not all
+    /// present.
     #[inline]
-    fn plain_row<const N: usize, const H: usize>(
+    fn plain_row<const N: usize, const H: usize, const R: bool>(
         &self,
         memo: &mut Memo,
         start: usize,
@@ -1556,7 +1661,20 @@ impl<'a> MemoTexels<'a> {
             let key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
             if key != previous {
                 previous = key;
-                let held = memo.get(key, H, |texel| self.convert(index, N, texel));
+                let tagged = if R { key | self.tag } else { key };
+                let held = memo.get(tagged, H, |texel| {
+                    let converted = match *codes.as_slice() {
+                        [r, g, b]
+                            if R && self.colors.curved.as_ref().is_some_and(Curved::has_rgb) =>
+                        {
+                            self.convert_rgb([r, g, b], texel)
+                        }
+                        _ => false,
+                    };
+                    if !converted {
+                        self.convert(index, N, texel);
+                    }
+                });
                 if let Some(held) = held.first_chunk::<H>() {
                     last = *held;
                 }
@@ -1564,6 +1682,15 @@ impl<'a> MemoTexels<'a> {
             *texel = last;
         }
         true
+    }
+
+    /// [`Self::convert`] of a sample of colour codes `codes` alone, through
+    /// [`Curved::rgb`]; false, with nothing written, where they have none.
+    /// Out of line, as [`Self::convert`] is, so that runs of held texels
+    /// stay as they were.
+    #[inline(never)]
+    fn convert_rgb(&self, codes: [u8; 3], texel: &mut [f64]) -> bool {
+        self.colors.rgb_texel(codes, self.mode, texel)
     }
 
     /// Converts sample `index` into a texel of every lane.
@@ -1610,6 +1737,9 @@ impl Texels for MemoTexels<'_> {
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
+        // Only bilinear and area samples weight texels, and those convert
+        // exactly: their keys carry no tag.
+        debug_assert_eq!(self.mode, TexelMode::Exact);
         let mut memo = self.memo.borrow_mut();
         let components = memo.layout.key.components;
         let key = self.samples.get(index);
@@ -1631,12 +1761,17 @@ impl Texels for MemoTexels<'_> {
         let held = memo.layout.held;
         let plain =
             stride == held && self.samples.matte.is_none() && self.samples.embedded.is_none();
+        let rounding = self.mode != TexelMode::Exact;
         if plain
-            && match (components, held) {
-                (3, 3) => self.plain_row::<3, 3>(&mut memo, start, out),
-                (3, 4) => self.plain_row::<3, 4>(&mut memo, start, out),
-                (4, 3) => self.plain_row::<4, 3>(&mut memo, start, out),
-                (4, 4) => self.plain_row::<4, 4>(&mut memo, start, out),
+            && match (components, held, rounding) {
+                (3, 3, false) => self.plain_row::<3, 3, false>(&mut memo, start, out),
+                (3, 4, false) => self.plain_row::<3, 4, false>(&mut memo, start, out),
+                (4, 3, false) => self.plain_row::<4, 3, false>(&mut memo, start, out),
+                (4, 4, false) => self.plain_row::<4, 4, false>(&mut memo, start, out),
+                (3, 3, true) => self.plain_row::<3, 3, true>(&mut memo, start, out),
+                (3, 4, true) => self.plain_row::<3, 4, true>(&mut memo, start, out),
+                (4, 3, true) => self.plain_row::<4, 3, true>(&mut memo, start, out),
+                (4, 4, true) => self.plain_row::<4, 4, true>(&mut memo, start, out),
                 _ => false,
             }
         {
@@ -1647,7 +1782,8 @@ impl Texels for MemoTexels<'_> {
         for (index, values) in (start..start + count).zip(out.chunks_exact_mut(stride)) {
             let key = self.samples.get(index);
             if previous != Some(key) {
-                let held = memo.get(key, held, |texel| self.convert(index, components, texel));
+                let tagged = key | self.tag;
+                let held = memo.get(tagged, held, |texel| self.convert(index, components, texel));
                 copy_values(&mut last, held);
                 previous = Some(key);
             }
@@ -1658,8 +1794,28 @@ impl Texels for MemoTexels<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Indexed, Key, MemoLayout, SampleKeys};
+    use super::{Indexed, Key, MemoLayout, SampleKeys, TexelMode};
     use pagura_core::Meter;
+
+    /// A mode's tag sits where the memo's hash mixes it into the slot: the
+    /// texels of one sample under two modes almost never share a root
+    /// slot, even in a table of 2^19 slots.
+    #[test]
+    fn mode_tags_move_keys_to_other_slots() {
+        let mask = (1 << 19) - 1;
+        for bytes in [3, 4] {
+            let keys = (0..4096_u64).map(|i| i.wrapping_mul(0x00f1_2a6b_3c9d) >> (64 - 8 * bytes));
+            for mode in [TexelMode::Rounded, TexelMode::Words] {
+                let shared = keys
+                    .clone()
+                    .filter(|&key| {
+                        super::hash_slot(key, mask) == super::hash_slot(key | mode.tag(bytes), mask)
+                    })
+                    .count();
+                assert!(shared < 8, "{bytes} bytes, {mode:?}: {shared} shared");
+            }
+        }
+    }
 
     #[test]
     fn small_sources_need_no_capacity_discovery_allocation() {
