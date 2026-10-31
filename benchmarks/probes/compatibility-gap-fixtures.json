@@ -1447,6 +1447,22 @@
     "recovery_jbig2_tables/repeated-main-unused",
     "recovery_jbig2_tables/repeated-both-valid",
     "recovery_jbig2_tables/repeated-both-unused",
-    "recovery_jbig2_tables/hostile-repeated-missing-table"
+    "recovery_jbig2_tables/hostile-repeated-missing-table",
+    "text/paint-checked-cid-regular-CIDFontType0",
+    "text/paint-legacy-cid-regular-CIDFontType0",
+    "text/paint-checked-cid-regular-CIDFontType2",
+    "text/paint-legacy-cid-regular-CIDFontType2",
+    "text/paint-checked-cid-bold-CIDFontType0",
+    "text/paint-legacy-cid-bold-CIDFontType0",
+    "text/paint-checked-cid-bold-CIDFontType2",
+    "text/paint-legacy-cid-bold-CIDFontType2",
+    "text/paint-checked-cid-italic-CIDFontType0",
+    "text/paint-legacy-cid-italic-CIDFontType0",
+    "text/paint-checked-cid-italic-CIDFontType2",
+    "text/paint-legacy-cid-italic-CIDFontType2",
+    "text/paint-checked-cid-bolditalic-CIDFontType0",
+    "text/paint-legacy-cid-bolditalic-CIDFontType0",
+    "text/paint-checked-cid-bolditalic-CIDFontType2",
+    "text/paint-legacy-cid-bolditalic-CIDFontType2"
   ]
 }

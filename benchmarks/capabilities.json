@@ -13,7 +13,7 @@
   "source_files": {
     ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e",
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "benchmarks/probes/compatibility-gap-fixtures.json": "ab94078f417272035826f45c3aecadb28ab565220b3661f16b345962319622cd",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "f15afa5bb274bda7b227b9afbaba6df01f857878d1070615567d147bf1ee6832",
     "corpus/manifests/annotation_compat.json": "91f6e05cb4d9ad220e2d6be0f41b7d86047b839ec46f27430562d15bc2cd6323",
     "corpus/manifests/annotation_display.json": "2b2418bd5a8f5be67188a57bde3beaa642d029f2f280b4f754fcb659bf73b0ab",
     "corpus/manifests/annotation_empty_widgets.json": "8b205c65420c3057eca24a4d9e23b7391f54c32eea4af25fa8d20a448ca7d02f",
