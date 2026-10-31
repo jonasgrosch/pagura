@@ -5,6 +5,7 @@
 mod document;
 mod editing;
 mod facade;
+mod font_descriptor;
 mod overprint;
 mod provider;
 mod render;

@@ -1,0 +1,1872 @@
+{
+  "schema": 2,
+  "area": "recovery_font_descriptor",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "recovery_font_descriptor/descriptor-canonical",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-canonical.pdf",
+      "sha256": "30e0bb1efcd139ef66d330a7d573a99a0a0dbe839bf7938981153ccec69b8ef1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_font_descriptor/descriptor-canonical.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-alias",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-alias.pdf",
+      "sha256": "2cf84ef3052e1f6a3803d257d694ff7ec18a8951d0dbddb5931bda16b6e413f8",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/descriptor-alias.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-canonical-null",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-canonical-null.pdf",
+      "sha256": "1597b525bf07bca497ab8180c0755c7bf72b9e214bf17cd219b7d8564717d606",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-canonical-malformed",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "open",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-canonical-malformed.pdf",
+      "sha256": "0adc047120d00058ef7068bbd4d38f4db281e9c2d28fd4f12f8e9043a5422e33",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      },
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-wrong-name",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-wrong-name.pdf",
+      "sha256": "d2b2809f735e70d4916c2f9067bb83625647718aeb270ee20854d9738a4647a3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-wrong-case",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-wrong-case.pdf",
+      "sha256": "73239fd789aceee7ddfa15bb7326a50454751437d6f839d55cf8725f7a9e8e66",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-wrong-subset",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-wrong-subset.pdf",
+      "sha256": "032362878e07dfc321fc79598ddc5fdab13e48a459c3094ada6be8bb7f849bde",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-wrong-type",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-wrong-type.pdf",
+      "sha256": "39550eb09bf34689e54fdb41d8b236bf9ef015e2c250fbe5e68fdacef876d3b1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-missing-type",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-missing-type.pdf",
+      "sha256": "92f64f7fc4a1980e8f814bbcb8211e8a1e4f0ce8ac3fc24d647592cb33c7547c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-missing-program",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-missing-program.pdf",
+      "sha256": "037c3f3892cecab4a40751c4f60bf1c41ad99fcf5c98679ed47156a3125dbd45",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-program-not-stream",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-program-not-stream.pdf",
+      "sha256": "18e6a0da70df7ac929a72dda964f94d63a31b6a293c8be2a18129559e91c9054",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-malformed-program",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-malformed-program.pdf",
+      "sha256": "aa4260832941de19f0657330ef118db9d6f17fc184a00bcdad208de26dbafe2a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-wrong-subtype",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-wrong-subtype.pdf",
+      "sha256": "cacc670c8ad7d1c579f7c07ccf88d24c986e1b4263e1c9cdb369715f748ca1fe",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-different-key",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-different-key.pdf",
+      "sha256": "1c59f8f0a0a47239ae7b1aa9b83cf21f8658081e7048ad6215eaa7f126dbc62d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/descriptor-later-error",
+      "kind": "pdf",
+      "description": "Exact descriptor key recovery only after original unavailable; actual supplied H, source advance500 vs sfnt advance600, no candidate-derived oracle.",
+      "expected": "open",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/descriptor-later-error.pdf",
+      "sha256": "86e6e702468066a3e517e1a76a4d04d3edb847ae302f40525e157f502233be38",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      },
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_font_descriptor/selection-named-windows-holes",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-named-windows-holes.pdf",
+      "sha256": "c276e5779296eb0230ed48c67060dbd372b3f5b1cc703eb983b2b2e7765be8ca",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-named-windows-holes.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-named-post-B",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-named-post-B.pdf",
+      "sha256": "b9289a3b3a340bdadd312a3b81f9166d03510524b4cfee47a29f3d0c7d3b05e5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-named-post-B.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-named-mac-B",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-named-mac-B.pdf",
+      "sha256": "76a7e6f01db97440421aece31fe92cf76defb1dcad2c70e0dcaddfdb07464888",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-named-mac-B.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-encoding-vs-symbol-byte",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-encoding-vs-symbol-byte.pdf",
+      "sha256": "8e202dccd636274c27b85c6f2e5dde81346a9889339aafda4e2ac566a51c2e04",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-encoding-vs-symbol-byte-tounicode",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-encoding-vs-symbol-byte-tounicode.pdf",
+      "sha256": "3c54c564cc8c4c9afbf1002490ec0f53f35f9fb921e85ed705a551cae21f9249",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-legacy-encoding-byte-fallback",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-legacy-encoding-byte-fallback.pdf",
+      "sha256": "f7be96e633a53777252c5ca05cf618e3613df56bd1bb61af74098b20e46b45b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-legacy-encoding-byte-fallback.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0
+    },
+    {
+      "id": "recovery_font_descriptor/selection-actually-missing",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-actually-missing.pdf",
+      "sha256": "b289ce66d1afd9d978c934aee6f4726016b3d7b765c46587233fe2e8b19ae27f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-explicit-gid-zero",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-explicit-gid-zero.pdf",
+      "sha256": "3d20d1659c3579cacbc5643ec760524a897322bc720eada03ccb79aba81e6132",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-missing-tounicode-cannot-rescue",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-missing-tounicode-cannot-rescue.pdf",
+      "sha256": "04fd28e61ab714e460af213550beec49b00fc7b9c41572bc4e3f2c21ff9d3684",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-invisible-missing",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-invisible-missing.pdf",
+      "sha256": "4e85b490252cdeba25cc47e89f441cc7f64e6dcaee581d91182b58b129693112",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-visible-prefix-same-string",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-visible-prefix-same-string.pdf",
+      "sha256": "be3722931f058fcbfa461531817cf9814adb90f595237bf894fa6e3bfcdcdd1a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-visible-prefix-separate-strings",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-visible-prefix-separate-strings.pdf",
+      "sha256": "06ab140f3efa2ef294866a2cab9453df95033cb2167d3706b9a2d423ed8af6d5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-visible-prefix-TJ",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-visible-prefix-TJ.pdf",
+      "sha256": "993d580f2114ebaea1726b314c890f8c8f35a1ca2444538f7e9215204f838a9e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-form-after-prefix",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-form-after-prefix.pdf",
+      "sha256": "9853668f24ebb52b9ba7a86fe3b097ec5ef667d6f918606b0f24e3fe50788210",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-later-shared-font",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-later-shared-font.pdf",
+      "sha256": "7ecc8cc007f3601f692edb70494118a9070a3859cd7390ad1e82af72249f3ab0",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-empty-unselected-holes",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-empty-unselected-holes.pdf",
+      "sha256": "7b78fab0d202f14e1c4e70f3aa133a0ace7a0b99aeb60aecbd9a429c6efc2a88",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-empty-unselected-holes.ppm",
+      "oracle_sha256": "06255ca6cdd147e36dec6837d564c8fb58ce0dc760f2eef506546df3876d8ef0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-raw-absent-encoding",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-raw-absent-encoding.pdf",
+      "sha256": "7882f2b0a3baa6e7bb250e3b7243328444503e42edecdd0bd05b89fa038e63b5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-raw-symbolic",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-raw-symbolic.pdf",
+      "sha256": "c34025ce63e61125654a298b9d7a609d99f9811683e7b190e4ab466a4a2944be",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-ambiguous-flags",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-ambiguous-flags.pdf",
+      "sha256": "8c9098dcb4701cfa451b5467d29558d2a2ba055e24fca902861e070d458d6352",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-legacy-raw-absent-encoding",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-legacy-raw-absent-encoding.pdf",
+      "sha256": "9be8fae838bf68c21748fd0d3d023d3825bd992c149f34fb6dfe7f8a8d0a532e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-legacy-raw-absent-encoding.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0
+    },
+    {
+      "id": "recovery_font_descriptor/selection-legacy-raw-symbolic",
+      "kind": "pdf",
+      "description": "Independent source H outlines and PDF advance500 versus sfnt600. Alias RequiredNamed never consults ToUnicode or literal-byte/symbol fallback; canonical legacy controls remain separate.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-legacy-raw-symbolic.pdf",
+      "sha256": "d8762d4785b006d2d25f5dad3dde71d0feb17720f4f2dbbc640af9141337bcb4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-legacy-raw-symbolic.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0
+    },
+    {
+      "id": "recovery_font_descriptor/selection-strict-sfnt-version",
+      "kind": "pdf",
+      "description": "No repaired sfnt program may justify descriptor identity.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-strict-sfnt-version.pdf",
+      "sha256": "39d9d8f7bfd06db928f4e4c5449116c40b90abb2280acf5126f95b963b5ad33d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-strict-used-glyph",
+      "kind": "pdf",
+      "description": "Complete structure with truncated glyph point data must refuse under original strict outline policy, never repair to empty.",
+      "expected": "open",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-strict-used-glyph.pdf",
+      "sha256": "28dfb9739edaab1c0a8d395753ba26a2acc8ebc529abaa8898e6ed0707782398",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        },
+        "repair": {
+          "kind": "Syntax",
+          "repair": "font.glyph-data"
+        }
+      },
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_font_descriptor/selection-strict-invisible-glyph",
+      "kind": "pdf",
+      "description": "Invisible selected malformed glyph is still validated before decoding succeeds.",
+      "expected": "open",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-strict-invisible-glyph.pdf",
+      "sha256": "775e1a5736a53b813947da45800d7d2c59e68388d85a979677951b3b11b581a5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        },
+        "repair": {
+          "kind": "Syntax",
+          "repair": "font.glyph-data"
+        }
+      },
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery_font_descriptor/selection-decoded-length-mismatch",
+      "kind": "pdf",
+      "description": "Whole decoded length must equal original Length1, no reported length repair may supply alias proof.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-decoded-length-mismatch.pdf",
+      "sha256": "ac19c65adda471853a0cd9a59552519cef90b1ad1f1c84504e834fe7202f4f24",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-encoded-length-mismatch",
+      "kind": "pdf",
+      "description": "Corrected encoded extent cannot supply original complete program proof.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-encoded-length-mismatch.pdf",
+      "sha256": "f223d98c782dbbe42bdc6ea5b2befa066bee2ffda3256f804838de3a125d2ae5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-valid-empty-nonzero-space",
+      "kind": "pdf",
+      "description": "Strict-valid empty glyph1 selected by source space mapping is legitimate; Widths32=500 remains source authoritative.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-valid-empty-nonzero-space.pdf",
+      "sha256": "652b037ed43d26322376fe493c5ec13d004204ca44b3070c74e70bbb3e8ad469",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-valid-empty-nonzero-space.ppm",
+      "oracle_sha256": "06255ca6cdd147e36dec6837d564c8fb58ce0dc760f2eef506546df3876d8ef0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-unknown-encoding",
+      "kind": "pdf",
+      "description": "Unknown encoding cannot be repaired to a guessed default for alias proof.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-unknown-encoding.pdf",
+      "sha256": "2727f7f6e104297d2249611a6e2381f6f483d38da632cfbbfd34b2618376c31f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-unknown-base-encoding",
+      "kind": "pdf",
+      "description": "A supplied Difference does not authorize an unknown base.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-unknown-base-encoding.pdf",
+      "sha256": "b9772247b82834389c2d216b99c5ddf0cb61944e10b18763eee861c35bf4e1af",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-absent-base-encoding",
+      "kind": "pdf",
+      "description": "This narrow alias lane conservatively requires an explicit known base.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-absent-base-encoding.pdf",
+      "sha256": "4261b37d2f0480a37ec3734c71521701569989d9dd96cae60a29018c62d9167f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-mismatched-widths",
+      "kind": "pdf",
+      "description": "No Widths-length repair may supply source metrics for alias proof.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-mismatched-widths.pdf",
+      "sha256": "8bba4ec5f2cf9822aa5622c78808997cb181b184c9e4d455f74f44cc295669de",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-source-encoding-hole",
+      "kind": "pdf",
+      "description": "MacExpert code65 is undefined; no StandardEncoding hole fill for recovered descriptor.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-source-encoding-hole.pdf",
+      "sha256": "54b542acf7694ce6ef9f970cf951bd46d396294523a53e2f5bd9a69aba484c54",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-legacy-encoding-hole",
+      "kind": "pdf",
+      "description": "Existing canonical legacy StandardEncoding hole fill is preserved independently.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-legacy-encoding-hole.pdf",
+      "sha256": "36f18a246e27c1838941ff7b28dcb5f10ccfc95f055fe13251ee51cd2cf2aefe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-legacy-encoding-hole.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0
+    },
+    {
+      "id": "recovery_font_descriptor/selection-partial-source-glyph-name",
+      "kind": "pdf",
+      "description": "Unknown glyph-name components cannot be dropped to infer a scalar in this alias lane.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-partial-source-glyph-name.pdf",
+      "sha256": "50db9211d29d52b06f5606fe7f53ac861be667437f466ac53ca2fb44d3a340af",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-legacy-partial-glyph-name",
+      "kind": "pdf",
+      "description": "The ordinary legacy Unicode-name policy remains unchanged.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-legacy-partial-glyph-name.pdf",
+      "sha256": "6a83bea181e248c0af9868340a682a4514c36f5c035dccba2a2c5a9e2e2da28b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-legacy-partial-glyph-name.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0
+    },
+    {
+      "id": "recovery_font_descriptor/selection-uni-scalar",
+      "kind": "pdf",
+      "description": "Whole exact AGL name or full scalar uni/u form only; no suffix/component deletion or partial decoding.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-uni-scalar.pdf",
+      "sha256": "4a0bc844402c87e23abce46933db0cbf00c9c9c195bb09623f71a270e90f1ae0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-uni-scalar.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-u-scalar",
+      "kind": "pdf",
+      "description": "Whole exact AGL name or full scalar uni/u form only; no suffix/component deletion or partial decoding.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-u-scalar.pdf",
+      "sha256": "1290f19c05e1ad75b5bfb2a43c5913d783976faf1a42b9880112339af12f9957",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-u-scalar.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-u-leading-zero-scalar",
+      "kind": "pdf",
+      "description": "Whole exact AGL name or full scalar uni/u form only; no suffix/component deletion or partial decoding.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-u-leading-zero-scalar.pdf",
+      "sha256": "6bf5c113e77db4696540665481d5ed4fdf551af7af930fe642fa0fc47a734864",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-u-leading-zero-scalar.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-glyph-name-suffix",
+      "kind": "pdf",
+      "description": "Whole exact AGL name or full scalar uni/u form only; no suffix/component deletion or partial decoding.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-glyph-name-suffix.pdf",
+      "sha256": "68a2b218091fb4ce523fb0706b156bb42055be422eb5b1c061e895412991fb67",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-multi-scalar-name",
+      "kind": "pdf",
+      "description": "Whole exact AGL name or full scalar uni/u form only; no suffix/component deletion or partial decoding.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-multi-scalar-name.pdf",
+      "sha256": "1117b62fe84b6b9edfdae97c54953042edd707af4646e260bfdc4cbdaec58ede",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-surrogate-name",
+      "kind": "pdf",
+      "description": "Whole exact AGL name or full scalar uni/u form only; no suffix/component deletion or partial decoding.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-surrogate-name.pdf",
+      "sha256": "509ab7ab068fba3b9a6e7fd62f80eaafa2b7a457cd55cff7d1715c598fe32003",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-out-of-range-name",
+      "kind": "pdf",
+      "description": "Whole exact AGL name or full scalar uni/u form only; no suffix/component deletion or partial decoding.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-out-of-range-name.pdf",
+      "sha256": "629ce2c65ca201f75aad0fa5e159347eeee24ee9c9838917249bc895bcf52f94",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-short-uni-name",
+      "kind": "pdf",
+      "description": "Whole exact AGL name or full scalar uni/u form only; no suffix/component deletion or partial decoding.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-short-uni-name.pdf",
+      "sha256": "0025d5205c3183623100240ac7f4d736ff453c3ad087c3d49f36574d519a99c0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-legacy-glyph-name-suffix",
+      "kind": "pdf",
+      "description": "Ordinary legacy suffix decomposition is preserved.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-legacy-glyph-name-suffix.pdf",
+      "sha256": "938d07b13d01353c07b2f9c16ff9ba198579df87bfd3f24e6c4d76c712bef72a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-legacy-glyph-name-suffix.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0
+    },
+    {
+      "id": "recovery_font_descriptor/selection-descriptor-bbox-witness",
+      "kind": "pdf",
+      "description": "Source descriptor y[-200,800] differs from program headBBox and painted H; sourceWidth500 gives text quads x4..14 and14..24,y0..20.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-descriptor-bbox-witness.pdf",
+      "sha256": "4f34e45868870f940fab2783f8e4061ad0c56bc6475cba40897eab96df41ea2f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-descriptor-bbox-witness.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      },
+      "text_quads": [
+        [
+          [
+            4,
+            0
+          ],
+          [
+            14,
+            0
+          ],
+          [
+            14,
+            20
+          ],
+          [
+            4,
+            20
+          ]
+        ],
+        [
+          [
+            14,
+            0
+          ],
+          [
+            24,
+            0
+          ],
+          [
+            24,
+            20
+          ],
+          [
+            14,
+            20
+          ]
+        ]
+      ],
+      "text_geometry_contract": {
+        "quads": [
+          [
+            4,
+            0,
+            14,
+            0,
+            14,
+            20,
+            4,
+            20
+          ],
+          [
+            14,
+            0,
+            24,
+            0,
+            24,
+            20,
+            14,
+            20
+          ]
+        ]
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-canonical-descriptor-bbox-witness",
+      "kind": "pdf",
+      "description": "Canonical selected sourceBBox/Widths counterpart; programBBox must not replace supplied descriptor.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-canonical-descriptor-bbox-witness.pdf",
+      "sha256": "531e4fbc1f3115db01d44174643bb01a3a05812e446393d93e45af95322dea87",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-canonical-descriptor-bbox-witness.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "text_geometry_contract": {
+        "quads": [
+          [
+            4,
+            0,
+            14,
+            0,
+            14,
+            20,
+            4,
+            20
+          ],
+          [
+            14,
+            0,
+            24,
+            0,
+            24,
+            20,
+            14,
+            20
+          ]
+        ]
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-invalid-supplied-bbox",
+      "kind": "pdf",
+      "description": "RGB uses proven glyphs; text-only supplied malformedBBox must refuse rather than guessing0..1.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-invalid-supplied-bbox.pdf",
+      "sha256": "4f15a9d01e6b51d243e1baa15a43c4e64082e0a1a10e4a6ec5119678ae335be4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-invalid-supplied-bbox.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      },
+      "text_geometry_contract": {
+        "error_kind": "Syntax"
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-cyclic-supplied-bbox",
+      "kind": "pdf",
+      "description": "RGB remains glyph-defined; text-only BBox reference limit/cycle must propagate, not disappear through .ok.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-cyclic-supplied-bbox.pdf",
+      "sha256": "bfd9241c527d5a488b689d6e5af33076bb600b00f49d8ae433524c8f56a5ddb3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-cyclic-supplied-bbox.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "repair": null,
+          "feature": "font.non-embedded",
+          "message": "font has no safe available substitute"
+        }
+      },
+      "text_geometry_contract": {
+        "error_kind": "Limit"
+      }
+    },
+    {
+      "id": "recovery_font_descriptor/selection-legacy-invalid-bbox",
+      "kind": "pdf",
+      "description": "Existing canonical optionalBBox fallback stays unchanged; no legacy geometry tightening.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery"
+      ],
+      "path": "corpus/generated/recovery_font_descriptor/selection-legacy-invalid-bbox.pdf",
+      "sha256": "a4512f30e02180662aee0c3375569f59331ba39ad516e46c335d9a30e38fce07",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery_font_descriptor/selection-legacy-invalid-bbox.ppm",
+      "oracle_sha256": "6c54db02b0d02d00aec85d6543b6fd5300d9605c12e7ec8a6a622b4e442744e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "page": 0,
+      "text_geometry_contract": {
+        "quads": [
+          [
+            4,
+            4,
+            14,
+            4,
+            14,
+            24,
+            4,
+            24
+          ],
+          [
+            14,
+            4,
+            24,
+            4,
+            24,
+            24,
+            14,
+            24
+          ]
+        ]
+      }
+    }
+  ]
+}

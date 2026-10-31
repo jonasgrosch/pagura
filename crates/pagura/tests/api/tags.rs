@@ -32,3 +32,26 @@ fn rendering_tags_are_unique_and_well_formed() {
     );
     assert_eq!(tags::image::JPEG_PROCESS.as_str(), "jpeg.process");
 }
+
+#[test]
+fn descriptor_recovery_tags_have_one_owner_and_a_flat_facade_export() {
+    assert_eq!(
+        pagura::FONT_DESCRIPTOR_KEY,
+        pagura_text::repairs::DESCRIPTOR_KEY
+    );
+    assert_eq!(pagura::FONT_DESCRIPTOR_KEY.as_str(), "font.descriptor-key");
+    assert_eq!(
+        pagura_text::repairs::ALL
+            .iter()
+            .filter(|tag| **tag == pagura::FONT_DESCRIPTOR_KEY)
+            .count(),
+        1
+    );
+    assert_eq!(
+        pagura_text::features::ALL
+            .iter()
+            .filter(|tag| tag.as_str() == "font.descriptor-glyph")
+            .count(),
+        1
+    );
+}

@@ -107,6 +107,7 @@ fn collection_substitute(
         metrics,
         limits: document.limits(),
         retained: 0,
+        selection_policy: crate::font::SelectionPolicy::LegacyNotdef,
     }
     .accounted())
 }
@@ -155,6 +156,7 @@ fn latin(
         metrics,
         limits: document.limits(),
         retained: 0,
+        selection_policy: crate::font::SelectionPolicy::LegacyNotdef,
     }
     .accounted())
 }

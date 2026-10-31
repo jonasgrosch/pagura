@@ -213,3 +213,33 @@ images. Conformance fixtures opt in with `scan_recovery:"repair"`; the consumer
 requires that schema/mode and executes a separate actual Strict render. Scan
 JSON exposes kind, feature, repair and message; full Error positions/object
 identity remain separate public-API/parity checks.
+
+
+`font.descriptor-key` is a narrow Repair-only spelling policy. After ordinary
+TrueType loading is explicitly unavailable, an absent raw `FontDescriptor` key
+allows the exact `GontDescriptor` reference only when it names an actual typed
+descriptor whose FontName exactly matches BaseFont, whose Nonsymbolic flags and
+source Encoding/Widths are unambiguous, and whose sole original FontFile2 stream
+is read completely and parsed under Strict font policy. Canonical presence,
+even null or malformed, blocks this alias; ordinary provider results/errors
+keep their original paths. Source Length/Length1 and caller budgets remain
+authoritative; no rendering-prefix or repaired-font proof is used.
+
+The reported loader success binds the descriptor; it does not promise unused
+glyph coverage. Fallible decoding of each actually used code requires its exact
+source name through supported normative mappings or the exact source post name,
+selects a nonzero GID, and validates that outline Strict before caching success.
+Literal-byte/symbol/ToUnicode or partial-name guesses cannot rescue it. Valid
+empty nonzero space glyphs and source Widths are preserved. Missing identity is
+`font.descriptor-glyph`; Limit/Cycle and malformed selected outlines propagate,
+including invisible/no-extraction paths. The ordinary Legacy policy is unchanged.
+Text quads use the bound source FontBBox; a supplied malformed or cyclic box
+remains an error instead of being replaced by a program box or guessed cell.
+
+The existing retained-font/selection-cache accounting includes the immutable
+policy. Complete parse and each selected-outline check use the original caller
+budgets. Failed retries or concurrent cache misses may repeat work; no global
+256-outline bound is claimed. A failed tentative descriptor attempt can leave
+ordinary document cache entries/diagnostics, while its own repair tag is emitted
+only after loader success. Exact original Strict errors remain untagged and are
+checked separately from explicit Repair scans and independent full-page pixels.

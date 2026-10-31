@@ -26,7 +26,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `document.structure` / R01 | PDF file structures and reported recovery | partial / partial / partial / partial | Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. | Current-corpus recovery classification; external resources require a host contract. |
 | `document.range-input` / D01 | Range and linearization-aware loading | missing / missing / missing / missing | Complete-buffer opening, lazy object caches and immutable source bytes are available. | Immutable range sources, missing-data state, scoped loading, linearization and resumable host jobs (ADR 0035 proposed). |
 | `security.passwords` / D03 | Password security and encoding | partial / partial / partial / partial | Standard security R2-R6, RC4/AES and R6 SASLprep; CLI supports legacy text conversion. | Public-key handlers, encrypted history and browser legacy text conversion; writing encryption is E01. |
-| `fonts.programs` / R04 | Embedded font programs | partial / partial / partial / partial | TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. | Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. |
+| `fonts.programs` / R04 | Embedded font programs | partial / partial / partial / partial | TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. Narrow reported descriptor-key recovery uses a complete supplied Strict-parsed TrueType program and requires exact actually used glyph identity/Strict outline proof without changing Legacy selection. | Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. |
 | `fonts.cid-substitution` / R04 | CID font substitution | partial / partial / partial / partial | Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works. | Vertical substituted glyph forms/metrics and unavailable provider/collection coverage. |
 | `images.codecs` / R03 | PDF image codec variants | partial / partial / partial / partial | JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1. | Residual JPEG, CCITT, JBIG2 and JPX subvariants are enumerated in the tag dispositions; baseline-supported valid cases still need G01 fixtures. |
 | `images.jpx-alpha` / R02 | JPX embedded straight/premultiplied alpha | implemented / implemented / implemented / implemented | SMaskInData 1/2 decode and compositing, including alpha normalization/unpremultiplication; explicit PDF Indexed spaces retain direct index/opacity channels without a container palette, including first/last opacity order. | Opacity combined with an explicit PDF Indexed space and a JPX container palette still requires channel mapping; broader colour/layout interactions remain R02 work. |
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 336 registered requirement IDs map to capability rows in the ledger.
+All 337 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery
@@ -99,7 +99,7 @@ remain in every comparison denominator, including APIs without an adapter.
 
 ## Feature-tag dispositions
 
-**20 boundary**, **5 dispatch**, **15 dormant**, **38 gap**, **12 mixed**.
+**21 boundary**, **5 dispatch**, **15 dormant**, **38 gap**, **12 mixed**.
 
 `gap`: live unsupported subvariant; `boundary`: policy, invalid/unknown input or API
 boundary needing a concrete interoperability case; `dispatch`: handled in another
@@ -143,6 +143,7 @@ uses, aliases and helper calls; the checker verifies locators and hashes, not re
 | `filter.unknown` / boundary | `images.codecs` | Unknown filter names are explicitly refused; this does not establish a missing standard filter. [lib.rs](../crates/pagura-codec/src/lib.rs) |
 | `font.cid-substitute-vertical` / gap | `fonts.cid-substitution` | Vertical CID substitution is missing. Embedded vertical font handling is a different, implemented path. [cid.rs](../crates/pagura-text/src/substitute/cid.rs) |
 | `font.cmap-program` / gap | `fonts.programs` | CMap operators requiring PostScript execution exceed the declarative CMap reader. [cmap.rs](../crates/pagura-text/src/cmap.rs) |
+| `font.descriptor-glyph` / boundary | `fonts.programs` | Recovered descriptors must prove each actually used source-named nonzero glyph and Strict outline. Unknown mappings and GID0 refuse explicitly; ordinary Legacy selection and unrelated provider behavior are unchanged. [shape.rs](../crates/pagura-text/src/font/shape.rs) |
 | `font.format` / gap | `fonts.programs` | Synthetic CFF, CharstringType other than 2, CFF2 FontDICT matrices and additional post formats remain unsupported; ordinary TrueType/CFF/CFF2 support exists. [cff.rs](../crates/pagura-font/src/cff.rs), [names.rs](../crates/pagura-font/src/sfnt/names.rs) |
 | `font.non-embedded` / mixed | `fonts.cid-substitution` | Metrics-only outline requests and absent descriptors/providers can refuse; standard-14 and opt-in bundled CJK substitution exist. Unknown collection/encoding coverage remains a provider-dependent gap. [font.rs](../crates/pagura-text/src/font.rs), [substitute.rs](../crates/pagura-text/src/substitute.rs), [program.rs](../crates/pagura-text/src/program.rs), [cid.rs](../crates/pagura-text/src/substitute/cid.rs), [load.rs](../crates/pagura-text/src/font/load.rs) |
 | `font.predefined-cmap` / mixed | `fonts.programs` | Predefined CMaps depend on installed provider data; bundled CJK maps exist, while unbundled names and unsupported predefined ToUnicode requests refuse. [cmap.rs](../crates/pagura-text/src/cmap.rs) |

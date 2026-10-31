@@ -13,6 +13,7 @@ use pagura_font::FontProgram;
 use pagura_raster::Transform;
 use std::{collections::BTreeMap, sync::Arc};
 
+mod descriptor_key;
 mod load;
 mod shape;
 mod unicode;
@@ -120,6 +121,13 @@ pub(crate) enum Mapping {
     Composite { map: Arc<CMap>, shared: bool },
 }
 
+/// Immutable before the first code-selection cache entry is populated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SelectionPolicy {
+    LegacyNotdef,
+    RequiredNamed,
+}
+
 /// A loaded PDF font. Load each font dictionary once per document and share it.
 #[derive(Debug)]
 pub struct PdfFont {
@@ -130,6 +138,7 @@ pub struct PdfFont {
     pub(crate) metrics: metrics::Metrics,
     pub(crate) limits: Limits,
     pub(crate) retained: usize,
+    pub(crate) selection_policy: SelectionPolicy,
 }
 
 impl PdfFont {
@@ -229,6 +238,17 @@ impl PdfFont {
     /// The font's subtype.
     pub fn kind(&self) -> FontKind {
         self.kind
+    }
+
+    /// The descriptor key bound by the font's recovery policy, if any.
+    ///
+    /// This only identifies the descriptor selected while loading the font;
+    /// it does not certify coverage of every code subsequently decoded.
+    pub fn recovered_descriptor_key(&self) -> Option<&'static [u8]> {
+        match self.selection_policy {
+            SelectionPolicy::LegacyNotdef => None,
+            SelectionPolicy::RequiredNamed => Some(b"GontDescriptor"),
+        }
     }
 
     /// The writing mode.
@@ -386,9 +406,11 @@ impl PdfFont {
             let name = simple.names[usize::from(byte)].as_ref();
             let text = unicode
                 .and_then(|unicode| unicode.text(code).or_else(|| simple.unicode(byte).cloned()));
-            let shape = self.shape(code, code.value, name, || {
-                simple.unicode(byte).map(GlyphText::as_str)
-            });
+            let shape = self
+                .decode_shape(code, code.value, name, || {
+                    simple.unicode(byte).map(GlyphText::as_str)
+                })
+                .map_err(|e| e.at(at))?;
             text_bytes
                 .charge(text.as_deref().map_or(0, str::len))
                 .map_err(|e| e.at(at))?;
@@ -453,7 +475,7 @@ impl PdfFont {
                 .then(|| self.metrics.vertical(selector)),
             word_space: code.len == 1 && code.value == 32,
             unicode: text,
-            shape: self.shape(code, selector, name, || fallback.map(GlyphText::as_str)),
+            shape: self.decode_shape(code, selector, name, || fallback.map(GlyphText::as_str))?,
         };
         Ok((glyph, length))
     }

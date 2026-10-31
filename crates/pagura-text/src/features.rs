@@ -11,9 +11,13 @@ pub const CMAP_PROGRAM: Feature = Feature::new("font.cmap-program");
 /// A predefined CMap other than Identity-H/V, whose data is not bundled.
 pub const PREDEFINED_CMAP: Feature = Feature::new("font.predefined-cmap");
 
+/// A recovered descriptor cannot prove the source-named glyph without a fallback.
+pub const DESCRIPTOR_GLYPH: Feature = Feature::new("font.descriptor-glyph");
+
 /// Every feature tag defined by this crate.
 pub const ALL: &[Feature] = &[
     NON_EMBEDDED,
+    DESCRIPTOR_GLYPH,
     CID_SUBSTITUTE_VERTICAL,
     CMAP_PROGRAM,
     PREDEFINED_CMAP,
