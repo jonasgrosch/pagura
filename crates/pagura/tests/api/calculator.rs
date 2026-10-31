@@ -36,11 +36,13 @@ fn later_page_uses_its_own_value_with_the_same_shared_function() {
                         .render_page(document.page(page).unwrap(), &options)
                         .unwrap();
                     assert_eq!(ppm(&pixels), fixture("calculator_branches", oracle));
-                    assert!(pixels.data().chunks_exact(4).all(|pixel| pixel[3] == 255));
+                    let (rgba, trailing) = pixels.data().as_chunks::<4>();
+                    assert_eq!(trailing, &[]);
+                    assert!(rgba.iter().all(|pixel| pixel[3] == 255));
                 }
             }
             assert_eq!(document.original_bytes(), original);
-            assert!(document.diagnostics().is_empty());
+            assert_eq!(document.diagnostics(), Vec::<pagura::Diagnostic>::new());
             assert!(context.retained_bytes() <= capacity);
         }
     }

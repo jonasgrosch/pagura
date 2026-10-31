@@ -194,7 +194,7 @@
     "crates/pagura-color/src/function.rs": "153fb48fcb35e6733ff1e64b9a35e2c1f613d67dfc0ffa1627d0787711f0d179",
     "crates/pagura/examples/calculator_branch_parity.rs": "1c8fbcf0c2998d360195a4682e064551916604151f39f9e184f4bb98b3a3e49d",
     "crates/pagura-color/src/function/calculator.rs": "fbabf1224c84c3b29ad37020b009ed2633f24897f505d730d462c566db17f78c",
-    "crates/pagura/tests/api/calculator.rs": "2fe984d837ea0baf5f6c71402746ca0b644f72049614dc76b9891bd971381dff",
+    "crates/pagura/tests/api/calculator.rs": "96eb156e0c33329f93b525dbf41ac53246ca3b06feef9969da153ea7863947f4",
     "crates/pagura-color/src/function/calculator/check/branches.rs": "3634859f64777cdb0f2ea8bbb53bbdd666da5034f584a5dd54d223c26e1ebe66",
     "tools/calculator_branch_parity.mjs": "b2f0aaf382a6507dc43bc6f560d00ddf74bc9ed8178b4c21811549bb46d26a15",
     ".github/workflows/calculator-branch-parity.yml": "aaa653fddb1e968babd0910aa02cd27e34f83b41b9067b781d6f3fcfc24e1049",
