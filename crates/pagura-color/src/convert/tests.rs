@@ -7,6 +7,7 @@
 
 mod curved;
 mod oracle;
+mod separable;
 
 use super::*;
 use crate::cie::Calibrated;

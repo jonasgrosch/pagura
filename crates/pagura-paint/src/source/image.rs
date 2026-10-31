@@ -33,8 +33,9 @@ use sampling::Sampling;
 pub(crate) use scratch::{Layout as ScratchLayout, Scratch as ImageScratch};
 use std::sync::Arc;
 use texels::{
-    ByteCodes, Colors, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes, RgbTexels,
-    SampleTexels, Strategy, TableTexels, TexelMode, WordCodes,
+    ByteCodes, CmykTexels, Colors, EncodedTexels, Fused, Lookup, MemoTexels, Opacity,
+    OpacityTexels, PackedCodes, RgbTexels, SampleTexels, Strategy, TableTexels, TexelMode,
+    WordCodes,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
@@ -111,6 +112,7 @@ impl Paint {
                 Strategy::Table(_, opaque) => *opaque,
                 Strategy::Indexed(palette) => palette.opaque,
                 Strategy::Rgb(_) => matches!(image.samples, Samples::Bytes(_)),
+                Strategy::Cmyk(_) | Strategy::RgbEncoded(_) => true,
                 Strategy::Memo(layout) => layout.opaque(),
                 Strategy::General => false,
             },
@@ -173,6 +175,10 @@ impl Plan {
             if let Some(indexed) = layout.fit(image, mask, work, bytes)? {
                 let source = (&paint.0, usize::from(image.components), opaque);
                 paint.1 = indexed.strategy(source, bytes, functions)?;
+            } else if let Some(tables) = Strategy::separable(image, &paint.0, bytes, functions)? {
+                // Too many colours for a palette: tables of each component
+                // convert every sample without a memo.
+                paint.1 = tables;
             }
         }
         // Keep work and function admission before stencil recolouring, as
@@ -806,6 +812,11 @@ impl Prepared {
     /// Writes the summed texels of the span's pixels, `texels.lanes()`
     /// values each, into `out`; with a mask on the image's grid, each
     /// pixel's mask opacity ahead of them.
+    #[expect(
+        clippy::inline_always,
+        reason = "each strategy's sampling stays inside its arm of `texels`, span by span"
+    )]
+    #[inline(always)]
     fn sample(
         &self,
         plan: &Sampling,
@@ -986,6 +997,9 @@ impl Prepared {
                         self.sample(plan, pixels, &mut buffers, &texels, out);
                     }
                 }
+                Strategy::Cmyk(_) | Strategy::RgbEncoded(_) => {
+                    self.separable_texels(plan, pixels, &mut buffers, paint, out);
+                }
                 Strategy::Memo(_) => {
                     let colors = &paint.0;
                     let mask = self.mask.as_ref().map(|m| (&m.image.image, &m.opacity));
@@ -1002,6 +1016,56 @@ impl Prepared {
                 }
                 Strategy::General => self.general(plan, pixels, &mut buffers, &paint.0, out),
             },
+        }
+    }
+
+    /// [`Self::texels`] of [`Strategy::Cmyk`] samples, four table entries
+    /// a texel, and of [`Strategy::RgbEncoded`] samples, three entries
+    /// encoded into the target's channels. Out of line, so that the paths
+    /// of other images stay as they were.
+    #[inline(never)]
+    fn separable_texels(
+        &self,
+        plan: &Sampling,
+        pixels: Pixels<'_>,
+        buffers: &mut SamplingBuffers<'_>,
+        (colors, strategy): &(Colors, Strategy),
+        out: &mut [f64],
+    ) {
+        let image = &self.image.image;
+        let channels = colors.convert.target().channels();
+        match (strategy, &image.samples, colors.convert.rgb_encoding()) {
+            (Strategy::Cmyk(tables), Samples::Bytes(bytes), _) => {
+                let texels = CmykTexels {
+                    pixels: bytes.as_chunks::<4>().0,
+                    tables,
+                };
+                self.sample(plan, pixels, buffers, &texels, out);
+            }
+            (Strategy::RgbEncoded(tables), Samples::Bytes(bytes), Some(encoding))
+                if channels == 4 =>
+            {
+                let texels = EncodedTexels::<4> {
+                    pixels: bytes.as_chunks::<3>().0,
+                    tables,
+                    encoding,
+                };
+                self.sample(plan, pixels, buffers, &texels, out);
+            }
+            (Strategy::RgbEncoded(tables), Samples::Bytes(bytes), Some(encoding))
+                if channels == 1 =>
+            {
+                let texels = EncodedTexels::<1> {
+                    pixels: bytes.as_chunks::<3>().0,
+                    tables,
+                    encoding,
+                };
+                self.sample(plan, pixels, buffers, &texels, out);
+            }
+            _ => {
+                let texels = SampleTexels::new(image, colors, None);
+                self.sample(plan, pixels, buffers, &texels, out);
+            }
         }
     }
 
@@ -1369,7 +1433,11 @@ fn fast_lanes(
                 codes::Lanes::single(table, lanes, codes, *opaque, bytes)
             }
             Strategy::Rgb(tables) => codes::Lanes::rgb(tables, bytes),
-            Strategy::Memo(_) | Strategy::Indexed(..) | Strategy::General => Ok(None),
+            Strategy::Cmyk(_)
+            | Strategy::RgbEncoded(_)
+            | Strategy::Memo(_)
+            | Strategy::Indexed(..)
+            | Strategy::General => Ok(None),
         },
     }
 }
