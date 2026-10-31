@@ -146,7 +146,7 @@
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
-    "crates/pagura/src/lib.rs": "8957891da773217d57e291c1ea4e016fb865115d8e1ee7e16b9ff7173a38a5c2",
+    "crates/pagura/src/lib.rs": "79d5d0dfc74b27f60881f57c15207cbd4210491fd7677d7a2ddffb72b261941d",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
     "crates/pagura/tests/api/document.rs": "e5ecf107fdb648e90faf90e13b5703aeb151afbd7ad1cb7ea6e59c8548a5a102",
@@ -193,9 +193,13 @@
     "crates/pagura-document/src/repairs.rs": "e0848ff68be8fa5e91f999e1548e8ddd6ea89cb1b1a912159797cfa2258bd45e",
     "crates/pagura-document/src/navigation/links.rs": "37293c348289ead2b1a8a1e9af7f22a9a597ea4572f67d1c637ece506e037647",
     "crates/pagura-document/src/signatures/roles.rs": "91546bbb0d5c9769f17f72c8567834618308536141efb65c666f646ac01398b2",
-    "crates/pagura/tests/api/annotations.rs": "0965de9b0a1414182aca2c426e5d27680e20c4a71f4e5d1889709b6b289aba4d",
+    "crates/pagura/tests/api/annotations.rs": "6eff2c28fdb33995b8cd9d0361176431adf140a78c0c4d7e9e6be41f3e7ed7b6",
     "corpus/manifests/recovery_annotations.json": "6521cd56a04335ee3ac0b52d033d628159cf6d5e57e100d73c0b70cd662dfd02",
-    "references/requirements/recovery_annotations.json": "d8d23df1498edc085a62e3108060c9bbcb2008b7bd12e38a6a66961ce28a54a2"
+    "references/requirements/recovery_annotations.json": "d8d23df1498edc085a62e3108060c9bbcb2008b7bd12e38a6a66961ce28a54a2",
+    "crates/pagura/examples/null_annotation_parity.rs": "e938059436c33fad2c110ae53903a4ec17108a589325fc8aad65134bb7af709e",
+    "tools/null_annotation_parity.mjs": "c21d38f339a629f71d0c16f0b8ccf628de2832da9a77822ef86adb7031a54606",
+    ".github/workflows/null-annotation-parity.yml": "abcd9c6530885f0a10f87ff38197f76206f85683c35be6fe092ccb437a6052e1",
+    "benchmarks/probes/null-annotation-fixtures.json": "d4e3d179340e7835032cc219e5f1ee7b39b7e6069f1ad338679ed0334f6dd902"
   },
   "capabilities": [
     {
@@ -222,11 +226,16 @@
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
         "crates/pagura-document/src/annotations.rs",
-        "crates/pagura-document/src/repairs.rs"
+        "crates/pagura-document/src/repairs.rs",
+        "crates/pagura/src/lib.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
-        "crates/pagura/tests/api/annotations.rs"
+        "crates/pagura/tests/api/annotations.rs",
+        "crates/pagura/examples/null_annotation_parity.rs",
+        "tools/null_annotation_parity.mjs",
+        ".github/workflows/null-annotation-parity.yml",
+        "benchmarks/probes/null-annotation-fixtures.json"
       ],
       "requirements": [
         "catalog-identity-recovery",
@@ -925,11 +934,16 @@
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
-        "crates/pagura-document/src/annotations.rs"
+        "crates/pagura-document/src/annotations.rs",
+        "crates/pagura/src/lib.rs"
       ],
       "tests": [
         "crates/pagura-appearance/src/annotation/tests.rs",
-        "crates/pagura/tests/api/annotations.rs"
+        "crates/pagura/tests/api/annotations.rs",
+        "crates/pagura/examples/null_annotation_parity.rs",
+        "tools/null_annotation_parity.mjs",
+        ".github/workflows/null-annotation-parity.yml",
+        "benchmarks/probes/null-annotation-fixtures.json"
       ],
       "requirements": [
         "content-annotation-generation",
@@ -1432,11 +1446,16 @@
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
         "crates/pagura-document/src/annotations.rs",
-        "crates/pagura-document/src/signatures/roles.rs"
+        "crates/pagura-document/src/signatures/roles.rs",
+        "crates/pagura/src/lib.rs"
       ],
       "tests": [
         "crates/pagura-document/src/signatures/change_tests.rs",
-        "crates/pagura/tests/api/annotations.rs"
+        "crates/pagura/tests/api/annotations.rs",
+        "crates/pagura/examples/null_annotation_parity.rs",
+        "tools/null_annotation_parity.mjs",
+        ".github/workflows/null-annotation-parity.yml",
+        "benchmarks/probes/null-annotation-fixtures.json"
       ],
       "requirements": [
         "signature-byte-range",
@@ -1630,11 +1649,16 @@
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
         "crates/pagura-document/src/annotations.rs",
-        "crates/pagura-document/src/navigation/links.rs"
+        "crates/pagura-document/src/navigation/links.rs",
+        "crates/pagura/src/lib.rs"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
-        "crates/pagura/tests/api/annotations.rs"
+        "crates/pagura/tests/api/annotations.rs",
+        "crates/pagura/examples/null_annotation_parity.rs",
+        "tools/null_annotation_parity.mjs",
+        ".github/workflows/null-annotation-parity.yml",
+        "benchmarks/probes/null-annotation-fixtures.json"
       ],
       "requirements": [
         "navigation-destinations",
