@@ -181,3 +181,113 @@ fn optional_curve_values_never_raise_the_budget_a_page_needs() {
     assert_eq!(held(&partial), 0);
     assert_eq!(pixels(&tight), pixels(&roomy));
 }
+
+/// A 64 × 64 RGB inline image of identity `offset`: images of different
+/// identities decode apart, though their samples are the same.
+fn inline_rgb(offset: usize) -> Image {
+    let document = Document::open(
+        pagura_testkit::fixture("classic", "rectangle.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let mut dictionary = pagura_core::Dictionary::new();
+    for (key, value) in [(&b"W"[..], 64), (b"H", 64), (b"BPC", 8)] {
+        dictionary.insert(
+            pagura_core::Name::new(key),
+            pagura_core::Value::Integer(value),
+        );
+    }
+    dictionary.insert(
+        pagura_core::Name::new(b"CS"),
+        pagura_core::Value::name(b"RGB"),
+    );
+    let data: Vec<u8> = (0..64 * 64 * 3_u32)
+        .map(|i| u8::try_from(i % 251).unwrap())
+        .collect();
+    let source = ImageSource::from_inline(
+        &document,
+        &pagura_core::Dictionary::new(),
+        &dictionary,
+        &data,
+        pagura_image::ImageId::Inline {
+            stream: None,
+            offset,
+        },
+    )
+    .unwrap();
+    Image {
+        source: Arc::new(source),
+        space: Some(Arc::new(ColorSpace::DeviceRgb)),
+        decode: Arc::from([[0.0, 1.0]; 3]),
+        interpolate: false,
+        intent: None,
+        mask: ImageMask::None,
+    }
+}
+
+/// `count` draws of one image (`shared`), or of as many images of the same
+/// samples.
+fn copies(count: u32, shared: bool) -> Build {
+    let mut b = Build::new(96.0, 64.0);
+    let state = b.state(|_| {});
+    let one = Arc::new(inline_rgb(0));
+    for i in 0..count {
+        let image = if shared {
+            Arc::clone(&one)
+        } else {
+            Arc::new(inline_rgb(usize::try_from(i).unwrap() + 1))
+        };
+        let (x, y) = (f64::from(i % 6) * 15.0, f64::from(i / 6) * 15.0);
+        b.node(
+            GroupId(0),
+            Node::Image(ImageNode {
+                image,
+                transform: Transform::new(13.0, 0.0, 0.0, 11.0, x + 1.0, y + 2.0),
+                stencil: None,
+                mark: mark(state),
+            }),
+        );
+    }
+    b
+}
+
+#[test]
+fn draws_of_one_decoded_image_pay_for_it_once() {
+    let samples = 64 * 64 * 3;
+    let request = copies(1, true).request(copies(1, true).page(), 16);
+    let charge = |b: &Build| {
+        b.prepare(&request, &Limits::default())
+            .unwrap()
+            .charges()
+            .render_bytes()
+    };
+    let (shared, own) = (copies(24, true), copies(24, false));
+    // The render holds the shared image's samples once: 24 images of the
+    // same samples cost at least 23 more copies of them than its 24 draws.
+    assert!(charge(&own) - charge(&shared) >= 23 * samples);
+    // And so does the least budget the draws need.
+    let least = |b: &Build| {
+        let fits = |render_bytes| {
+            let limits = Limits {
+                render_bytes,
+                ..Limits::default()
+            };
+            b.prepare(&request, &limits).is_ok()
+        };
+        let (mut refused, mut admitted) = (0, charge(b) * 2);
+        while refused + 1 < admitted {
+            let middle = refused.midpoint(admitted);
+            if fits(middle) {
+                admitted = middle;
+            } else {
+                refused = middle;
+            }
+        }
+        admitted
+    };
+    assert!(least(&own) - least(&shared) >= 23 * samples);
+    assert_eq!(
+        shared.render(&request).unwrap(),
+        own.render(&request).unwrap()
+    );
+}
