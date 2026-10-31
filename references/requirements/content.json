@@ -106,7 +106,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "7.2.6–7.2.7, 8.2–8.7, 10.5, 10.8–10.10, 10.16, F.2–F.3",
+          "locator": "7.2.6\u20137.2.7, 8.2\u20138.7, 10.5, 10.8\u201310.10, 10.16, F.2\u2013F.3",
           "verdict": "verified with documented choices",
           "reason": "Source ICC transforms and their output policy are specified in content-icc-matrix/lut/intent; legacy v2 metadata rules are not inferred from v4."
         }
@@ -268,10 +268,34 @@
         "content/stitch-endpoint-encode-0",
         "content/stitch-endpoint-encode-1",
         "content/function-domain-negative",
-        "content/function-domain-fractional"
+        "content/function-domain-fractional",
+        "calculator_branches/piecewise-endpoints",
+        "calculator_branches/two-depth-endpoints",
+        "calculator_branches/bounded-ge",
+        "calculator_branches/bounded-le",
+        "calculator_branches/bounded-gt",
+        "calculator_branches/bounded-lt",
+        "calculator_branches/clamped-domain-red",
+        "calculator_branches/existing-same-depth",
+        "calculator_branches/piecewise-axial",
+        "calculator_branches/three-depths",
+        "calculator_branches/branch-type-mismatch",
+        "calculator_branches/arithmetic-facts-unproved",
+        "calculator_branches/output-mismatch",
+        "calculator_branches/negative-domain-empty-path",
+        "calculator_branches/unknown-copy",
+        "calculator_branches/unknown-index",
+        "calculator_branches/numeric-underflow",
+        "calculator_branches/wrong-result-type",
+        "calculator_branches/wrong-condition-type",
+        "calculator_branches/stack-overflow",
+        "calculator_branches/piecewise-square",
+        "calculator_branches/piecewise-square-direct-twin",
+        "calculator_branches/shared-function-pages",
+        "calculator_branches/shared-function-pages-p1"
       ],
-      "gaps": "fractional, pattern and per-colourant transfer-region selection under transparency",
-      "rule": "Functions clip inputs and outputs to declared bounds and follow their type-specific definitions; transfer functions operate after conversion to the output device space."
+      "gaps": "fractional, pattern and per-colourant transfer-region selection under transparency Calculator proof remains bounded to known stack counts and at most two joined depths; incompatible kinds, a third depth and unproved correlations retain explicit refusal.",
+      "rule": "Functions clip inputs and outputs to declared bounds and follow their type-specific definitions; transfer functions operate after conversion to the output device space. Type 4 endpoints have the declared numeric count; intermediate branch depths need not match when the bounded static proof establishes every Domain path."
     },
     {
       "id": "content-usage",
@@ -393,7 +417,7 @@
       "id": "content-icc-matrix",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.6.5.5, Tables 65–68",
+        "8.6.5.5, Tables 65\u201368",
         "8.6.5.8, Table 69"
       ],
       "rule": "Supported embedded source profiles use forward processing, never silent Alternate substitution. Gray TRCs scale PCS D50 XYZ or L*=100, not media white (ICC F.2); RGB uses the column matrix and per-channel TRCs (F.3). Sampled forward curves may be nonmonotonic and matrices need not be invertible. Parametric outputs clip, including positive overflow; threshold arithmetic preserves the nonnegative power domain. ICC Table 34 count-one gamma is two-byte unsigned 8.8 per 4.9; Table 65 is interpreted with complementary branches and the separate e offset for type 4 because its printed formulas conflict with its parameter list. Source values clip to ICC Range before Alternate, including later-version fallback; Alternate structure is validated even when unused. Bradford D50-to-D65 adaptation, sRGB output encoding, gamut clipping and final rounding are project policy.",
@@ -415,7 +439,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "4.6, 4.9, 6.2.1, 6.3.1–6.3.4, 7.2.16, 9.2.4–9.2.5, 9.2.15, 9.2.29–9.2.31, 9.2.44–9.2.45, 10.5, 10.16 Tables 64–65, F.2–F.3",
+          "locator": "4.6, 4.9, 6.2.1, 6.3.1\u20136.3.4, 7.2.16, 9.2.4\u20139.2.5, 9.2.15, 9.2.29\u20139.2.31, 9.2.44\u20139.2.45, 10.5, 10.16 Tables 64\u201365, F.2\u2013F.3",
           "verdict": "verified with documented choices",
           "reason": "PCS data is already adapted; chad is validated and is not applied twice. Curve table inconsistencies and device-output choices are documented in the rule."
         }
@@ -647,7 +671,7 @@
       "id": "content-icc-admission",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.6.5.5, Tables 65–68"
+        "8.6.5.5, Tables 65\u201368"
       ],
       "rule": "ICC.1:2010 v4 profiles validate BCD/version reserved bytes, Gregorian dates, permitted source class/colour-space/PCS, attributes, intent, D50 illuminant, MD5 ProfileID and reserved bytes; required tags depend on profile class/model. Tag bodies are tightly packed, aligned and zero-padded, with exact shared bodies allowed. XYZ records are complete and nonnegative, reserved type fields and curve extents are exact, and chad is a signed sf32 invertible 3-by-3 matrix. These v4 metadata rules are not imposed on legacy v2 profiles. All table products, extents, allocations and cumulative retained profile storage are bounded before use.",
       "status": "implemented; ICC.1:2010 primary text verified",
@@ -671,7 +695,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "7.1.2, 7.2.4–7.2.19, 7.3–7.4, 8.2–8.7, 9.2.15, 9.2.34, 10.1, 10.5, 10.16, 10.20, 10.29",
+          "locator": "7.1.2, 7.2.4\u20137.2.19, 7.3\u20137.4, 8.2\u20138.7, 9.2.15, 9.2.34, 10.1, 10.5, 10.16, 10.20, 10.29",
           "verdict": "verified with documented choices",
           "reason": "Primary header, packing, class/model and tag definitions reviewed locally. Vendor-specific header bits remain permitted."
         }
@@ -681,9 +705,9 @@
       "id": "content-icc-lut",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.6.5.5, Tables 65–68"
+        "8.6.5.5, Tables 65\u201368"
       ],
-      "rule": "Forward mft2 uses input tables, CLUT and output tables; its source-non-XYZ matrix must be identity. Forward mft1 uses 256-sample input/output tables and Lab PCS. mAB accepts B, M+matrix+B, A+CLUT+B and A+CLUT+M+matrix+B, including unequal grid sizes and 8/16-bit CLUTs. PCSXYZ uses unsigned 1.15; mft2 uses legacy FF00 Lab white in both v2 and v4, while mft1 and mAB use modern Lab encodings. Source Lab values use L* 0–100 and a*/b* -128–127 before normalization. Multilinear CLUT interpolation is project policy; two-point axes are linear as ICC requires. Evaluation uses at most 16 corners for PDF source profiles. Inverse mBA selected as a forward transform fails explicitly; optional BToA tags are ignored. LUT8 XYZ PCS has no specified encoding and remains explicit Unsupported.",
+      "rule": "Forward mft2 uses input tables, CLUT and output tables; its source-non-XYZ matrix must be identity. Forward mft1 uses 256-sample input/output tables and Lab PCS. mAB accepts B, M+matrix+B, A+CLUT+B and A+CLUT+M+matrix+B, including unequal grid sizes and 8/16-bit CLUTs. PCSXYZ uses unsigned 1.15; mft2 uses legacy FF00 Lab white in both v2 and v4, while mft1 and mAB use modern Lab encodings. Source Lab values use L* 0\u2013100 and a*/b* -128\u2013127 before normalization. Multilinear CLUT interpolation is project policy; two-point axes are linear as ICC requires. Evaluation uses at most 16 corners for PDF source profiles. Inverse mBA selected as a forward transform fails explicitly; optional BToA tags are ignored. LUT8 XYZ PCS has no specified encoding and remains explicit Unsupported.",
       "status": "implemented; ICC.1:2010 primary text verified",
       "tests": [
         "content/icc-mft2-4-Lab-v4",
@@ -707,7 +731,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "6.3.4.2 Tables 11–13, 10.5, 10.8 Tables 37–40, 10.9 Table 41, 10.10 Tables 42–43",
+          "locator": "6.3.4.2 Tables 11\u201313, 10.5, 10.8 Tables 37\u201340, 10.9 Table 41, 10.10 Tables 42\u201343",
           "verdict": "verified with documented choices",
           "reason": "Legacy Lab belongs to mft2, irrespective of profile major version. All legal mAB stage combinations and per-stage clipping are covered."
         }
@@ -740,7 +764,7 @@
       "external_primary_review": [
         {
           "reference": "icc-v43",
-          "locator": "6.3.2, 7.2.15, 8.10.2, 9.1 Table 25, 9.2.1–9.2.3",
+          "locator": "6.3.2, 7.2.15, 8.10.2, 9.1 Table 25, 9.2.1\u20139.2.3",
           "verdict": "verified with documented choices",
           "reason": "Primary precedence order and colorimetric media-white scaling reviewed locally; PDF source processing overrides header hints."
         }

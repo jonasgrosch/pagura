@@ -37,7 +37,7 @@
     "crates/pagura-color/src/cie.rs": "950b76a2561a9a14ffa46ed12171913148f52edd8c6a3f82f3c20d64e62a2c2e",
     "crates/pagura-color/src/convert/plan.rs": "d86b8dfebda8d83d10d816a7ea3ad7cedd93967e1d3487ec3cf8331320c287f6",
     "crates/pagura-color/src/features.rs": "d41d21ac1bb7622de6e5fb3a6955d06bfd31ab84af27ac891efc0ac04adb6bd3",
-    "crates/pagura-color/src/function/calculator/check.rs": "42eca4b64aa07d0f6a5fec0177bde1890195e7d67625366b5326603198dd493d",
+    "crates/pagura-color/src/function/calculator/check.rs": "d56d95937e5b853a9392f583887043ed0df72be0830e53f5f0337992b6b0b1be",
     "crates/pagura-color/src/icc.rs": "ee25d4c361fcdb334383edd4e0a8d19e4a6c3b1f54a791cb9bc16177b2fadd96",
     "crates/pagura-color/src/space.rs": "f2701dff5339c5aa6ff3a05eecae4dfe2e33f8949c5684858664d95348747019",
     "crates/pagura-color/src/space/retained.rs": "10dd79f1d82df2ebbf64f67fc45e03f570abd55264e653b1fd5635c8081e2dc6",
@@ -159,7 +159,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "59264eee5c51c4865f141bf4fb6967a117a60b3c6bc23600fa13b1e6bdc107c8",
+    "references/requirements/content.json": "ee91d68528deff6fbf2a18ecf7b5c2a60af65fdd5a231a6610adc01398f08de5",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -188,7 +188,19 @@
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
+    "crates/pagura-paint/src/source/shading/tests/synthetic.rs": "a6ea24c0bdcaec5d679fbb6ce9df67c44bdf59d22c57cd30a319e91265713c5c",
+    "benchmarks/probes/calculator-branch-fixtures.json": "ddf8731883b689e8a41d2c7aa694d3baa218b95821c9d5ac8424324ac44b32ed",
+    "crates/pagura-color/src/function.rs": "153fb48fcb35e6733ff1e64b9a35e2c1f613d67dfc0ffa1627d0787711f0d179",
+    "crates/pagura/examples/calculator_branch_parity.rs": "1c8fbcf0c2998d360195a4682e064551916604151f39f9e184f4bb98b3a3e49d",
+    "crates/pagura-color/src/function/calculator.rs": "fbabf1224c84c3b29ad37020b009ed2633f24897f505d730d462c566db17f78c",
+    "crates/pagura/tests/api/calculator.rs": "96eb156e0c33329f93b525dbf41ac53246ca3b06feef9969da153ea7863947f4",
+    "crates/pagura-color/src/function/calculator/check/branches.rs": "3634859f64777cdb0f2ea8bbb53bbdd666da5034f584a5dd54d223c26e1ebe66",
+    "tools/calculator_branch_parity.mjs": "b2f0aaf382a6507dc43bc6f560d00ddf74bc9ed8178b4c21811549bb46d26a15",
+    ".github/workflows/calculator-branch-parity.yml": "aaa653fddb1e968babd0910aa02cd27e34f83b41b9067b781d6f3fcfc24e1049",
+    "tools/fixturegen/calculator_branches.py": "e5d24c253efed0e8bcbdb73888c5a1321d136834344e19b74abc9d2ffcf15ae0",
+    "corpus/manifests/calculator_branches.json": "c01841c7305707f4c813785a29123b400e49112b2391e09302bb498200e0a4ac",
+    "crates/pagura-color/tests/calculator.rs": "1f9823831595dc8308389269deb6370bdeb9cd21abd23cafee755bec11aef235"
   },
   "capabilities": [
     {
@@ -727,18 +739,29 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Gray/RGB/CMYK groups, knockout, blend modes, masks, forward ICC and process/spot overprint display.",
-      "remaining": "Destination/inverse ICC, calibrated group destinations, black-point compensation and transfer-region combinations.",
+      "implemented": "Gray/RGB/CMYK groups, knockout, blend modes, masks, forward ICC and process/spot overprint display. Type 4 has an additional bounded two-depth Domain-aware static proof with independent source controls.",
+      "remaining": "Destination/inverse ICC, calibrated group destinations, black-point compensation and transfer-region combinations. Calculator dynamic counts, incompatible joins, third depths and unproved correlations remain unsupported.",
       "sources": [
         "crates/pagura-interpret/src/resources/group.rs",
         "crates/pagura-color/src/features.rs",
         "crates/pagura-paint/src/execute/transfer.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-color/src/function.rs",
+        "crates/pagura-color/src/function/calculator.rs",
+        "crates/pagura-color/src/function/calculator/check.rs",
+        "crates/pagura-color/src/function/calculator/check/branches.rs"
       ],
       "tests": [
-        "crates/pagura/tests/api/overprint.rs"
+        "crates/pagura/tests/api/overprint.rs",
+        "crates/pagura-color/tests/calculator.rs",
+        "crates/pagura-paint/src/source/shading/tests/synthetic.rs",
+        "crates/pagura/tests/api/calculator.rs",
+        "crates/pagura/examples/calculator_branch_parity.rs",
+        "tools/calculator_branch_parity.mjs",
+        "benchmarks/probes/calculator-branch-fixtures.json",
+        ".github/workflows/calculator-branch-parity.yml"
       ],
       "requirements": [
         "content-cie",
@@ -767,7 +790,31 @@
       ],
       "fixtures": [
         "content/group-colour-DeviceGray",
-        "content/group-colour-DeviceCMYK"
+        "content/group-colour-DeviceCMYK",
+        "calculator_branches/piecewise-endpoints",
+        "calculator_branches/two-depth-endpoints",
+        "calculator_branches/bounded-ge",
+        "calculator_branches/bounded-le",
+        "calculator_branches/bounded-gt",
+        "calculator_branches/bounded-lt",
+        "calculator_branches/clamped-domain-red",
+        "calculator_branches/existing-same-depth",
+        "calculator_branches/piecewise-axial",
+        "calculator_branches/three-depths",
+        "calculator_branches/branch-type-mismatch",
+        "calculator_branches/arithmetic-facts-unproved",
+        "calculator_branches/output-mismatch",
+        "calculator_branches/negative-domain-empty-path",
+        "calculator_branches/unknown-copy",
+        "calculator_branches/unknown-index",
+        "calculator_branches/numeric-underflow",
+        "calculator_branches/wrong-result-type",
+        "calculator_branches/wrong-condition-type",
+        "calculator_branches/stack-overflow",
+        "calculator_branches/piecewise-square",
+        "calculator_branches/piecewise-square-direct-twin",
+        "calculator_branches/shared-function-pages",
+        "calculator_branches/shared-function-pages-p1"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -2859,11 +2906,23 @@
       ],
       "review": "gap",
       "capability": "colour.transparency",
-      "rationale": "The static calculator checker rejects data-dependent stack effects, unequal branch depths/types and mixed dynamic roll; valid programs outside this bounded subset need probes.",
+      "rationale": "The original static proof is preserved; an additional fixed two-depth proof uses validated clamped Domain/literal comparisons. Unknown stack counts, incompatible kinds, a third concurrent depth and unproved correlations retain explicit Unsupported. This is partial source coverage, not a corpus or competitor-parity result.",
       "evidence": [
         {
           "path": "crates/pagura-color/src/function/calculator/check.rs",
           "needle": "crate::features::CALCULATOR,"
+        },
+        {
+          "path": "crates/pagura-color/src/function/calculator/check/branches.rs",
+          "needle": "slots: [Option<State>; 2]"
+        },
+        {
+          "path": "crates/pagura-color/tests/calculator.rs",
+          "needle": "merged_prefix_work_includes_copy_and_roll"
+        },
+        {
+          "path": "tools/fixturegen/calculator_branches.py",
+          "needle": "AREA = \"calculator_branches\""
         }
       ]
     },
