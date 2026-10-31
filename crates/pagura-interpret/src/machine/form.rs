@@ -96,10 +96,13 @@ pub(crate) fn defined_resource<'a>(
     let Some(category) = resources.get(kind) else {
         return Ok(None);
     };
-    if document.resolve(category)?.is_null() {
-        return Ok(None);
-    }
-    let Some(value) = document.resolve_dictionary(category)?.get(name) else {
+    // A null category is resolved a second time only on the error path.
+    let category = match document.resolve_dictionary(category) {
+        Ok(category) => category,
+        Err(_) if document.resolve(category)?.is_null() => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let Some(value) = category.get(name) else {
         return Ok(None);
     };
     Ok((!document.resolve(value)?.is_null()).then_some(value))
