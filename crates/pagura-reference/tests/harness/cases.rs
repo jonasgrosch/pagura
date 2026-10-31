@@ -20,6 +20,8 @@ pub struct Case {
     pub password: Vec<u8>,
     /// Rendering resolution.
     pub dpi: f64,
+    /// The manifest's zero-based target page; zero only when omitted.
+    pub page_index: Result<usize>,
     /// The binary PPM oracle, if any.
     pub oracle: Option<std::path::PathBuf>,
     /// Allowed difference from the oracle per channel.
@@ -52,21 +54,36 @@ pub fn render_cases() -> Vec<Case> {
             let Some(path) = case.path() else {
                 continue;
             };
-            cases.push(Case {
-                id: case.id().to_owned(),
-                path,
-                password: case
-                    .string("password")
-                    .unwrap_or_default()
-                    .as_bytes()
-                    .to_vec(),
-                dpi: case.get("dpi").and_then(Json::as_f64).unwrap_or(72.0),
-                oracle: case.string("oracle").map(|p| workspace_root().join(p)),
-                tolerance: byte(case.get("tolerance")),
-            });
+            cases.push(fixture_case(case, path));
         }
     }
     cases
+}
+
+fn fixture_case(case: pagura_testkit::Case<'_>, path: std::path::PathBuf) -> Case {
+    Case {
+        id: case.id().to_owned(),
+        path,
+        password: case
+            .string("password")
+            .unwrap_or_default()
+            .as_bytes()
+            .to_vec(),
+        dpi: case.get("dpi").and_then(Json::as_f64).unwrap_or(72.0),
+        page_index: page_index(case.get("page")),
+        oracle: case.string("oracle").map(|p| workspace_root().join(p)),
+        tolerance: byte(case.get("tolerance")),
+    }
+}
+
+fn page_index(value: Option<&Json>) -> Result<usize> {
+    let Some(value) = value else {
+        return Ok(0);
+    };
+    value
+        .as_u64()
+        .and_then(|index| usize::try_from(index).ok())
+        .ok_or_else(|| Error::invalid_argument("fixture page index is not representable"))
 }
 
 /// A tolerance field; 0 when absent.
@@ -77,7 +94,7 @@ fn byte(value: Option<&Json>) -> u8 {
         .unwrap_or(0)
 }
 
-/// A case's first page recorded as a scene, with its device geometry.
+/// A case's declared page recorded as a scene, with its device geometry.
 pub struct Recorded {
     /// The scene.
     pub scene: Scene,
@@ -91,12 +108,13 @@ pub struct Recorded {
 }
 
 impl Case {
-    /// Opens the case and records its first page.
+    /// Opens the case and records its declared target page.
     ///
     /// # Errors
     ///
     /// Returns the document's and the interpreter's errors.
     pub fn record(&self, provider: &dyn pagura_text::Provider) -> Result<Recorded> {
+        let index = self.page_index.clone()?;
         let bytes =
             std::fs::read(&self.path).map_err(|_| Error::invalid_argument("fixture missing"))?;
         let options = OpenOptions {
@@ -104,7 +122,7 @@ impl Case {
             ..OpenOptions::default()
         };
         let document = Document::open(bytes, &options)?;
-        let page = document.page(0)?;
+        let page = document.page(index)?;
         let scene = Interpreter::new(&document)
             .with_provider(Some(provider))
             .scene(page)?;
@@ -127,4 +145,51 @@ pub fn pending(error: &Error) -> bool {
 /// The limits every harness rendering uses.
 pub fn limits() -> Limits {
     Limits::default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_core::ErrorKind;
+
+    #[test]
+    fn only_absent_page_metadata_defaults_to_zero() {
+        assert_eq!(page_index(None).unwrap(), 0);
+        assert_eq!(page_index(Some(&Json::Number(0.0))).unwrap(), 0);
+        assert_eq!(page_index(Some(&Json::Number(1.0))).unwrap(), 1);
+        for text in [
+            "null",
+            "-1",
+            "0.5",
+            "true",
+            "\"1\"",
+            "[]",
+            "{}",
+            "18446744073709551616",
+        ] {
+            assert_eq!(
+                page_index(Some(&Json::parse(text).unwrap()))
+                    .unwrap_err()
+                    .kind,
+                ErrorKind::InvalidArgument,
+                "{text}"
+            );
+        }
+        if usize::BITS == 32 {
+            assert!(page_index(Some(&Json::Number(4_294_967_296.0))).is_err());
+        }
+    }
+
+    #[test]
+    fn loaded_cases_retain_default_and_later_target_pages() {
+        for (area, name, expected) in [
+            ("classic", "rectangle", 0),
+            ("recovery_annotation_references", "later-first-use", 1),
+        ] {
+            let manifest = Manifest::load(area);
+            let entry = manifest.case(name).unwrap();
+            let case = fixture_case(entry, entry.path().unwrap());
+            assert_eq!(case.page_index.unwrap(), expected);
+        }
+    }
 }
