@@ -878,6 +878,25 @@ impl Rows for CodeRows<'_> {
             _ => None,
         }
     }
+
+    fn complemented(&self) -> Option<u8> {
+        // A packed code is 0 or 1, an eight-bit code at most 255: no code
+        // exceeds the largest.
+        self.complement.filter(|&maximum| match self.grid {
+            Grid::Packed(_) => true,
+            Grid::Bytes { .. } => maximum == u8::MAX,
+            Grid::Planar(_) => false,
+        })
+    }
+
+    fn codes<'c>(
+        &'c self,
+        y: usize,
+        columns: (usize, usize),
+        cache: &'c mut RowCache<u8>,
+    ) -> &'c [u8] {
+        self.grid.codes(y, columns, cache)
+    }
 }
 
 /// The decoded samples as rows of codes.
@@ -941,6 +960,36 @@ impl<'a> Grid<'a> {
             Self::Planar(planar) => {
                 cache.get((y, (x0, x1)), 3, |out, _| planar.rgb_range(y, x0, x1, out))
             }
+        }
+    }
+
+    /// The codes alone of samples `x0..x1` of row `y` of a one-component
+    /// image, as [`Self::row`] pairs them with their complements: a sample
+    /// that cannot be read is code 0.
+    fn codes<'s>(
+        &'s self,
+        y: usize,
+        (x0, x1): (usize, usize),
+        cache: &'s mut RowCache<u8>,
+    ) -> &'s [u8] {
+        match self {
+            Self::Bytes { bytes, width } => {
+                let start = y * width + x0;
+                if let Some(row) = bytes.get(start..start + (x1 - x0)) {
+                    return row;
+                }
+                cache.get((y, (x0, x1)), 1, |out, _| {
+                    for (x, out) in (x0..x1).zip(out) {
+                        *out = bytes.get(y * width + x).copied().unwrap_or(0);
+                    }
+                    true
+                })
+            }
+            Self::Packed(packed) => cache.get((y, (x0, x1)), 1, |out, _| {
+                unpack(packed.row(y).unwrap_or(&[]), (x0, x1), out, |code| code);
+                true
+            }),
+            Self::Planar(..) => &[],
         }
     }
 }
@@ -1012,9 +1061,13 @@ mod unpack_tests {
 
 #[cfg(test)]
 mod tests {
-    use super::{Lanes, pair_values};
-    use crate::source::SpanColors;
+    use super::super::geometry::Geometry;
+    use super::super::separable::{RowCache, Rows, Scratch, Separable, Values};
+    use super::{CodeRows, Grid, Lanes, Packed, pair_values};
+    use crate::source::{Pixels, SpanColors};
     use pagura_core::Meter;
+    use pagura_image::Samples;
+    use pagura_raster::Transform;
 
     fn bits(values: &[f64]) -> Vec<u64> {
         values.iter().map(|v| v.to_bits()).collect()
@@ -1079,6 +1132,113 @@ mod tests {
                     assert_eq!(bits(&fast.colors), bits(&general.colors), "{context}");
                     assert_eq!(bits(&fast.alpha), bits(&general.alpha), "{context}");
                     assert_eq!(bits(&fast_shape), bits(&general_shape), "{context}");
+                }
+            }
+        }
+    }
+
+    /// Rows of codes and complements that reduce as their pairs.
+    struct Pairs<'a>(CodeRows<'a>);
+
+    impl Rows for Pairs<'_> {
+        type Value = u8;
+
+        fn width(&self) -> usize {
+            self.0.width()
+        }
+
+        fn row<'c>(
+            &'c self,
+            y: usize,
+            columns: (usize, usize),
+            cache: &'c mut RowCache<u8>,
+        ) -> &'c [u8] {
+            self.0.row(y, columns, cache)
+        }
+    }
+
+    /// Each pixel's averages of device row `pixels` of `rows`, as bits, and
+    /// whether its footprint meets the image.
+    fn averages<R: Rows>(
+        separable: &Separable,
+        rows: &R,
+        pixels: Pixels<'_>,
+        scratch: &mut Scratch,
+    ) -> Vec<u64> {
+        let mut out = Vec::new();
+        let keep = |values: &mut [f64], covered: &[bool]| {
+            out.extend(values.iter().map(|v| v.to_bits()));
+            out.extend(covered.iter().map(|&c| u64::from(c)));
+        };
+        separable.average(rows, pixels, scratch, None, (|v| v, keep));
+        out
+    }
+
+    /// Codes paired with their complements average, from the codes alone
+    /// where footprints span more than two rows, exactly as from the pairs:
+    /// packed and eight-bit codes, with samples past the end, over whole and
+    /// weighted row footprints of one, two and many rows.
+    #[test]
+    fn complemented_codes_average_as_their_pairs_bit_for_bit() {
+        let (width, height) = (37_u32, 29_u32);
+        let count = usize::try_from(width * height).unwrap();
+        let mut state = 0x2545_f491_u32;
+        let mut next = move || {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            u8::try_from(state >> 24).unwrap()
+        };
+        let stride = usize::try_from(width).unwrap().div_ceil(8);
+        let packed = (0..stride * usize::try_from(height).unwrap()).map(|_| next());
+        let packed = Packed::from_rows(37, 29, packed.collect()).unwrap();
+        let bytes: Vec<u8> = (0..count).map(|_| next()).collect();
+        let short = bytes[..count - 50].to_vec();
+        let images = [
+            (1, Samples::Packed(packed)),
+            (8, Samples::Bytes(bytes)),
+            (8, Samples::Bytes(short)),
+        ];
+        let (w, h) = (f64::from(width), f64::from(height));
+        let placements = [
+            (Transform::new(w / 4.0, 0.0, 0.0, h / 4.0, 0.0, 0.0), false),
+            (
+                Transform::new(w / 2.7, 0.0, 0.0, -h / 3.3, 0.25, 0.5 + h / 3.3),
+                false,
+            ),
+            (Transform::new(w / 1.3, 0.0, 0.0, h / 1.7, 0.3, 0.1), false),
+            (Transform::new(w / 9.0, 0.0, 0.0, h / 7.0, 0.6, 0.2), false),
+            (Transform::new(w / 2.0, 0.0, 0.0, h / 2.0, 0.0, 0.0), false),
+            (
+                Transform::new(w / 3.0, 0.0, 0.0, -h / 2.4, 0.5, 0.1 + h / 2.4),
+                false,
+            ),
+            (Transform::new(w * 2.3, 0.0, 0.0, h * 1.9, 0.4, 0.7), true),
+        ];
+        for (bits, samples) in images {
+            let image = super::super::tests::image((width, height), 1, bits, samples);
+            let maximum = if bits == 1 { 1 } else { u8::MAX };
+            let rows = || CodeRows {
+                grid: Grid::new(&image).unwrap(),
+                components: 1,
+                complement: Some(maximum),
+            };
+            let (codes, pairs) = (rows(), Pairs(rows()));
+            assert_eq!(codes.complemented(), Some(maximum));
+            for (unit_to_device, interpolate) in placements {
+                let inverse = unit_to_device.inverse().unwrap();
+                let geometry = Geometry::new((width, height), interpolate, inverse).unwrap();
+                let x1 = 2 + width * 3;
+                let meter = &mut Meter::new(usize::MAX, "test");
+                let separable = Separable::new(&geometry, (0, x1), meter).unwrap().unwrap();
+                let layout = separable.layout(2, Values::Codes);
+                let (mut a, mut b) = (layout.make().unwrap(), layout.make().unwrap());
+                let len = usize::try_from(x1).unwrap();
+                for y in 0..2 + height * 3 {
+                    let pixels = Pixels::new(0, y, len);
+                    assert_eq!(
+                        averages(&separable, &codes, pixels, &mut a),
+                        averages(&separable, &pairs, pixels, &mut b),
+                        "{unit_to_device:?} row {y}"
+                    );
                 }
             }
         }

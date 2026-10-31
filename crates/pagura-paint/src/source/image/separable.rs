@@ -55,6 +55,12 @@ pub(super) trait Value: Copy + Default + std::fmt::Debug {
     fn total(sum: Self::Sum) -> f64;
     /// This value type's storage of the two.
     fn pick<'s>(codes: &'s mut Buffers<u8>, texels: &'s mut Buffers<f64>) -> &'s mut Buffers<Self>;
+    /// This value type's kept rows and sums as those of codes; `None` for
+    /// texels.
+    fn codes<'s>(
+        cache: &'s mut RowCache<Self>,
+        sums: &'s mut [Self::Sum],
+    ) -> Option<(&'s mut RowCache<u8>, &'s mut [u32])>;
 }
 
 impl Value for u8 {
@@ -90,6 +96,13 @@ impl Value for u8 {
     fn pick<'s>(codes: &'s mut Buffers<u8>, _: &'s mut Buffers<f64>) -> &'s mut Buffers<Self> {
         codes
     }
+
+    fn codes<'s>(
+        cache: &'s mut RowCache<u8>,
+        sums: &'s mut [u32],
+    ) -> Option<(&'s mut RowCache<u8>, &'s mut [u32])> {
+        Some((cache, sums))
+    }
 }
 
 impl Value for f64 {
@@ -124,6 +137,13 @@ impl Value for f64 {
     fn pick<'s>(_: &'s mut Buffers<u8>, texels: &'s mut Buffers<f64>) -> &'s mut Buffers<Self> {
         texels
     }
+
+    fn codes<'s>(
+        _: &'s mut RowCache<f64>,
+        _: &'s mut [f64],
+    ) -> Option<(&'s mut RowCache<u8>, &'s mut [u32])> {
+        None
+    }
 }
 
 /// A source of rows of values, [`Rows::width`] per sample.
@@ -155,12 +175,34 @@ pub(super) trait Rows {
         let _ = (rows, columns, runs);
         None
     }
+
+    /// Where every sample is the code of a one-component image, which is
+    /// at most the largest code, followed by its complement to that code,
+    /// and no background stands in for samples: the largest code. The rows
+    /// then reduce from their codes alone ([`Rows::codes`]).
+    fn complemented(&self) -> Option<u8> {
+        None
+    }
+
+    /// The codes alone of samples `first..end` of row `y` of rows that are
+    /// [`Rows::complemented`], through `cache`; a sample that cannot be
+    /// read is code 0, as its pair is code 0 and the largest code.
+    fn codes<'c>(
+        &'c self,
+        y: usize,
+        columns: (usize, usize),
+        cache: &'c mut RowCache<u8>,
+    ) -> &'c [u8] {
+        let _ = (y, columns, cache);
+        &[]
+    }
 }
 
 /// Runs of background (`false`) and other samples of a row.
 pub(super) type Runs = Vec<(usize, usize, bool)>;
 
 /// Source rows kept between spans, by row, over the samples they hold.
+/// Between resets every row is kept with the same values per sample.
 #[derive(Debug)]
 pub(super) struct RowCache<V> {
     entries: Vec<Kept<V>>,
@@ -168,6 +210,10 @@ pub(super) struct RowCache<V> {
     next: usize,
     /// Scratch of the rows being filled.
     runs: Runs,
+    /// The values per sample of the rows read since the last reset, zero
+    /// before the first; checked in debug builds.
+    #[cfg(debug_assertions)]
+    width: usize,
 }
 
 impl<V> Default for RowCache<V> {
@@ -176,6 +222,8 @@ impl<V> Default for RowCache<V> {
             entries: Vec::new(),
             next: 0,
             runs: Vec::new(),
+            #[cfg(debug_assertions)]
+            width: 0,
         }
     }
 }
@@ -189,16 +237,40 @@ struct Kept<V> {
     values: Vec<V>,
 }
 
+impl<V> RowCache<V> {
+    /// Forgets every kept row, so that rows of other values per sample may
+    /// follow.
+    fn reset(&mut self) {
+        for kept in &mut self.entries {
+            kept.row = usize::MAX;
+        }
+        #[cfg(debug_assertions)]
+        {
+            self.width = 0;
+        }
+    }
+}
+
 impl<V: Copy + Default> RowCache<V> {
     /// The `n` values per sample of samples `first..end` of row `y`: from a
     /// kept row that holds them, else filled by `fill` (which returns
-    /// whether it could) into a new or the next replaced entry.
+    /// whether it could) into a new or the next replaced entry. Every row
+    /// read between resets has the same `n`.
     pub(super) fn get(
         &mut self,
         (y, (first, end)): (usize, (usize, usize)),
         n: usize,
         fill: impl FnOnce(&mut [V], &mut Runs) -> bool,
     ) -> &[V] {
+        #[cfg(debug_assertions)]
+        {
+            assert!(
+                self.width == 0 || self.width == n,
+                "rows of {} values per sample read as {n}",
+                self.width
+            );
+            self.width = n;
+        }
         let found = self
             .entries
             .iter()
@@ -342,6 +414,8 @@ impl Layout {
                 entries,
                 next: 0,
                 runs: allocate(self.columns.saturating_add(1))?,
+                #[cfg(debug_assertions)]
+                width: 0,
             },
             sums: allocate(source)?,
             gathered: allocate(output)?,
@@ -374,13 +448,8 @@ impl Scratch {
 
     /// Invalidates source-dependent row values between renders.
     pub(super) fn reset(&mut self) {
-        fn clear<V>(entries: &mut [Kept<V>]) {
-            for kept in entries {
-                kept.row = usize::MAX;
-            }
-        }
-        clear(&mut self.codes.cache.entries);
-        clear(&mut self.texels.cache.entries);
+        self.codes.cache.reset();
+        self.texels.cache.reset();
     }
 }
 
@@ -747,7 +816,28 @@ impl Separable {
         let length = (end - first) * rows.width();
         let Buffers { cache, sums, .. } = buffers;
         let sums = grown(sums, length);
-        if R::Value::EXACT && self.whole && across.whole() {
+        let whole = R::Value::EXACT && self.whole && across.whole();
+        // Where each device row's footprint spans more than two source rows,
+        // it has rows between its first and last that no other device row
+        // reads: reading and summing half the values there pays for deriving
+        // the complements. Over fewer rows the pairs, kept for the device
+        // rows that share them, cost less.
+        if let Some(maximum) = rows.complemented()
+            && self.geometry.inverse().d.abs() > 2.0
+            && let Some(codes) = R::Value::codes(cache, sums)
+        {
+            // Half the values: the codes, their complements derived.
+            let span = (across, (first, end), maximum);
+            return if whole {
+                sum_complemented(rows, span, codes);
+                Reduced::Sums(sums)
+            } else {
+                let lines = grown(lines, length);
+                reduce_complemented(rows, span, codes, &mut *lines);
+                Reduced::Lines(lines)
+            };
+        }
+        if whole {
             // Whole samples sum as integers throughout.
             let work = Work {
                 cache,
@@ -1137,6 +1227,125 @@ fn reduce_rows<R: Rows>(
     }
 }
 
+/// [`sum_rows`] of rows that are [`Rows::complemented`] to the largest code
+/// `maximum`, from their codes alone: each column's codes summed into the
+/// first half of `sums`, then, back to front, each column's pair of the
+/// sum of its codes and of its complements, as many largest codes as rows
+/// less the codes' sum. Out of line, so that the paths of other rows
+/// compile as they did.
+#[inline(never)]
+fn sum_complemented<R: Rows>(
+    rows: &R,
+    (across, (first, end), maximum): (&Footprint, (usize, usize), u8),
+    (cache, sums): (&mut RowCache<u8>, &mut [u32]),
+) {
+    let columns = end - first;
+    let (top, bottom) = (index(across.first), index(across.end) - 1);
+    let summed = sums.len() == 2 * columns
+        && (top..=bottom).all(|y| {
+            let values = rows.codes(y, (first, end), cache);
+            if values.len() != columns {
+                return false;
+            }
+            let codes = sums[..columns].iter_mut().zip(values);
+            if y == top {
+                for (sum, &value) in codes {
+                    *sum = value.alone();
+                }
+            } else {
+                for (sum, &value) in codes {
+                    *sum = value.add(*sum);
+                }
+            }
+            true
+        });
+    if !summed {
+        sums.fill(0);
+        return;
+    }
+    // Wrapping, as the pairs' sums wrap.
+    let largest = (top..bottom).fold(maximum.alone(), |sum, _| maximum.add(sum));
+    let pair = |sum: u32| [sum, largest.wrapping_sub(sum)];
+    // Back to front, each column's pair lies at or after its sum, so no
+    // pair overwrites a sum still to be read; blocks of columns are read
+    // whole before their pairs are written.
+    let blocked = columns - columns % 8;
+    for column in (blocked..columns).rev() {
+        [sums[2 * column], sums[2 * column + 1]] = pair(sums[column]);
+    }
+    for start in (0..blocked).step_by(8).rev() {
+        let block: [u32; 8] = std::array::from_fn(|k| sums[start + k]);
+        let pairs = sums[2 * start..2 * start + 16].as_chunks_mut::<2>().0;
+        for (out, sum) in pairs.iter_mut().zip(block) {
+            *out = pair(sum);
+        }
+    }
+}
+
+/// [`reduce_rows`] of rows that are [`Rows::complemented`] to the largest
+/// code `maximum`, from their codes alone: the rows between summed as codes
+/// into the first half of `between`, and each column's pair of a code and
+/// its complement weighted from the first and last rows as [`step`] weights
+/// them, the complements' sum between being as many largest codes as rows
+/// less the codes' sum. Out of line, so that the paths of other rows compile as they
+/// did.
+#[inline(never)]
+fn reduce_complemented<R: Rows>(
+    rows: &R,
+    (across, (first, end), maximum): (&Footprint, (usize, usize), u8),
+    (cache, between): (&mut RowCache<u8>, &mut [u32]),
+    lines: &mut [f64],
+) {
+    let columns = end - first;
+    let (top, bottom) = (index(across.first), index(across.end) - 1);
+    let (first_weight, last_weight) = (across.first_weight, across.last_weight);
+    let Some(between) = between
+        .get_mut(..columns)
+        .filter(|_| lines.len() == 2 * columns)
+    else {
+        lines.fill(0.0);
+        return;
+    };
+    // Wrapping, as the pairs' sums wrap.
+    let largest = (top + 1..bottom).fold(0, |sum, _| maximum.add(sum));
+    for y in top..=bottom {
+        let values = rows.codes(y, (first, end), cache);
+        if values.len() != columns {
+            lines.fill(0.0);
+            return;
+        }
+        // As `step` takes each row, for each column's code and complement.
+        let pairs = lines.as_chunks_mut::<2>().0.iter_mut().zip(values);
+        let pair = |code: u8| [code, maximum.saturating_sub(code)].map(f64::from);
+        if y == top {
+            for (line, &code) in pairs {
+                *line = pair(code).map(|value| first_weight * value);
+            }
+        } else if y == bottom && bottom - top > 1 {
+            for ((line, &code), &sum) in pairs.zip(between.iter()) {
+                let sums = [sum, largest.wrapping_sub(sum)];
+                for ((line, sum), value) in line.iter_mut().zip(sums).zip(pair(code)) {
+                    *line = (*line + f64::from(sum)) + last_weight * value;
+                }
+            }
+        } else if y == bottom {
+            for (line, &code) in pairs {
+                for (line, value) in line.iter_mut().zip(pair(code)) {
+                    *line += last_weight * value;
+                }
+            }
+        } else if y == top + 1 {
+            for (sum, &value) in between.iter_mut().zip(values) {
+                *sum = value.alone();
+            }
+        } else {
+            for (sum, &value) in between.iter_mut().zip(values) {
+                *sum = value.add(*sum);
+            }
+        }
+    }
+}
+
 /// Row `y`'s step of reducing rows `top..=bottom` into `lines`: the first
 /// row weighted by `first`, the rows between added into `between`, then
 /// those sums and the last row weighted by `last`.
@@ -1296,4 +1505,51 @@ fn extent(feet: &[Footprint]) -> Option<(usize, usize)> {
 /// A sample coordinate as an index.
 pub(super) fn index(value: u32) -> usize {
     usize::try_from(value).unwrap_or(usize::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Kept, RowCache};
+
+    fn cache() -> RowCache<u8> {
+        let kept = |_| Kept {
+            row: usize::MAX,
+            first: 0,
+            end: 0,
+            values: Vec::new(),
+        };
+        RowCache {
+            entries: (0..4).map(kept).collect(),
+            ..RowCache::default()
+        }
+    }
+
+    /// Kept rows serve the samples they hold until a reset, after which
+    /// rows of other values per sample are filled anew.
+    #[test]
+    fn kept_rows_serve_their_samples_until_a_reset() {
+        let mut cache = cache();
+        for n in [2_u8, 1, 3] {
+            let width = usize::from(n);
+            let values = cache.get((5, (2, 9)), width, |out, _| {
+                out.fill(n);
+                true
+            });
+            assert_eq!(values, vec![n; 7 * width]);
+            let values = cache.get((5, (3, 8)), width, |_, _| unreachable!("kept"));
+            assert_eq!(values, vec![n; 5 * width]);
+            cache.reset();
+        }
+    }
+
+    /// Rows of other values per sample between resets are refused in debug
+    /// builds: a kept row would serve them wrongly.
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "rows of 2 values per sample read as 1")]
+    fn rows_of_another_width_need_a_reset() {
+        let mut cache = cache();
+        cache.get((5, (2, 9)), 2, |_, _| true);
+        cache.get((5, (2, 9)), 1, |_, _| true);
+    }
 }
