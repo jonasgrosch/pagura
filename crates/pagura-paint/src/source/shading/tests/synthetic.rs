@@ -972,3 +972,144 @@ fn rows_write_the_levels_of_their_colours() {
         "{written} written, {declined} declined"
     );
 }
+
+/// An axial shading of three stitched random functions of three outputs
+/// whose middle one is `gap` wide, in `space`, rotated and scaled by 8 or
+/// 16, extended at random.
+fn stitched_axial(rng: &mut Rng, gap: f64, space: ColorSpace) -> (Parsed, Transform) {
+    let pieces = (0..3).map(|_| function(rng, 3)).collect::<Vec<_>>();
+    let bound = rng.quarter(0.25, 0.5);
+    let stitched = Function::stitching(StitchingFunction {
+        domain: [0.0, 1.0],
+        range: None,
+        functions: pieces,
+        bounds: vec![bound, bound + gap],
+        encode: vec![[0.0, 1.0]; 3],
+    })
+    .unwrap();
+    let start = Point::new(rng.quarter(0.0, 96.0), rng.quarter(0.0, 96.0));
+    let end = Point::new(
+        start.x + rng.quarter(-96.0, 96.0) + 0.25,
+        start.y + rng.quarter(-96.0, 96.0),
+    );
+    let parsed = Parsed {
+        name: String::from("stitched"),
+        space: Arc::new(space),
+        function: Some(ShadingFunction::Single(Arc::new(stitched))),
+        kind: ShadingKind::Axial {
+            start,
+            end,
+            domain: [0.0, 1.0],
+            extend: [rng.below(2) == 0, rng.below(2) == 0],
+        },
+        bbox: None,
+        antialias: false,
+        background: None,
+        old_mesh: Vec::new(),
+    };
+    let s = [8.0, 16.0][rng.below(2) as usize];
+    (
+        parsed,
+        Transform::new(0.8 * s, 0.6 * s, -0.6 * s, 0.8 * s, 0.0, 0.0),
+    )
+}
+
+/// What [`ShadingSource::each_pixel`] puts for a pixel, as bits.
+type Put = (Option<Vec<u64>>, Option<Vec<u32>>);
+
+fn put(color: Option<&[f64]>, levels: Option<&[f32]>) -> Put {
+    (
+        color.map(|c| c.iter().map(|v| v.to_bits()).collect()),
+        levels.map(|l| l.iter().map(|v| v.to_bits()).collect()),
+    )
+}
+
+/// What pixel `k` of `row` puts by its piece's own certificate alone
+/// ([`certified_levels`]), where that certifies it.
+fn certified_alone(row: &Row<'_>, k: usize) -> Option<Put> {
+    let t = row.parameter(k);
+    let (d0, width) = row.domain;
+    let x = d0 + t * width;
+    let piece = (t > row.error && t < 1.0 - row.error)
+        .then(|| row.ramp.piece(x, row.input_error, &mut 0))
+        .flatten()?;
+    let mut color = [0.0; 3];
+    piece.evaluate(x, &mut color);
+    let levels = certified_levels(&piece, &mut color)?;
+    Some(put(Some(&color), levels.get(..3)))
+}
+
+/// A row's chunks put what its pixels put one by one:
+/// [`ShadingSource::each_pixel`] over a whole row puts the same colours and
+/// levels, bit for bit, as over each pixel alone, exact ones and misses
+/// among them; a pixel it certifies is one its piece's polynomials certify
+/// alone ([`certified_levels`]), with that colour and those levels; most
+/// certified pixels go a chunk at a time and some, at pieces' ends, one by
+/// one.
+#[test]
+fn chunks_put_what_their_pixels_put_alone() {
+    let mut rng = Rng(0x0c4e_d5c4);
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let icc = icc_rgb();
+    let (mut chunked, mut single, mut certified, mut misses) = (0, 0, 0, 0);
+    for case in 0..60 {
+        let gap = [1e-9, 1e-4][rng.below(2) as usize];
+        let space = if rng.below(2) == 0 {
+            icc.clone()
+        } else {
+            ColorSpace::DeviceRgb
+        };
+        let (parsed, transform) = stitched_axial(&mut rng, gap, space);
+        let source = prepared(&parts(&parsed, false), transform, &context, Use::Operator);
+        let Geometry::Axial(axial) = &*source.geometry else {
+            panic!("case {case}: not axial");
+        };
+        for row in 0..4_u32 {
+            let (x0, y) = (u32::try_from(rng.below(512)).unwrap(), row * 160);
+            let len = 1 + rng.below(1200) as usize;
+            let span = Span {
+                x: x0,
+                y,
+                boundary: None,
+                precision: Precision::Level,
+            };
+            let Some(row) = source.row(axial, span, len) else {
+                continue;
+            };
+            let mut whole = vec![None; len];
+            let before = [&CHUNKED, &PIECES].map(|count| count.with(std::cell::Cell::get));
+            source.each_pixel(axial, &row, (x0, y), (0..len, &mut 0), |k, c, l| {
+                assert!(
+                    whole[k].replace(put(c, l)).is_none(),
+                    "case {case}: put twice"
+                );
+            });
+            let [chunks, pieces] =
+                [&CHUNKED, &PIECES].map(|count| count.with(std::cell::Cell::get));
+            chunked += chunks - before[0];
+            single += (pieces - before[1]) - (chunks - before[0]);
+            let mut hint = 0;
+            for (k, whole) in whole.into_iter().enumerate() {
+                let mut alone = None;
+                source.each_pixel(axial, &row, (x0, y), (k..k + 1, &mut hint), |j, c, l| {
+                    assert_eq!(j, k);
+                    alone = Some(put(c, l));
+                });
+                assert_eq!(whole, alone, "case {case} row {y} pixel {k}");
+                let (color, levels) = whole.unwrap();
+                certified += usize::from(levels.is_some());
+                misses += usize::from(color.is_none());
+                match certified_alone(&row, k) {
+                    Some(one) => assert_eq!((color, levels), one, "case {case} row {y} pixel {k}"),
+                    None => assert!(levels.is_none(), "case {case} row {y} pixel {k}"),
+                }
+            }
+        }
+    }
+    assert!(
+        certified > 5000 && chunked * 2 > certified && single > 100 && misses > 1000,
+        "{certified} certified, {chunked} chunked, {single} one by one, {misses} missed"
+    );
+}

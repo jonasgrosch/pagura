@@ -39,6 +39,10 @@ type Input = [f64; MAX_COMPONENTS];
 /// Pixels whose colours [`ShadingSource::fill_batched`] converts together.
 const BATCH: usize = 32;
 
+/// Pixels of a row [`ShadingSource::each_pixel`] evaluates and certifies
+/// at once.
+const CHUNK: usize = 8;
+
 /// Shading geometry: the function input at a point of shading space.
 trait Sampler {
     /// Writes the input at `point` and returns true, or returns false for a
@@ -656,6 +660,12 @@ impl ShadingSource {
     /// the other side of `0` or `1` than the exact one, or whose input error
     /// reaches a piece's end, takes the exact colour, as
     /// [`Self::fill_batched`] converts it, a batch at a time, without levels.
+    ///
+    /// Pixels go [`CHUNK`] at a time: a chunk the first pixel's piece holds
+    /// throughout evaluates and certifies at once, each channel a run
+    /// ([`pagura_color::Piece::evaluate_each`],
+    /// [`crate::kernel::certified_run`]), which gives each pixel what it
+    /// gives alone; any other chunk goes pixel by pixel.
     fn each_pixel(
         &self,
         axial: &Axial,
@@ -671,34 +681,112 @@ impl ShadingSource {
         let mut color = [0.0; pagura_color::MAX_RAMP_CHANNELS];
         let color = color.get_mut(..channels).unwrap_or_default();
         let mut input: Input = [0.0; MAX_COMPONENTS];
-        for k in pixels {
-            let t = row.parameter(k);
+        for start in pixels.clone().step_by(CHUNK) {
+            let end = pixels.end.min(start + CHUNK);
+            // The first pixel's piece, as the loop below finds it.
+            let t = row.parameter(start);
             if t > row.error && t < 1.0 - row.error {
                 let x = d0 + t * width;
                 if !piece.is_some_and(|p| p.holds(x)) {
                     piece = row.ramp.piece(x, row.input_error, hint);
                 }
-                if let Some(piece) = piece {
-                    #[cfg(test)]
-                    PIECES.with(|count| count.set(count.get() + 1));
-                    piece.evaluate(x, color);
-                    if let Some(levels) = certified_levels(&piece, color) {
-                        #[cfg(test)]
-                        APPROXIMATED.with(|count| count.set(count.get() + 1));
-                        put(k, Some(color), levels.get(..channels));
-                        continue;
+            }
+            if let Some(serving) = piece
+                && let Some(inputs) = row.held(start..end, &serving)
+            {
+                let mut values = [[0.0; CHUNK]; pagura_color::MAX_RAMP_CHANNELS];
+                serving.evaluate_each(&inputs, &mut values);
+                let mut levels = [[0.0; CHUNK]; pagura_color::MAX_RAMP_CHANNELS];
+                let mut certain = [true; CHUNK];
+                let runs = values.iter_mut().zip(&mut levels).take(channels);
+                for (channel, (values, levels)) in runs.enumerate() {
+                    // Kept as a store keeps it, as `certified_levels` does.
+                    for value in values.iter_mut() {
+                        *value += 0.0;
+                    }
+                    let radius = serving.radius(channel);
+                    if radius == 0.0 {
+                        for (level, &value) in levels.iter_mut().zip(&*values) {
+                            *level = crate::kernel::level(value);
+                        }
+                    } else {
+                        crate::kernel::certified_run(values, radius, levels, &mut certain);
                     }
                 }
+                #[cfg(test)]
+                for counter in [&PIECES, &CHUNKED] {
+                    counter.with(|count| count.set(count.get() + (end - start)));
+                }
+                for (j, &certain) in certain.iter().enumerate().take(end - start) {
+                    if certain {
+                        #[cfg(test)]
+                        APPROXIMATED.with(|count| count.set(count.get() + 1));
+                        let mut found = [0.0; pagura_color::MAX_RAMP_CHANNELS];
+                        let runs = values.iter().zip(&levels);
+                        for ((out, level), (values, levels)) in
+                            color.iter_mut().zip(&mut found).zip(runs)
+                        {
+                            (*out, *level) = (values[j], levels[j]);
+                        }
+                        put(start + j, Some(color), found.get(..channels));
+                    } else {
+                        self.exact_pixel(
+                            axial,
+                            (x, y),
+                            start + j,
+                            (&mut input, &mut exact),
+                            &mut put,
+                        );
+                    }
+                }
+                continue;
             }
-            let column = x.saturating_add(u32::try_from(k).unwrap_or(u32::MAX));
-            let point = Point::new(f64::from(column) + 0.5, f64::from(y) + 0.5) * self.inverse;
-            if !axial.sample(point, &mut input) {
-                put(k, None, None);
-            } else if exact.push(k, input[0]) {
-                exact.flush(&self.colors, channels, &mut |k, color| put(k, color, None));
+            for k in start..end {
+                let t = row.parameter(k);
+                if t > row.error && t < 1.0 - row.error {
+                    let x = d0 + t * width;
+                    // The first pixel's piece is found above.
+                    if k != start && !piece.is_some_and(|p| p.holds(x)) {
+                        piece = row.ramp.piece(x, row.input_error, hint);
+                    }
+                    if let Some(piece) = piece {
+                        #[cfg(test)]
+                        PIECES.with(|count| count.set(count.get() + 1));
+                        piece.evaluate(x, color);
+                        if let Some(levels) = certified_levels(&piece, color) {
+                            #[cfg(test)]
+                            APPROXIMATED.with(|count| count.set(count.get() + 1));
+                            put(k, Some(color), levels.get(..channels));
+                            continue;
+                        }
+                    }
+                }
+                self.exact_pixel(axial, (x, y), k, (&mut input, &mut exact), &mut put);
             }
         }
         exact.flush(&self.colors, channels, &mut |k, color| put(k, color, None));
+    }
+
+    /// Puts pixel `k` of a row as [`Self::each_pixel`] does where no piece
+    /// serves: as a miss where its sample misses, and otherwise through
+    /// `exact`, whose batch converts it.
+    #[inline]
+    fn exact_pixel(
+        &self,
+        axial: &Axial,
+        (x, y): (u32, u32),
+        k: usize,
+        (input, exact): (&mut Input, &mut Exact),
+        put: &mut impl FnMut(usize, Option<&[f64]>, Option<&[f32]>),
+    ) {
+        let column = x.saturating_add(u32::try_from(k).unwrap_or(u32::MAX));
+        let point = Point::new(f64::from(column) + 0.5, f64::from(y) + 0.5) * self.inverse;
+        if !axial.sample(point, input) {
+            put(k, None, None);
+        } else if exact.push(k, input[0]) {
+            let channels = self.channels.max(1);
+            exact.flush(&self.colors, channels, &mut |k, color| put(k, color, None));
+        }
     }
 
     /// One pixel's colour into `color`, returning its covered fraction.
@@ -963,6 +1051,9 @@ thread_local! {
     static PIECES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     /// Pixels [`ShadingSource::each_pixel`] approximated on this thread.
     static APPROXIMATED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// Pixels [`ShadingSource::each_pixel`] took a chunk at a time on this
+    /// thread.
+    static CHUNKED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// A row of an axial shading stepped along its parameter
@@ -989,6 +1080,33 @@ impl Row<'_> {
     )]
     fn parameter(&self, k: usize) -> f64 {
         self.start + k as f64 * self.step
+    }
+
+    /// The inputs of `pixels`, at most [`CHUNK`] of them, where each one's
+    /// stepped parameter lies inside `error .. 1 − error` and `piece` holds
+    /// its input, as [`ShadingSource::each_pixel`] finds them one by one,
+    /// with the last one's repeated past it; `None` otherwise. The last
+    /// pixel is tried first: where pieces are narrower than a chunk, most
+    /// chunks end past their first pixel's piece.
+    #[inline]
+    fn held(
+        &self,
+        pixels: std::ops::Range<usize>,
+        piece: &pagura_color::Piece<'_>,
+    ) -> Option<[f64; CHUNK]> {
+        let last = pixels.end.checked_sub(1)?;
+        let (d0, width) = self.domain;
+        if !piece.holds(d0 + self.parameter(last) * width) {
+            return None;
+        }
+        let mut inputs = [0.0; CHUNK];
+        let mut held = true;
+        for (j, input) in inputs.iter_mut().enumerate() {
+            let t = self.parameter((pixels.start + j).min(last));
+            *input = d0 + t * width;
+            held &= t > self.error && t < 1.0 - self.error && piece.holds(*input);
+        }
+        held.then_some(inputs)
     }
 
     /// Whether the samples of all `len` pixels hit, with `extend` the

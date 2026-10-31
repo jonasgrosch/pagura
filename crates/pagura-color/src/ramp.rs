@@ -91,6 +91,23 @@ impl Piece<'_> {
         }
     }
 
+    /// [`Self::evaluate`] at each of `inputs`, every one held: channel `c`
+    /// at `inputs[j]` into `output[c][j]`, bit for bit as [`Self::evaluate`]
+    /// writes it. Channel by channel, so that each channel's run
+    /// vectorizes.
+    #[inline]
+    pub fn evaluate_each<const N: usize>(
+        &self,
+        inputs: &[f64; N],
+        output: &mut [[f64; N]; MAX_RAMP_CHANNELS],
+    ) {
+        for (out, term) in output.iter_mut().zip(self.terms) {
+            for (out, &x) in out.iter_mut().zip(inputs) {
+                *out = horner(term.k, x - term.centre);
+            }
+        }
+    }
+
     /// How far channel `channel`'s evaluated value may lie from the exact
     /// one: zero for a constant term, which is exact, and otherwise the
     /// bound `2R + S·error` of [`Ramp::piece`], rounded up, at most
@@ -114,6 +131,9 @@ struct Term {
     radius: f64,
     /// Zero but for a power bounded per sample.
     margin: f64,
+    /// `S`, a bound of the polynomial's slope on its piece
+    /// ([`Self::slope_on`]), found as the piece is added ([`Ramp::push`]).
+    slope: f64,
 }
 
 impl Ramp {
@@ -370,7 +390,7 @@ impl Ramp {
             return None;
         }
         for (radius, term) in piece.radii.iter_mut().zip(terms) {
-            *radius = term.bound([low, high], error);
+            *radius = term.bound(error);
             #[expect(
                 clippy::neg_cmp_op_on_partial_ord,
                 reason = "a `NaN` bound fails as one above `APPROXIMATE` does"
@@ -409,12 +429,16 @@ impl Ramp {
             centre: 0.0,
             radius: 0.0,
             margin: 0.0,
+            slope: 0.0,
         }; MAX_RAMP_CHANNELS];
         for (term, &channel) in terms.iter_mut().zip(out) {
             let Some(t) = Term::new(channel, x, [low, high]) else {
                 return;
             };
-            *term = t;
+            *term = Term {
+                slope: t.slope_on([low, high]),
+                ..t
+            };
         }
         self.pieces.push([low, high]);
         self.terms.extend_from_slice(&terms[..out.len()]);
@@ -425,20 +449,20 @@ impl Term {
     /// `S`, a bound of the polynomial's slope on the piece `low..=high`
     /// (`|k₁| + 2|k₂|h + 3|k₃|h²`, `h` the largest distance from the
     /// centre), rounded up.
-    fn slope(&self, [low, high]: [f64; 2]) -> f64 {
+    fn slope_on(&self, [low, high]: [f64; 2]) -> f64 {
         let h =
             (high - self.centre).abs().max((self.centre - low).abs()) * (1.0 + 4.0 * f64::EPSILON);
         let [_, k1, k2, k3] = self.k.map(f64::abs);
         (k1 + h * (2.0 * k2 + h * 3.0 * k3)) * (1.0 + 8.0 * f64::EPSILON)
     }
 
-    /// `2R + S·error` on the piece `low..=high`, rounded up: how far the
-    /// polynomial evaluated at an input the piece holds lies from the exact
-    /// value at any input within `error` of it ([`Ramp::piece`]); zero for
-    /// an exact value. Infinite for a power bounded per sample, whose line
-    /// is the linear value, not the encoded one; `NaN` for an unbounded
-    /// slope at no error.
-    fn bound(&self, piece: [f64; 2], error: f64) -> f64 {
+    /// `2R + S·error` on its piece, rounded up: how far the polynomial
+    /// evaluated at an input the piece holds lies from the exact value at
+    /// any input within `error` of it ([`Ramp::piece`]); zero for an exact
+    /// value. Infinite for a power bounded per sample, whose line is the
+    /// linear value, not the encoded one; `NaN` for an unbounded slope at no
+    /// error.
+    fn bound(&self, error: f64) -> f64 {
         if self.radius == 0.0 {
             return 0.0;
         }
@@ -446,7 +470,7 @@ impl Term {
             return f64::INFINITY;
         }
         // Doubling is exact; the product and the sum round once each.
-        (2.0 * self.radius + self.slope(piece) * error) * (1.0 + 4.0 * f64::EPSILON)
+        (2.0 * self.radius + self.slope * error) * (1.0 + 4.0 * f64::EPSILON)
     }
 
     /// The term of `channel` enclosed over the input form `x` of the inputs
@@ -474,6 +498,7 @@ impl Term {
                 centre: 0.0,
                 radius: 0.0,
                 margin: 0.0,
+                slope: 0.0,
             });
         }
         let (b, a, offset) = if x.s > 0.0 {
@@ -493,6 +518,7 @@ impl Term {
             centre: 0.0,
             radius,
             margin: 0.0,
+            slope: 0.0,
         };
         if !encoded {
             return Some(line);
@@ -509,6 +535,7 @@ impl Term {
                 centre,
                 radius,
                 margin: 0.0,
+                slope: 0.0,
             });
         }
         let spread = 0.42 * radius / room;
