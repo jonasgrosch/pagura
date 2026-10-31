@@ -138,7 +138,12 @@ impl Program {
 
     /// Parses, validates and compiles `text` for `inputs` inputs and
     /// `outputs` results.
-    pub(super) fn new(text: &[u8], inputs: usize, outputs: usize, limits: &Limits) -> Result<Self> {
+    pub(super) fn new(
+        text: &[u8],
+        domain: &[[f64; 2]],
+        outputs: usize,
+        limits: &Limits,
+    ) -> Result<Self> {
         let mut parser = Parser {
             bytes: text,
             offset: 0,
@@ -153,7 +158,7 @@ impl Program {
             return Err(Error::syntax("trailing calculator program data")
                 .at(Position::Buffer(parser.offset)));
         }
-        let cost = check::check(&program, inputs, outputs).map_err(|e| {
+        let cost = check::with_domain(&program, domain, outputs).map_err(|e| {
             if e.position == Position::Unknown {
                 e.at(Position::Buffer(text.len()))
             } else {
@@ -162,7 +167,7 @@ impl Program {
         })?;
         Ok(Self {
             code: run::compile(&program),
-            compiled: registers::compile(&program, inputs),
+            compiled: registers::compile(&program, domain.len()),
             cost,
         })
     }

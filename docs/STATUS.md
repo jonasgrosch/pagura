@@ -180,3 +180,13 @@ requirement entry and this page together. Record library, renderer, CLI, host
 and viewer availability separately. Replace a historical scoreboard only with
 an actual run that records the new source/binary/corpus identities. Unknown or
 untested competitor cells remain open in the parity plan; they are never a pass.
+
+
+Type 4 calculator source support additionally proves at most two intermediate
+stack depths using validated, evaluator-clamped Domain facts. Independent
+endpoint, full RGB/RGBA, shared-function later-page, work-reservation and
+native/WASI parity controls define this subset. Unknown stack counts,
+incompatible joins, a third depth and unproved correlations remain explicitly
+unsupported; original Syntax/Limit outcomes remain. This source inventory does
+not claim a public-page admission, a performance/memory result or full Type 4
+coverage; exact-head qualification is separate.

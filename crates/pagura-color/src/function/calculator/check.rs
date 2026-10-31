@@ -12,6 +12,8 @@
 use super::{Node, Operator, Value};
 use pagura_core::{Error, Limits, Position, Result};
 
+mod branches;
+
 /// What validation knows about an operand.
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Kind {
@@ -20,6 +22,8 @@ enum Kind {
     /// An integer, with its value when it is the same in every run.
     Integer(Option<i32>),
     Real,
+    /// A real in this closed finite interval, only in the fallback proof.
+    Bounded([f64; 2]),
     /// An integer or a real: integer arithmetic whose result may have
     /// overflowed into a real.
     Number,
@@ -41,7 +45,10 @@ impl Kind {
             (Self::Boolean(a), Self::Boolean(b)) => Self::Boolean(a.filter(|_| a == b)),
             (Self::Boolean(_), _) | (_, Self::Boolean(_)) => return None,
             (Self::Integer(a), Self::Integer(b)) => Self::Integer(a.filter(|_| a == b)),
-            (Self::Real, Self::Real) => Self::Real,
+            (Self::Real, Self::Real)
+            | (Self::Real, Self::Bounded(_))
+            | (Self::Bounded(_), Self::Real) => Self::Real,
+            (Self::Bounded(a), Self::Bounded(b)) => Self::Bounded([a[0].min(b[0]), a[1].max(b[1])]),
             _ => Self::Number,
         })
     }
@@ -59,7 +66,9 @@ impl Kind {
         match self {
             Self::Integer(n) => Ok(n),
             Self::Number => Ok(None),
-            Self::Real | Self::Boolean(_) => Err(Error::syntax("calculator requires integer")),
+            Self::Real | Self::Bounded(_) | Self::Boolean(_) => {
+                Err(Error::syntax("calculator requires integer"))
+            }
         }
     }
 
@@ -69,6 +78,22 @@ impl Kind {
             crate::features::CALCULATOR,
             "calculator stack effect depends on its data",
         ))
+    }
+}
+
+/// Preserves the existing proof, cost and failures. Only an unsupported
+/// calculator may additionally qualify through the bounded Domain proof.
+pub(super) fn with_domain(program: &[Node], domain: &[[f64; 2]], outputs: usize) -> Result<usize> {
+    match check(program, domain.len(), outputs) {
+        Err(error)
+            if error.kind == pagura_core::ErrorKind::Unsupported(crate::features::CALCULATOR)
+                && error.feature() == Some(crate::features::CALCULATOR) =>
+        {
+            // A failed extra proof never replaces the source's original
+            // structured refusal, including its exact position and feature.
+            branches::check(program, domain, outputs).or(Err(error))
+        }
+        result => result,
     }
 }
 
@@ -189,12 +214,16 @@ impl Stack {
                         result.map_or(Kind::Real, |n| Kind::Integer(Some(n)))
                     }
                     Kind::Integer(None) => Kind::Number,
+                    Kind::Bounded(_) => Kind::Real,
                     other => other,
                 })?;
             }
             O::Floor | O::Ceiling | O::Round | O::Truncate => {
                 let kind = self.pop()?.numeric()?;
-                self.push(kind)?;
+                self.push(match kind {
+                    Kind::Bounded(_) => Kind::Real,
+                    other => other,
+                })?;
             }
             O::Cvi => {
                 let kind = self.pop()?.numeric()?;
@@ -224,7 +253,7 @@ impl Stack {
                     Kind::Boolean(b) => Kind::Boolean(b.map(|b| !b)),
                     Kind::Integer(n) => Kind::Integer(n.map(|n| !n)),
                     Kind::Number => Kind::Integer(None),
-                    Kind::Real => {
+                    Kind::Real | Kind::Bounded(_) => {
                         return Err(Error::syntax("invalid calculator logical operand"));
                     }
                 };
@@ -252,7 +281,7 @@ impl Stack {
                         O::Le => a <= b,
                         _ => a < b,
                     }),
-                    _ => None,
+                    _ => comparison(operator, a, b),
                 };
                 self.push(Kind::Boolean(value))?;
             }
@@ -268,7 +297,7 @@ impl Stack {
             (Kind::Integer(Some(a)), Kind::Integer(Some(b))) => {
                 super::run::checked(operator, a, b).map_or(Kind::Real, |n| Kind::Integer(Some(n)))
             }
-            (Kind::Real, _) | (_, Kind::Real) => Kind::Real,
+            (Kind::Real | Kind::Bounded(_), _) | (_, Kind::Real | Kind::Bounded(_)) => Kind::Real,
             _ => Kind::Number,
         })
     }
@@ -373,6 +402,32 @@ impl Stack {
             rolled.fill(joined);
         }
         Ok(count)
+    }
+}
+
+/// Interval separation proves a comparison only for finite real operands
+/// and exactly representable integer constants. No input correlation is
+/// inferred; overlapping intervals leave the condition unknown.
+fn comparison(operator: Operator, a: Kind, b: Kind) -> Option<bool> {
+    let bounds = |kind| match kind {
+        Kind::Bounded(range) => Some(range),
+        Kind::Integer(Some(n)) => Some([f64::from(n); 2]),
+        _ => None,
+    };
+    let ([low_a, high_a], [low_b, high_b]) = (bounds(a)?, bounds(b)?);
+    let (certain, impossible) = match operator {
+        Operator::Ge => (low_a >= high_b, high_a < low_b),
+        Operator::Gt => (low_a > high_b, high_a <= low_b),
+        Operator::Le => (high_a <= low_b, low_a > high_b),
+        Operator::Lt => (high_a < low_b, low_a >= high_b),
+        _ => return None,
+    };
+    if certain {
+        Some(true)
+    } else if impossible {
+        Some(false)
+    } else {
+        None
     }
 }
 
