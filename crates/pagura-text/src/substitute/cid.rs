@@ -1,15 +1,17 @@
 //! Collection-to-Unicode substitution policy (9.7.4.2–9.7.5; ADR 0009).
-use super::{Standard14, standard_name};
+use super::{Standard14, closest, standard_name};
 use crate::objects::optional;
 use crate::{
     CidToUnicode, FontKind, PdfFont, Provider, WritingMode,
     cid::Cid,
+    descriptor::{Descriptor, FontFlags},
     features,
     font::{Mapping, Source, cid_collection},
     metrics::Metrics,
+    repairs,
     report::Report,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, Meter, ObjectId, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, Meter, ObjectId, Recovery, Result, Value};
 use pagura_document::Document;
 use pagura_font::{CmapSubtable, FontProgram, GlyphId};
 use std::sync::Arc;
@@ -49,11 +51,27 @@ pub(crate) fn load(
     }
     // An Identity or unnamed collection shares no glyph identity with any
     // substitute. A known Latin family draws through the font's own ToUnicode
-    // text with the metric-compatible bundled face (ADR 0009).
-    if collection.is_none_or(|(_, ordering)| ordering == b"Identity")
-        && let Some(face) = latin_face(document, descendant)?
-    {
-        return latin(document, font, descendant, id, mapping, face, provider);
+    // text with the metric-compatible bundled face; another name with a
+    // nonsymbolic descriptor and ToUnicode text, with the descriptor's
+    // closest face as a reported repair (ADR 0009).
+    if collection.is_none_or(|(_, ordering)| ordering == b"Identity") {
+        if let Some(face) = latin_face(document, descendant)? {
+            return latin(document, font, descendant, id, mapping, face, provider);
+        }
+        if let Some((descriptor, flags)) = nonsymbolic(document, font, descendant)? {
+            if document.recovery() == Recovery::Strict {
+                return Err(unavailable().with_repair(repairs::CID_DESCRIPTOR_FACE));
+            }
+            let face = closest(document, descriptor, flags)?;
+            Report::new(document).diagnostic(
+                Diagnostic::new(
+                    repairs::CID_DESCRIPTOR_FACE,
+                    "Identity CIDFont of an unknown family drawn with the Latin face closest to its descriptor (9.8.1)",
+                )
+                .in_object_opt(id),
+            )?;
+            return latin(document, font, descendant, id, mapping, face, provider);
+        }
     }
     Err(unavailable())
 }
@@ -157,6 +175,26 @@ fn latin(
         retained: 0,
     }
     .accounted())
+}
+
+/// The CIDFont's descriptor and flags when they allow the closest Latin face
+/// an unknown nonsymbolic simple font gets (9.8.1–9.8.2): `/Flags` set
+/// Nonsymbolic consistently, and the font has a `ToUnicode` map to draw by.
+fn nonsymbolic<'a>(
+    document: &'a Document,
+    font: &Dictionary,
+    descendant: &'a Dictionary,
+) -> Result<Option<(Descriptor<'a>, FontFlags)>> {
+    if optional(document, font, b"ToUnicode")?.is_none() {
+        return Ok(None);
+    }
+    let Some(descriptor) = Descriptor::of(document, descendant)? else {
+        return Ok(None);
+    };
+    Ok(descriptor
+        .flags(document)?
+        .filter(|flags| flags.is_consistent() && !flags.contains(FontFlags::SYMBOLIC))
+        .map(|flags| (descriptor, flags)))
 }
 
 /// The Latin standard face a CIDFont's `/BaseFont` names, if any.

@@ -173,7 +173,29 @@ face (Arimo, Tinos or Cousine) draws the font:
 - The substitution is reported as `font.substituted`, and the incomplete
   coverage as `font.cid-glyph-missing`. Vertical writing stays unsupported.
 
-Other families, including unknown or non-Latin names, keep the refusal.
+Other families keep the refusal, except as the next section allows.
+
+### Identity CID fonts of other families (amended 2026-10-31, owner review)
+
+A CIDFont whose name is no known Latin family draws in the same way with the
+Latin face closest to its descriptor, the face an unknown nonsymbolic simple
+font gets (9.8.1–9.8.2): FixedPitch selects Cousine, Serif selects Tinos,
+otherwise Arimo; ForceBold or a `/FontWeight` of at least 600 selects bold,
+Italic or a nonzero `/ItalicAngle` italic. PDFium, MuPDF, Poppler and pdf.js
+all draw such fonts with a substitute rather than refusing the page.
+
+- It applies only to an `Adobe-Identity` or missing collection in horizontal
+  writing, when the CIDFont's descriptor sets Nonsymbolic consistently and the
+  Type 0 font has a `ToUnicode` map. Symbolic, contradictory or missing flags,
+  no ToUnicode map, other collections and vertical writing keep the refusal.
+- Everything else is as for Latin names above: ToUnicode text selects each
+  glyph, codes without text and ligatures paint nothing
+  (`font.cid-glyph-missing`), and `W` and `DW` keep every advance.
+- The name gives no evidence of the family, so the face is a guess. It is
+  reported as the repair `font.cid-descriptor-face`, and strict mode keeps the
+  refusal (`font.non-embedded`) with that repair attached.
+- An unusable embedded program reaches the same rule through its
+  substitute (`font.embedded-unusable`, next section).
 
 as a diagnostic, never silent, and a document's own embedded program wins
 whenever it is usable.

@@ -945,6 +945,17 @@ def cid_substitute_cases(data, lock):
                  ("text-cid-substitution",),"Without ToUnicode text a Latin-named Identity CIDFont draws nothing, keeps the PDF advances and reports incomplete coverage",{"driver":"bundled-cid-latin"})
     yield Vector("substitute-cid-identity-latin-vertical",{".pdf":cid_substitute_document("Identity",b"/Identity-V",base=b"ArialMT"),".error":b"font.cid-substitute-vertical\n"},
                  ("text-cid-substitution",),"Vertical writing still needs vertical forms",{"driver":"bundled-cid-error"})
+    # Another family name with consistent Nonsymbolic flags and a ToUnicode map
+    # draws the same way with the descriptor's closest face (Serif: Times), as
+    # the reported repair font.cid-descriptor-face; Symbolic flags or no
+    # ToUnicode keep the refusal, and strict mode keeps it too.
+    times = data/lock["standard_14"]["Times-Roman"]["outline"]
+    rows = [(1,1,731,"A",bundled_tt_glyph(times,65)),(2,2,500,None,None),(3,3,500,"fi",None)]
+    yield Vector("substitute-cid-identity-descriptor",{".pdf":cid_substitute_document("Identity",b"/Identity-H",descendant=b"/DW 500 /W [1 [731]]",unicode_map=tounicode,base=b"FedraSerif",flags=34),".input":b"\0\1\0\2\0\3",".out":expected(rows)},
+                 ("text-cid-substitution",),"An Identity CIDFont of an unknown family with Nonsymbolic flags draws through its ToUnicode text with the descriptor's closest face, as a reported repair; PDF W and DW supply advances",{"driver":"bundled-cid-latin"})
+    for name,flags,unicode_map in [("symbolic",4,tounicode),("no-tounicode",34,None)]:
+        yield Vector("substitute-cid-identity-descriptor-"+name,{".pdf":cid_substitute_document("Identity",b"/Identity-H",unicode_map=unicode_map,base=b"FedraSerif",flags=flags),".error":b"font.non-embedded\n"},
+                     ("text-cid-substitution",),"An unknown family without Nonsymbolic flags or ToUnicode text gets no guessed face",{"driver":"bundled-cid-error"})
     cmap=b"/WMode 1 def 1 begincodespacerange <0000> <ffff> endcodespacerange 1 begincidchar <0001> 1 endcidchar"
     yield Vector("substitute-cid-wmode",{".pdf":cid_substitute_document("Japan1",b"7 0 R",extra=cmap),".error":b"font.cid-substitute-vertical\n"},
                  ("text-cid-substitution",),"Embedded CMap WMode 1 also rejects horizontal-only substitution",{"driver":"bundled-cid-error"})

@@ -452,6 +452,82 @@ fn latin_identity_cid_fonts_draw_through_tounicode_with_pdf_widths() -> Result<(
     Ok(())
 }
 
+#[test]
+fn unknown_identity_cid_fonts_draw_with_the_descriptor_face_as_a_repair() -> Result<()> {
+    let provider = Bundled::default();
+    let program = provider
+        .standard_font(b"Times-Roman")?
+        .and_then(|font| font.program.clone())
+        .ok_or_else(|| Error::syntax("missing Times substitute"))?;
+    let name = "substitute-cid-identity-descriptor";
+    let document = open(name)?;
+    let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
+    let input = fixture("text", &format!("{name}.input"));
+    let glyphs = loaded.decode(&input, None)?;
+    let rows = rows(name, "out")?;
+    assert_eq!(glyphs.len(), rows.len());
+    for (glyph, value) in glyphs.iter().zip(rows) {
+        let values = row(&value)?;
+        assert_eq!(glyph.code, integer(&values[0])?);
+        near(glyph.advance, number(&values[2])? / 1000.0);
+        if values[4].is_null() {
+            assert!(matches!(glyph.shape, GlyphShape::Blank));
+        } else {
+            let GlyphShape::Outline {
+                program: selected,
+                glyph,
+                ..
+            } = &glyph.shape
+            else {
+                return Err(Error::syntax("missing Latin outline"));
+            };
+            assert!(Arc::ptr_eq(selected, &program));
+            assert_eq!(glyph.0, integer(&values[4])?);
+        }
+    }
+    let repairs: Vec<_> = document
+        .diagnostics()
+        .iter()
+        .filter_map(Diagnostic::repair)
+        .collect();
+    assert_eq!(repairs, [pagura_text::repairs::CID_DESCRIPTOR_FACE]);
+    assert!(information(
+        &document,
+        pagura_text::information::SUBSTITUTED
+    ));
+    // Strict mode keeps the refusal, with the repair that would lift it.
+    let strict = open_with(
+        name,
+        &OpenOptions {
+            recovery: pagura::Recovery::Strict,
+            ..OpenOptions::default()
+        },
+    )?;
+    let error = PdfFont::load_with_provider(&strict, font(&strict)?, Some(&provider)).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Unsupported(features::NON_EMBEDDED));
+    assert_eq!(
+        error.repair,
+        Some(pagura_text::repairs::CID_DESCRIPTOR_FACE)
+    );
+    // Symbolic flags, or no ToUnicode text to draw by, get no guessed face.
+    for name in [
+        "substitute-cid-identity-descriptor-symbolic",
+        "substitute-cid-identity-descriptor-no-tounicode",
+        "substitute-cid-identity-unknown",
+    ] {
+        let document = open(name)?;
+        let error =
+            PdfFont::load_with_provider(&document, font(&document)?, Some(&provider)).unwrap_err();
+        assert_eq!(
+            error.kind,
+            ErrorKind::Unsupported(features::NON_EMBEDDED),
+            "{name}"
+        );
+        assert_eq!(error.repair, None, "{name}");
+    }
+    Ok(())
+}
+
 #[cfg(not(feature = "cjk-fonts"))]
 #[test]
 fn cjk_programs_are_opt_in_and_missing_programs_fail_explicitly() -> Result<()> {

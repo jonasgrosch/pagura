@@ -8793,6 +8793,67 @@
       "driver": "bundled-cid-error"
     },
     {
+      "id": "text/substitute-cid-identity-descriptor",
+      "kind": "vector",
+      "description": "An Identity CIDFont of an unknown family with Nonsymbolic flags draws through its ToUnicode text with the descriptor's closest face, as a reported repair; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-identity-descriptor.input",
+          "sha256": "958f471f5477894347dcbff396bd76f96a462df65c79f3b9cac58e340cd8a61e"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-identity-descriptor.out",
+          "sha256": "0ed329497cdab3f4a1030685529bc1fecaa0ec5d3cf7091aabbf53ca41459242"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-descriptor.pdf",
+          "sha256": "df0bae81a34ef0624ced4e0eebaba4e3e2ac6312c24f4d64b793c7063dff4d0e"
+        }
+      },
+      "driver": "bundled-cid-latin"
+    },
+    {
+      "id": "text/substitute-cid-identity-descriptor-symbolic",
+      "kind": "vector",
+      "description": "An unknown family without Nonsymbolic flags or ToUnicode text gets no guessed face",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-identity-descriptor-symbolic.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-descriptor-symbolic.pdf",
+          "sha256": "ce189bb50a49dd1b0d0179aedf132c91d64c8e9bc58563c5341abcc930399824"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
+      "id": "text/substitute-cid-identity-descriptor-no-tounicode",
+      "kind": "vector",
+      "description": "An unknown family without Nonsymbolic flags or ToUnicode text gets no guessed face",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-identity-descriptor-no-tounicode.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-descriptor-no-tounicode.pdf",
+          "sha256": "dc118768754d1a4028262f351894e179bfc0ab443b7c49a62cb7c68c7adda067"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
       "id": "text/substitute-cid-wmode",
       "kind": "vector",
       "description": "Embedded CMap WMode 1 also rejects horizontal-only substitution",
