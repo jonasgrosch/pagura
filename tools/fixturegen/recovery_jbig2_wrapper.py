@@ -83,6 +83,14 @@ def cases():
         yield from records(coding+'-embedded-control',data)
         for eof in [0,1]:
             yield from records(coding+'-file-eof'+str(eof),wrapped(data,eof),repairs=(WRAPPER,)+(EOF_PAGE,) * eof)
+    # T.88 7.4.9 requires a final end-of-stripe before EOP for unknown height;
+    # an unused intermediate region after it is forbidden even without painting.
+    striped = jbig2.segment(10,48,1,jbig2.page_info(11,0xffffffff,flags=98,stripe=0x8007))
+    striped += jbig2.segment(11,38,1,jbig2.region(ROWS,jbig2.arithmetic(ROWS,2)))
+    striped += jbig2.segment(12,50,1,struct.pack('>I',6))
+    yield from records('striped-file-complete',wrapped(striped),repairs=(WRAPPER,))
+    after_stripe = jbig2.segment(13,36,1,jbig2.region(ROWS,jbig2.arithmetic(ROWS,2)))
+    yield from records('hostile-intermediate-after-final-stripe',wrapped(striped+after_stripe),error='syntax',before_error=True)
     data = embedded()
     yield from records('long-page-associations',wrapped(embedded(long_page=True),1,long_page=True),repairs=(WRAPPER,EOF_PAGE))
     glyph_body,symbols = jbig2.dictionary([ROWS],2)

@@ -337,6 +337,7 @@ impl State<'_> {
                 position: segment_position,
                 last: reader.offset == reader.data.len(),
             },
+            self.page.as_ref(),
             self.diagnostics,
         )?;
         let segment = if let Some(stream) = scope {

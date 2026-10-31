@@ -2793,6 +2793,12 @@
           "rule": "Arithmetic termination and all required decoding decisions retain the original source-bit rules.",
           "verdict": "unchanged",
           "evidence": "No arithmetic source changes or synthetic EOF bytes. Missing/truncated markers stay explicit refusals."
+        },
+        {
+          "locator": "T.88 7.4.9",
+          "rule": "For unknown page height, a final end-of-stripe is required and no region may intervene before EOP.",
+          "verdict": "agree; validate structural sequence even for unpainted intermediate regions",
+          "evidence": "Independent complete-striped positive and intermediate-after-final-stripe refusal were frozen before the follow-up; the original unpainted-region admission was reproduced with the prior frozen probe."
         }
       ],
       "external_primary_text_review": [],
@@ -2889,7 +2895,12 @@
         "recovery_jbig2_wrapper/native-hostile-missing-arithmetic-marker",
         "recovery_jbig2_wrapper/hostile-missing-arithmetic-marker",
         "recovery_jbig2_wrapper/native-hostile-pdf-dimension-mismatch",
-        "recovery_jbig2_wrapper/hostile-pdf-dimension-mismatch"
+        "recovery_jbig2_wrapper/hostile-pdf-dimension-mismatch",
+        "recovery_jbig2_wrapper/native-striped-file-complete",
+        "recovery_jbig2_wrapper/striped-file-complete",
+        "recovery_jbig2_wrapper/rgba-striped-file-complete",
+        "recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe",
+        "recovery_jbig2_wrapper/hostile-intermediate-after-final-stripe"
       ]
     }
   ],

@@ -51,7 +51,8 @@ The source check detects stale evidence and missing ownership, not runtime parit
 
 JBIG2 recovery accepts complete sequential file packaging only when its header
 declares one page. All coded data, page dimensions, referrals, EOP and terminal
-EOF remain validated, with original source positions. Internal page-0 resources
+EOF remain validated, with original source positions. Unknown-height pages require
+a final stripe with no following region before EOP (T.88 7.4.9). Internal page-0 resources
 must precede page information; late global segments remain refused. A terminal empty EOF1
 after the sole EOP1 has a separate reported association repair. Strict mode
 refuses these PDF-prohibited wrappers. Unknown page counts, random-access and

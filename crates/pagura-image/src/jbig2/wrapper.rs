@@ -3,7 +3,7 @@
 //! PDF 7.4.7 forbids this packaging. T.88 D.1/D.4 and 7.3.2/7.4.9/7.4.11
 //! identify its boundaries without changing any coded region or source offset.
 
-use super::repairs;
+use super::{Page, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::{Diagnostic, Diagnostics, Error, Position, Result};
 
@@ -12,6 +12,8 @@ const SEQUENTIAL_KNOWN_PAGES: u8 = 1;
 const PAGE_INFORMATION: u8 = 48;
 const END_PAGE: u8 = 49;
 const END_FILE: u8 = 51;
+const END_STRIPE: u8 = 50;
+const REGION_KINDS: [u8; 12] = [4, 6, 7, 20, 22, 23, 36, 38, 39, 40, 42, 43];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Stream {
@@ -52,6 +54,7 @@ pub(super) struct Framing {
     stream: Stream,
     offset: usize,
     file: Option<Phase>,
+    region_since_stripe: Option<Position>,
 }
 
 impl Framing {
@@ -60,6 +63,7 @@ impl Framing {
             stream,
             offset: 0,
             file: None,
+            region_since_stripe: None,
         };
         if !data.starts_with(&MAGIC) {
             return Ok(framing);
@@ -100,14 +104,20 @@ impl Framing {
     pub(super) fn scope(
         &mut self,
         header: &Boundary,
+        page: Option<&Page>,
         diagnostics: &mut Diagnostics,
     ) -> Result<Option<Stream>> {
         let Some(phase) = self.file else {
             return Ok(Some(self.stream));
         };
         if matches!(header.kind, END_PAGE | END_FILE) {
-            self.end(header, phase, diagnostics)?;
+            self.end(header, phase, page, diagnostics)?;
             return Ok(None);
+        }
+        if header.kind == END_STRIPE {
+            self.region_since_stripe = None;
+        } else if REGION_KINDS.contains(&header.kind) {
+            self.region_since_stripe = Some(header.position);
         }
         match (phase, header.kind, header.page) {
             (Phase::BeforePage, PAGE_INFORMATION, 1) if header.referrals == 0 => {
@@ -124,6 +134,7 @@ impl Framing {
         &mut self,
         header: &Boundary,
         phase: Phase,
+        page: Option<&Page>,
         diagnostics: &mut Diagnostics,
     ) -> Result<()> {
         if header.referrals != 0 {
@@ -137,6 +148,14 @@ impl Framing {
                 return Err(
                     Error::syntax("invalid JBIG2 end-of-page boundary").at(header.association)
                 );
+            }
+            if page.is_some_and(|page| page.unknown_height)
+                && let Some(position) = self.region_since_stripe
+            {
+                return Err(Error::syntax(
+                    "JBIG2 region between final stripe and end of page (T.88 7.4.9)",
+                )
+                .at(position));
             }
             self.file = Some(Phase::EndPage);
             return Ok(());

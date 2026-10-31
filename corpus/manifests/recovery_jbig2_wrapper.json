@@ -605,6 +605,116 @@
       }
     },
     {
+      "id": "recovery_jbig2_wrapper/native-striped-file-complete",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-striped-file-complete.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-striped-file-complete.jb2",
+          "sha256": "bf1d839666da27b8d750c246aad0279e5908456e9ba5867e456589c14aa6cb80"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-striped-file-complete.out",
+          "sha256": "a8dfb56c05eb49f416a7c186b0aad1cc24eaa7fc765af3ff4111516a5c800a5e"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-striped-file-complete.params",
+          "sha256": "e35bc496b3036e9f7fa8667656d2afdf34ccd3c315a62ef6f2369c2c68987144"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/striped-file-complete",
+      "kind": "pdf",
+      "description": "Exact independent bitmap; packaging repairs are separately reported",
+      "expected": "render",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/striped-file-complete.pdf",
+      "sha256": "19bb4d0b824f036f9d2d7ad33ba0296d60b41269d3cdfe0e5d5ac34b08d6d1e6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.file-wrapper"
+      ],
+      "oracle": "corpus/generated/recovery_jbig2_wrapper/striped-file-complete.ppm",
+      "oracle_sha256": "4f96c33d8ddfaf4ad7d89d766df0d0fa4ce8f8029348960bed8ae133623c6dd6",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "native_case": "native-striped-file-complete"
+    },
+    {
+      "id": "recovery_jbig2_wrapper/rgba-striped-file-complete",
+      "kind": "vector",
+      "description": "Independent premultiplied opaque-white and transparent-background RGBA",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".clear": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-striped-file-complete.clear",
+          "sha256": "68e79e00f9b4dd92e360281cc75e1664e03e177a81ac75ed7a124a9d29581c6b"
+        },
+        ".white": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/rgba-striped-file-complete.white",
+          "sha256": "00efd6eccd8fcf967e013a6c45b71ba05748d15a4806df0b05f7c543c1a831ae"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe",
+      "kind": "vector",
+      "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe.jb2",
+          "sha256": "90442ab49fba3a9b9107cabdebb5842c9b80bfba15510d5569e8e2d2fa7468d8"
+        },
+        ".out": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/recovery_jbig2_wrapper/native-hostile-intermediate-after-final-stripe.params",
+          "sha256": "eb162d1551ffb44d6b1a1c575baa622de65afafa1330a2b9c556280d0d445d39"
+        }
+      }
+    },
+    {
+      "id": "recovery_jbig2_wrapper/hostile-intermediate-after-final-stripe",
+      "kind": "pdf",
+      "description": "Malformed metadata/coding stays an explicit render refusal",
+      "expected": "open",
+      "requirements": [
+        "jbig2-single-page-wrapper-recovery"
+      ],
+      "path": "corpus/generated/recovery_jbig2_wrapper/hostile-intermediate-after-final-stripe.pdf",
+      "sha256": "378563908a1546baded9578a03ac85cc0e5868b04604046d6d4cc806be55ff5a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "tolerance": 0,
+      "native_case": "native-hostile-intermediate-after-final-stripe",
+      "render_error": "syntax"
+    },
+    {
       "id": "recovery_jbig2_wrapper/native-long-page-associations",
       "kind": "vector",
       "description": "Independent matrix and complete T.88 bytes; original strict refusal retained",

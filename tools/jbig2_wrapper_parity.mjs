@@ -22,7 +22,7 @@ if(process.argv[2]==='--wasi') {
   const manifest=JSON.parse(readFileSync(source));
   const cases=manifest.cases.filter(c=>c.kind==='pdf');
   const vectors=new Map(manifest.cases.filter(c=>c.kind==='vector').map(c=>[c.id.split('/').at(-1),c]));
-  assert.equal(cases.length,34);assert.equal(cases.filter(c=>c.expected==='render').length,12);
+  assert.equal(cases.length,36);assert.equal(cases.filter(c=>c.expected==='render').length,13);
   const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
   function checked(path,digest){const bytes=readFileSync(path);assert.equal(hash(bytes),digest,path);return bytes;}
   const suffix=process.platform==='win32'?'.exe':'';
@@ -83,9 +83,9 @@ if(process.argv[2]==='--wasi') {
       }
     }
   } finally {rmSync(scratch,{recursive:true,force:true});}
-  assert.equal(rows.length,68*selected.length);assert.equal(rows.filter(row=>row.exit===0).length,15*selected.length);
+  assert.equal(rows.length,72*selected.length);assert.equal(rows.filter(row=>row.exit===0).length,16*selected.length);
   const revision=spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'});assert.equal(revision.status,0);
   writeFileSync(nativeOnly?'jbig2-wrapper-parity-native-results.json':'jbig2-wrapper-parity-results.json',JSON.stringify({complete:true,variants:selected.map(([name])=>name),modules,source_revision:revision.stdout.trim(),
     manifest_sha256:hash(readFileSync(source)),rows,scope:'Independent full RGB/whiteRGBA/transparentRGBA; original source positions; native/SIMD/scalar strict/repair; explicit refusals and no partial output. No public-file admission or benchmark claim.'},null,2)+'\n');
-  console.log(`JBIG2 wrapper parity PASS: 34 inputs, ${rows.length} rows, ${15*selected.length} renders, ${45*selected.length} independent output comparisons`);
+  console.log(`JBIG2 wrapper parity PASS: 36 inputs, ${rows.length} rows, ${16*selected.length} renders, ${48*selected.length} independent output comparisons`);
 }

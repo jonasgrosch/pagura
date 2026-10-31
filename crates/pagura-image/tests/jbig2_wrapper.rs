@@ -80,7 +80,7 @@ fn complete_independent_bitmaps_and_metadata_refusals() {
             );
         }
     }
-    assert_eq!(count, 34);
+    assert_eq!(count, 36);
 }
 
 #[test]
