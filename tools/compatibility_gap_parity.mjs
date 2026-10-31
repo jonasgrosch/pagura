@@ -1,5 +1,6 @@
 // Independent fixture oracles on native, SIMD WASI and scalar WASI.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
@@ -8,9 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { WASI } from 'node:wasi';
 
 if (process.argv[2] === '--wasi') {
-  const [, , , module, input, output, mode, dpi] = process.argv;
+  const [, , , module, input, output, mode, dpi, cap] = process.argv;
   const wasi = new WASI({version:'preview1', returnOnExit:true,
-    args:['compatibility-gap', input, output, mode, dpi],
+    args:['compatibility-gap', input, output, mode, dpi, ...(cap===undefined?[]:[cap])],
     preopens:{'/source':resolve('.'), '/scratch':process.env.COMPATIBILITY_GAP_SCRATCH}});
   const instance = await WebAssembly.instantiate(await WebAssembly.compile(readFileSync(module)),
     {wasi_snapshot_preview1:wasi.wasiImport});
@@ -49,29 +50,34 @@ if (process.argv[2] === '--wasi') {
     for (const id of selection.cases) {
       const c = catalog.get(id);
       assert(c?.kind === 'pdf',`${id}: missing PDF fixture`);
+      const hash=path=>createHash('sha256').update(readFileSync(path)).digest('hex');
+      assert.equal(hash(c.path),c.sha256,`${id}: PDF input hash`);
+      if(c.expected==='render') assert.equal(hash(c.oracle),c.oracle_sha256,`${id}: independent oracle hash`);
       for (const [name,command] of binaries) {
         for (const mode of ['strict','repair']) {
           const stem = `${id.replaceAll('/','-')}-${name}-${mode}.ppm`;
           const localOutput=join(scratch,stem);
           const input=name==='native'?resolve(c.path):`/source/${c.path}`;
           const output=name==='native'?localOutput:`/scratch/${stem}`;
-          const r=spawnSync(command[0],[...command.slice(1),input,output,mode,String(c.dpi??72)],
+          const r=spawnSync(command[0],[...command.slice(1),input,output,mode,String(c.dpi??72), ...(c.runtime_limits?.stream_bytes===undefined?[]:[String(c.runtime_limits.stream_bytes)])],
             {cwd:root,encoding:'utf8',timeout:60000,env:{...process.env,COMPATIBILITY_GAP_SCRATCH:scratch}});
           assert(!r.error,`${stem}: ${r.error}`);
           const rejectedRepair=mode==='strict' && !c.strict_valid && c.repairs.length>0;
-          if(c.expected==='render' && !rejectedRepair) {
+          if(c.expected==='render' && !c.runtime_expected_error_kind && !rejectedRepair) {
             assert.equal(r.status,0,`${stem}: ${r.stderr}`);
             for(const tag of c.repairs) assert(r.stdout.split('\n').includes(tag),`${stem}: missing ${tag}`);
+            for(const tag of c.information??[]) assert(r.stdout.split('\n').includes(tag),`${stem}: missing information ${tag}`);
             compare(localOutput,c.oracle,c.tolerance??0);
           } else {
             assert.equal(r.status,1,`${stem}: expected refusal: ${r.stderr}`);
             assert(!existsSync(localOutput),`${stem}: partial output after refusal`);
+            if(mode==='strict' && c.strict_error_tag) assert(r.stderr.includes(c.strict_error_tag),`${stem}: strict source tag`);
             if(rejectedRepair) assert(c.repairs.some(tag=>r.stderr.includes(tag)),`${stem}: strict repair tag`);
             else if(c.expected==='unsupported') assert(r.stderr.includes(c.feature),`${stem}: feature tag`);
             else {
-              const kind = {syntax:'Syntax', limit:'Limit', cycle:'Cycle', 'invalid-argument':'InvalidArgument'}[c.render_error?.toLowerCase()];
+              const kind = {syntax:'Syntax', limit:'Limit', cycle:'Cycle', 'invalid-argument':'InvalidArgument'}[(c.runtime_expected_error_kind??c.render_error)?.toLowerCase()];
               assert(kind,`${stem}: explicit render refusal kind required`);
-              assert(r.stderr.includes(kind),`${stem}: error kind`);
+              assert(r.stderr.includes(kind),`${stem}: error kind; actual stderr: ${r.stderr}`);
             }
           }
         }

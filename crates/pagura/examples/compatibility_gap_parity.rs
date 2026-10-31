@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 //! Hosted native/WASI independent oracle controls for compatibility gaps.
-use pagura::{Document, OpenOptions, Recovery, RenderOptions, Rgba8};
+use pagura::{Document, Limits, OpenOptions, Recovery, RenderOptions, Rgba8};
 use std::{error::Error, fs, sync::Arc};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -13,13 +13,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         _ => return Err("expected strict or repair".into()),
     };
     let dpi: f64 = args.next().ok_or("dpi required")?.parse()?;
+    let stream_bytes: usize = args
+        .next()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or_else(|| Limits::default().stream_bytes);
     if args.next().is_some() {
         return Err("unexpected argument".into());
     }
+    let original = fs::read(input)?;
     let document = Arc::new(Document::open(
-        fs::read(input)?,
+        original.clone(),
         &OpenOptions {
             recovery,
+            limits: Limits {
+                stream_bytes,
+                ..Limits::default()
+            },
             ..OpenOptions::default()
         },
     )?);
@@ -29,6 +39,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         ..RenderOptions::from_dpi(dpi)
     };
     let pixels = context.render_page(document.page(0)?, &options)?;
+    if document.original_bytes() != original {
+        return Err("source bytes changed".into());
+    }
     let mut bytes = format!("P6\n{} {}\n255\n", pixels.width(), pixels.height()).into_bytes();
     bytes.extend(pixels.to_rgb_over(Rgba8::WHITE));
     // These are fresh hosted scratch paths, never document-selected paths.

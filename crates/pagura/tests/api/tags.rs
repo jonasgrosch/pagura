@@ -31,4 +31,8 @@ fn rendering_tags_are_unique_and_well_formed() {
             .any(|tag| tag.as_str() == "function.calculator")
     );
     assert_eq!(tags::image::JPEG_PROCESS.as_str(), "jpeg.process");
+    assert_eq!(
+        pagura::OBJECT_INTEGER_SEPARATOR.as_str(),
+        "object.integer-separator"
+    );
 }
