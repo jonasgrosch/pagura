@@ -149,8 +149,13 @@ def cases():
         errors = strict_size(xref)
         boundary_refusal = kind == "override"
         if boundary_refusal:
+            error_position = data.index(b"stream\n") + len(b"stream\n") + 99
+            # Keyword probing consumes PDF whitespace before reporting the
+            # first incompatible token; retain that precise original offset.
+            while data[error_position] in b"\x00\t\n\f\r ":
+                error_position += 1
             errors["repair"] = {"kind": "Syntax", "message": "stream Length crosses an object boundary",
-                                "file_position": data.index(b"stream\n") + len(b"stream\n") + 99,
+                                "file_position": error_position,
                                 "object": [4, 0], "repair": None}
         extra = {"mode_errors": errors, "document_queries": queries}
         if boundary_refusal:

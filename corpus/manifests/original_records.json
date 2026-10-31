@@ -1162,7 +1162,7 @@
         "repair": {
           "kind": "Syntax",
           "message": "stream Length crosses an object boundary",
-          "file_position": 351,
+          "file_position": 352,
           "object": [
             4,
             0

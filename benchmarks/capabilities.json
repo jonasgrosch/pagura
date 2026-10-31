@@ -200,14 +200,14 @@
     "tools/fixturegen/integer_separator.py": "227c6aaa540eb7130a6a6e74ae5c8b9b72681732b2596fd37725872218558868",
     "benchmarks/probes/compatibility-gap-fixtures.json": "b703a842e84f21b10ccf1f6c72b63c1af34ccaf545a97d6501eb96248b214d6f",
     ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e",
-    "corpus/manifests/original_records.json": "73e48647eb275174ca53f167572b61cee6722508542c2167d219ac4482e2a12b",
+    "corpus/manifests/original_records.json": "119604a0f10acab4ccd83a8950a628c6dd1c2777458ff23a4f02eb85edf3737e",
     "crates/pagura-document/src/builder.rs": "2ce8239b02493d0d6b77ebd66054ac44328aa2f0d6a74dfbe1f30ee39751c9a0",
     "crates/pagura-document/src/xref.rs": "bafe20643d0cd9ae003c21d1f1e99860b807b40598c541a07260c6201ffff7ac",
     "crates/pagura-document/src/xref/original.rs": "34cc937041a26ea7348195af15cb34c99f2c64cb7ec0cbc6c3d8a8d30debb04b",
     "crates/pagura-document/src/xref/rebuild.rs": "cb541aa3fdf937c8914e0d0c98a0baa30e613c542178cd76980eef4d23e100aa",
     "crates/pagura-document/tests/original_records.rs": "d82756b4a35471f6c15e7d01f7dc4bdaa0e1ab1392aa16817ef1b3902fddbaf9",
     "crates/pagura/tests/api/original_records.rs": "78f2ffec2e3338ac0e4b56c1c6a1f56b3cd59e3dd7db57dd6c1d0bc0d90665ea",
-    "tools/fixturegen/original_records.py": "0512a558f1c9573766d9c4bf493a64bcef7dc05fd5e05d45eb01f5d98262b6ee"
+    "tools/fixturegen/original_records.py": "174831e7e2cccd4d8c7d835c22c0a06e30e76a4d529e9b4295e84a95728b5145"
   },
   "capabilities": [
     {
