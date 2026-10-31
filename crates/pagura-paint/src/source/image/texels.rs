@@ -199,6 +199,10 @@ pub(super) enum TexelMode {
     /// To values whose N16 words ([`crate::kernel::opaque_word`]) are those
     /// of the exact ones, for texels each pixel copies as its word.
     Words,
+    /// To bounds of the exact values, every channel's lower bound and then
+    /// every upper one ([`CurvedRgb::encoded_bounds`]), for sums whose
+    /// rounding the sums of the bounds decide.
+    Bounds,
 }
 
 impl TexelMode {
@@ -208,6 +212,7 @@ impl TexelMode {
             Self::Exact => 0,
             Self::Rounded => 1,
             Self::Words => 2,
+            Self::Bounds => 3,
         }
     }
 
@@ -407,7 +412,7 @@ impl Colors {
         };
         let curved = [0, 1, 2].map(|i| self.curved_value(curved, i, u16::from(codes[i])));
         let color = match mode {
-            TexelMode::Exact => return false,
+            TexelMode::Exact | TexelMode::Bounds => return false,
             TexelMode::Rounded => rgb.convert_rounded(curved, level_bits),
             TexelMode::Words => rgb.convert_rounded(curved, word_bits),
         };
@@ -415,6 +420,30 @@ impl Colors {
         // a converted texel has, so that none keeps an earlier texel's.
         debug_assert_eq!(out.len(), color.len() + 2);
         for (out, value) in out.iter_mut().zip(color.into_iter().chain([1.0; 2])) {
+            *out = value;
+        }
+        true
+    }
+
+    /// The [`TexelMode::Bounds`] texel of three eight-bit `codes` alone,
+    /// through [`Curved::rgb`]: each channel's lower bound, then each
+    /// upper one, then opacity and shape 1. False, with nothing written,
+    /// where these colours have no RGB step.
+    #[inline]
+    fn bounds_texel(&self, codes: [u8; 3], out: &mut [f64]) -> bool {
+        let Some((curved, rgb)) = self
+            .curved
+            .as_ref()
+            .and_then(|curved| Some((curved, curved.rgb.as_deref()?)))
+        else {
+            return false;
+        };
+        let curved = [0, 1, 2].map(|i| self.curved_value(curved, i, u16::from(codes[i])));
+        let bounds = rgb.encoded_bounds(curved);
+        let low = bounds.map(|[low, _]| low);
+        let high = bounds.map(|[_, high]| high);
+        let values = low.into_iter().chain(high).chain([1.0; 2]);
+        for (out, value) in out.iter_mut().zip(values) {
             *out = value;
         }
         true
@@ -1369,7 +1398,12 @@ fn hash_slot(key: u64, mask: usize) -> usize {
 pub(super) struct MemoLayout {
     key: Key,
     opaque: bool,
+    /// The values of an exact or rounded texel it holds.
     held: usize,
+    /// Whether each slot holds the lower and upper bounds of a
+    /// [`TexelMode::Bounds`] texel as well: twice `held` values
+    /// ([`Self::width`]).
+    bounds: bool,
     /// Keys retained by probing before a miss switches to direct lookup.
     limit: usize,
     /// Whether a key takes its first slot from the one held there, rather
@@ -1414,7 +1448,7 @@ impl MemoLayout {
         if self.replacing {
             MemoState::Replacing
         } else {
-            NonZeroUsize::new(self.limit.saturating_add(1))
+            NonZeroUsize::new(self.retained().saturating_add(1))
                 .map_or(MemoState::Replacing, MemoState::Probing)
         }
     }
@@ -1433,9 +1467,63 @@ impl MemoLayout {
             key,
             opaque,
             held,
+            bounds: false,
             limit: (samples / 16).clamp(4096, Self::CAP),
             replacing,
         }
+    }
+
+    /// Whether texels of bounds ([`TexelMode::Bounds`]) can serve this
+    /// memo's image: opaque RGB texels, kept by a memo that retains at most
+    /// [`Self::BOUNDED`] keys.
+    pub(super) fn bounded(self) -> bool {
+        self.opaque && self.held == 3 && self.limit <= Self::BOUNDED
+    }
+
+    /// The most keys a memo of bounds texels retains. A memo that retains
+    /// fewer than its image's colours converts them again and again, which
+    /// bounds make cheaper; one that retains more converts each about once
+    /// and would only hold a larger table.
+    pub(super) const BOUNDED: usize = 1 << 15;
+
+    /// This layout with room for [`TexelMode::Bounds`] texels as well: each
+    /// slot holds twice the values, texels of every mode take slots of that
+    /// width, and it retains half the keys ([`Self::retained`]), so that its
+    /// table is no larger.
+    pub(super) fn bounds(self) -> Self {
+        Self {
+            bounds: true,
+            ..self
+        }
+    }
+
+    /// This layout without room for bounds texels: the one [`Self::bounds`]
+    /// widened.
+    #[cfg(test)]
+    pub(super) fn narrow(self) -> Self {
+        Self {
+            bounds: false,
+            ..self
+        }
+    }
+
+    /// Whether this layout holds bounds texels ([`Self::bounds`]).
+    pub(super) fn holds_bounds(self) -> bool {
+        self.bounds
+    }
+
+    /// The values a slot holds: `held`, or twice that where it holds bounds
+    /// texels as well.
+    fn width(self) -> usize {
+        self.held << usize::from(self.bounds)
+    }
+
+    /// The keys the memo retains by probing: `limit`, or half of it where
+    /// its slots hold bounds texels as well. A smaller table is what keeps
+    /// bounds from costing more in cache misses than the conversions they
+    /// save.
+    fn retained(self) -> usize {
+        self.limit.div_ceil(1 << usize::from(self.bounds))
     }
 
     /// Whether every texel has alpha and shape 1, which the memo then does
@@ -1450,13 +1538,13 @@ impl MemoLayout {
     }
 
     fn values(self) -> usize {
-        let slots = (2 * self.limit).next_power_of_two();
+        let slots = (2 * self.retained()).next_power_of_two();
         let slots = if self.replacing {
             slots.min(Self::REPLACING)
         } else {
             slots
         };
-        slots.saturating_mul(1 + self.held)
+        slots.saturating_mul(1 + self.width())
     }
 
     /// Retains at most `reads` keys: a source drawn small, or mostly
@@ -1525,13 +1613,13 @@ impl Memo {
         self.state = self.layout.state();
     }
 
-    /// The `held` values of the texel of `key`, converted by `convert` into
-    /// a texel of every lane unless held. `held` is the layout's, passed by
+    /// The `width` values of the slot of `key`, converted by `convert` into
+    /// a texel of every lane unless held. `width` is the layout's, passed by
     /// callers that know it as a constant.
     #[inline]
-    fn get(&mut self, key: u64, held: usize, convert: impl FnOnce(&mut [f64])) -> &[f64] {
-        debug_assert_eq!(held, self.layout.held);
-        let stride = 1 + held;
+    fn get(&mut self, key: u64, width: usize, convert: impl FnOnce(&mut [f64])) -> &[f64] {
+        debug_assert_eq!(width, self.layout.width());
+        let stride = 1 + width;
         #[expect(
             clippy::cast_precision_loss,
             reason = "keys have at most 50 bits, which f64 holds exactly"
@@ -1539,28 +1627,28 @@ impl Memo {
         let wanted = key as f64;
         let probing = matches!(self.state, MemoState::Probing(_));
         let slot = if probing {
-            self.slot(key, wanted)
+            self.slot(key, wanted, stride)
         } else {
             hash_slot(key, self.slots.len() / stride - 1)
         };
         let mut at = slot * stride;
         if self.slots.get(at).copied() != Some(wanted) {
-            convert(&mut self.spare[..held + usize::from(self.layout.opaque) * 2]);
+            convert(&mut self.spare[..width + usize::from(self.layout.opaque) * 2]);
             if probing && self.state.miss() {
                 at = hash_slot(key, self.slots.len() / stride - 1) * stride;
             }
             if let Some(entry) = self.slots.get_mut(at..at + stride) {
                 entry[0] = wanted;
-                copy_values(&mut entry[1..], &self.spare[..held]);
+                copy_values(&mut entry[1..], &self.spare[..width]);
             }
         }
         self.slots.get(at + 1..at + stride).unwrap_or(&[])
     }
 
-    /// The slot of `key` (held as `wanted`), or the free slot it goes into.
+    /// The slot of `key` (held as `wanted`), or the free slot it goes into,
+    /// in slots of `stride` values.
     #[inline]
-    fn slot(&self, key: u64, wanted: f64) -> usize {
-        let stride = 1 + self.layout.held;
+    fn slot(&self, key: u64, wanted: f64, stride: usize) -> usize {
         let mask = self.slots.len() / stride - 1;
         let mut slot = hash_slot(key, mask);
         while self
@@ -1585,6 +1673,8 @@ pub(super) struct MemoTexels<'a> {
     mode: TexelMode,
     /// [`TexelMode::tag`] of `mode`, on every key.
     tag: u64,
+    /// The lanes of a texel of `mode`.
+    lanes: usize,
 }
 
 impl<'a> MemoTexels<'a> {
@@ -1606,6 +1696,7 @@ impl<'a> MemoTexels<'a> {
             mode: TexelMode::Exact,
             // Exact texels' keys carry no tag.
             tag: 0,
+            lanes: colors.lanes(),
         })
     }
 
@@ -1615,31 +1706,43 @@ impl<'a> MemoTexels<'a> {
         if mode == TexelMode::Exact {
             return Self { mode, ..self };
         }
-        let tag = mode.tag(self.memo.get_mut().layout.key.bytes());
-        Self { mode, tag, ..self }
+        let layout = self.memo.get_mut().layout;
+        let tag = mode.tag(layout.key.bytes());
+        // Bounds texels hold a lower and an upper bound a channel.
+        let lanes = self.lanes + usize::from(mode == TexelMode::Bounds) * layout.held;
+        Self {
+            mode,
+            tag,
+            lanes,
+            ..self
+        }
     }
 
     /// The texel of sample `index`, written into `out` (its held values).
     #[inline]
     fn write(&self, memo: &mut Memo, index: usize, out: &mut [f64]) {
+        // Bounds texels serve separable plans alone, which read rows.
+        debug_assert!(!memo.layout.holds_bounds());
         let components = memo.layout.key.components;
         let key = self.samples.get(index) | self.tag;
-        let held = memo.layout.held;
-        let values = memo.get(key, held, |texel| self.convert(index, components, texel));
+        let width = memo.layout.width();
+        let values = memo.get(key, width, |texel| self.convert(index, components, texel));
         for (out, &value) in out.iter_mut().zip(values) {
             *out = value;
         }
     }
 
     /// [`Texels::row`] from sample `start` on into `out`, `H` held values a
-    /// texel, for keys of `N` colour codes alone: one lookup per run of
+    /// texel, the first of each slot of `W` values ([`MemoLayout::width`]),
+    /// for keys of `N` colour codes alone: one lookup per run of
     /// equal keys, with fixed-size keys and copies. `R` tells whether the
     /// texels convert by a rounding mode, whose keys carry its tag and
     /// whose RGB samples may convert through [`Curved::rgb`]; exact texels'
-    /// tag is 0. False, with nothing written, where the samples are not all
-    /// present.
+    /// tag is 0. `B` tells whether they are bounds texels, which convert
+    /// through [`Self::convert_bounds`]. False, with nothing written, where
+    /// the samples are not all present.
     #[inline]
-    fn plain_row<const N: usize, const H: usize, const R: bool>(
+    fn plain_row<const N: usize, const H: usize, const W: usize, const R: bool, const B: bool>(
         &self,
         memo: &mut Memo,
         start: usize,
@@ -1662,7 +1765,11 @@ impl<'a> MemoTexels<'a> {
             if key != previous {
                 previous = key;
                 let tagged = if R { key | self.tag } else { key };
-                let held = memo.get(tagged, H, |texel| {
+                let held = memo.get(tagged, W, |texel| {
+                    if B {
+                        self.convert_bounds(codes, texel);
+                        return;
+                    }
                     let converted = match *codes.as_slice() {
                         [r, g, b]
                             if R && self.colors.curved.as_ref().is_some_and(Curved::has_rgb) =>
@@ -1691,6 +1798,22 @@ impl<'a> MemoTexels<'a> {
     #[inline(never)]
     fn convert_rgb(&self, codes: [u8; 3], texel: &mut [f64]) -> bool {
         self.colors.rgb_texel(codes, self.mode, texel)
+    }
+
+    /// Converts a sample of colour codes `codes` into a [`TexelMode::Bounds`]
+    /// texel through [`Curved::rgb`]. Bounds serve only samples of three
+    /// eight-bit codes with that step; any other texel is `NaN`, which
+    /// leaves its pixels uncertain, to take their exact colours. Out of
+    /// line: only misses of bounds texels convert here.
+    #[inline(never)]
+    fn convert_bounds(&self, codes: &[u8], texel: &mut [f64]) {
+        let converted = matches!(
+            *codes,
+            [r, g, b] if self.colors.bounds_texel([r, g, b], texel)
+        );
+        if !converted {
+            texel.fill(f64::NAN);
+        }
     }
 
     /// Converts sample `index` into a texel of every lane.
@@ -1725,7 +1848,7 @@ impl<'a> MemoTexels<'a> {
 
 impl Texels for MemoTexels<'_> {
     fn lanes(&self) -> usize {
-        self.colors.lanes()
+        self.lanes
     }
 
     fn opaque(&self) -> bool {
@@ -1738,13 +1861,15 @@ impl Texels for MemoTexels<'_> {
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
         // Only bilinear and area samples weight texels, and those convert
-        // exactly: their keys carry no tag.
+        // exactly: their keys carry no tag. Bounds texels serve separable
+        // plans alone, which read rows.
         debug_assert_eq!(self.mode, TexelMode::Exact);
         let mut memo = self.memo.borrow_mut();
+        debug_assert!(!memo.layout.holds_bounds());
         let components = memo.layout.key.components;
         let key = self.samples.get(index);
-        let held = memo.layout.held;
-        let values = memo.get(key, held, |texel| self.convert(index, components, texel));
+        let width = memo.layout.width();
+        let values = memo.get(key, width, |texel| self.convert(index, components, texel));
         for (sum, value) in sum.iter_mut().zip(values) {
             *sum += value * weight;
         }
@@ -1758,20 +1883,25 @@ impl Texels for MemoTexels<'_> {
         let mut memo = self.memo.borrow_mut();
         let start = sample_index(u64::from(row) * u64::from(width) + u64::from(first));
         let components = memo.layout.key.components;
-        let held = memo.layout.held;
-        let plain =
-            stride == held && self.samples.matte.is_none() && self.samples.embedded.is_none();
+        let width = memo.layout.width();
+        let plain = self.samples.matte.is_none() && self.samples.embedded.is_none();
         let rounding = self.mode != TexelMode::Exact;
         if plain
-            && match (components, held, rounding) {
-                (3, 3, false) => self.plain_row::<3, 3, false>(&mut memo, start, out),
-                (3, 4, false) => self.plain_row::<3, 4, false>(&mut memo, start, out),
-                (4, 3, false) => self.plain_row::<4, 3, false>(&mut memo, start, out),
-                (4, 4, false) => self.plain_row::<4, 4, false>(&mut memo, start, out),
-                (3, 3, true) => self.plain_row::<3, 3, true>(&mut memo, start, out),
-                (3, 4, true) => self.plain_row::<3, 4, true>(&mut memo, start, out),
-                (4, 3, true) => self.plain_row::<4, 3, true>(&mut memo, start, out),
-                (4, 4, true) => self.plain_row::<4, 4, true>(&mut memo, start, out),
+            && match (components, stride, width, rounding) {
+                (3, 3, 3, false) => self.plain_row::<3, 3, 3, false, false>(&mut memo, start, out),
+                (3, 4, 4, false) => self.plain_row::<3, 4, 4, false, false>(&mut memo, start, out),
+                (4, 3, 3, false) => self.plain_row::<4, 3, 3, false, false>(&mut memo, start, out),
+                (4, 4, 4, false) => self.plain_row::<4, 4, 4, false, false>(&mut memo, start, out),
+                (3, 3, 3, true) => self.plain_row::<3, 3, 3, true, false>(&mut memo, start, out),
+                (3, 4, 4, true) => self.plain_row::<3, 4, 4, true, false>(&mut memo, start, out),
+                (4, 3, 3, true) => self.plain_row::<4, 3, 3, true, false>(&mut memo, start, out),
+                (4, 4, 4, true) => self.plain_row::<4, 4, 4, true, false>(&mut memo, start, out),
+                // Bounds texels, and the exact texels of a memo that holds
+                // them as well.
+                (3, 6, 6, true) if self.mode == TexelMode::Bounds => {
+                    self.plain_row::<3, 6, 6, true, true>(&mut memo, start, out)
+                }
+                (3, 3, 6, false) => self.plain_row::<3, 3, 6, false, false>(&mut memo, start, out),
                 _ => false,
             }
         {
@@ -1783,7 +1913,15 @@ impl Texels for MemoTexels<'_> {
             let key = self.samples.get(index);
             if previous != Some(key) {
                 let tagged = key | self.tag;
-                let held = memo.get(tagged, held, |texel| self.convert(index, components, texel));
+                let held = memo.get(tagged, width, |texel| {
+                    if self.mode == TexelMode::Bounds {
+                        let start = index.saturating_mul(components);
+                        let codes = self.samples.colors.get(start..start + components);
+                        self.convert_bounds(codes.unwrap_or_default(), texel);
+                    } else {
+                        self.convert(index, components, texel);
+                    }
+                });
                 copy_values(&mut last, held);
                 previous = Some(key);
             }

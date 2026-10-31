@@ -18,6 +18,7 @@ use pagura_raster::Transform;
 use std::sync::Arc;
 
 mod accuracy;
+mod bounds;
 mod documents;
 mod oracle;
 mod ownership;

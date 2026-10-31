@@ -9,6 +9,7 @@ use super::stacks::needs;
 use super::{Budget, Shapes, index};
 use crate::execute::{Sizes, coverage_capacity, validate};
 use crate::plan::{Curve, Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};
+use crate::source::Source;
 use pagura_color::{ColorSpace, Colorant, Conversion, Converter, Process, Target};
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::{BandCoverage, BandRasterizer};
@@ -224,6 +225,7 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     for paint in &mut plan.paints {
         paint.admit_optional(&mut budget.bytes);
     }
+    admit_bounds(&mut plan, &mut budget.bytes);
     plan.sizes = Sizes {
         rows: band_rows,
         ..sizes
@@ -233,6 +235,72 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
         shapes,
         repairs,
     })
+}
+
+/// Widens each paint storage whose paints all take bounds texels
+/// ([`Source::bounds_layout`]), where `bytes` has room for the growth of
+/// the storage after the page's own and this pass's table of storages: the
+/// storage and the plan's render reservation grow by it, and its paints use
+/// it. All the paints of a storage or none: they share its memo.
+fn admit_bounds(plan: &mut Plan, bytes: &mut Meter) {
+    // Per storage: no paint seen yet, a paint that cannot take it, or the
+    // first paint that can, until it is admitted.
+    const UNSEEN: u32 = u32::MAX;
+    const REFUSED: u32 = u32::MAX - 1;
+    const ADMITTED: u32 = u32::MAX - 2;
+    let count = plan.slots.layouts.len();
+    let mut first = Vec::new();
+    if bytes.reserve(&mut first, count).is_err() {
+        return;
+    }
+    first.resize(count, UNSEEN);
+    for (number, (paint, &slot)) in plan.paints.iter().zip(&plan.slots.of).enumerate() {
+        let Some(entry) = first.get_mut(index(slot)) else {
+            continue;
+        };
+        let layout = paint.bounds_layout();
+        *entry = match *entry {
+            UNSEEN if layout.is_some() => u32::try_from(number).unwrap_or(REFUSED),
+            chosen
+                if chosen < ADMITTED
+                    && layout.is_some()
+                    && plan
+                        .paints
+                        .get(index(chosen))
+                        .and_then(Source::bounds_layout)
+                        == layout =>
+            {
+                chosen
+            }
+            _ => REFUSED,
+        };
+    }
+    for (entry, layout) in first.iter_mut().zip(&mut plan.slots.layouts) {
+        let wider = if *entry < ADMITTED {
+            plan.paints
+                .get(index(*entry))
+                .and_then(Source::bounds_layout)
+        } else {
+            None
+        };
+        let (Some(wider), Some(own)) = (wider, *layout) else {
+            continue;
+        };
+        let growth = wider.bytes().saturating_sub(own.bytes());
+        if bytes.charge(growth).is_ok() {
+            *layout = Some(wider);
+            plan.scratch = plan.scratch.saturating_add(growth);
+            *entry = ADMITTED;
+        }
+    }
+    for (paint, &slot) in plan.paints.iter_mut().zip(&plan.slots.of) {
+        if first.get(index(slot)) == Some(&ADMITTED) {
+            paint.keep_bounds();
+        }
+    }
+    let released = first.capacity() * size_of::<u32>();
+    drop(first);
+    bytes.refund(released);
 }
 
 fn drop_definitions(definitions: Vec<(pagura_core::Name, Arc<ColorSpace>)>, bytes: &mut Meter) {

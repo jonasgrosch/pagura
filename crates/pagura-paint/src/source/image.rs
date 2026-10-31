@@ -117,6 +117,12 @@ impl Paint {
             Self::Stencil(_) => false,
         }
     }
+
+    /// Whether its memo holds bounds texels as well
+    /// ([`texels::MemoLayout::holds_bounds`]), as admitted storage lets it.
+    fn holds_bounds(&self) -> bool {
+        matches!(self, Self::Colors(paint) if matches!(&paint.1, Strategy::Memo(layout) if layout.holds_bounds()))
+    }
 }
 
 /// One prepared image sampler: integer code averages where the colour
@@ -438,6 +444,69 @@ impl ImageSampler {
         }
     }
 
+    /// The storage this image takes with its memo widened to hold bounds
+    /// texels as well ([`texels::MemoLayout::bounds`]), where they can serve
+    /// its spans kept to F32 levels or N16 words: area averages of an
+    /// unmasked opaque RGB image placed separably, whose memo retains at
+    /// most [`texels::MemoLayout::BOUNDED`] keys and whose curved values
+    /// convert through an RGB step ([`Self::admit_curves`]). `None`
+    /// otherwise, and once it holds them.
+    pub(crate) fn bounds_layout(&self) -> Option<ScratchLayout> {
+        let prepared = self.prepared.as_deref()?;
+        let Plan::Texels {
+            sampling: Sampling::Separable(_),
+            paint: Paint::Colors(paint),
+        } = &prepared.plan
+        else {
+            return None;
+        };
+        let Strategy::Memo(layout) = paint.1 else {
+            return None;
+        };
+        let serves = self.channels == 3
+            && prepared.mask.is_none()
+            && prepared.geometry.mode() == Mode::Area
+            && layout.bounded()
+            && !layout.holds_bounds()
+            && paint.0.curved.as_ref().is_some_and(texels::Curved::has_rgb);
+        serves.then(|| self.layout_of(texels::MemoLayout::bounds))
+    }
+
+    /// Whether its memo holds bounds texels ([`Self::keep_bounds`]).
+    #[cfg(test)]
+    pub(crate) fn holds_bounds(&self) -> bool {
+        self.prepared
+            .as_deref()
+            .is_some_and(|prepared| match &prepared.plan {
+                Plan::Texels { paint, .. } => paint.holds_bounds(),
+                Plan::Codes(_) => false,
+            })
+    }
+
+    /// Bytes its storage grew by to hold bounds texels
+    /// ([`Self::keep_bounds`]); 0 where it holds none, or where its memo,
+    /// which retains half the keys, shrank by as much as its rows and sums
+    /// grew.
+    #[cfg(test)]
+    pub(crate) fn bounds_bytes(&self) -> usize {
+        let held = self.scratch_layout().bytes();
+        held.saturating_sub(self.layout_of(texels::MemoLayout::narrow).bytes())
+    }
+
+    /// Lets the image's memo hold bounds texels, once its storage of
+    /// [`Self::bounds_layout`] is admitted.
+    pub(crate) fn keep_bounds(&mut self) {
+        if let Some(prepared) = self.prepared.as_deref_mut()
+            && let Plan::Texels {
+                paint: Paint::Colors(paint),
+                ..
+            } = &mut prepared.plan
+            && let Strategy::Memo(layout) = &mut paint.1
+        {
+            *layout = layout.bounds();
+        }
+    }
+
     fn new(prepared: Option<Box<Prepared>>, channels: usize) -> Self {
         Self { prepared, channels }
     }
@@ -648,6 +717,10 @@ impl ImageSampler {
                 return;
             }
         };
+        if pixels.precision == crate::source::Precision::Level && paint.holds_bounds() {
+            prepared.fill_bounds((plan, paint), pixels, scratch, (out, shape));
+            return;
+        }
         let lanes = channels + 2;
         let mask = prepared.mask.as_ref();
         // A mask on the image's grid averages ahead of the texels; another
@@ -805,6 +878,17 @@ fn straighten(
     (opacity, own)
 }
 
+/// Values a pixel sums of bounds texels: three lower bounds, three upper
+/// ones, opacity and shape.
+const BOUNDS_LANES: usize = 8;
+
+#[cfg(test)]
+thread_local! {
+    /// Whether spans of bounds texels take every pixel's exact colour on
+    /// this thread, as uncertain ones do.
+    static UNCERTAIN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 struct SamplingBuffers<'a> {
     storage: &'a mut sampling::Scratch,
     fused: &'a mut Vec<f64>,
@@ -858,6 +942,202 @@ impl Prepared {
     /// averaged: the texels, then, where every pixel's alpha is 1, their
     /// words. Bilinear weights need not sum to exactly 1, so those pixels
     /// are filled instead.
+    /// [`ImageSampler::fill`] of a span kept to F32 levels, for a paint
+    /// whose memo holds bounds texels ([`Paint::holds_bounds`]). The lower
+    /// and the upper bounds of each texel's encoded colour
+    /// ([`TexelMode::Bounds`]) are averaged as its exact colour is, by the
+    /// same non-negative weights in the same order, and straightened by the
+    /// same opacity, so each exact colour lies between them. Where both
+    /// give one F32 level ([`crate::kernel::level`]) for every channel, the
+    /// lower one stands for the exact colour, whose level it has; every
+    /// other pixel takes its exact colour ([`Self::exact_texel`]). Out of
+    /// line, so that other spans keep their path.
+    #[inline(never)]
+    fn fill_bounds(
+        &self,
+        (plan, paint): (&Sampling, &Paint),
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        (out, mut shape): (&mut SpanColors, Option<&mut Vec<f64>>),
+    ) {
+        let len = pixels.len;
+        let SpanColors {
+            channels,
+            colors,
+            alpha,
+            ..
+        } = out;
+        *channels = 3;
+        colors.clear();
+        colors.resize(len * 3, 0.0);
+        alpha.clear();
+        alpha.resize(len, 0.0);
+        if let Some(shape) = shape.as_deref_mut() {
+            shape.clear();
+            shape.resize(len, 0.0);
+        }
+        let mut storage = std::mem::take(&mut scratch.summed);
+        let summed = scratch::grown(&mut storage, len * BOUNDS_LANES);
+        if !self.bounds_sums((plan, paint), pixels, scratch, summed) {
+            // Every pixel then takes its exact colour below.
+            summed.fill(f64::NAN);
+        }
+        let level = |value: f64| crate::kernel::level(value).to_bits();
+        let colors = colors.as_chunks_mut::<3>().0;
+        for (index, (sum, (color, alpha))) in summed
+            .as_chunks::<BOUNDS_LANES>()
+            .0
+            .iter()
+            .zip(colors.iter_mut().zip(alpha.iter_mut()))
+            .enumerate()
+        {
+            let held = (sum[6], sum[7]);
+            let (mut low, mut high) = ([sum[0], sum[1], sum[2]], [sum[3], sum[4], sum[5]]);
+            let (opacity, own) = straighten(&mut low, held, (None, false));
+            straighten(&mut high, held, (None, false));
+            let differs = (level(low[0]) ^ level(high[0]))
+                | (level(low[1]) ^ level(high[1]))
+                | (level(low[2]) ^ level(high[2]));
+            #[cfg(test)]
+            let differs = differs | u32::from(UNCERTAIN.with(std::cell::Cell::get));
+            // An uncertain colour is marked for its exact one below; a
+            // colour of `NaN` sums stays `NaN`.
+            *color = if differs == 0 { low } else { [f64::NAN; 3] };
+            *alpha = opacity;
+            if let Some(shape) = shape.as_deref_mut() {
+                shape[index] = own;
+            }
+        }
+        scratch.summed = storage;
+        for (index, (color, alpha)) in colors.iter_mut().zip(alpha.iter_mut()).enumerate() {
+            if color[0].is_nan() {
+                let texel = self.exact_texel((plan, paint), pixels, index, scratch);
+                let mut exact = [texel[0], texel[1], texel[2]];
+                let (opacity, own) = straighten(&mut exact, (texel[3], texel[4]), (None, false));
+                (*color, *alpha) = (exact, opacity);
+                if let Some(shape) = shape.as_deref_mut() {
+                    shape[index] = own;
+                }
+            }
+        }
+    }
+
+    /// [`Self::texel_words`] for a paint whose memo holds bounds texels, as
+    /// [`Self::fill_bounds`] keeps F32 levels: a pixel whose lower and
+    /// upper averages give one N16 word ([`crate::kernel::opaque_word`])
+    /// for every channel takes those words, any other the words of its
+    /// exact average ([`Self::exact_texel`]). False, with nothing written,
+    /// where a pixel's opacity is not 1, as for exact texels. Out of line,
+    /// as [`Self::fill_bounds`] is.
+    #[inline(never)]
+    fn bounds_words(
+        &self,
+        (plan, paint): (&Sampling, &Paint),
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        out: &mut [[u16; 4]],
+    ) -> bool {
+        let len = out.len();
+        let mut storage = std::mem::take(&mut scratch.summed);
+        let summed = scratch::grown(&mut storage, len * BOUNDS_LANES);
+        let summed_bounds = self.bounds_sums((plan, paint), pixels, scratch, summed);
+        let sums = summed.as_chunks::<BOUNDS_LANES>().0;
+        // A footprint that misses the image leaves its pixel transparent.
+        let opaque = summed_bounds && sums.iter().all(|sum| sum[6] == 1.0);
+        if opaque {
+            let word = crate::kernel::opaque_word;
+            for (pixel, sum) in out.iter_mut().zip(sums) {
+                let low = [word(sum[0]), word(sum[1]), word(sum[2])];
+                let high = [word(sum[3]), word(sum[4]), word(sum[5])];
+                // An uncertain pixel is marked, by no opacity, for its
+                // exact words below.
+                let alpha = if low == high { u16::MAX } else { 0 };
+                #[cfg(test)]
+                let alpha = if UNCERTAIN.with(std::cell::Cell::get) {
+                    0
+                } else {
+                    alpha
+                };
+                *pixel = [low[0], low[1], low[2], alpha];
+            }
+        }
+        scratch.summed = storage;
+        if opaque {
+            for (index, pixel) in out.iter_mut().enumerate() {
+                if pixel[3] == 0 {
+                    let texel = self.exact_texel((plan, paint), pixels, index, scratch);
+                    let word = crate::kernel::opaque_word;
+                    *pixel = [word(texel[0]), word(texel[1]), word(texel[2]), u16::MAX];
+                }
+            }
+        }
+        opaque
+    }
+
+    /// Sums the bounds texels ([`TexelMode::Bounds`]) of `pixels` into
+    /// `summed`, [`BOUNDS_LANES`] values a pixel: the lower bounds, the
+    /// upper bounds, opacity and shape. False, with nothing summed, where
+    /// the paint has no memo of byte samples.
+    fn bounds_sums(
+        &self,
+        (plan, paint): (&Sampling, &Paint),
+        pixels: Pixels<'_>,
+        scratch: &mut ImageScratch,
+        summed: &mut [f64],
+    ) -> bool {
+        let Paint::Colors(colors) = paint else {
+            return false;
+        };
+        scratch.select(TexelMode::Bounds);
+        let ImageScratch {
+            plan: storage,
+            fused,
+            memo,
+            ..
+        } = scratch;
+        let texels = memo
+            .as_deref_mut()
+            .and_then(|memo| MemoTexels::new(&self.image.image, &colors.0, None, memo));
+        let Some(texels) = texels else {
+            return false;
+        };
+        let texels = texels.converting(TexelMode::Bounds);
+        let mut buffers = SamplingBuffers { storage, fused };
+        self.sample(plan, pixels, &mut buffers, &texels, summed);
+        true
+    }
+
+    /// The exact texel sum of pixel `index` of `pixels`, as a span of that
+    /// pixel alone gives it (the same as in any span): colour, opacity and
+    /// shape.
+    fn exact_texel(
+        &self,
+        (plan, paint): (&Sampling, &Paint),
+        pixels: Pixels<'_>,
+        index: usize,
+        scratch: &mut ImageScratch,
+    ) -> [f64; 5] {
+        let one = Pixels {
+            x: pixels
+                .x
+                .saturating_add(u32::try_from(index).unwrap_or(u32::MAX)),
+            len: 1,
+            boundary: pixels.boundary.and_then(|b| b.get(index..=index)),
+            precision: crate::source::Precision::Exact,
+            ..pixels
+        };
+        scratch.select(TexelMode::Exact);
+        let mut texel = [0.0; 5];
+        self.texels(
+            (plan, paint),
+            one,
+            scratch,
+            (5, TexelMode::Exact),
+            &mut texel,
+        );
+        texel
+    }
+
     fn texel_words(
         &self,
         (plan, paint): (&Sampling, &Paint),
@@ -873,6 +1153,9 @@ impl Prepared {
         scratch.select(mode);
         if self.nearest_words((plan, paint), pixels, scratch, mode, out) {
             return true;
+        }
+        if paint.holds_bounds() {
+            return self.bounds_words((plan, paint), pixels, scratch, out);
         }
         let len = out.len();
         let mut storage = std::mem::take(&mut scratch.summed);

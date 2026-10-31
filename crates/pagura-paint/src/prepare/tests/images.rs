@@ -189,3 +189,74 @@ fn optional_curve_values_never_raise_the_budget_a_page_needs() {
     assert_eq!(pixels(&tight), pixels(&roomy));
     assert_eq!(pixels(&values), pixels(&roomy));
 }
+
+/// Storage for bounds texels is optional too: a page whose minified
+/// photograph (48×36 RGB samples in a matrix/TRC ICC space) can widen its
+/// memo for them, followed by an image that must hold far more, prepares at
+/// the budget its own storage needs, with neither bounds nor curve values,
+/// and fails one byte below it. The bounds come after the curve values,
+/// from what they leave, and the pixels are the same throughout.
+#[test]
+fn optional_bounds_storage_never_raises_the_budget_a_page_needs() {
+    let mut b = Build::new(96.0, 64.0);
+    let state = b.state(|_| {});
+    let images = [
+        (
+            image("image-direct-rgb-fractional.pdf", icc_rgb()),
+            Transform::new(30.0, 0.0, 0.0, 22.0, 2.0, 2.0),
+        ),
+        (
+            image("image-area-tie-1024-159.pdf", ColorSpace::DeviceGray),
+            Transform::new(90.0, 0.0, 0.0, 60.0, 3.0, 2.0),
+        ),
+    ];
+    for (image, transform) in images {
+        b.node(
+            GroupId(0),
+            Node::Image(ImageNode {
+                image: Arc::new(image),
+                transform,
+                stencil: None,
+                mark: mark(state),
+            }),
+        );
+    }
+    let request = b.request(b.page(), 16);
+    // Curve bytes, bounds growth, and the paints holding bounds texels.
+    let held = |prepared: &PreparedScene| -> [usize; 3] {
+        prepared
+            .plan
+            .paints
+            .iter()
+            .fold([0; 3], |[c, g, h], paint| match paint {
+                Source::Image(image) => [
+                    c + image.curve_bytes(),
+                    g + image.bounds_bytes(),
+                    h + usize::from(image.holds_bounds()),
+                ],
+                _ => [c, g, h],
+            })
+    };
+    let roomy = b.prepare(&request, &Limits::default()).unwrap();
+    let [curves, growth, holding] = held(&roomy);
+    assert!(
+        curves > 0 && holding > 0,
+        "{curves} curve bytes, {holding} with bounds"
+    );
+    let needed = roomy.charges().render_bytes() - curves - growth;
+    let limits = |render_bytes| Limits {
+        render_bytes,
+        ..Limits::default()
+    };
+    let tight = b.prepare(&request, &limits(needed)).unwrap();
+    assert_eq!(
+        (held(&tight), tight.charges().render_bytes()),
+        ([0; 3], needed)
+    );
+    let short = b.prepare(&request, &limits(needed - 1)).unwrap_err();
+    assert_eq!(short.kind, ErrorKind::Limit);
+    let curved = b.prepare(&request, &limits(needed + curves)).unwrap();
+    assert_eq!(held(&curved), [curves, 0, 0]);
+    assert_eq!(pixels(&tight), pixels(&roomy));
+    assert_eq!(pixels(&curved), pixels(&roomy));
+}
