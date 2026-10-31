@@ -45,9 +45,9 @@ impl Kind {
             (Self::Boolean(a), Self::Boolean(b)) => Self::Boolean(a.filter(|_| a == b)),
             (Self::Boolean(_), _) | (_, Self::Boolean(_)) => return None,
             (Self::Integer(a), Self::Integer(b)) => Self::Integer(a.filter(|_| a == b)),
-            (Self::Real, Self::Real)
-            | (Self::Real, Self::Bounded(_))
-            | (Self::Bounded(_), Self::Real) => Self::Real,
+            (Self::Real | Self::Bounded(_), Self::Real) | (Self::Real, Self::Bounded(_)) => {
+                Self::Real
+            }
             (Self::Bounded(a), Self::Bounded(b)) => Self::Bounded([a[0].min(b[0]), a[1].max(b[1])]),
             _ => Self::Number,
         })
