@@ -1,7 +1,8 @@
 use super::*;
 use crate::Point;
+use crate::band::certify::uncertified;
 use crate::band::union::SCRATCH_BOUND;
-use pagura_core::{ErrorKind, Limits};
+use pagura_core::ErrorKind;
 
 #[test]
 fn retained_union_rows_charge_before_allocating() {
@@ -473,4 +474,135 @@ fn spines_keep_every_probed_budget_within_their_bound() {
     let probed = probed();
     never_refused(&probed, (1024, 128));
     never_raised(&probed, (64, 64));
+}
+
+/// `stars` random stars along a strip 120 pixels wide and 8 high: rows of
+/// more pieces than the resolver sweeps whole.
+fn strip_of_stars(rng: &mut certify::random::Rng, stars: usize) -> Vec<Vec<(f64, f64)>> {
+    (0..stars)
+        .map(|_| {
+            let centre = (4.0 + rng.unit() * 120.0, 4.0 + rng.unit() * 8.0);
+            let radius = 0.5 + rng.unit() * 3.0;
+            let mut star = rng.star(centre, radius, false);
+            if rng.next().is_multiple_of(3) {
+                star.reverse();
+            }
+            star
+        })
+        .collect()
+}
+
+/// The work the fill of `contours` takes in a 128 × 16 area under
+/// `limits`, its polygon's heap charged first; `None` where a limit refuses
+/// it.
+fn filled(contours: &[Vec<(f64, f64)>], limits: &Limits) -> Option<usize> {
+    let options = ShapeOptions {
+        area: Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 128,
+                y1: 16,
+            },
+            band_height: 16,
+        },
+        limits,
+    };
+    let slices: Vec<&[(f64, f64)]> = contours.iter().map(Vec::as_slice).collect();
+    let polygon = certify::random::polygon(&slices);
+    let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+    let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+    bytes.charge(polygon.heap_bytes()).ok()?;
+    match Shape::from_polygon(
+        polygon,
+        (FillRule::NonZero, Winding::Check(0.0)),
+        &Prep::new(&options, None),
+        (&mut bytes, &mut work),
+        (None, &mut None),
+    ) {
+        Ok(_) => Some(work.used()),
+        Err(error) => {
+            assert_eq!(error.kind, ErrorKind::Limit, "{error}");
+            None
+        }
+    }
+}
+
+/// Every budget `plain` meets of those scanned, `near` either side of its
+/// least, 8 apart, and `above` spread up to four times it, `located` meets
+/// too.
+fn admitted(
+    plain: impl Fn(usize) -> bool,
+    located: impl Fn(usize) -> bool,
+    most: usize,
+    (near, above): (usize, usize),
+) {
+    let least = halved(&plain, most);
+    let around = (least.saturating_sub(near)..least + near).step_by(8);
+    let spread = (least..4 * least).step_by((3 * least / above).max(8));
+    for budget in around.chain(spread) {
+        if plain(budget) {
+            assert!(
+                located(budget),
+                "refused at {budget}, least {least} without windows"
+            );
+        }
+    }
+}
+
+/// Windows never turn a preparation into a refusal: fills whose rows pass
+/// certified runs over prepare with their windows in every render budget
+/// and raster work they prepare in without, of those scanned.
+#[test]
+fn windows_never_turn_a_preparation_into_a_refusal() {
+    let mut rng = certify::random::Rng(0x2545_f491_4f6c_dd1d);
+    let defaults = Limits::default();
+    let mut passed = 0;
+    for case in 0..6 {
+        let contours = strip_of_stars(&mut rng, 48 + 8 * case);
+        let bytes = |render_bytes| Limits {
+            render_bytes,
+            ..Limits::default()
+        };
+        admitted(
+            |b| certify::without(|| filled(&contours, &bytes(b))).is_some(),
+            |b| filled(&contours, &bytes(b)).is_some(),
+            defaults.render_bytes,
+            (512, 32),
+        );
+        let work = |raster_work| Limits {
+            raster_work,
+            ..Limits::default()
+        };
+        admitted(
+            |w| certify::without(|| filled(&contours, &work(w))).is_some(),
+            |w| filled(&contours, &work(w)).is_some(),
+            defaults.raster_work,
+            (64, 32),
+        );
+        // Rows passed over leave the shape's own meter less work.
+        let whole = certify::without(|| filled(&contours, &defaults));
+        passed += usize::from(filled(&contours, &defaults) < whole);
+    }
+    assert!(
+        passed >= 3,
+        "only {passed} shapes passed certified runs over"
+    );
+}
+
+/// Nor do they for the probed strokes, whose spines stay on.
+#[test]
+fn windows_never_refuse_a_probed_stroke() {
+    for (path, stroke) in probed() {
+        let bytes = |render_bytes| Limits {
+            render_bytes,
+            ..Limits::default()
+        };
+        admitted(
+            |b| certify::without(|| renders(&path, &stroke, &bytes(b))),
+            |b| renders(&path, &stroke, &bytes(b)),
+            Limits::default().render_bytes,
+            (256, 16),
+        );
+    }
 }
