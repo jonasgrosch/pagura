@@ -48,6 +48,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             _ => None,
         };
         for value in values {
+            let Some(value) = document.annotation_entry(value, page.id())? else {
+                continue;
+            };
             self.annotation(value, page.resources(), filled.as_ref())
                 .map_err(|error| error.in_object_opt(value.as_reference()))?;
         }

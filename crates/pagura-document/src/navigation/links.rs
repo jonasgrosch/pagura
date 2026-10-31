@@ -239,6 +239,9 @@ pub(super) fn read<'a>(document: &'a Document, page: &'a Page) -> Result<Vec<Lin
     let mut links = Vec::new();
     for value in annotations {
         context.step(0, source)?;
+        let Some(value) = document.annotation_entry(value, page.id())? else {
+            continue;
+        };
         let (dictionary, source) = context.dictionary(value, source)?;
         if context
             .entry(dictionary, b"Subtype", source)?

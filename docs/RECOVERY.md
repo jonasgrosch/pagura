@@ -24,6 +24,18 @@ older protocol diagnostic snapshots contain repairs only.
 
 Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
+- `pages.annotation-null` (Table 31; 12.5.2): skip a literal null member
+  of a page's Annots array after reporting recovery. Original annotation
+  references, order and raw-array budgets are preserved. References to
+  null or unavailable objects remain validation failures. Strict rejects
+  before skipping; this is not the dictionary-null rule of 7.3.9 and does
+  not normalize the whole Annots field. Rendering, links and signature-role
+  traversal share the document-owned member gate. Signature roles retain
+  the original-byte walk and treat repaired membership as ambiguous;
+  existing strict signed-source reopening and diagnostic guards keep
+  high-level modification analysis Inconclusive. No cryptographic result
+  or original signed byte is changed.
+
 - `asn1.ber-set-order` (X.690 11.6; RFC 5652 5.1): retain BER SET OF source
   order with a diagnostic. Signed attributes, certificates and DER entry
   points remain strict. BER length, indefinite-container and OCTET STRING
