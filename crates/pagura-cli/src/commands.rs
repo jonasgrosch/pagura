@@ -6,7 +6,7 @@ use crate::input::{create_new, write_new};
 use crate::{json, microbench, scan};
 use pagura::provider::default_provider;
 use pagura::text::SearchOptions;
-use pagura::{Document, RenderContext, RenderOptions, Rgba8, device_size};
+use pagura::{Document, Recovery, RenderContext, RenderOptions, Rgba8, device_size};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -49,7 +49,13 @@ pub(crate) fn run(command: &Command, out: &mut impl Write) -> Result<(), Failure
             source,
             render,
             max_pages,
-        } => scan::run(source, render, *max_pages, out)?,
+        } => {
+            if source.recovery == Recovery::Repair {
+                scan::run_repair(source, render, *max_pages, out)?;
+            } else {
+                scan::run(source, render, *max_pages, out)?;
+            }
+        }
         Command::Roundtrip { source, output } => {
             let document = source.open()?;
             document.pages()?;

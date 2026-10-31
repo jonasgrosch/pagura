@@ -65,7 +65,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `interaction.media-3d` / V03 | Sound, movie, rich media and 3D interaction | missing / missing / missing / missing | Static annotation appearance painting is independent of media playback. | Runtime/API probes and explicit host contracts for media/3D; appearance display is not activation. |
 | `profiles.extensions` / C01 | PDF/E, PDF/VT and vendor/PDF 2.0 extensions | partial / partial / partial / partial | Shared PDF syntax/content paths can open some profile-labelled documents. | Feature-by-feature profile inventory, actual baseline API/build applicability, validation and authoring contracts. |
 | `runtime.host` / D01 | Native/WASI transport, caches, cancellation and scheduling | partial / partial / partial / partial | Bounded session protocol, native/WASI adapters, viewport generations, browser deadlines and queued-work cancellation. | Within-request cancellation, persistent jobs, fair scheduling and broader device/transport evidence. |
-| `quality.robustness` / C02 | Recovery, limits, fuzzing, parity and performance evidence | partial / partial / partial / partial | Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy. | Current cross-platform/corpus runtime comparison, complete feature denominator and release-qualified performance evidence. |
+| `quality.robustness` / C02 | Recovery, limits, fuzzing, parity and performance evidence | partial / partial / partial / partial | Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy. Explicit CLI Repair scans use a distinct schema2 with no implied Strict audit; default scans retain schema1. | Current cross-platform/corpus runtime comparison, complete feature denominator and release-qualified performance evidence. |
 
 ## Baseline probes
 
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 335 registered requirement IDs map to capability rows in the ledger.
+All 336 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery

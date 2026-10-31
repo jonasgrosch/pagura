@@ -201,3 +201,15 @@ is the project reading of 7.10.2. Transfer-region selection follows
 default transfer, including through indirect references. A fractional boundary involving a nondefault
 transfer still fails explicitly: averaging colour before region selection would
 lose the correlation needed for nonlinear transfer functions.
+
+
+The CLI's default `scan` keeps its strict-first audit and schema 1. Opt-in
+`scan --repair` instead uses one Repair context throughout, sharing the ordinary
+provider, source options, limits and one-pass Store. Its schema 2 always states
+`recovery:"repair"` and `strict:null`, including I/O, opening and page-list
+failures: no full Strict rendering audit was performed. It reports actual
+repairs, information, suppressed-diagnostic count and failures without writing
+images. Conformance fixtures opt in with `scan_recovery:"repair"`; the consumer
+requires that schema/mode and executes a separate actual Strict render. Scan
+JSON exposes kind, feature, repair and message; full Error positions/object
+identity remain separate public-API/parity checks.
