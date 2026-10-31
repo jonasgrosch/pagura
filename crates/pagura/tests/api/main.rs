@@ -2,6 +2,7 @@
 //! The facade's public API, across the workspace crates, in one test crate
 //! so that the modules share `support` and one link of the engine.
 
+mod annotation_references;
 mod annotations;
 mod document;
 mod editing;

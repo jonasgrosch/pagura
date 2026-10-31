@@ -10,6 +10,10 @@ pub const PAGE_COUNT: Repair = Repair::new("pages.count-mismatch");
 /// Table 31; 12.5.2: skip only literal null members of a page Annots array.
 /// This is reported reader policy, not the dictionary-null rule of 7.3.9.
 pub const ANNOTATION_NULL: Repair = Repair::new("pages.annotation-null");
+/// Table 31; 12.5.2: skip an immediate exact in-use reference to parsed null.
+/// Existing reported parser repairs compose; diagnostic storage remains bounded.
+/// Undefined/free references, other generations and chains remain required.
+pub const ANNOTATION_NULL_REFERENCE: Repair = Repair::new("pages.annotation-null-reference");
 /// Header found after leading junk (ADR 0003).
 pub const HEADER_OFFSET: Repair = Repair::new("file.header-offset");
 /// Cross-reference data reconstructed from unambiguous indirect objects.
@@ -138,6 +142,7 @@ pub const ALL: &[Repair] = &[
     TRAILING_BYTES,
     PAGE_COUNT,
     ANNOTATION_NULL,
+    ANNOTATION_NULL_REFERENCE,
     HEADER_OFFSET,
     XREF_REBUILT,
     OFFSET_CORRECTED,

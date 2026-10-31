@@ -1,0 +1,59 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 32 32] /Resources << >> /Annots [4 0 R 9 0 R 6 0 R] /Contents 8 0 R >>
+endobj
+4 0 obj
+<< /Type /Annot /Subtype /Square /Rect [2 2 10 10] /AP << /N 5 0 R >> >>
+endobj
+5 0 obj
+<< /Length 21 /Type /XObject /Subtype /Form /BBox [0 0 4 4] /Resources << >> >>
+stream
+1 0 0 rg 0 0 4 4 re f
+endstream
+endobj
+6 0 obj
+<< /Type /Annot /Subtype /Link /Rect [6 6 14 14] /AP << /N 7 0 R >> /A << /S /URI /URI (https://example.test/kept) >> >>
+endobj
+7 0 obj
+<< /Length 21 /Type /XObject /Subtype /Form /BBox [0 0 4 4] /Resources << >> >>
+stream
+0 1 0 rg 0 0 4 4 re f
+endstream
+endobj
+8 0 obj
+<< /Length 22 >>
+stream
+0 0 1 rg 20 2 4 4 re f
+endstream
+endobj
+9 0 obj
+10 0 R
+endobj
+10 0 obj
+null
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000251 00000 n 
+0000000339 00000 n 
+0000000473 00000 n 
+0000000609 00000 n 
+0000000743 00000 n 
+0000000815 00000 n 
+0000000837 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+858
+%%EOF

@@ -11,11 +11,15 @@
     "quartz"
   ],
   "source_files": {
+    ".github/workflows/null-annotation-parity.yml": "6053327b73b7099253e26b5797ba4b675df23cc7f58c5ed12733c72f37854151",
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
+    "benchmarks/probes/null-annotation-fixtures.json": "cb65b3cca571da01d9f8d6da820b10e760b0c6e540dec089096ea05128b8f09d",
     "corpus/manifests/content.json": "e4d1691c56a0a34ef967f2e7d46fa42f70fb244198a50cf923c9273b838bf491",
     "corpus/manifests/image.json": "e1c856e257e6e0dc2f2c47f5679fc13d4738ee5b1f81a76e65165205eb4082a8",
     "corpus/manifests/paint.json": "6979d9625ddf38fe5f57e566a61792adac61e81ae9f00b7957d4d38611ca88aa",
     "corpus/manifests/paint_jpx.json": "5868d19b761c71a179d83232bc74a09ece1142a7d934732399a64029b3ba8989",
+    "corpus/manifests/recovery_annotation_references.json": "d9ba50019702132916195060abfae324cf8a531262c3ce8732fd11b06e228688",
+    "corpus/manifests/recovery_annotations.json": "39e1f593d3129b2f7a05185d50eea23ad745d350242ca0f8773e871a9029fc28",
     "crates/pagura-appearance/src/annotation.rs": "bf896237ee3e3c448b16c0af372c706a8491e866dc78a6e32649b073d518e83d",
     "crates/pagura-appearance/src/annotation/border.rs": "4423feb6d972c20fccde3e8ad80ecc7a02540c94db1e2fa268601b29627e96e8",
     "crates/pagura-appearance/src/annotation/tests.rs": "9535a7eca8ad1a1ee5e315e2e7fe6e3a23e4add357db7588a373c10c61d83d0c",
@@ -29,8 +33,12 @@
     "crates/pagura-appearance/src/form/update.rs": "24177c14116328da1af78feb6c79e0c3bed611238ff620c2df12e993a6d6c472",
     "crates/pagura-appearance/src/form/variable.rs": "16761101b8a414393c94398eff1c40ad88ddb0596969e6c8b165d29cff02f79b",
     "crates/pagura-cli/src/args.rs": "466c1884df8f47514c193444999fd21950a27e742b900afb77cfacac779de676",
+    "crates/pagura-cli/src/args/tests.rs": "c8f17c2a56279fd0a633cf1c8982633219290418afcdf81ccd4fff08e6c654b8",
     "crates/pagura-cli/src/commands.rs": "7298286f78faa16c5b2879742683c7ae546276f0397fa090fbee8029feaec9fd",
+    "crates/pagura-cli/src/json.rs": "ec29a36256d2d3f588cc398cfd5184ca2663a6eb4de070aa43ac1718033bea80",
     "crates/pagura-cli/src/password.rs": "600dc9c3973633fa92b14a0a3e452abcc406be456eddb1089ff2e65bf0a2370f",
+    "crates/pagura-cli/src/scan.rs": "68e082860e96fadfdcb8c4a9d87c5d51650155ed44dab4857eb7bf99246dae0b",
+    "crates/pagura-cli/tests/cli.rs": "0d296d83aecb6f1c9511aac5eab7439bddd4bbc9d9d3bd5869fe981d7a88cd27",
     "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
     "crates/pagura-codec/src/png.rs": "cf54aeba673786e80f1886488f1bb9bc7e146d9ca42a3b3c956c9661855dc519",
@@ -46,6 +54,8 @@
     "crates/pagura-core/src/lib.rs": "214ac0bc9248bb9641d96993b65b876a8d74d1ebfc7ae9640a1dca8f844159b1",
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
     "crates/pagura-crypto/src/standard/handler.rs": "f9347255dd505772387d760b1a6e43b4551052060a41479cb7e3436bfcc1365a",
+    "crates/pagura-document/src/annotations.rs": "8634e2ad59d4385ef686e0f1d181bdb7f3c384aceba0ffe85531d51e67c92e1b",
+    "crates/pagura-document/src/annotations/tests.rs": "35f4ed68829a78ba4a4274e2be4961d4c857e5652f5158633fa9d694870495a5",
     "crates/pagura-document/src/features.rs": "ef3d5f167a74e2245076b32ecdda566c1c3e47c24fa082c17a0cd74a15026e29",
     "crates/pagura-document/src/forms.rs": "e5e3e885ca53854bdeb9083c5fd96001ac8bb7337c8783fd974e0e4c62be8ed1",
     "crates/pagura-document/src/forms/fill.rs": "dc05f4089de3799237281ec6ee56fcbb04fbf80b2cb622311dcf06c41b92990f",
@@ -55,11 +65,14 @@
     "crates/pagura-document/src/load.rs": "c4d1639daf7f46742438c831b882d90d448ae2ef5332db53c9ea766b5ed97864",
     "crates/pagura-document/src/navigation.rs": "bfad182ebe03026084e27c849ee17f2e6fabdc62b1d6deb35c2601982922c45e",
     "crates/pagura-document/src/navigation/actions.rs": "92f49843f5d88df1e1d7c75e7e1ba7bc4c03497d49ab7fdcc355c07881d18bcd",
+    "crates/pagura-document/src/navigation/links.rs": "37293c348289ead2b1a8a1e9af7f22a9a597ea4572f67d1c637ece506e037647",
     "crates/pagura-document/src/pages.rs": "c7003a375c69bb0b9e797d333c4c5ca6e157b2dbe5bda2a4f97dff379617bd93",
+    "crates/pagura-document/src/repairs.rs": "2576017c6e25329f0cf4f1e9b8d250dd9638d4b428301bcb216975cad1870d7f",
     "crates/pagura-document/src/security.rs": "0499254a28c9fc5cd2676842fadd86e766307845cd164a7c9dd19569e56e5130",
     "crates/pagura-document/src/signatures.rs": "ddd26dd2f51712107ddb1b1e5ebea18caf1c7b3707ab6d838b34278cc9a08c6e",
     "crates/pagura-document/src/signatures/change_tests.rs": "aa06cc1d51b037fce2b5f0f357bfa46f7e792b96f25a40cbd86c81a17aa2e809",
     "crates/pagura-document/src/signatures/model.rs": "3a63fbb6d9aa873fe0cc5ee90a14046f0bb5d7187955c754663c762d6b98813f",
+    "crates/pagura-document/src/signatures/roles.rs": "91546bbb0d5c9769f17f72c8567834618308536141efb65c666f646ac01398b2",
     "crates/pagura-document/src/stream.rs": "bd31422ffc587b869344e0ee91fda881e2ed40f5dd2820299b4978a5bad72187",
     "crates/pagura-extract/src/features.rs": "96c570d9e51e100d7e5ec75c08607d65e22038c0f5db1c99322ee04987dbd864",
     "crates/pagura-extract/src/lib.rs": "9f99ff35f57983ebce2ec84d618f0eb258dd13fea8a12264a84b3759e84a0dec",
@@ -143,19 +156,24 @@
     "crates/pagura-text/src/substitute.rs": "1a8cef1d0c58721e61ccdbf30d677aeed03053a2cdc2f9994013577685434db4",
     "crates/pagura-text/src/substitute/cid.rs": "6ba76ff13c02b40134d03a60ca260aa9b6900edb6a6c936aa1ef9996fcb8d8ad",
     "crates/pagura-write/src/lib.rs": "c51a1ce95091e024ba999884b6b1f558f9723426f0c7b248cf079887d1fdbb54",
+    "crates/pagura/examples/null_annotation_parity.rs": "de6aa99e328b9f614b4a743b8a88aa4091bb12c8330372b9b5dd5a290d295bea",
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
-    "crates/pagura/src/lib.rs": "79d5d0dfc74b27f60881f57c15207cbd4210491fd7677d7a2ddffb72b261941d",
+    "crates/pagura/src/lib.rs": "4421301d2ca331b8e16664c9271d39f5826fefc3d7f7f6fd05f571971f680084",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
+    "crates/pagura/tests/api/annotation_references.rs": "11732103d4b9b44a3a7800381887a7666a3466bff52c923aa207edc3d52743d4",
+    "crates/pagura/tests/api/annotations.rs": "54942ce9dc55c00e6936b53b476fd36b98f93610c390a505421d82f4dc042461",
     "crates/pagura/tests/api/document.rs": "e5ecf107fdb648e90faf90e13b5703aeb151afbd7ad1cb7ea6e59c8548a5a102",
     "crates/pagura/tests/api/editing.rs": "1775dd357ce924da4c3c5911aca4ee98f5204aa3bc48e6ef96fb6bf019f8a085",
     "crates/pagura/tests/api/overprint.rs": "d6d67277b7149b7e237302ea0eadeadca31285e433caed021fd0c2b0bf59dbfa",
     "crates/pagura/tests/api/signatures.rs": "cb95591cee151d9faf4aaf3adf86353b900e796883614963d45ae9b1f1df9f94",
     "crates/pagura/tests/api/streaming.rs": "dc2a667034c4ea19818b0907a3a384b35617e54bd20372466ea7ef414f723f1e",
+    "crates/pagura/tests/api/tags.rs": "9096bd811852bd0910d8bc4aca5659a37de840d76c4ae43f69958a18f28f80ee",
     "crates/pagura/tests/api/text.rs": "de81815b47c165743e9e225f1b4b52bd078fad0024b6ef9921e6db41c47eda59",
     "crates/pagura/tests/api/write.rs": "417bee3185cc44d223c3e64cc1986fe96f7f4792be93688dd5fb93ee1036fadc",
+    "docs/RECOVERY.md": "187f31e22f80e193e6eb3ed57397f5abb1ecbebe0701df881103da756a3d19a8",
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
@@ -176,37 +194,25 @@
     "references/requirements/policy.json": "e2c93be014f695de43b236e7d15737195eed79886bc960509364427ebf44b88b",
     "references/requirements/raster.json": "f73199a3ce42aa82987a413e25cb2f20076d27cb761c04adcdbf7e658cb3e0c2",
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
+    "references/requirements/recovery_annotations.json": "610d7520536a00d634d259145b24b68c180335bb99f2e38623cc52b7df98a2eb",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "b486b86c6c94cf97d8e0bd704cd8fd08d2aabc68745f2c48fe965fda9a1c4f46",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "4c148dcbf9942c1c79f9e09308548a72bc1cf7d05aca7252a0d3b1a61916ce65",
+    "tools/conformance.py": "6b7002cfb9cdba7dfbc5161fb4e2539e83cb1f1039a2633d2c658ae0bd1b8ae5",
     "tools/fixturegen/paint_jpx.py": "209bc16845c6774abab9490e806f3058ea9a2a972dae76fe6b8fef827bccd611",
+    "tools/fixturegen/recovery_annotation_references.py": "841584f6d23f5f40a70bc2a8b3745fc5336bbb4bb6021e2e136b9e4ee749ae71",
+    "tools/fixturegen/recovery_annotations.py": "06386f74911427f33f791a6dc75bcc0759d988c72d937be5f7ee98980f70115f",
+    "tools/null_annotation_parity.mjs": "8b2636db0e80bb1cb6594b2e9306872fd73138647ed1c083d903eefb41bdfd4e",
+    "tools/test_tools.py": "819d44ab1da0f897eb8a4b3b9b9e44e5d30b77353db54338c12bbfef66a44da9",
     "web/client.mjs": "187b849419860bc64478a30fe7ddb0069e17b89f037528dda1454a1bf07d18f8",
     "web/reading_view.mjs": "08cd0bb68dab069b9ee1e0b8d58de7955650f1ebef5b2aa15cb89f6171ec2ed6",
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
-    "crates/pagura-document/src/annotations.rs": "43ed37ffd646c87273f929190baa1eef6daed472af94ca6cf7474fe32ac2431e",
-    "crates/pagura-document/src/repairs.rs": "e0848ff68be8fa5e91f999e1548e8ddd6ea89cb1b1a912159797cfa2258bd45e",
-    "crates/pagura-document/src/navigation/links.rs": "37293c348289ead2b1a8a1e9af7f22a9a597ea4572f67d1c637ece506e037647",
-    "crates/pagura-document/src/signatures/roles.rs": "91546bbb0d5c9769f17f72c8567834618308536141efb65c666f646ac01398b2",
-    "crates/pagura/tests/api/annotations.rs": "6eff2c28fdb33995b8cd9d0361176431adf140a78c0c4d7e9e6be41f3e7ed7b6",
-    "corpus/manifests/recovery_annotations.json": "6521cd56a04335ee3ac0b52d033d628159cf6d5e57e100d73c0b70cd662dfd02",
-    "references/requirements/recovery_annotations.json": "d8d23df1498edc085a62e3108060c9bbcb2008b7bd12e38a6a66961ce28a54a2",
-    "crates/pagura/examples/null_annotation_parity.rs": "e938059436c33fad2c110ae53903a4ec17108a589325fc8aad65134bb7af709e",
-    "tools/null_annotation_parity.mjs": "c21d38f339a629f71d0c16f0b8ccf628de2832da9a77822ef86adb7031a54606",
-    ".github/workflows/null-annotation-parity.yml": "abcd9c6530885f0a10f87ff38197f76206f85683c35be6fe092ccb437a6052e1",
-    "benchmarks/probes/null-annotation-fixtures.json": "d4e3d179340e7835032cc219e5f1ee7b39b7e6069f1ad338679ed0334f6dd902",
-    "crates/pagura-cli/tests/cli.rs": "0d296d83aecb6f1c9511aac5eab7439bddd4bbc9d9d3bd5869fe981d7a88cd27",
-    "tools/conformance.py": "6b7002cfb9cdba7dfbc5161fb4e2539e83cb1f1039a2633d2c658ae0bd1b8ae5",
-    "docs/RECOVERY.md": "f7472f37e0ffd944cbe1feb61cd1c3aea1b6cf31b98cf1fe8c8c552e080b3010",
-    "crates/pagura-cli/src/args/tests.rs": "c8f17c2a56279fd0a633cf1c8982633219290418afcdf81ccd4fff08e6c654b8",
-    "crates/pagura-cli/src/scan.rs": "68e082860e96fadfdcb8c4a9d87c5d51650155ed44dab4857eb7bf99246dae0b",
-    "tools/test_tools.py": "819d44ab1da0f897eb8a4b3b9b9e44e5d30b77353db54338c12bbfef66a44da9",
-    "crates/pagura-cli/src/json.rs": "ec29a36256d2d3f588cc398cfd5184ca2663a6eb4de070aa43ac1718033bea80"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
   },
   "capabilities": [
     {
@@ -224,7 +230,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. Shared literal-null Annots member recovery is reported; unresolved members retain validation failures.",
+      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. Shared literal-null Annots member recovery is reported; unresolved members retain validation failures. Separate reported immediate exact defined-Null reference recovery preserves original Strict refusals, source identities, raw budgets and fail-closed historical/signature policy.",
       "remaining": "Current-corpus recovery classification; external resources require a host contract.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
@@ -234,7 +240,9 @@
         "web/viewer.mjs",
         "crates/pagura-document/src/annotations.rs",
         "crates/pagura-document/src/repairs.rs",
-        "crates/pagura/src/lib.rs"
+        "crates/pagura/src/lib.rs",
+        "tools/fixturegen/recovery_annotation_references.py",
+        "tools/fixturegen/recovery_annotations.py"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
@@ -242,7 +250,10 @@
         "crates/pagura/examples/null_annotation_parity.rs",
         "tools/null_annotation_parity.mjs",
         ".github/workflows/null-annotation-parity.yml",
-        "benchmarks/probes/null-annotation-fixtures.json"
+        "benchmarks/probes/null-annotation-fixtures.json",
+        "crates/pagura/tests/api/annotation_references.rs",
+        "crates/pagura/tests/api/tags.rs",
+        "crates/pagura-document/src/annotations/tests.rs"
       ],
       "requirements": [
         "catalog-identity-recovery",
@@ -271,7 +282,8 @@
         "undefined-reference-null",
         "xref-lazy-offset-validation",
         "xref-streams",
-        "recovery-annotation-null-entry"
+        "recovery-annotation-null-entry",
+        "recovery-annotation-null-reference"
       ],
       "fixtures": [
         "recovery_annotations/clean",
@@ -294,7 +306,24 @@
         "recovery_annotations/after-null-boolean",
         "recovery_annotations/after-null-bbox",
         "recovery_annotations/after-null-cycle",
-        "recovery_annotations/after-null-subtype"
+        "recovery_annotations/after-null-subtype",
+        "recovery_annotation_references/defined-zero",
+        "recovery_annotation_references/defined-seven",
+        "recovery_annotation_references/wrong-generation",
+        "recovery_annotation_references/undefined",
+        "recovery_annotation_references/reference-chain",
+        "recovery_annotation_references/reference-cycle",
+        "recovery_annotation_references/integer",
+        "recovery_annotation_references/string",
+        "recovery_annotation_references/array",
+        "recovery_annotation_references/malformed-dictionary",
+        "recovery_annotation_references/free",
+        "recovery_annotation_references/later-invalid",
+        "recovery_annotation_references/repeat-identity",
+        "recovery_annotation_references/later-first-use",
+        "recovery_annotation_references/many-references",
+        "recovery_annotation_references/compressed-null",
+        "recovery_annotation_references/zero-reference-body"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -933,7 +962,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Stored appearances, Link/Square borders, Text icons and supported empty widgets. Rendering can report and skip literal null Annots members before continuing original ordered validation.",
+      "implemented": "Stored appearances, Link/Square borders, Text icons and supported empty widgets. Rendering can report and skip literal null Annots members before continuing original ordered validation. Separate reported immediate exact defined-Null reference recovery preserves original Strict refusals, source identities, raw budgets and fail-closed historical/signature policy.",
       "remaining": "Other subtype appearances, richer borders, nonempty/rotated widgets and interaction states.",
       "sources": [
         "crates/pagura-appearance/src/annotation.rs",
@@ -942,7 +971,9 @@
         "crates/pagura-host/src/protocol.rs",
         "web/viewer.mjs",
         "crates/pagura-document/src/annotations.rs",
-        "crates/pagura/src/lib.rs"
+        "crates/pagura/src/lib.rs",
+        "tools/fixturegen/recovery_annotation_references.py",
+        "tools/fixturegen/recovery_annotations.py"
       ],
       "tests": [
         "crates/pagura-appearance/src/annotation/tests.rs",
@@ -950,13 +981,17 @@
         "crates/pagura/examples/null_annotation_parity.rs",
         "tools/null_annotation_parity.mjs",
         ".github/workflows/null-annotation-parity.yml",
-        "benchmarks/probes/null-annotation-fixtures.json"
+        "benchmarks/probes/null-annotation-fixtures.json",
+        "crates/pagura/tests/api/annotation_references.rs",
+        "crates/pagura/tests/api/tags.rs",
+        "crates/pagura-document/src/annotations/tests.rs"
       ],
       "requirements": [
         "content-annotation-generation",
         "content-annotation-view",
         "content-annotations",
-        "recovery-annotation-null-entry"
+        "recovery-annotation-null-entry",
+        "recovery-annotation-null-reference"
       ],
       "fixtures": [
         "recovery_annotations/clean",
@@ -979,7 +1014,24 @@
         "recovery_annotations/after-null-boolean",
         "recovery_annotations/after-null-bbox",
         "recovery_annotations/after-null-cycle",
-        "recovery_annotations/after-null-subtype"
+        "recovery_annotations/after-null-subtype",
+        "recovery_annotation_references/defined-zero",
+        "recovery_annotation_references/defined-seven",
+        "recovery_annotation_references/wrong-generation",
+        "recovery_annotation_references/undefined",
+        "recovery_annotation_references/reference-chain",
+        "recovery_annotation_references/reference-cycle",
+        "recovery_annotation_references/integer",
+        "recovery_annotation_references/string",
+        "recovery_annotation_references/array",
+        "recovery_annotation_references/malformed-dictionary",
+        "recovery_annotation_references/free",
+        "recovery_annotation_references/later-invalid",
+        "recovery_annotation_references/repeat-identity",
+        "recovery_annotation_references/later-first-use",
+        "recovery_annotation_references/many-references",
+        "recovery_annotation_references/compressed-null",
+        "recovery_annotation_references/zero-reference-body"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -1444,7 +1496,7 @@
         "host": "missing",
         "viewer": "missing"
       },
-      "implemented": "Historical discovery, ByteRange/revision coverage and structural DocMDP/FieldMDP classification. Literal-null annotation recovery preserves original bytes and surviving reference order; ambiguous signed graphs remain Inconclusive.",
+      "implemented": "Historical discovery, ByteRange/revision coverage and structural DocMDP/FieldMDP classification. Literal-null annotation recovery preserves original bytes and surviving reference order; ambiguous signed graphs remain Inconclusive. Separate reported immediate exact defined-Null reference recovery preserves original Strict refusals, source identities, raw budgets and fail-closed historical/signature policy.",
       "remaining": "Encrypted/repaired history and remaining transforms/exceptions; integrate results with save permission enforcement. No signature inspection command or host request is exposed.",
       "sources": [
         "crates/pagura-document/src/signatures.rs",
@@ -1454,7 +1506,9 @@
         "web/viewer.mjs",
         "crates/pagura-document/src/annotations.rs",
         "crates/pagura-document/src/signatures/roles.rs",
-        "crates/pagura/src/lib.rs"
+        "crates/pagura/src/lib.rs",
+        "tools/fixturegen/recovery_annotation_references.py",
+        "tools/fixturegen/recovery_annotations.py"
       ],
       "tests": [
         "crates/pagura-document/src/signatures/change_tests.rs",
@@ -1462,7 +1516,10 @@
         "crates/pagura/examples/null_annotation_parity.rs",
         "tools/null_annotation_parity.mjs",
         ".github/workflows/null-annotation-parity.yml",
-        "benchmarks/probes/null-annotation-fixtures.json"
+        "benchmarks/probes/null-annotation-fixtures.json",
+        "crates/pagura/tests/api/annotation_references.rs",
+        "crates/pagura/tests/api/tags.rs",
+        "crates/pagura-document/src/annotations/tests.rs"
       ],
       "requirements": [
         "signature-byte-range",
@@ -1471,7 +1528,8 @@
         "signature-results",
         "signature-revision-coverage",
         "signature-transforms",
-        "recovery-annotation-null-entry"
+        "recovery-annotation-null-entry",
+        "recovery-annotation-null-reference"
       ],
       "fixtures": [
         "recovery_annotations/signature-clean-annotation",
@@ -1483,7 +1541,18 @@
         "recovery_annotations/signature-added-null-annotation",
         "recovery_annotations/signature-added-null-content",
         "recovery_annotations/signature-added-null-signing",
-        "recovery_annotations/signature-historical-reference"
+        "recovery_annotations/signature-historical-reference",
+        "recovery_annotation_references/signature-clean-annotation",
+        "recovery_annotation_references/signature-clean-content",
+        "recovery_annotation_references/signature-clean-signing",
+        "recovery_annotation_references/signature-signed-null-annotation",
+        "recovery_annotation_references/signature-signed-null-content",
+        "recovery_annotation_references/signature-signed-null-signing",
+        "recovery_annotation_references/signature-added-null-annotation",
+        "recovery_annotation_references/signature-added-null-content",
+        "recovery_annotation_references/signature-added-null-signing",
+        "recovery_annotation_references/signature-historical-null-current-valid",
+        "recovery_annotation_references/signature-historical-valid-current-null"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -1645,7 +1714,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Typed trees, destinations, outlines, links and labels; host reading requests and browser navigation. Link traversal shares reported literal-null member recovery while retaining surviving dictionary identity and raw-entry work.",
+      "implemented": "Typed trees, destinations, outlines, links and labels; host reading requests and browser navigation. Link traversal shares reported literal-null member recovery while retaining surviving dictionary identity and raw-entry work. Separate reported immediate exact defined-Null reference recovery preserves original Strict refusals, source identities, raw budgets and fail-closed historical/signature policy.",
       "remaining": "CLI export, navigation mutation and additional host-approved action types.",
       "sources": [
         "crates/pagura-document/src/navigation.rs",
@@ -1657,7 +1726,9 @@
         "web/viewer.mjs",
         "crates/pagura-document/src/annotations.rs",
         "crates/pagura-document/src/navigation/links.rs",
-        "crates/pagura/src/lib.rs"
+        "crates/pagura/src/lib.rs",
+        "tools/fixturegen/recovery_annotation_references.py",
+        "tools/fixturegen/recovery_annotations.py"
       ],
       "tests": [
         "crates/pagura/tests/api/document.rs",
@@ -1665,7 +1736,10 @@
         "crates/pagura/examples/null_annotation_parity.rs",
         "tools/null_annotation_parity.mjs",
         ".github/workflows/null-annotation-parity.yml",
-        "benchmarks/probes/null-annotation-fixtures.json"
+        "benchmarks/probes/null-annotation-fixtures.json",
+        "crates/pagura/tests/api/annotation_references.rs",
+        "crates/pagura/tests/api/tags.rs",
+        "crates/pagura-document/src/annotations/tests.rs"
       ],
       "requirements": [
         "navigation-destinations",
@@ -1673,7 +1747,8 @@
         "navigation-links",
         "navigation-outlines",
         "navigation-trees",
-        "recovery-annotation-null-entry"
+        "recovery-annotation-null-entry",
+        "recovery-annotation-null-reference"
       ],
       "fixtures": [
         "recovery_annotations/clean",
@@ -1696,7 +1771,24 @@
         "recovery_annotations/after-null-boolean",
         "recovery_annotations/after-null-bbox",
         "recovery_annotations/after-null-cycle",
-        "recovery_annotations/after-null-subtype"
+        "recovery_annotations/after-null-subtype",
+        "recovery_annotation_references/defined-zero",
+        "recovery_annotation_references/defined-seven",
+        "recovery_annotation_references/wrong-generation",
+        "recovery_annotation_references/undefined",
+        "recovery_annotation_references/reference-chain",
+        "recovery_annotation_references/reference-cycle",
+        "recovery_annotation_references/integer",
+        "recovery_annotation_references/string",
+        "recovery_annotation_references/array",
+        "recovery_annotation_references/malformed-dictionary",
+        "recovery_annotation_references/free",
+        "recovery_annotation_references/later-invalid",
+        "recovery_annotation_references/repeat-identity",
+        "recovery_annotation_references/later-first-use",
+        "recovery_annotation_references/many-references",
+        "recovery_annotation_references/compressed-null",
+        "recovery_annotation_references/zero-reference-body"
       ],
       "comparisons": {
         "pdfium": "unprobed",

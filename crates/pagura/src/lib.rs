@@ -93,6 +93,8 @@ pub use pagura_document::forms;
 pub use pagura_document::navigation;
 /// Reported recovery of literal null members in page annotation arrays.
 pub use pagura_document::repairs::ANNOTATION_NULL as PAGES_ANNOTATION_NULL;
+/// Reported recovery of immediate defined parsed-null annotation references.
+pub use pagura_document::repairs::ANNOTATION_NULL_REFERENCE as PAGES_ANNOTATION_NULL_REFERENCE;
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,

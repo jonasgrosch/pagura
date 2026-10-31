@@ -3,8 +3,9 @@
 Literal null members of page Annots arrays can be recovered with the
 reported `pages.annotation-null` policy (see [RECOVERY](RECOVERY.md)).
 Rendering, links and signature-role traversal share the gate; original
-references/order and array budgets remain authoritative. Referenced
-null/missing annotations remain errors. Repaired signed graphs cannot
+references/order and array budgets remain authoritative. Immediate exact defined Null references use the separate reported
+`pages.annotation-null-reference` policy; undefined/free/other-generation or
+chained targets remain errors. Repaired signed graphs cannot
 establish an Allowed modification. Whole-field Annots null handling is
 a separate existing gap; this recovery does not normalize that field.
 
@@ -24,7 +25,7 @@ they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
-43 capability families, all 90 literal tags reviewed, and all 337 requirement IDs assigned.
+43 capability families, all 90 literal tags reviewed, and all 338 requirement IDs assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.

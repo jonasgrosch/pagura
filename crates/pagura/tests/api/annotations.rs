@@ -93,7 +93,6 @@ fn strict_null_rejection_has_page_context_and_no_applied_repair() {
 #[test]
 fn referenced_nulls_and_other_members_still_fail_both_consumers() {
     for name in [
-        "indirect-null",
         "undefined-reference",
         "wrong-generation",
         "boolean",
