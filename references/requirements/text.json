@@ -4,6 +4,41 @@
   "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1. Substitution and optional-weight handling were checked against ISO 9.6.2.1-9.6.2.2, 9.6.5.2, 9.6.5.4, 9.8.1-9.8.2/Tables 120-121 and 9.9.2 in the same local text. Sixty-six Russian AFII name-to-scalar records were compared with local adobe-glyph-list data. Short aliases and invalid-weight discard are documented policies; full external AGL/AGLFN algorithm verification is not claimed. Horizontal CID substitution and Symbol/Dingbats additions were checked against the same local ISO text: 9.6.2.2, 9.6.5.2/Table 112, 9.6.5.4, 9.7.3/Table 114, 9.7.4.2-9.7.4.3, 9.7.5 and 9.10.2-9.10.3. CFF INDEX, DICT, charset layouts and standard SIDs used by the Foxit oracle were checked against local TN5176 sections 4, 5, 8-10, 13-14 and Appendix A. Regional OTF cmap expectations are independent binary-layout oracles; primary OpenType format review remains pending. Collection projection, Unicode subtable preference, horizontal-only substitutes and coalesced coverage diagnostics are explicit provider policies. Extraction additions were checked against the same local ISO text: 7.9.2.2, 9.3, 9.4.4, 9.10, 14.6, 14.8.2.5.1/14.8.2.5.3, 14.8.2.6.2 and 14.9.3-14.9.4. Trm and replacement/reversal semantics are normative; selection cells, untagged reading order, layout thresholds, word boundaries and search equivalence are explicitly reader policy. No Unicode normalization or full case-fold standard verification is claimed. Tagged extraction additions were checked against the same local ISO text: 7.9.7, 14.7.2-14.7.5 (Tables 354-359), 14.8.2.2, 14.8.4 and 14.9.3-14.9.4. Hierarchy order, owner lookup, roles, artifacts and replacement semantics are normative; separator serialization, unsupported namespace boundaries and retained byte accounting are explicit implementation policy. Standard namespace names, default namespace selection and role-set differences were checked against 14.8.6.1-14.8.6.2 and Annex M of the same text; logical depth-first order is defined by 14.8.2.5.1. Optional null dictionary values and indirect null were checked against 7.3.9, including structure keys, replacement properties and nonstructural null MCIDs. Reported structure fallback is ADR 0003/ADR 0014 reader recovery policy, not an additional normative ISO requirement; logical-structure fault locators remain those reviewed above. Two-view additions use the same primary ISO text: 12.5.3 (annotation flags), 14.6.2, 14.7.5.2-14.7.5.3 and 14.9.3-14.9.5. Page/logical API separation, fixed logical separator thresholds and reported metadata discard are documented reader policies. Strict rejection of nested ToUnicode parser/filter repairs was checked against ISO 7.3.5, 7.3.7, 7.4.4 and 9.10.3, with zlib integrity from RFC 1950 section 2.2; recovery-mode classification follows ADR 0003.",
   "requirements": [
     {
+      "id": "text-checked-cid-substitution",
+      "reference": "iso32000-2-full-text",
+      "clauses": ["9.7.4.2", "9.7.5", "9.10.3"],
+      "status": "Checked reader-policy fallback for non-embedded horizontal MinionPro CID fonts",
+      "tests": [
+        "text/checked-cid-regular-CIDFontType0", "text/checked-cid-regular-CIDFontType2",
+        "text/checked-cid-bold-CIDFontType0", "text/checked-cid-bold-CIDFontType2",
+        "text/checked-cid-italic-CIDFontType0", "text/checked-cid-italic-CIDFontType2",
+        "text/checked-cid-bolditalic-CIDFontType0", "text/checked-cid-bolditalic-CIDFontType2",
+        "text/checked-cid-identity", "text/checked-cid-unnamed",
+        "text/checked-cid-no-unicode", "text/checked-cid-cid-is-not-unicode", "text/checked-cid-unmapped-unicode",
+        "text/checked-cid-ligature", "text/checked-cid-empty-unicode", "text/checked-cid-missing-glyph",
+        "text/checked-cid-encoding-hole", "text/checked-cid-notdef-cid", "text/checked-cid-unknown-style", "text/checked-cid-unknown-family",
+        "text/checked-cid-punctuation-name", "text/checked-cid-case-name",
+        "text/checked-cid-invalid-subset", "text/checked-cid-vertical", "text/checked-cid-simple-unchanged",
+        "text/checked-cid-malformed-unicode",
+        "text/paint-checked-cid-regular-CIDFontType0", "text/paint-checked-cid-regular-CIDFontType2",
+        "text/paint-checked-cid-bold-CIDFontType0", "text/paint-checked-cid-bold-CIDFontType2",
+        "text/paint-checked-cid-italic-CIDFontType0", "text/paint-checked-cid-italic-CIDFontType2",
+        "text/paint-checked-cid-bolditalic-CIDFontType0", "text/paint-checked-cid-bolditalic-CIDFontType2",
+        "text/paint-legacy-cid-regular-CIDFontType0", "text/paint-legacy-cid-regular-CIDFontType2",
+        "text/paint-legacy-cid-bold-CIDFontType0", "text/paint-legacy-cid-bold-CIDFontType2",
+        "text/paint-legacy-cid-italic-CIDFontType0", "text/paint-legacy-cid-italic-CIDFontType2",
+        "text/paint-legacy-cid-bolditalic-CIDFontType0", "text/paint-legacy-cid-bolditalic-CIDFontType2"
+      ],
+      "gaps": "Tinos is a visual substitute, not the original Minion program or a metric-compatible Minion replacement. Vertical forms, unknown names/styles, multi-scalar shaping and missing glyph identities remain unsupported.",
+      "verification": {
+        "rule": "Encoding maps source codes to CIDs for W/DW advances; ToUnicode describes the source codes' Unicode text. Neither identity CIDs nor substitute GIDs establish original glyph identity.",
+        "implementation": "Reader policy uses the source code's single-scalar ToUnicode text to select an available glyph of the named fallback face. Every used code must have a non-notdef Encoding mapping and an available nonzero glyph, including when extraction is disabled.",
+        "expectations": "Independent authored source-code/CID/Unicode tuples and locked sfnt cmap records select exact glyph IDs; explicit PDF W/DW supply advances. Negative controls must refuse rather than paint blanks.",
+        "verdict": "Documented substitution policy; not original-font appearance equivalence or a normative ToUnicode drawing route",
+        "choices": ["MinionPro Regular/Bold/Italic/BoldItalic select the corresponding Times fallback supplied by the provider; standard aliases and simple-font metric fallback are unchanged."]
+      }
+    },
+    {
       "id": "text-type3",
       "reference": "iso32000-2-full-text",
       "clauses": [

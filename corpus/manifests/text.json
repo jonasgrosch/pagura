@@ -8831,6 +8831,1028 @@
       "driver": "text-repair"
     },
     {
+      "id": "text/checked-cid-regular-CIDFontType0",
+      "kind": "vector",
+      "description": "Distinct source codes, CIDs and Unicode select locked substitute glyphs; PDF W/DW retain advances, including a valid space",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-regular-CIDFontType0.base",
+          "sha256": "e21247fc58a4e22b8a38bb8847888e7c5e362e903eb42741412ac53a7f0de921"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-regular-CIDFontType0.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-regular-CIDFontType0.out",
+          "sha256": "8b422a20e79b5cf23df9edb7147671db44bfe8a7b7982be08ed1821e4d4fdbbb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-regular-CIDFontType0.pdf",
+          "sha256": "632cd5178d308527b299cec355a2ed43ab8d23477a0d89841ee1eff8ae063133"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/checked-cid-regular-CIDFontType2",
+      "kind": "vector",
+      "description": "Distinct source codes, CIDs and Unicode select locked substitute glyphs; PDF W/DW retain advances, including a valid space",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-regular-CIDFontType2.base",
+          "sha256": "e21247fc58a4e22b8a38bb8847888e7c5e362e903eb42741412ac53a7f0de921"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-regular-CIDFontType2.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-regular-CIDFontType2.out",
+          "sha256": "8b422a20e79b5cf23df9edb7147671db44bfe8a7b7982be08ed1821e4d4fdbbb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-regular-CIDFontType2.pdf",
+          "sha256": "a2815ddc2c7dc8346ec558168b074395afad8fbf9b4e0ad96ea13e43d9adc8c5"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/checked-cid-bold-CIDFontType0",
+      "kind": "vector",
+      "description": "Distinct source codes, CIDs and Unicode select locked substitute glyphs; PDF W/DW retain advances, including a valid space",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-bold-CIDFontType0.base",
+          "sha256": "bfd7f0d9ab321859c96b0edad086277a233782e313cfe42101af166132b6c1d5"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-bold-CIDFontType0.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-bold-CIDFontType0.out",
+          "sha256": "8b422a20e79b5cf23df9edb7147671db44bfe8a7b7982be08ed1821e4d4fdbbb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-bold-CIDFontType0.pdf",
+          "sha256": "734f5050fb629e84c4fa29a53747be68c32b0bc0676e712b6dcf7d5177900314"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/checked-cid-bold-CIDFontType2",
+      "kind": "vector",
+      "description": "Distinct source codes, CIDs and Unicode select locked substitute glyphs; PDF W/DW retain advances, including a valid space",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-bold-CIDFontType2.base",
+          "sha256": "bfd7f0d9ab321859c96b0edad086277a233782e313cfe42101af166132b6c1d5"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-bold-CIDFontType2.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-bold-CIDFontType2.out",
+          "sha256": "8b422a20e79b5cf23df9edb7147671db44bfe8a7b7982be08ed1821e4d4fdbbb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-bold-CIDFontType2.pdf",
+          "sha256": "a97d93992db11b0f7e512d812a004823ef89523e29d86b25b675ff1b97bfa7ec"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/checked-cid-italic-CIDFontType0",
+      "kind": "vector",
+      "description": "Distinct source codes, CIDs and Unicode select locked substitute glyphs; PDF W/DW retain advances, including a valid space",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-italic-CIDFontType0.base",
+          "sha256": "d8c5c2e87766fbf39b683cb4d7a9d2a78766a3bdba0b76fe8e3f4b05f79e506f"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-italic-CIDFontType0.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-italic-CIDFontType0.out",
+          "sha256": "8b422a20e79b5cf23df9edb7147671db44bfe8a7b7982be08ed1821e4d4fdbbb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-italic-CIDFontType0.pdf",
+          "sha256": "8ec0ad30526933238b037eaf78e29cbf6997bf7fa3bc1d7b8c836e15922199dd"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/checked-cid-italic-CIDFontType2",
+      "kind": "vector",
+      "description": "Distinct source codes, CIDs and Unicode select locked substitute glyphs; PDF W/DW retain advances, including a valid space",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-italic-CIDFontType2.base",
+          "sha256": "d8c5c2e87766fbf39b683cb4d7a9d2a78766a3bdba0b76fe8e3f4b05f79e506f"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-italic-CIDFontType2.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-italic-CIDFontType2.out",
+          "sha256": "8b422a20e79b5cf23df9edb7147671db44bfe8a7b7982be08ed1821e4d4fdbbb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-italic-CIDFontType2.pdf",
+          "sha256": "f445138a0f02471049315a0b91cee672cd8d5373340ab3148f71ba69ee0b034e"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/checked-cid-bolditalic-CIDFontType0",
+      "kind": "vector",
+      "description": "Distinct source codes, CIDs and Unicode select locked substitute glyphs; PDF W/DW retain advances, including a valid space",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-bolditalic-CIDFontType0.base",
+          "sha256": "92baf3342e937adb28c0c68b117670143793961a4a84461e3ffb288a976298b9"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-bolditalic-CIDFontType0.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-bolditalic-CIDFontType0.out",
+          "sha256": "8b422a20e79b5cf23df9edb7147671db44bfe8a7b7982be08ed1821e4d4fdbbb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-bolditalic-CIDFontType0.pdf",
+          "sha256": "209f7f7bbfda83489aa166db671b2125f285fe351932df5db51952b5af65d188"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/checked-cid-bolditalic-CIDFontType2",
+      "kind": "vector",
+      "description": "Distinct source codes, CIDs and Unicode select locked substitute glyphs; PDF W/DW retain advances, including a valid space",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-bolditalic-CIDFontType2.base",
+          "sha256": "92baf3342e937adb28c0c68b117670143793961a4a84461e3ffb288a976298b9"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-bolditalic-CIDFontType2.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-bolditalic-CIDFontType2.out",
+          "sha256": "8b422a20e79b5cf23df9edb7147671db44bfe8a7b7982be08ed1821e4d4fdbbb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-bolditalic-CIDFontType2.pdf",
+          "sha256": "6efb870ad50109d897b9f6d5b5ab785126a9fc8e92f420f19d95c94952b8037b"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/paint-checked-cid-regular-CIDFontType0",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Roman contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-checked-cid-regular-CIDFontType0.pdf",
+      "sha256": "023e64b47c00be54a3700feca22aca470f4ab5e5fe77c39bde05c880d3bbd706",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-checked-cid-regular-CIDFontType0.ppm",
+      "oracle_sha256": "89d4c5afb1bb8fdd72d6482988ec5663c924b5bd8d880c49d9fd3a4f82557ae4",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-legacy-cid-regular-CIDFontType0",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Roman contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-legacy-cid-regular-CIDFontType0.pdf",
+      "sha256": "3d6bd9e6eb3b6882db1867bf5671ef2666206d740306a58607bae34032728263",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.cid-glyph-missing",
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-legacy-cid-regular-CIDFontType0.ppm",
+      "oracle_sha256": "89d4c5afb1bb8fdd72d6482988ec5663c924b5bd8d880c49d9fd3a4f82557ae4",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-checked-cid-regular-CIDFontType2",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Roman contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-checked-cid-regular-CIDFontType2.pdf",
+      "sha256": "557dfbc288e2a9acc768155cf3358a357c91972f5ec39c64ebf6973385cfad42",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-checked-cid-regular-CIDFontType2.ppm",
+      "oracle_sha256": "89d4c5afb1bb8fdd72d6482988ec5663c924b5bd8d880c49d9fd3a4f82557ae4",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-legacy-cid-regular-CIDFontType2",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Roman contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-legacy-cid-regular-CIDFontType2.pdf",
+      "sha256": "85e2161fa69111774d0f1bff9ddf7dfc7b61bf56222c5bd06abfd21a8a1800ef",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.cid-glyph-missing",
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-legacy-cid-regular-CIDFontType2.ppm",
+      "oracle_sha256": "89d4c5afb1bb8fdd72d6482988ec5663c924b5bd8d880c49d9fd3a4f82557ae4",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-checked-cid-bold-CIDFontType0",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Bold contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-checked-cid-bold-CIDFontType0.pdf",
+      "sha256": "c33255433af456a2cc730fa6480e128d4d89806f5999420bbafcdf8cee911c46",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-checked-cid-bold-CIDFontType0.ppm",
+      "oracle_sha256": "093c6258d47adbd49bbf24b4a95eec6f455167b292d711740ea8fc361fda8569",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-legacy-cid-bold-CIDFontType0",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Bold contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-legacy-cid-bold-CIDFontType0.pdf",
+      "sha256": "f3f8085d0f8afa08a24c4d9b2f86bcdc8fdbd60cd21975ab8d3db5d0d670041e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.cid-glyph-missing",
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-legacy-cid-bold-CIDFontType0.ppm",
+      "oracle_sha256": "093c6258d47adbd49bbf24b4a95eec6f455167b292d711740ea8fc361fda8569",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-checked-cid-bold-CIDFontType2",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Bold contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-checked-cid-bold-CIDFontType2.pdf",
+      "sha256": "47a6023b999b498febec581b48aac8104aad630cf700d5f25da771f72d2e7c8d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-checked-cid-bold-CIDFontType2.ppm",
+      "oracle_sha256": "093c6258d47adbd49bbf24b4a95eec6f455167b292d711740ea8fc361fda8569",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-legacy-cid-bold-CIDFontType2",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Bold contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-legacy-cid-bold-CIDFontType2.pdf",
+      "sha256": "7d51c45e14cc33c3cb691008fce1217676b6ecfe4621b1ff9fb51397e1da3f6a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.cid-glyph-missing",
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-legacy-cid-bold-CIDFontType2.ppm",
+      "oracle_sha256": "093c6258d47adbd49bbf24b4a95eec6f455167b292d711740ea8fc361fda8569",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-checked-cid-italic-CIDFontType0",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Italic contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-checked-cid-italic-CIDFontType0.pdf",
+      "sha256": "5d709a45648b9c043614b69a34f00bb0bbb7a8b7947977d731a5a949dc600202",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-checked-cid-italic-CIDFontType0.ppm",
+      "oracle_sha256": "7b85994fa4d5b296dbac13e9e88aa2d15dfebe2eaee648c6e14faf6749870e8b",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-legacy-cid-italic-CIDFontType0",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Italic contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-legacy-cid-italic-CIDFontType0.pdf",
+      "sha256": "a76523050abe266a4e93042ede10550bae63203bdfb016e992e3fb09b65dfb79",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.cid-glyph-missing",
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-legacy-cid-italic-CIDFontType0.ppm",
+      "oracle_sha256": "7b85994fa4d5b296dbac13e9e88aa2d15dfebe2eaee648c6e14faf6749870e8b",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-checked-cid-italic-CIDFontType2",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Italic contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-checked-cid-italic-CIDFontType2.pdf",
+      "sha256": "6c2710e906ea4c18fa3abcb18f6979f799a6fda30d5e66e43b9851f03af13126",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-checked-cid-italic-CIDFontType2.ppm",
+      "oracle_sha256": "7b85994fa4d5b296dbac13e9e88aa2d15dfebe2eaee648c6e14faf6749870e8b",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-legacy-cid-italic-CIDFontType2",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-Italic contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-legacy-cid-italic-CIDFontType2.pdf",
+      "sha256": "b88487b478912855995d024a18bc013b7c60896b57fd419e9a227f7b43b9db7a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.cid-glyph-missing",
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-legacy-cid-italic-CIDFontType2.ppm",
+      "oracle_sha256": "7b85994fa4d5b296dbac13e9e88aa2d15dfebe2eaee648c6e14faf6749870e8b",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-checked-cid-bolditalic-CIDFontType0",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-BoldItalic contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-checked-cid-bolditalic-CIDFontType0.pdf",
+      "sha256": "4b4c07a0704c43c69ec716ebcaa17e672e536e573e3b270c7a2f0c64b5537fc2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-checked-cid-bolditalic-CIDFontType0.ppm",
+      "oracle_sha256": "b2c1fefe982b3e8cffc3bac9dd14af87708643c7449469a26e61ee932b24d3e1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-legacy-cid-bolditalic-CIDFontType0",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-BoldItalic contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-legacy-cid-bolditalic-CIDFontType0.pdf",
+      "sha256": "c4d44e484ee65a0d23c3bd5f7980916725667b0baf26e702eda1ad0a906e205d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.cid-glyph-missing",
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-legacy-cid-bolditalic-CIDFontType0.ppm",
+      "oracle_sha256": "b2c1fefe982b3e8cffc3bac9dd14af87708643c7449469a26e61ee932b24d3e1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-checked-cid-bolditalic-CIDFontType2",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-BoldItalic contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-checked-cid-bolditalic-CIDFontType2.pdf",
+      "sha256": "a1c5c8e1ffa5312b37e5dba80ae7398df57987e135c3ccda84c36c313fc5e4d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-checked-cid-bolditalic-CIDFontType2.ppm",
+      "oracle_sha256": "b2c1fefe982b3e8cffc3bac9dd14af87708643c7449469a26e61ee932b24d3e1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/paint-legacy-cid-bolditalic-CIDFontType2",
+      "kind": "pdf",
+      "description": "Source code to Unicode to locked Times-BoldItalic contours, exact rational pixel areas and PDF W/DW placement; visual fallback only",
+      "expected": "render",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/text/paint-legacy-cid-bolditalic-CIDFontType2.pdf",
+      "sha256": "122c4c5d611c7332cbade9dff18426f108e96f88a7bbf36f0176fe3639d3302c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.cid-glyph-missing",
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/text/paint-legacy-cid-bolditalic-CIDFontType2.ppm",
+      "oracle_sha256": "b2c1fefe982b3e8cffc3bac9dd14af87708643c7449469a26e61ee932b24d3e1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "text/checked-cid-identity",
+      "kind": "vector",
+      "description": "Declared source Unicode remains authoritative through Identity-H, with or without a named collection",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-identity.base",
+          "sha256": "e21247fc58a4e22b8a38bb8847888e7c5e362e903eb42741412ac53a7f0de921"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-identity.input",
+          "sha256": "9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-identity.out",
+          "sha256": "6f756bbf8ebb28f0392f81a1d824abcdda9be2e3fba86f12a035c0b4629cb08f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-identity.pdf",
+          "sha256": "3d900949904ada9139424f0c68842857d8f36179a495bfc0669f64f51c6367f5"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/checked-cid-unnamed",
+      "kind": "vector",
+      "description": "Declared source Unicode remains authoritative through Identity-H, with or without a named collection",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/checked-cid-unnamed.base",
+          "sha256": "e21247fc58a4e22b8a38bb8847888e7c5e362e903eb42741412ac53a7f0de921"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-unnamed.input",
+          "sha256": "9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2"
+        },
+        ".out": {
+          "path": "corpus/generated/text/checked-cid-unnamed.out",
+          "sha256": "6f756bbf8ebb28f0392f81a1d824abcdda9be2e3fba86f12a035c0b4629cb08f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-unnamed.pdf",
+          "sha256": "241a271ac61bd53ec6f6e9351e20a29238f88054e107633283af2969383b2e60"
+        }
+      },
+      "driver": "checked-cid"
+    },
+    {
+      "id": "text/checked-cid-no-unicode",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-no-unicode.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-no-unicode.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-no-unicode.pdf",
+          "sha256": "3fe52c26ff2aee6c671fec42b5fe35ad6e672c95d57f6f331315a143220fcc56"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-cid-is-not-unicode",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-cid-is-not-unicode.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-cid-is-not-unicode.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-cid-is-not-unicode.pdf",
+          "sha256": "31fdf123e03a5a5c89b1f950590f7f18c0d2fe7df6e3def47e7425097ae13d55"
+        },
+        ".strict.error": {
+          "path": "corpus/generated/text/checked-cid-cid-is-not-unicode.strict.error",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        }
+      },
+      "driver": "checked-cid-malformed"
+    },
+    {
+      "id": "text/checked-cid-unmapped-unicode",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-unmapped-unicode.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-unmapped-unicode.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-unmapped-unicode.pdf",
+          "sha256": "70d49687e911efcbe7158e18e98287a67bb2ce3f632536e7579b7b342a3de2fc"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-ligature",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-ligature.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-ligature.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-ligature.pdf",
+          "sha256": "04d7a38840e7f57399441c8bb91629e4baf30ba903744fdfab4892c1d25eebc3"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-empty-unicode",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-empty-unicode.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-empty-unicode.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-empty-unicode.pdf",
+          "sha256": "5fcd77faefc132883a41ac54963b2a5d37a80a05a3b9943c60cb5a8aad532ab6"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-missing-glyph",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-missing-glyph.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-missing-glyph.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-missing-glyph.pdf",
+          "sha256": "f15d204961e0b5706ba13fe40ffaa456a32f60e33b339aebb5cfe7215f9c2f72"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-encoding-hole",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-encoding-hole.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-encoding-hole.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-encoding-hole.pdf",
+          "sha256": "87edaf34331d9fe4d77609771b85d2dcb07f4fd418407f29d6b46cb5fcd31975"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-notdef-cid",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-notdef-cid.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-notdef-cid.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-notdef-cid.pdf",
+          "sha256": "d05c95b10550dbac8ce930f309bfd25bb93419eb2037b5f46e83bfaa3880759c"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-unknown-style",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-unknown-style.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-unknown-style.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-unknown-style.pdf",
+          "sha256": "8d4616b8192b1e1cda9341c9aa60f996f83f40977841282e3990b4fe9fd10182"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-unknown-family",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-unknown-family.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-unknown-family.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-unknown-family.pdf",
+          "sha256": "443fbde77884aaa3eedd984684b3ef97330ff1dccd4092ed3199216f7557d842"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-invalid-subset",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-invalid-subset.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-invalid-subset.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-invalid-subset.pdf",
+          "sha256": "613fb3f451d406727d6e0fe7661e48e4d1f5f3a02ca1a9cfc49208a928b09ef0"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-punctuation-name",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-punctuation-name.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-punctuation-name.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-punctuation-name.pdf",
+          "sha256": "bfb4e8349b3e55b2141de569d2f5a79f2696492c97ebf603b33f6f1d6cd04871"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-case-name",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-case-name.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-case-name.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-case-name.pdf",
+          "sha256": "0ee9062428ea1c6431b2bc78a012cd7cb7f779b2c5ae413127134bc3d0c31541"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-vertical",
+      "kind": "vector",
+      "description": "An incomplete or unknown font never yields a successful blank substitute",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-vertical.error",
+          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-vertical.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-vertical.pdf",
+          "sha256": "9df372688759f13763d3e769826449149bd1ab974762837a2e72eb902819f20b"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-simple-unchanged",
+      "kind": "vector",
+      "description": "CID-only policy does not enable simple-font aliases or invent missing metrics",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-simple-unchanged.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-simple-unchanged.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-simple-unchanged.pdf",
+          "sha256": "fe43028f0f3e88f4c40419853378c0751633e0e0d245f8fe9f88c763ab40add7"
+        }
+      },
+      "driver": "checked-cid-error"
+    },
+    {
+      "id": "text/checked-cid-malformed-unicode",
+      "kind": "vector",
+      "description": "Malformed Unicode retains the existing Strict repair refusal; Repair still cannot invent the used glyph identity",
+      "requirements": [
+        "text-checked-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/checked-cid-malformed-unicode.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".input": {
+          "path": "corpus/generated/text/checked-cid-malformed-unicode.input",
+          "sha256": "feecdc0f5b2c1d85ec1e47601a0b6d8a559c9006d82aa8b4e1e116886bb58e02"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/checked-cid-malformed-unicode.pdf",
+          "sha256": "d763b3792c46cec810bbe8116814ab6d0a78a455e38e90d9784c10adadf40cb2"
+        },
+        ".strict.error": {
+          "path": "corpus/generated/text/checked-cid-malformed-unicode.strict.error",
+          "sha256": "e4546eb0a9519a04433004e6f56a399e51935d3093e3be98bb28667ce5c64e75"
+        }
+      },
+      "driver": "checked-cid-malformed"
+    },
+    {
       "id": "text/standard14-Courier",
       "kind": "vector",
       "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
