@@ -48,14 +48,14 @@ fn inline_repairs_are_public_and_owned_by_the_inline_area() {
 
 #[test]
 fn image_repairs_are_exposed_through_the_facade() {
-    let raw = pagura::repairs::image::JPX_CODESTREAM;
+    let raw = repairs::image::JPX_CODESTREAM;
     assert_eq!(raw.as_str(), "jpx.raw-codestream");
-    assert!(pagura::repairs::image::ALL.contains(&raw));
-    let repair = pagura::repairs::image::JPX_PALETTE_PADDING;
+    assert!(repairs::image::ALL.contains(&raw));
+    let repair = repairs::image::JPX_PALETTE_PADDING;
     assert_eq!(repair.as_str(), "jpx.palette-padding");
-    assert!(pagura::repairs::image::ALL.contains(&repair));
+    assert!(repairs::image::ALL.contains(&repair));
     let mut seen = Vec::new();
-    for repair in pagura::repairs::image::ALL {
+    for repair in repairs::image::ALL {
         assert!(!seen.contains(repair), "duplicate repair {repair:?}");
         seen.push(*repair);
     }
