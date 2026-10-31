@@ -116,8 +116,8 @@ pub(crate) fn without<R>(f: impl FnOnce() -> R) -> R {
     result
 }
 
-/// The capsules and vetoes of a stroke's runs, each by the top of what it
-/// spans.
+/// The capsules and vetoes of a stroke's runs, which its cover sorts by the
+/// tops of what they span once it proves a row.
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Spine {
     capsules: Vec<Capsule>,
@@ -169,8 +169,7 @@ impl Spine {
                 bytes.refund(bytes.used().saturating_sub(mark.saturating_add(grown)));
                 added
             })
-            .and_then(|work| spine.sort(limits, work))
-            .map(|left| spine.work = left);
+            .map(|work| spine.work = limits.raster_work.saturating_sub(work));
         let kept = spine.heap_bytes();
         bytes.refund(bytes.used().saturating_sub(before.saturating_add(kept)));
         match built {
@@ -446,23 +445,6 @@ impl Spine {
         Ok(())
     }
 
-    /// Orders the capsules and vetoes by their tops, within the stroke's
-    /// work budget after `work` units.
-    /// Returns what is left of the work budget after `work` units and the
-    /// sort.
-    fn sort(&mut self, limits: &Limits, mut work: usize) -> Result<usize> {
-        let count = self.capsules.len().saturating_add(self.vetoes.len());
-        charge(
-            &mut work,
-            count.saturating_mul(count.max(1).ilog2() as usize + 2),
-            limits.raster_work,
-        )?;
-        self.capsules
-            .sort_unstable_by(|p, q| p.top.total_cmp(&q.top));
-        self.vetoes.sort_unstable_by(|p, q| p.top.total_cmp(&q.top));
-        Ok(limits.raster_work - work)
-    }
-
     /// Bytes on the heap.
     pub(crate) fn heap_bytes(&self) -> usize {
         self.capsules
@@ -476,6 +458,7 @@ impl Spine {
     pub(crate) fn cover(self, within: Option<Bounds>) -> Cover {
         Cover {
             work: Meter::new(self.work, crate::band::SPARE_WORK),
+            sorted: false,
             spine: self,
             within,
             capsules: 0,
@@ -598,6 +581,9 @@ pub(crate) struct Cover {
     spine: Spine,
     /// The spine's own work left: proving rows and passing over chunks.
     pub(crate) work: Meter,
+    /// Whether the spine's capsules and vetoes are sorted by their tops: on
+    /// the first row it proves, so that a stroke with none sorts nothing.
+    sorted: bool,
     within: Option<Bounds>,
     /// The capsules and vetoes entered so far, and those still reaching.
     capsules: usize,
@@ -629,6 +615,24 @@ impl Cover {
             .saturating_add(cells.saturating_mul(size_of::<(f64, f64)>()))
     }
 
+    /// Sorts the spine's capsules and vetoes by their tops, once, charged to
+    /// its own work.
+    fn sort(&mut self) -> Result<()> {
+        if self.sorted {
+            return Ok(());
+        }
+        let Spine {
+            capsules, vetoes, ..
+        } = &mut self.spine;
+        let count = capsules.len().saturating_add(vetoes.len());
+        self.work
+            .charge(count.saturating_mul(count.max(1).ilog2() as usize + 2))?;
+        capsules.sort_unstable_by(|p, q| p.top.total_cmp(&q.top));
+        vetoes.sort_unstable_by(|p, q| p.top.total_cmp(&q.top));
+        self.sorted = true;
+        Ok(())
+    }
+
     /// Appends to `chunks` the column ranges of row `top..top + 1` that
     /// hold only proven cells, at most `most` of them: the runs of proven
     /// cells. Rows come from the top down.
@@ -645,6 +649,7 @@ impl Cover {
         chunks: &mut Vec<(f64, f64)>,
         bytes: &mut Meter,
     ) -> Result<()> {
+        self.sort()?;
         let work = &mut self.work;
         let bottom = top + 1.0;
         if self
