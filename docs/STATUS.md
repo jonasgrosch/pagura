@@ -51,6 +51,16 @@ The source check detects stale evidence and missing ownership, not runtime parit
 
 ## Evidence and accuracy
 
+Inline separator recovery accepts a complete `EI` token at a caller-framed
+boundary only with a reported repair. Before drawing such an image, raw and
+general-filter samples must have the exact row-padded byte count under the
+caller’s limits. Image-codec separator recovery remains refused until its
+completeness proof can share one per-image codec work budget; missing tokens,
+comment gaps and incomplete samples do not qualify through this repair.
+The independent `paint_inline_framing` controls distinguish new complete
+images from retained legacy sample-padding behavior. Runtime, public-corpus,
+performance and memory qualification of this addition remains pending.
+
 Source entry points and existing tests supporting this reconciliation include:
 
 - [Font program inventory](../crates/pagura-font/README.md),

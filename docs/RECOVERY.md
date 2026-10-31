@@ -24,6 +24,18 @@ older protocol diagnostic snapshots contain repairs only.
 
 Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
+- `inline.ei-separator` (8.9.7): accept a complete `EI` token immediately
+  at the caller-framed image boundary when the intervening whitespace is
+  absent. The data bytes and following content tokens are preserved. This
+  repairs separation only: missing `EI`, an attached operator such as `EIQ`,
+  framing errors and resource/decoder limits remain errors. The tokenizer's
+  original entry point stays strict; its diagnostic-aware entry point and
+  the interpreter require explicit recovery permission. Before drawing a
+  repaired image, raw and general-filter data must supply the exact
+  row-padded sample bytes under the caller's limits; short-data padding is
+  not a completeness proof. Image-codec separator recovery remains refused
+  until completeness can share the ordinary per-image decode work budget.
+
 - `asn1.ber-set-order` (X.690 11.6; RFC 5652 5.1): retain BER SET OF source
   order with a diagnostic. Signed attributes, certificates and DER entry
   points remain strict. BER length, indefinite-container and OCTET STRING

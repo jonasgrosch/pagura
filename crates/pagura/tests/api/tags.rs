@@ -1,7 +1,7 @@
 //! The rendering tags the facade re-exports are unique, well formed and in
 //! the areas their crates own (ADR 0017).
 
-use pagura::{form_appearance, tags};
+use pagura::{form_appearance, repairs, tags};
 
 #[test]
 fn rendering_tags_are_unique_and_well_formed() {
@@ -31,4 +31,17 @@ fn rendering_tags_are_unique_and_well_formed() {
             .any(|tag| tag.as_str() == "function.calculator")
     );
     assert_eq!(tags::image::JPEG_PROCESS.as_str(), "jpeg.process");
+}
+
+#[test]
+fn inline_repairs_are_public_and_owned_by_the_inline_area() {
+    let mut seen = Vec::new();
+    for tag in repairs::inline::ALL {
+        let tag = tag.as_str();
+        assert_eq!(tag.split_once('.').map(|(area, _)| area), Some("inline"));
+        assert!(tag.bytes().all(|byte| byte.is_ascii_graphic()));
+        assert!(!seen.contains(&tag));
+        seen.push(tag);
+    }
+    assert!(repairs::inline::ALL.contains(&repairs::inline::EI_SEPARATOR));
 }

@@ -14,7 +14,7 @@ pub mod features;
 pub mod jbig2;
 pub mod jpx;
 
-use pagura_core::{Dictionary, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Limits, ObjectId, Result, Value};
 
 /// Stable reported repairs of malformed image dictionaries and data (ADR 0003).
 pub mod tags {
@@ -245,6 +245,25 @@ impl DecodedImage {
 pub fn inline_data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {
     inline::data_length(dictionary, content)
         .map_err(|error| error.at(pagura_core::Position::Buffer(0)))
+}
+
+/// Proves exact row-padded sample bytes for an inline image separator repair.
+/// Named resource colour spaces must already be resolved in `dictionary`.
+/// Raw samples and general-purpose filters are checked without the legacy
+/// short-data padding or excess-data recovery. Image-codec filters require
+/// their ordinary single-decode path and are refused by this proof.
+///
+/// # Errors
+///
+/// `Syntax` for an inexact byte count or an unavailable separator-recovery
+/// route; malformed-filter errors, `Unsupported` features and the caller's
+/// work/storage limits propagate.
+pub fn validate_inline_samples(
+    dictionary: &Dictionary,
+    data: &[u8],
+    limits: &Limits,
+) -> Result<()> {
+    inline::validate_samples(dictionary, data, limits)
 }
 
 #[cfg(test)]

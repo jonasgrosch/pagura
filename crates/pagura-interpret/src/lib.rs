@@ -53,6 +53,9 @@ pub use scene::{
 };
 pub use text_device::TextDevice;
 
+/// Reported repairs of inline content framing, owned by the tokenizer.
+pub use pagura_content::repairs as inline_repairs;
+
 use machine::{Inputs, Machine};
 use pagura_core::{Error, ObjectId, Rect, Result, Store};
 use pagura_document::{Document, Page};
