@@ -106,6 +106,13 @@ impl Scratch {
 impl ImageSampler {
     /// The storage needed by this prepared image, independent of cache state.
     pub(crate) fn scratch_layout(&self) -> Layout {
+        self.layout_of(|memo| memo)
+    }
+
+    /// [`Self::scratch_layout`] with its memo's layout `memo` of the one it
+    /// has, as [`texels::MemoLayout::bounds`] widens it. A memo that holds
+    /// bounds texels takes rows and sums of twice the colour values.
+    pub(super) fn layout_of(&self, memo: fn(texels::MemoLayout) -> texels::MemoLayout) -> Layout {
         let Some(prepared) = self.prepared.as_ref() else {
             return Layout {
                 plan: sampling::Layout::Points(0),
@@ -131,16 +138,19 @@ impl ImageSampler {
             .mask
             .as_ref()
             .is_some_and(|mask| mask.independent.is_none());
-        let lanes = self.channels + 2 + usize::from(fused);
-        let values = lanes - usize::from(paint.opaque(&prepared.image.image)) * 2;
-        let plan = sampling.layout(values);
         let memo = match paint {
             Paint::Colors(paint) => match paint.1 {
-                texels::Strategy::Memo(layout) => Some(layout),
+                texels::Strategy::Memo(layout) => Some(memo(layout)),
                 _ => None,
             },
             Paint::Stencil(_) => None,
         };
+        // Bounds texels hold a lower and an upper value a channel.
+        let bounds = memo.is_some_and(texels::MemoLayout::holds_bounds);
+        let colors = self.channels * (1 + usize::from(bounds));
+        let lanes = colors + 2 + usize::from(fused);
+        let values = lanes - usize::from(paint.opaque(&prepared.image.image)) * 2;
+        let plan = sampling.layout(values);
         Layout {
             plan,
             mask: prepared

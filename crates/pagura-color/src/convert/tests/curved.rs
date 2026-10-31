@@ -335,3 +335,68 @@ fn resolved_curved_rgb_conversions_are_curved_conversions() {
         assert!(converter.curved_rgb().is_none(), "{target:?}");
     }
 }
+
+/// The bounds of a resolved conversion ([`CurvedRgb::encoded_bounds`])
+/// hold the value each channel converts to ([`Converter::convert_curved`])
+/// for curved eight-bit codes and curved values anywhere, under every
+/// intent; they are tight, apart by at most `2^-37` of the value's
+/// magnitude before the encoding's offset, and equal where the encoding is
+/// linear or the value is 1.
+#[test]
+fn encoded_bounds_hold_curved_conversions() {
+    let trc = curve(
+        4,
+        &[
+            2.4,
+            1.0 / 1.055,
+            0.055 / 1.055,
+            1.0 / 12.92,
+            0.04045,
+            0.0,
+            0.0,
+        ],
+    );
+    let mut rng = Rng::new(0xb0_0d5);
+    let (mut checked, mut equal) = (0, 0);
+    for intent in [
+        Intent::Perceptual,
+        Intent::Relative,
+        Intent::Saturation,
+        Intent::Absolute,
+    ] {
+        let space = icc(profile(3, &trc, D50), 3);
+        let conversion = Conversion {
+            intent,
+            ..Conversion::default()
+        };
+        let converter = Converter::new(&space, &Target::new(Process::Rgb), &conversion).unwrap();
+        let rgb = converter.curved_rgb().unwrap();
+        for i in 0..6000 {
+            let curved: [f64; 3] = std::array::from_fn(|c| match i {
+                // The ends, then curved codes, then values anywhere.
+                0 => 0.0,
+                1 => -0.0,
+                2 => converter.curve(c, 1.0).unwrap(),
+                _ if i < 3000 => {
+                    let code = f64::from(u8::try_from(rng.below(256)).unwrap());
+                    converter.curve(c, code / 255.0).unwrap()
+                }
+                _ => rng.range(-0.25, 1.25),
+            });
+            let mut exact = [0.0; 3];
+            converter.convert_curved(&curved, &mut exact);
+            for (&value, [low, high]) in exact.iter().zip(rgb.encoded_bounds(curved)) {
+                assert!(low <= value && value <= high, "{curved:?} {intent:?}");
+                let room = (value.abs() + 0.055) * 2.0_f64.powi(-37);
+                assert!(high - low <= room, "{curved:?} {intent:?}");
+                equal += usize::from(low == high);
+                checked += 1;
+            }
+        }
+    }
+    assert_eq!(checked, 4 * 6000 * 3);
+    assert!(
+        equal > 0 && equal < checked / 2,
+        "{equal} of {checked} equal"
+    );
+}

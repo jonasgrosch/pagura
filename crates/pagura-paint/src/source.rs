@@ -182,6 +182,24 @@ impl Source {
         }
     }
 
+    /// The storage this source takes with its memo widened for bounds
+    /// texels ([`ImageSampler::bounds_layout`]); `None` where it takes no
+    /// such storage.
+    pub(crate) fn bounds_layout(&self) -> Option<ScratchLayout> {
+        match self {
+            Self::Image(image) => image.bounds_layout(),
+            Self::Solid { .. } | Self::Shading(_) => None,
+        }
+    }
+
+    /// Lets the source use the storage of [`Self::bounds_layout`], once
+    /// admitted ([`ImageSampler::keep_bounds`]).
+    pub(crate) fn keep_bounds(&mut self) {
+        if let Self::Image(image) = self {
+            image.keep_bounds();
+        }
+    }
+
     pub(crate) fn scratch_layout(&self) -> Option<ScratchLayout> {
         match self {
             Self::Image(image) => Some(image.scratch_layout()),
