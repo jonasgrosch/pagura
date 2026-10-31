@@ -115,10 +115,32 @@
       "tolerance": 1
     },
     {
-      "id": "calibrated_blackpoint/CalGray-large-finite-implicit",
+      "id": "calibrated_blackpoint/CalGray-at-range-limit-implicit",
       "kind": "pdf",
       "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
       "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-implicit.pdf",
+      "sha256": "c034e5ba1500e998435c9c4dda1944cf681a853631356eb8cccaee0d680686c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-implicit.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-large-finite-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
       "requirements": [
         "content-cie",
         "content-extgstate-extensions"
@@ -128,13 +150,25 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-large-finite-implicit.ppm",
-      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
-      "dpi": 72,
-      "width": 8,
-      "height": 8,
       "api": "compile_page",
-      "tolerance": 1
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-above-range-limit-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-above-range-limit-implicit.pdf",
+      "sha256": "149cc102a11f0301575e047ba8f5f64f5af701bb4fabc6c17fad812add7ab24e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
     },
     {
       "id": "calibrated_blackpoint/CalGray-zero-off",
@@ -247,10 +281,32 @@
       "tolerance": 1
     },
     {
-      "id": "calibrated_blackpoint/CalGray-large-finite-off",
+      "id": "calibrated_blackpoint/CalGray-at-range-limit-off",
       "kind": "pdf",
       "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
       "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-off.pdf",
+      "sha256": "af2f2afefd8a5092b9c2194045dc6c56ccc81594c54068a9c3d8d1fdb90873a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-off.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-large-finite-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
       "requirements": [
         "content-cie",
         "content-extgstate-extensions"
@@ -260,13 +316,25 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-large-finite-off.ppm",
-      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
-      "dpi": 72,
-      "width": 8,
-      "height": 8,
       "api": "compile_page",
-      "tolerance": 1
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-above-range-limit-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-above-range-limit-off.pdf",
+      "sha256": "10efbcc7f2df5262c7ddf3d19319ca3f9fcbab8e04bfc014415c0917618f32c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
     },
     {
       "id": "calibrated_blackpoint/CalGray-zero-default",
@@ -379,10 +447,32 @@
       "tolerance": 1
     },
     {
-      "id": "calibrated_blackpoint/CalGray-large-finite-default",
+      "id": "calibrated_blackpoint/CalGray-at-range-limit-default",
       "kind": "pdf",
       "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
       "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-default.pdf",
+      "sha256": "79c581f1f500ede8289e857ec745d05218f82b2455e1dead690a3ef3b4df2a48",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-default.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-large-finite-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
       "requirements": [
         "content-cie",
         "content-extgstate-extensions"
@@ -392,13 +482,25 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-large-finite-default.ppm",
-      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
-      "dpi": 72,
-      "width": 8,
-      "height": 8,
       "api": "compile_page",
-      "tolerance": 1
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-above-range-limit-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-above-range-limit-default.pdf",
+      "sha256": "cbb0cd2c954e5d9e6a9db38d9fdcd3289371356f05ae0af4aeb7c99daf46b4ec",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
     },
     {
       "id": "calibrated_blackpoint/CalGray-on",
@@ -630,10 +732,32 @@
       "tolerance": 1
     },
     {
-      "id": "calibrated_blackpoint/CalRGB-large-finite-implicit",
+      "id": "calibrated_blackpoint/CalRGB-at-range-limit-implicit",
       "kind": "pdf",
       "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
       "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-implicit.pdf",
+      "sha256": "5f2df8d935644236fc3edb0eaaeb921e04f149ab70fec15cbb625d5ec610d66b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-implicit.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-large-finite-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
       "requirements": [
         "content-cie",
         "content-extgstate-extensions"
@@ -643,13 +767,25 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-large-finite-implicit.ppm",
-      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
-      "dpi": 72,
-      "width": 8,
-      "height": 8,
       "api": "compile_page",
-      "tolerance": 1
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-above-range-limit-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-above-range-limit-implicit.pdf",
+      "sha256": "b345a2bdf5f19a4740f094b43175586304d63daa565654e3c2b038285bf7710c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
     },
     {
       "id": "calibrated_blackpoint/CalRGB-zero-off",
@@ -762,10 +898,32 @@
       "tolerance": 1
     },
     {
-      "id": "calibrated_blackpoint/CalRGB-large-finite-off",
+      "id": "calibrated_blackpoint/CalRGB-at-range-limit-off",
       "kind": "pdf",
       "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
       "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-off.pdf",
+      "sha256": "bd7f8b0eb5fc5b11f240a9d9fa4894d20a6db083bae10bdb1b017d2a2dcd2a86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-off.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-large-finite-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
       "requirements": [
         "content-cie",
         "content-extgstate-extensions"
@@ -775,13 +933,25 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-large-finite-off.ppm",
-      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
-      "dpi": 72,
-      "width": 8,
-      "height": 8,
       "api": "compile_page",
-      "tolerance": 1
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-above-range-limit-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-above-range-limit-off.pdf",
+      "sha256": "13e2d979f3d044192a86d8302c4aebe65275c1aa8544797969726381ea974b1f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
     },
     {
       "id": "calibrated_blackpoint/CalRGB-zero-default",
@@ -894,10 +1064,32 @@
       "tolerance": 1
     },
     {
-      "id": "calibrated_blackpoint/CalRGB-large-finite-default",
+      "id": "calibrated_blackpoint/CalRGB-at-range-limit-default",
       "kind": "pdf",
       "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
       "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-default.pdf",
+      "sha256": "51a45083a88e13c6a123aa2fcc3449f6aaf0fd54562aaecdcda7728b64ffda1e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-default.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-large-finite-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
       "requirements": [
         "content-cie",
         "content-extgstate-extensions"
@@ -907,13 +1099,25 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-large-finite-default.ppm",
-      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
-      "dpi": 72,
-      "width": 8,
-      "height": 8,
       "api": "compile_page",
-      "tolerance": 1
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-above-range-limit-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-above-range-limit-default.pdf",
+      "sha256": "0e816ef29860a9bb7f049a34f87198b925d2e7886ed231421e339c067f93ff5d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
     },
     {
       "id": "calibrated_blackpoint/CalRGB-on",
@@ -1145,10 +1349,32 @@
       "tolerance": 1
     },
     {
-      "id": "calibrated_blackpoint/Lab-large-finite-implicit",
+      "id": "calibrated_blackpoint/Lab-at-range-limit-implicit",
       "kind": "pdf",
       "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
       "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-implicit.pdf",
+      "sha256": "82124e4c266eb46a91c891cf85ccdc06fe5d59e0bf255a697948d2f3ef21cd07",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-implicit.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-large-finite-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
       "requirements": [
         "content-cie",
         "content-extgstate-extensions"
@@ -1158,13 +1384,25 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/calibrated_blackpoint/Lab-large-finite-implicit.ppm",
-      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
-      "dpi": 72,
-      "width": 8,
-      "height": 8,
       "api": "compile_page",
-      "tolerance": 1
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-above-range-limit-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-above-range-limit-implicit.pdf",
+      "sha256": "4a03393111b6c934952d0c22982a3834d7e78ac2750711c1a8e53f29247a9cf4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
     },
     {
       "id": "calibrated_blackpoint/Lab-zero-off",
@@ -1277,10 +1515,32 @@
       "tolerance": 1
     },
     {
-      "id": "calibrated_blackpoint/Lab-large-finite-off",
+      "id": "calibrated_blackpoint/Lab-at-range-limit-off",
       "kind": "pdf",
       "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
       "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-off.pdf",
+      "sha256": "4bdbe85d90dfff0cade20063132a9e9f0d957d45d867cc5383306650bbc5b98b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-off.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-large-finite-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
       "requirements": [
         "content-cie",
         "content-extgstate-extensions"
@@ -1290,13 +1550,25 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/calibrated_blackpoint/Lab-large-finite-off.ppm",
-      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
-      "dpi": 72,
-      "width": 8,
-      "height": 8,
       "api": "compile_page",
-      "tolerance": 1
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-above-range-limit-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-above-range-limit-off.pdf",
+      "sha256": "d64b271871603385753e897c6e94019bff7a6408ca1fdd5fb269d374266ba7f0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
     },
     {
       "id": "calibrated_blackpoint/Lab-zero-default",
@@ -1409,10 +1681,32 @@
       "tolerance": 1
     },
     {
-      "id": "calibrated_blackpoint/Lab-large-finite-default",
+      "id": "calibrated_blackpoint/Lab-at-range-limit-default",
       "kind": "pdf",
       "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
       "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-default.pdf",
+      "sha256": "7ef0c771df6e635da59b8e37052905d251370a36de1b36e46031dfdf26c92a43",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-default.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-large-finite-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
       "requirements": [
         "content-cie",
         "content-extgstate-extensions"
@@ -1422,13 +1716,25 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "oracle": "corpus/generated/calibrated_blackpoint/Lab-large-finite-default.ppm",
-      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
-      "dpi": 72,
-      "width": 8,
-      "height": 8,
       "api": "compile_page",
-      "tolerance": 1
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-above-range-limit-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-above-range-limit-default.pdf",
+      "sha256": "01cfb01f9d8a14059276320d3ca117e7f10e244a4d4e31a706d250d587c953e5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
     },
     {
       "id": "calibrated_blackpoint/Lab-on",

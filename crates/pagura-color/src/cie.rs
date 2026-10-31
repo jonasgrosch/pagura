@@ -244,6 +244,9 @@ impl Calibrated {
     /// Conversion uses the processor's disabled black-point-compensation
     /// policy, also required by `UseBlackPtComp /OFF` (8.6.5.9). Explicit
     /// compensation requests are rejected by the interpreter.
+    /// The PDF interpreter separately bounds WhitePoint and BlackPoint array
+    /// entries to its existing `1e6` numeric working range. These standalone
+    /// constructors accept finite nonnegative black-point metadata.
     pub fn black_point(&self) -> [f64; 3] {
         self.black
     }

@@ -4,6 +4,9 @@ ISO 32000-2 Tables 62--64 define nonnegative XYZ metadata without an upper
 bound. Their component-to-XYZ formulas do not contain BlackPoint. Clause
 8.6.5.9 forbids BPC under OFF and leaves Default to the processor; Pagura's
 existing Default disables it. ON remains an explicit unsupported feature.
+The PDF numeric-array working range remains1e6; at-bound values render, while
+just-overbound and the original1e100metadata inputs remain explicit Limit.
+The standalone CIE library accepts finite nonnegative diffuse-black metadata.
 Independent output comes from the author-side CIE equations and solved
 Bradford/sRGB matrices in content.cie_rgb, never a renderer.
 """
@@ -45,9 +48,7 @@ def command(family, prefix=b'/GS gs '):
 def cases():
     black_points = [('zero', b'[0 0 0]'), ('neutral', b'[.1 .1 .1]'), ('chromatic', b'[.2 1 1.7]'),
                     ('at-white', b'[.96422 1 .82521]'), ('above-white', b'[50 50 50]'),
-                    ('large-finite', b'[' + b'1' + b'0' * 100 + b'.0 0 0]')]
-    # PDF numbers have no exponent syntax: construct a finite large value in
-    # ordinary decimal notation so this exercises metadata, not lexical repair.
+                    ('at-range-limit', b'[1000000 1000000 1000000]')]
     for family in ('CalGray', 'CalRGB', 'Lab'):
         expected = oracle(family)
         for mode, state in [('implicit', b''), ('off', b'/UseBlackPtComp /OFF'), ('default', b'/UseBlackPtComp /Default')]:
@@ -56,6 +57,13 @@ def cases():
                 yield Case(f'{family}-{name}-{mode}', pdf, RENDER, REQUIREMENT,
                            'Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations',
                            oracle=expected, extra={'api': 'compile_page', 'tolerance': 1})
+            # Preserve all original1e100PDFbytes as working-range refusals,
+            # and distinguish the first representable value beyond the bound.
+            for name, black in [('large-finite', b'[' + b'1' + b'0' * 100 + b'.0 0 0]'),
+                                ('above-range-limit', b'[1000000.0000000001 0 0]')]:
+                yield Case(f'{family}-{name}-{mode}', single_page([command(family)], media_box=b'[0 0 8 8]', resources=resource(family, black, state)),
+                           OPEN, REQUIREMENT, 'Existing PDF CIE numeric-array working range retained; no rescale or cap increase',
+                           extra={'api': 'compile_page', 'render_error': 'Limit'})
         # Explicit ON still refuses before any paint; valid BlackPoint is not
         # permission to silently substitute OFF for an actual BPC request.
         yield Case(f'{family}-on', single_page([command(family)], media_box=b'[0 0 8 8]', resources=resource(family, b'[.1 .1 .1]', b'/UseBlackPtComp /ON')),

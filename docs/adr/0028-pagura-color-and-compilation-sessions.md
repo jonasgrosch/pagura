@@ -43,3 +43,9 @@ policy for `UseBlackPtComp /OFF` and processor `Default` (8.6.5.9); `ON` remains
 an explicit refusal. No ad hoc rescaling by `WhitePoint - BlackPoint` is
 introduced. This admission is independent of implementing ISO 18619
 compensation or destination ICC transforms.
+
+The standalone CIE library validates diffuse-black metadata as finite and
+nonnegative. The PDF interpreter retains its existing `1e6` absolute working
+range for WhitePoint and BlackPoint array entries; format-valid values outside
+that implemented domain remain explicit `Limit` errors. This distinction adds
+no interpretation exemption for metadata and raises no numeric range.

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Added75 calibrated diffuse-black metadata controls:54independent pixels,3ON refusals,18syntax errors, plus the unchanged historical no-paint input. Three authored three-page inputs add page-zero/count controls; private page-index qualification checks independently different later-page oracles.",
+  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Added93 calibrated diffuse-black metadata controls:54independent pixels,3ON refusals,18syntax errors,18explicit numeric-range Limits, plus the unchanged historical no-paint input. Three authored three-page inputs add page-zero/count controls; private page-index qualification checks independently different later-page oracles.",
   "cases": [
     "rich_annotations/plain-72",
     "rich_annotations/stored-72",
@@ -1526,6 +1526,24 @@
     "content/cie-blackpoint",
     "calibrated_blackpoint_pages/CalGray",
     "calibrated_blackpoint_pages/CalRGB",
-    "calibrated_blackpoint_pages/Lab"
+    "calibrated_blackpoint_pages/Lab",
+    "calibrated_blackpoint/CalGray-at-range-limit-implicit",
+    "calibrated_blackpoint/CalGray-above-range-limit-implicit",
+    "calibrated_blackpoint/CalGray-at-range-limit-off",
+    "calibrated_blackpoint/CalGray-above-range-limit-off",
+    "calibrated_blackpoint/CalGray-at-range-limit-default",
+    "calibrated_blackpoint/CalGray-above-range-limit-default",
+    "calibrated_blackpoint/CalRGB-at-range-limit-implicit",
+    "calibrated_blackpoint/CalRGB-above-range-limit-implicit",
+    "calibrated_blackpoint/CalRGB-at-range-limit-off",
+    "calibrated_blackpoint/CalRGB-above-range-limit-off",
+    "calibrated_blackpoint/CalRGB-at-range-limit-default",
+    "calibrated_blackpoint/CalRGB-above-range-limit-default",
+    "calibrated_blackpoint/Lab-at-range-limit-implicit",
+    "calibrated_blackpoint/Lab-above-range-limit-implicit",
+    "calibrated_blackpoint/Lab-at-range-limit-off",
+    "calibrated_blackpoint/Lab-above-range-limit-off",
+    "calibrated_blackpoint/Lab-at-range-limit-default",
+    "calibrated_blackpoint/Lab-above-range-limit-default"
   ]
 }

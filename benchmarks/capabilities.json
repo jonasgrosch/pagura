@@ -13,7 +13,7 @@
   "source_files": {
     ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e",
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "benchmarks/probes/compatibility-gap-fixtures.json": "1c8ee51fb362e821eb9d62ee7a61269c3fe913a6df726ecaac5bd4acce9ab86b",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "0b0630b822a7e9aa4c2085ad6bfe7f3b379b96bd2afa2e81bb7ed1c8c068f78e",
     "corpus/manifests/annotation_compat.json": "91f6e05cb4d9ad220e2d6be0f41b7d86047b839ec46f27430562d15bc2cd6323",
     "corpus/manifests/annotation_display.json": "2b2418bd5a8f5be67188a57bde3beaa642d029f2f280b4f754fcb659bf73b0ab",
     "corpus/manifests/annotation_empty_widgets.json": "8b205c65420c3057eca24a4d9e23b7391f54c32eea4af25fa8d20a448ca7d02f",
@@ -101,7 +101,7 @@
     "crates/pagura-codec/src/flate/encode.rs": "ad874c2ec67e4b2bf69908775c43aedaf5c9da7b8f3ef47f4aab9dcb177ac4b2",
     "crates/pagura-codec/src/lib.rs": "f0c48aacd08bc217c429bddbc564210dbe7ac92a210cb8541a2911eff64660bd",
     "crates/pagura-codec/src/png.rs": "cf54aeba673786e80f1886488f1bb9bc7e146d9ca42a3b3c956c9661855dc519",
-    "crates/pagura-color/src/cie.rs": "f09aa0d70e7ac9d2e9699fe6c6e24cee216efc04db6586cf84cebba0f3e6bd3f",
+    "crates/pagura-color/src/cie.rs": "4e309566cd2fd968a30ff1d1e1d7048e63452d352085b89a3c15665ca7f45e82",
     "crates/pagura-color/src/convert/plan.rs": "d86b8dfebda8d83d10d816a7ea3ad7cedd93967e1d3487ec3cf8331320c287f6",
     "crates/pagura-color/src/features.rs": "699bae102dacd2cd9f05479fe74b7f860d4f7893e88acd376ba722f48fab1bec",
     "crates/pagura-color/src/function/calculator/check.rs": "42eca4b64aa07d0f6a5fec0177bde1890195e7d67625366b5326603198dd493d",
@@ -243,7 +243,7 @@
     "references/requirements/bench.json": "7286cbe46f8bda5030b39bada35c078f9dd7ba712165c32c898e20df24867a78",
     "references/requirements/cms-signatures.json": "41f19f1825ef96385ec5401e703eb4805dfbf92a47fa6f81e63fb790779216d2",
     "references/requirements/codec.json": "eefe8a8125ecd0129f2d4cea9b5aeee325799dc1a8373eac0bf2f8536ee1861f",
-    "references/requirements/content.json": "f56f8455d0267d6629bc73786c50d3fa19939eaffb5c9aa58a0683dd840db75d",
+    "references/requirements/content.json": "e224f479e08c50ee6c30465834eb4311cb915b6ee6b603898be66b9a17459991",
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
@@ -316,7 +316,7 @@
     "crates/pagura/tests/font_bindings.rs": "2ddd6b59ed4271776ed65c458c7db754a37ec93020b8edc1c87a0a594becf423",
     "crates/pagura/tests/font_collections.rs": "49578948011d7f637e416bec660be5deba2d7d98ca7f95adef13e0f01f59404c",
     "docs/RECOVERY.md": "a131929b698db9abcadc7ffca3d8a77c33e255bc7a53bc78df2d735750ea4b6e",
-    "docs/STATUS.md": "7a6ae198c31bc45b3335ed6cc06abd6111191feb6af933293fd72b053b427cf9",
+    "docs/STATUS.md": "90da216135ddf378555a9e60fa9802a7215943275242a5feafcac82791d6bf39",
     "docs/adr/0009-text-and-fonts.md": "cbd5a8bb2a677caa3027fe7169e2d1800dfdaea66a288fe71b72d7cd95efeed6",
     "tools/fixturegen/font.py": "6f3f2980a7f6dac67c7aefdc24dbe6fe420c75e3aa8500b56d42aa95e1af80a6",
     "tools/fixturegen/font_bindings.py": "0ffc33d7db6e802aab012f0e5b13e182c87c16b0e53239375f25501c736a38a8",
@@ -363,8 +363,8 @@
     "tools/fixturegen/recovery_jbig2_tables.py": "fbb6298b31889911541b6d1153c01a4cc6ee130f73cf7d2b8bda169211c8edfb",
     "tools/image_repair_observe.mjs": "51159b6caf9945fb8367ca6aa6de610de05124462de176058b51eadc3b75185e",
     "tools/image_repair_parity.mjs": "118fb24047bbb90b646b87e2eef7a1f9f133e2a1702b4acc6b5c21d3ed26f0e1",
-    "tools/fixturegen/calibrated_blackpoint.py": "cdf081a24852f56e3950135b8271e4365cda833c2144458e402efe22b3660b7d",
-    "corpus/manifests/calibrated_blackpoint.json": "6e4c2b038660f5c2d421c11a2fd7bc53300e0fe634c1f067d0ebe9634247ebb5",
+    "tools/fixturegen/calibrated_blackpoint.py": "34377d71ef225bd4f3ceb52541d539440ccc6416e09b39fa6a4ceebb8e710b2b",
+    "corpus/manifests/calibrated_blackpoint.json": "805309d4c4db522e9c048f376ad9ecbc603b0cea69dc981b23e52928517f3b26",
     "tools/fixturegen/calibrated_blackpoint_pages.py": "848b95752ed508225bc64fe24720d38594fab768f8ff698da5448c95cc51dd29",
     "corpus/manifests/calibrated_blackpoint_pages.json": "69b99fa233715c2d1282d76a7db682d80cacdf37a660da818fefa7d4951ce07e"
   },
@@ -1142,7 +1142,10 @@
         "calibrated_blackpoint/CalGray-negative",
         "calibrated_blackpoint_pages/CalGray",
         "calibrated_blackpoint_pages/CalRGB",
-        "calibrated_blackpoint_pages/Lab"
+        "calibrated_blackpoint_pages/Lab",
+        "calibrated_blackpoint/CalGray-at-range-limit-off",
+        "calibrated_blackpoint/CalRGB-above-range-limit-off",
+        "calibrated_blackpoint/Lab-large-finite-off"
       ],
       "comparisons": {
         "pdfium": "unprobed",
@@ -4461,7 +4464,7 @@
       ],
       "review": "dormant",
       "capability": "colour.transparency",
-      "rationale": "Valid nonnegative finite diffuse-black metadata is retained with compensation disabled by OFF and the existing processor Default. No live refusal uses this stable former tag; explicit ON compensation remains extgstate.UseBlackPtComp.",
+      "rationale": "The standalone CIE library retains finite nonnegative diffuse-black metadata. PDF point arrays retain their existing absolute 1e6 working range; compensation is disabled under OFF and processor Default. No live refusal uses this stable former tag; explicit ON remains extgstate.UseBlackPtComp.",
       "evidence": [
         {
           "path": "crates/pagura-color/src/cie.rs",
