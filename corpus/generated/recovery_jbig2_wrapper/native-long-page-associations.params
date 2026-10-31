@@ -1,0 +1,5 @@
+outcome=syntax
+repair_outcome=valid
+width=11
+height=7
+repairs=jbig2.file-wrapper,jbig2.eof-page-association
