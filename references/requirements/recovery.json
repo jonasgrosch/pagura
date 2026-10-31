@@ -298,6 +298,41 @@
         "recovery_jbig2_tables/hostile-repeated-missing-table"
       ],
       "rule": "Reported viewing policy: only Huffman symbol dictionaries with SDREFAGG=0 may retain the otherwise invalid, unused bit7 aggregation-table selector. Strict rejects it. Its raw selector still selects and validates a referenced custom table, including OOB eligibility, exact table counts and ordinary referral rules; parse, retained storage and work remain charged. Genuine aggregation and all other flag restrictions are unchanged. The first occurrence per diagnostics sink is reported in decode order (Globals before page); reuse coalesces the tag and preserves its first source location. Independent literal matrices cover main/Globals, repeated dictionaries, grayscale/stencils, genuine aggregation and malformed/limited controls."
+    },
+    {
+      "id": "recovery-marked-closure",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "14.6",
+        "14.6.1"
+      ],
+      "status": "Reported no-op for unmatched EMC; Strict rejects",
+      "tests": [
+        "recovery_marked/balanced-control",
+        "recovery_marked/unmatched-prefix",
+        "recovery_marked/unmatched-suffix",
+        "recovery_marked/retains-state",
+        "recovery_marked/retains-path",
+        "recovery_marked/retains-pending-clip",
+        "recovery_marked/actual-text",
+        "recovery_marked/form-keeps-caller-marked",
+        "recovery_marked/hidden-form-keeps-visibility",
+        "recovery_marked/split-content-sequence",
+        "recovery_marked/unfinished-text",
+        "recovery_marked/undefined-resource",
+        "recovery_marked/required-cycle",
+        "recovery_marked/repeated-before-paint",
+        "recovery_marked/within-text",
+        "recovery_marked/within-save",
+        "recovery_marked/after-balanced",
+        "recovery_marked/after-nested",
+        "recovery_marked/unfinished-path",
+        "recovery_marked/unfinished-clip",
+        "recovery_marked/unfinished-operands",
+        "recovery_marked/unfinished-compatibility",
+        "recovery_marked/unknown-operator"
+      ],
+      "rule": "An EMC with no open marked-content sequence in the current content scope is malformed. Repair reports content.marked-unmatched and retains visibility, graphics/text/path/clip state and device structure without inventing a matching begin or sending a device End. Strict rejects. A form cannot consume caller marked content. Every operator is still metered; later incomplete state, unknown operators, required resources, cycles and limits remain errors."
     }
   ]
 }

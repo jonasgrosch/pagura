@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries.",
+  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Adds23 independent unmatched-EMC state/structure and retained-error controls; original selection is unchanged.",
   "cases": [
     "rich_annotations/plain-72",
     "rich_annotations/stored-72",
@@ -1447,6 +1447,29 @@
     "recovery_jbig2_tables/repeated-main-unused",
     "recovery_jbig2_tables/repeated-both-valid",
     "recovery_jbig2_tables/repeated-both-unused",
-    "recovery_jbig2_tables/hostile-repeated-missing-table"
+    "recovery_jbig2_tables/hostile-repeated-missing-table",
+    "recovery_marked/balanced-control",
+    "recovery_marked/unmatched-prefix",
+    "recovery_marked/unmatched-suffix",
+    "recovery_marked/repeated-before-paint",
+    "recovery_marked/within-text",
+    "recovery_marked/within-save",
+    "recovery_marked/retains-path",
+    "recovery_marked/retains-pending-clip",
+    "recovery_marked/retains-state",
+    "recovery_marked/after-balanced",
+    "recovery_marked/after-nested",
+    "recovery_marked/actual-text",
+    "recovery_marked/form-keeps-caller-marked",
+    "recovery_marked/hidden-form-keeps-visibility",
+    "recovery_marked/split-content-sequence",
+    "recovery_marked/unfinished-text",
+    "recovery_marked/unfinished-path",
+    "recovery_marked/unfinished-clip",
+    "recovery_marked/unfinished-operands",
+    "recovery_marked/unfinished-compatibility",
+    "recovery_marked/unknown-operator",
+    "recovery_marked/undefined-resource",
+    "recovery_marked/required-cycle"
   ]
 }

@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "audited_revision": "684dd638ebcda80887bed070d2c6aed98093aff0",
+  "audited_revision": "8ae44d50fcb752f0fa2876595ccfa450dbb39b90",
   "evidence_kind": "source-inspection",
   "engines": [
     "pdfium",
@@ -13,7 +13,7 @@
   "source_files": {
     ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e",
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
-    "benchmarks/probes/compatibility-gap-fixtures.json": "ab94078f417272035826f45c3aecadb28ab565220b3661f16b345962319622cd",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "ca8b9f950acf94f03be8efb4e4b31eacaf832d1d5bb803ad32d1ad93fa4f01e0",
     "corpus/manifests/annotation_compat.json": "91f6e05cb4d9ad220e2d6be0f41b7d86047b839ec46f27430562d15bc2cd6323",
     "corpus/manifests/annotation_display.json": "2b2418bd5a8f5be67188a57bde3beaa642d029f2f280b4f754fcb659bf73b0ab",
     "corpus/manifests/annotation_empty_widgets.json": "8b205c65420c3057eca24a4d9e23b7391f54c32eea4af25fa8d20a448ca7d02f",
@@ -259,7 +259,7 @@
     "references/requirements/paint.json": "945b5995cedead7a52b553e0ee848403fd1a7d0d319688f298e46f16bb882f4c",
     "references/requirements/policy.json": "9bcfda90d475723ecd3fdbafe008a624bcf08117b6d8d0cdc62cdb54932d0730",
     "references/requirements/raster.json": "096342c6016ffaf8d619db2dbc97dcbcbd3208844fafb52918182f13136e9fbd",
-    "references/requirements/recovery.json": "5b43943e4720b26c8674072ddd13d8c5f15868bacc00c4cb854cb4dfda402c65",
+    "references/requirements/recovery.json": "c23b7a86338aa3bb5244cc697e3dd69fd23c74cabfcbacb68c36cd8729faf68a",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
     "references/requirements/text.json": "53c61115f4eb08edb9f720a08637be22b5a9aa9d425db34115b368005e420c10",
@@ -315,8 +315,8 @@
     "crates/pagura-text/src/repairs.rs": "4905ae194fd9f23824e7c04dfab5a2cc05aa48209fbfa40738393aa90cd6b086",
     "crates/pagura/tests/font_bindings.rs": "2ddd6b59ed4271776ed65c458c7db754a37ec93020b8edc1c87a0a594becf423",
     "crates/pagura/tests/font_collections.rs": "49578948011d7f637e416bec660be5deba2d7d98ca7f95adef13e0f01f59404c",
-    "docs/RECOVERY.md": "a131929b698db9abcadc7ffca3d8a77c33e255bc7a53bc78df2d735750ea4b6e",
-    "docs/STATUS.md": "932502a85e043161bd1c5802d64ca18c8c8c69157f037d87119abb06e90c1b3a",
+    "docs/RECOVERY.md": "63d6820f960dbb73636e59c916ad00a162185b0899736e1c8c31354cfe008fec",
+    "docs/STATUS.md": "d78ef3636469e7282a3667ce2d63a61e2dd6b6ed54138dfa900ee00fbdfc65eb",
     "docs/adr/0009-text-and-fonts.md": "cbd5a8bb2a677caa3027fe7169e2d1800dfdaea66a288fe71b72d7cd95efeed6",
     "tools/fixturegen/font.py": "6f3f2980a7f6dac67c7aefdc24dbe6fe420c75e3aa8500b56d42aa95e1af80a6",
     "tools/fixturegen/font_bindings.py": "0ffc33d7db6e802aab012f0e5b13e182c87c16b0e53239375f25501c736a38a8",
@@ -362,7 +362,12 @@
     "crates/pagura/tests/jbig2_unused_tables.rs": "625839e875b02468dc745359dcc4508e19420f9b26b2cce17f8d8215b8332ce6",
     "tools/fixturegen/recovery_jbig2_tables.py": "fbb6298b31889911541b6d1153c01a4cc6ee130f73cf7d2b8bda169211c8edfb",
     "tools/image_repair_observe.mjs": "51159b6caf9945fb8367ca6aa6de610de05124462de176058b51eadc3b75185e",
-    "tools/image_repair_parity.mjs": "118fb24047bbb90b646b87e2eef7a1f9f133e2a1702b4acc6b5c21d3ed26f0e1"
+    "tools/image_repair_parity.mjs": "118fb24047bbb90b646b87e2eef7a1f9f133e2a1702b4acc6b5c21d3ed26f0e1",
+    "corpus/manifests/recovery_marked.json": "659bc7801bac1042b04db89f34426da036b8aaacde353de18906ac3470d07e34",
+    "crates/pagura-interpret/src/machine/marked.rs": "3461d7422ab18e896365179f8a7c2b2f5ddf6ab3f1ef73b5c17679c3c3492918",
+    "crates/pagura-interpret/src/repairs.rs": "7cb7b7ccf5366ef0357e5a4b9f768b0a8b34fda6c9b766301bfe614aacd09f63",
+    "crates/pagura-interpret/tests/recovery_marked.rs": "7a5fb2ce0f3fda04482f25b0d6aa4e024a899e0094c880ebf165a0faaead0ef1",
+    "tools/fixturegen/recovery_marked.py": "33e2241f9c99bb764429cde3da8bc69e2e0766568c3fd670cf070cd85dd9d369"
   },
   "capabilities": [
     {
@@ -4195,17 +4200,24 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy.",
-      "remaining": "Current cross-platform/corpus runtime comparison, complete feature denominator and release-qualified performance evidence.",
+      "implemented": "Bounded APIs, repair diagnostics, generated fixtures, fuzz targets and six-engine benchmark policy. Unmatched EMC is a positioned reported no-op only for an empty current marked-content scope; Strict rejects while visibility, device structure, required content and budgets remain authoritative.",
+      "remaining": "Current cross-platform/corpus runtime comparison, complete feature denominator and release-qualified performance evidence. Incomplete state, undefined required resources and required-content cycles remain explicit failures after a repair.",
       "sources": [
         "benchmarks/policy.json",
         "tools/check.py",
         "crates/pagura-core/src/lib.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-interpret/src/machine/marked.rs",
+        "crates/pagura-interpret/src/repairs.rs",
+        "docs/RECOVERY.md",
+        "docs/STATUS.md"
       ],
-      "tests": [],
+      "tests": [
+        "crates/pagura-interpret/tests/recovery_marked.rs",
+        "tools/fixturegen/recovery_marked.py"
+      ],
       "requirements": [
         "bench-corpus-verification",
         "bench-document-conversion",
@@ -4229,9 +4241,34 @@
         "recovery-type3",
         "recovery-widgets",
         "unsupported-is-explicit",
-        "recovery-content-state"
+        "recovery-content-state",
+        "recovery-marked-closure"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "recovery_marked/balanced-control",
+        "recovery_marked/unmatched-prefix",
+        "recovery_marked/unmatched-suffix",
+        "recovery_marked/repeated-before-paint",
+        "recovery_marked/within-text",
+        "recovery_marked/within-save",
+        "recovery_marked/retains-path",
+        "recovery_marked/retains-pending-clip",
+        "recovery_marked/retains-state",
+        "recovery_marked/after-balanced",
+        "recovery_marked/after-nested",
+        "recovery_marked/actual-text",
+        "recovery_marked/form-keeps-caller-marked",
+        "recovery_marked/hidden-form-keeps-visibility",
+        "recovery_marked/split-content-sequence",
+        "recovery_marked/unfinished-text",
+        "recovery_marked/unfinished-path",
+        "recovery_marked/unfinished-clip",
+        "recovery_marked/unfinished-operands",
+        "recovery_marked/unfinished-compatibility",
+        "recovery_marked/unknown-operator",
+        "recovery_marked/undefined-resource",
+        "recovery_marked/required-cycle"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",

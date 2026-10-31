@@ -21,6 +21,11 @@ It includes API families without tags and separates library, CLI, host and viewe
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.
 
+Unmatched marked-content endings (`EMC`) are reported no-ops in Repair,
+retaining visibility and structure within the current scope. Strict rejects;
+operation limits and subsequent syntax/resource failures remain authoritative.
+See [recovery policy](RECOVERY.md).
+
 ## Capability matrix
 
 JBIG2 also reports `jbig2.unused-aggregation-table` for the unused Huffman
