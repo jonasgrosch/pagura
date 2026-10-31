@@ -35,7 +35,8 @@
 
 use super::tiling::{self, Joints};
 use super::{LineCap, LineJoin, Pen, Run, Stroke, charge, conformal, mitred, ring_count};
-use crate::band::Bounds;
+// The stroker's runs are dashes; the resolver's are column ranges.
+use crate::band::{Bounds, Run as Range};
 use crate::{Point, Transform};
 use pagura_core::{Limits, Meter, Result};
 
@@ -646,7 +647,7 @@ impl Cover {
         &mut self,
         top: f64,
         most: usize,
-        chunks: &mut Vec<(f64, f64)>,
+        chunks: &mut Vec<(f64, f64, Range)>,
         bytes: &mut Meter,
     ) -> Result<()> {
         self.sort()?;
@@ -748,7 +749,7 @@ impl Cover {
             let (first, last) = (first.max(left), last.min(right));
             if chunks.len() < most && last >= first {
                 bytes.reserve_capacity(chunks, 1)?;
-                chunks.push((first, last + 1.0));
+                chunks.push((first, last + 1.0, Range::Proven));
             }
         }
         Ok(())

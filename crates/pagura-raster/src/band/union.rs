@@ -128,6 +128,24 @@ pub(crate) fn proven_runs(pieces: usize) -> usize {
     1 + pieces / 8
 }
 
+/// What a column range of a row is known to be, for [`Resolver::row_proven`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Run {
+    /// Every cell of it is covered.
+    Proven,
+    /// Its pieces are the covered set's sides there: off them the winding
+    /// is 0 or this sign, and none cross or touch inside it but at shared
+    /// vertices.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "the winding certificate's column windows make these next"
+        )
+    )]
+    Certified(i32),
+}
+
 /// Reusable storage of the resolver.
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Resolver {
@@ -217,7 +235,7 @@ pub(crate) struct Resolver {
 struct Region {
     start: f64,
     end: f64,
-    /// The ranges, as an index range of the resolver's `runs`.
+    /// The ranges, as an index range of the resolver's `bounds`.
     ranges: (usize, usize),
 }
 
@@ -225,9 +243,9 @@ struct Region {
 /// route's spare.
 #[derive(Debug, Default, Clone)]
 struct Optional {
-    /// The proven column ranges of the current row, which
-    /// [`Resolver::runs`] gives to fill, and the row's regions.
-    runs: Vec<(f64, f64)>,
+    /// The column ranges of the current row with what they are known to be,
+    /// which [`Resolver::runs`] gives to fill, and the row's regions.
+    runs: Vec<(f64, f64, Run)>,
     regions: Vec<Region>,
     /// The chunk walk where a region starts, to restore it from: the pieces
     /// reaching it, and the windings carried into it.
@@ -269,7 +287,7 @@ impl Optional {
             self.kept_live.capacity() * size_of::<u32>(),
             self.kept_carry.capacity() * size_of::<f64>(),
             self.kept_carried.capacity() * size_of::<i64>(),
-            self.runs.capacity() * size_of::<(f64, f64)>(),
+            self.runs.capacity() * size_of::<(f64, f64, Run)>(),
             self.regions.capacity() * size_of::<Region>(),
         ];
         bytes.refund(freed.iter().fold(0, |sum, &b| sum.saturating_add(b)));
@@ -331,6 +349,37 @@ thread_local! {
     pub(crate) static RELEASES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
+/// The runs of columns a row's pieces straddle, from their spans by first
+/// column: a piece spanning columns `first..=last` straddles `first + 1..=
+/// last`, so that a column no run holds lies between pieces, and runs that
+/// touch merge.
+struct Straddled<'a> {
+    spans: std::slice::Iter<'a, Span>,
+    run: Option<(f64, f64)>,
+}
+
+impl Iterator for Straddled<'_> {
+    type Item = (f64, f64);
+
+    fn next(&mut self) -> Option<(f64, f64)> {
+        for &(first, last, _) in self.spans.by_ref() {
+            if last <= first {
+                continue;
+            }
+            let (a, b) = (first + 1.0, last);
+            match self.run {
+                Some((ra, rb)) if a <= rb + 1.0 => self.run = Some((ra, rb.max(b))),
+                Some(done) => {
+                    self.run = Some((a, b));
+                    return Some(done);
+                }
+                None => self.run = Some((a, b)),
+            }
+        }
+        self.run.take()
+    }
+}
+
 /// A piece's side open from above: +1 or -1 (0 when none), since when, and
 /// whether the current sub-slab keeps it.
 #[derive(Debug, Clone, Copy, Default)]
@@ -370,6 +419,15 @@ fn pass_work(pieces: usize, breaks: usize, groups: usize) -> usize {
     sort_work(heights)
         .saturating_add(searches)
         .saturating_add(heights.saturating_mul(groups))
+}
+
+/// Whether a certified range of `pieces` pieces is worth cutting the row
+/// at, with `breaks` heights of windings carried in. Each chunk takes every
+/// carried height, as a sub-slab where it is swept and in the sort where it
+/// is passed over, so the cuts around a range cost about `breaks` again; a
+/// range whose pieces' own sort costs less is swept with its neighbours.
+fn admit(pieces: usize, breaks: usize) -> bool {
+    sort_work(pieces) >= breaks
 }
 
 /// Empties `values` and makes room for `count`: what they held asks none.
@@ -659,9 +717,10 @@ impl Resolver {
     }
 
     /// [`Self::row`], where under one group [`Self::runs`] lists column
-    /// ranges, ascending and apart, in which every cell of the row is known
-    /// covered: their chunks are passed over, at the sorts of their pieces'
-    /// ends.
+    /// ranges, ascending and apart, whose chunks are not swept: where every
+    /// cell is known covered they are passed over, at the sorts of their
+    /// pieces' ends; where their pieces are known to be the sides, those are
+    /// emitted as they are, at a pass besides.
     /// `spare` is given up before any storage of the row the bytes left
     /// might not cover with it.
     ///
@@ -732,10 +791,10 @@ impl Resolver {
         result
     }
 
-    /// The proven column ranges of the next row to [`Self::row_proven`], for
-    /// the caller to fill, charging their storage to the row's bytes. It is
+    /// The column ranges of the next row to [`Self::row_proven`], for the
+    /// caller to fill, charging their storage to the row's bytes. It is
     /// storage only the ranges' route uses, which [`Self::forget`] frees.
-    pub(crate) fn runs(&mut self) -> &mut Vec<(f64, f64)> {
+    pub(crate) fn runs(&mut self) -> &mut Vec<(f64, f64, Run)> {
         &mut self.optional.runs
     }
 
@@ -802,27 +861,70 @@ impl Resolver {
     }
 
     /// Plans the regions of the row's runs, charged to `spare`'s own work:
-    /// each run of ranges with none of [`Self::cut`]'s cuts between them, from
-    /// the last cut before it to the first after. Its bounds lie strictly
-    /// outside the ranges'. A spare that cannot pay, or whose plan the bytes
-    /// left do not cover, plans none.
+    /// each run of ranges with none of [`Self::cut`]'s cuts between them,
+    /// from the last cut before it to the first after. Its bounds lie
+    /// strictly outside the ranges'. A certified range is first narrowed to
+    /// the nearest columns within it that no piece straddles, so that none of
+    /// its pieces is cut at its bounds: past the straddled run its left bound
+    /// lies in, and back to the start of the one its right bound lies in, in
+    /// one pass over the pieces for the whole row. A spare that cannot pay,
+    /// or whose plan the bytes left do not cover, plans none.
     fn prove(&mut self, (spare, bytes): (&mut dyn Spare, &mut Meter)) -> Result<()> {
         self.optional.regions.clear();
-        let units = self.cuts.len().saturating_add(self.optional.runs.len());
-        let need = room_need(&self.optional.regions, self.optional.runs.len());
-        if self.optional.runs.is_empty()
-            || bytes.remaining() < need
-            || !spare_work(spare, units, bytes)
-        {
-            self.optional.runs.clear();
+        let mut runs = std::mem::take(&mut self.optional.runs);
+        let planned = self.plan(&mut runs, (spare, bytes));
+        self.optional.runs = runs;
+        planned
+    }
+
+    /// [`Self::prove`] on `runs`, taken from the resolver meanwhile.
+    fn plan(
+        &mut self,
+        runs: &mut Vec<(f64, f64, Run)>,
+        (spare, bytes): (&mut dyn Spare, &mut Meter),
+    ) -> Result<()> {
+        let certified = runs.iter().any(|r| r.2 != Run::Proven);
+        let units = self
+            .cuts
+            .len()
+            .saturating_add(runs.len())
+            .saturating_add(if certified { self.spans.len() } else { 0 });
+        let need = room_need(&self.optional.regions, runs.len());
+        if runs.is_empty() || bytes.remaining() < need || !spare_work(spare, units, bytes) {
+            runs.clear();
             if spare.held() == 0 {
                 self.forget(bytes);
             }
             return Ok(());
         }
-        room(&mut self.optional.regions, self.optional.runs.len(), bytes)?;
-        for r in 0..self.optional.runs.len() {
-            let (lo, hi) = self.optional.runs[r];
+        debug_assert!(
+            runs.windows(2).all(|w| w[0].0 < w[0].1 && w[0].1 < w[1].0),
+            "runs ascending and apart: {runs:?}"
+        );
+        room(&mut self.optional.regions, runs.len(), bytes)?;
+        // Certified ranges narrowed to columns no piece straddles, in one pass:
+        // the ranges ascend, and so do the straddled runs.
+        let mut straddled = Straddled {
+            spans: self.spans.iter(),
+            run: None,
+        }
+        .peekable();
+        for run in runs.iter_mut().filter(|r| r.2 != Run::Proven) {
+            while straddled.next_if(|&(_, b)| b < run.0).is_some() {}
+            if let Some(&(a, b)) = straddled.peek()
+                && a <= run.0
+            {
+                run.0 = b + 1.0;
+            }
+            while straddled.next_if(|&(_, b)| b < run.1).is_some() {}
+            if let Some(&(a, _)) = straddled.peek()
+                && a <= run.1
+            {
+                run.1 = a;
+            }
+        }
+        runs.retain(|&(lo, hi, _)| lo < hi);
+        for (r, &(lo, hi, _)) in runs.iter().enumerate() {
             let before = self.cuts.partition_point(|&c| c < lo);
             let start = before
                 .checked_sub(1)
@@ -845,6 +947,13 @@ impl Resolver {
             }
         }
         Ok(())
+    }
+
+    /// How many pieces lie within columns `lo..hi`, which none straddles at
+    /// either bound: those starting there, by binary search.
+    fn within(&self, (lo, hi): (f64, f64)) -> usize {
+        let start = |c: f64| self.spans.partition_point(|s| s.0 < c);
+        start(hi).saturating_sub(start(lo))
     }
 
     /// Moves the chunk walk to columns `left..right`: the pieces reaching
@@ -1016,7 +1125,11 @@ impl Resolver {
     ) -> Result<()> {
         let mut left = region.start;
         for r in region.ranges.0..region.ranges.1 {
-            let (lo, hi) = self.optional.runs[r];
+            let (lo, hi, run) = self.optional.runs[r];
+            // A certified range of few pieces is swept with its neighbours.
+            if run != Run::Proven && !admit(self.within((lo, hi)), self.carry.len()) {
+                continue;
+            }
             let walk = (&mut *entered, &mut *live, &mut *local);
             self.walk(pieces, ((left, lo), (true, true)), walk, (own, bytes))?;
             self.region_sweep(local, (rules, top), (true, &mut *spare), (out, own, bytes))?;
@@ -1024,9 +1137,9 @@ impl Resolver {
             self.pass_over(
                 pieces,
                 (rules, top),
-                (lo, hi),
+                ((lo, hi), run),
                 walk,
-                (&mut *spare, own, bytes),
+                (&mut *spare, &mut *out, own, bytes),
             )?;
             left = hi;
         }
@@ -1063,26 +1176,27 @@ impl Resolver {
         )
     }
 
-    /// Passes over the chunk of proven columns `lo..hi` on `own` work. Its
-    /// pieces reach across as many of the row's chunks as its range does,
-    /// so they are clipped, and their heights sorted, in the optional
-    /// route's own storage; the walk keeps only those reaching on past
-    /// `hi`, no more than the row's chunk holding `hi` holds.
+    /// Passes over the chunk of a proven or certified range `lo..hi` on
+    /// `own` work, appending a certified range's pieces to `out` as its
+    /// sides. Its pieces reach across as many of the row's chunks as the
+    /// range does, so they are clipped, and their heights sorted, in the
+    /// optional route's own storage; the walk keeps only those reaching on
+    /// past `hi`, no more than the row's chunk holding `hi` holds.
     fn pass_over(
         &mut self,
         pieces: &[Piece],
         (rules, top): (&[FillRule], f64),
-        columns: (f64, f64),
+        range: ((f64, f64), Run),
         walk: (&mut usize, &mut Vec<u32>),
-        (spare, own, bytes): (&mut dyn Spare, &mut Meter, &mut Meter),
+        (spare, out, own, bytes): (&mut dyn Spare, &mut Vec<Line>, &mut Meter, &mut Meter),
     ) -> Result<()> {
         let mut local = std::mem::take(&mut self.optional.local);
         let passed = self.walk_and_pass(
             pieces,
             (rules, top),
-            columns,
+            range,
             (walk, &mut local),
-            (spare, own, bytes),
+            (spare, out, own, bytes),
         );
         self.optional.local = local;
         passed
@@ -1093,9 +1207,9 @@ impl Resolver {
         &mut self,
         pieces: &[Piece],
         (rules, top): (&[FillRule], f64),
-        (lo, hi): (f64, f64),
+        ((lo, hi), run): ((f64, f64), Run),
         ((entered, live), local): ((&mut usize, &mut Vec<u32>), &mut Vec<Piece>),
-        (spare, own, bytes): (&mut dyn Spare, &mut Meter, &mut Meter),
+        (spare, out, own, bytes): (&mut dyn Spare, &mut Vec<Line>, &mut Meter, &mut Meter),
     ) -> Result<()> {
         own.charge(live.len().saturating_add(1))?;
         live.retain(|&i| self.spans[i as usize].1 >= lo);
@@ -1119,17 +1233,31 @@ impl Resolver {
                 .filter(on)
                 .map(|n| u32::try_from(n).unwrap_or(u32::MAX)),
         );
-        let bound = sweep_bound(local.len(), self.carry.len(), rules.len(), 0);
+        let bound = sweep_bound(local.len(), self.carry.len(), rules.len(), out.len());
         give_up(spare, bound, bytes);
         if bytes.remaining() < bound {
             return Err(Error::limit(SPARE_WORK));
         }
         own.charge(pass_work(local.len(), self.carry.len(), rules.len()))?;
         #[cfg(debug_assertions)]
-        let carried = (self.carry.clone(), self.carried.clone());
+        let (carried, emitted) = ((self.carry.clone(), self.carried.clone()), out.len());
+        if let Run::Certified(sign) = run {
+            own.charge(local.len())?;
+            room(out, local.len(), bytes)?;
+            for p in local.iter() {
+                let side = p.direction * sign;
+                push_side(
+                    (&mut *out, &mut *bytes),
+                    p.line,
+                    side,
+                    (p.lo, p.hi),
+                    (&mut (), None),
+                )?;
+            }
+        }
         self.pass(local, (rules, top), bytes)?;
         #[cfg(debug_assertions)]
-        self.check_pass(local, (rules, top), carried);
+        self.check_pass(local, (rules, top), carried, &out[emitted..]);
         Ok(())
     }
 
@@ -1277,15 +1405,17 @@ impl Resolver {
         );
     }
 
-    /// Checks a chunk passed over against its sweep from the windings
-    /// `carried` into it: the sweep finds no side there and carries on what
-    /// the pass did. Debug builds only, on unmetered scratch.
+    /// Checks a chunk not swept against its sweep from the windings
+    /// `carried` into it: the sweep finds the sides `emitted` there, none
+    /// where every cell is covered and else the same area, and carries on
+    /// what the pass did. Debug builds only, on unmetered scratch.
     #[cfg(debug_assertions)]
     fn check_pass(
         &mut self,
         pieces: &[Piece],
         (rules, top): (&[FillRule], f64),
         carried: (Vec<f64>, Vec<i64>),
+        emitted: &[Line],
     ) {
         let passed = (
             std::mem::replace(&mut self.carry, carried.0),
@@ -1302,9 +1432,20 @@ impl Resolver {
             (&mut sides, &mut work, &mut bytes),
             (true, &mut (), false),
         );
+        let area = |sides: &[Line]| -> (f64, f64) {
+            sides.iter().fold((0.0, 0.0), |(sum, size), l| {
+                let a = (l.b.y - l.a.y) * -(l.a.x + l.b.x) / 2.0;
+                (sum + a, size + a.abs())
+            })
+        };
+        let ((swept_area, size), (emitted_area, _)) = (area(&sides), area(emitted));
         debug_assert!(
-            swept.is_ok() && sides.is_empty(),
-            "a proven chunk has sides: {sides:?}"
+            swept.is_ok() && (emitted.is_empty() == sides.is_empty()),
+            "a chunk not swept has other sides: {sides:?} {emitted:?}"
+        );
+        debug_assert!(
+            (swept_area - emitted_area).abs() <= 1e-9 * (1.0 + size),
+            "a certified chunk's sides cover other area: {swept_area} {emitted_area}"
         );
         debug_assert_eq!(
             (&self.carry, &self.carried),
