@@ -1,5 +1,13 @@
 # Capability and evidence status
 
+Literal null members of page Annots arrays can be recovered with the
+reported `pages.annotation-null` policy (see [RECOVERY](RECOVERY.md)).
+Rendering, links and signature-role traversal share the gate; original
+references/order and array budgets remain authoritative. Referenced
+null/missing annotations remain errors. Repaired signed graphs cannot
+establish an Allowed modification. Existing whole-field dictionary-null
+handling is preserved separately; this recovery changes only array members.
+
 Pagura has substantial rendering, reading, form-filling and incremental-writing
 support. It is **not a complete PDF implementation**, and feature parity with
 PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics has not been established.
