@@ -22,6 +22,7 @@
 
 use super::curve::{Mono, Piece, Spline};
 use super::edges::Polygon;
+use super::union::PROVEN_PIECES;
 use crate::Point;
 use crate::geometry::{greater, lesser};
 use pagura_core::{Meter, Result};
@@ -66,7 +67,7 @@ pub(crate) fn uncertified(
     margin: f64,
     bytes: &mut Meter,
 ) -> Result<Option<Vec<[f64; 2]>>> {
-    Ok(doubtful(polygon, margin, bytes)?.map(|doubtful| doubtful.slabs))
+    Ok(doubtful(polygon, margin, None, bytes)?.map(|doubtful| doubtful.slabs))
 }
 
 /// The slabs [`uncertified`] finds and the common sign of the others.
@@ -75,16 +76,147 @@ pub(crate) struct Doubtful {
     /// Whether the leftmost chain of every certified slab runs in
     /// increasing y, so that their winding is 0 or 1 rather than 0 or -1.
     pub(crate) positive: bool,
+    /// Where in the doubtful rows the doubt lies.
+    pub(crate) windows: Windows,
 }
 
-/// [`uncertified`] with the common sign.
+/// Where the doubt lies within the rows the certificate leaves in doubt:
+/// x ranges per row, sorted and apart. Outside a row's ranges, every point
+/// of the row off the chains has winding 0 or the common sign, and no two
+/// chains meet there but at vertices they share. A doubtful row not listed
+/// is in doubt across its whole width.
+///
+/// Windows are optional: they hold their storage on a meter of their own,
+/// so the certificate charges `bytes` alike with or without them, and a
+/// window that meter refuses leaves its row and every later one whole.
+#[derive(Debug)]
+pub(crate) struct Windows {
+    /// Each located row and the end of its ranges in `ranges`.
+    rows: Vec<(i64, usize)>,
+    ranges: Vec<[f64; 2]>,
+    /// The row being recorded, and whether all its doubt is located.
+    open: Option<(i64, bool)>,
+    /// Rows up to this one are not located.
+    lost: Option<i64>,
+    /// Chains seen in located slabs and those of them in doubt, and whether
+    /// locating has stopped for the rest of the shape.
+    seen: (usize, usize, usize),
+    stopped: bool,
+    /// Locating's own work, apart from the refinement's: the slabs are the
+    /// same whether or not their doubt is located.
+    work: Work,
+    /// The meter of their storage.
+    own: Meter,
+}
+
+impl Windows {
+    /// Windows that may hold `budget` bytes, located within `cap` steps of
+    /// work; none are located without a budget.
+    fn new(budget: Option<usize>, cap: usize) -> Self {
+        Self {
+            rows: Vec::new(),
+            ranges: Vec::new(),
+            open: None,
+            lost: None,
+            seen: (0, 0, 0),
+            stopped: budget.is_none(),
+            work: Work { done: 0, cap },
+            own: Meter::new(budget.unwrap_or(0), "column window budget exceeded"),
+        }
+    }
+
+    /// The ranges holding the doubt in row `y`; `None` where it is not
+    /// located.
+    pub(crate) fn row(&self, y: i64) -> Option<&[[f64; 2]]> {
+        let k = self.rows.binary_search_by_key(&y, |&(row, _)| row).ok()?;
+        let start = k.checked_sub(1).map_or(0, |k| self.rows[k].1);
+        self.ranges.get(start..self.rows[k].1)
+    }
+
+    pub(crate) fn heap_bytes(&self) -> usize {
+        self.rows.capacity() * size_of::<(i64, usize)>()
+            + self.ranges.capacity() * size_of::<[f64; 2]>()
+    }
+
+    /// Starts recording `row`, closing the one before. Once locating has
+    /// stopped no row is recorded: the one open then stays unlisted, in
+    /// doubt across its width.
+    fn open(&mut self, row: i64) {
+        if self.stopped || self.open.is_some_and(|(open, _)| open == row) {
+            return;
+        }
+        self.close();
+        let located = self.lost.is_none_or(|lost| row > lost);
+        self.open = Some((row, located));
+    }
+
+    /// Leaves rows up to `last` unlocated, the open one among them.
+    fn lose(&mut self, last: i64) {
+        if self.stopped {
+            return;
+        }
+        if let Some((_, located)) = &mut self.open {
+            *located = false;
+        }
+        self.lost = Some(self.lost.map_or(last, |lost| lost.max(last)));
+    }
+
+    /// Keeps the open row's ranges, sorted and merged, if all its doubt was
+    /// located.
+    fn close(&mut self) {
+        if self.stopped {
+            return;
+        }
+        let Some((row, located)) = self.open.take() else {
+            return;
+        };
+        let start = self.rows.last().map_or(0, |&(_, end)| end);
+        self.ranges[start..].sort_unstable_by(|a, b| a[0].total_cmp(&b[0]));
+        let mut kept = start;
+        for k in start..self.ranges.len() {
+            let range = self.ranges[k];
+            if kept > start && range[0] <= self.ranges[kept - 1][1] {
+                self.ranges[kept - 1][1] = self.ranges[kept - 1][1].max(range[1]);
+            } else {
+                self.ranges[kept] = range;
+                kept += 1;
+            }
+        }
+        self.ranges.truncate(if located { kept } else { start });
+        if located && kept > start {
+            self.rows.push((row, kept));
+        }
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Leaves every window out, for comparison.
+    static LEFT_OUT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Runs `f` with every window left out, for comparison.
+#[cfg(test)]
+pub(crate) fn without<R>(f: impl FnOnce() -> R) -> R {
+    LEFT_OUT.with(|out| out.set(true));
+    let result = f();
+    LEFT_OUT.with(|out| out.set(false));
+    result
+}
+
+/// [`uncertified`] with the common sign, and where `windows` gives them a
+/// byte budget, the windows of the doubt, their storage charged to it
+/// alone.
 pub(crate) fn doubtful(
     polygon: &Polygon,
     margin: f64,
+    windows: Option<usize>,
     bytes: &mut Meter,
 ) -> Result<Option<Doubtful>> {
+    #[cfg(test)]
+    let windows = windows.filter(|_| !LEFT_OUT.with(std::cell::Cell::get));
     let before = bytes.used();
-    let result = certificate(polygon, margin, bytes);
+    let result = certificate(polygon, margin, windows, bytes);
     let retained = result
         .as_ref()
         .ok()
@@ -99,7 +231,12 @@ pub(crate) fn doubtful(
     result
 }
 
-fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Option<Doubtful>> {
+fn certificate(
+    polygon: &Polygon,
+    margin: f64,
+    windows: Option<usize>,
+    bytes: &mut Meter,
+) -> Result<Option<Doubtful>> {
     if polygon.points.len() > u32::MAX as usize {
         return Ok(None);
     }
@@ -123,20 +260,23 @@ fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Opti
         vertices: margin,
     };
     let mut failing = Vec::new();
+    let mut windows = Windows::new(windows, cap);
     let Some(positive) = sweep(
         &points,
         &mut chains,
         margins,
         (&mut work, &mut refine),
-        &mut failing,
+        (&mut failing, &mut windows),
         bytes,
     )?
     else {
         return Ok(None);
     };
+    windows.close();
     Ok(Some(Doubtful {
         slabs: failing,
         positive,
+        windows,
     }))
 }
 
@@ -167,7 +307,7 @@ fn sweep(
     chains: &mut [Chain],
     margins: Margins,
     (work, refine): (&mut Work, &mut Work),
-    failing: &mut Vec<[f64; 2]>,
+    (failing, windows): (&mut Vec<[f64; 2]>, &mut Windows),
     bytes: &mut Meter,
 ) -> Result<Option<bool>> {
     let mut heights = Vec::new();
@@ -221,16 +361,30 @@ fn sweep(
             } else {
                 hi
             };
+            // Without row boundaries inside, the slab's own placement stands.
+            let placed =
+                !rows || (to > from && place(points, &mut active, (from, to), refine).is_some());
             let held = rows
-                && to > from
-                && place(points, &mut active, (from, to), refine).is_some()
+                && placed
                 && holds(points, &active, (from, to), first, margins, refine)
                 && refine.add(0).is_some();
             if !held {
+                // Where in its row the doubt lies, while the budget lasts.
+                #[expect(clippy::cast_possible_truncation, reason = "saturating row index")]
+                let row = from.floor() as i64;
+                windows.open(row);
+                let located = placed
+                    && to > from
+                    && refine.add(0).is_some()
+                    && locate(points, &active, (from, to), first, margins, windows);
                 // Stop walking the slab when refinement cannot make progress
                 // or its budget is spent; keep all remaining rows doubtful.
                 if to <= from || refine.add(0).is_none() {
                     to = hi;
+                }
+                if !located {
+                    #[expect(clippy::cast_possible_truncation, reason = "saturating row index")]
+                    windows.lose((to.ceil() as i64).saturating_sub(1).max(row));
                 }
                 match failing.last_mut() {
                     Some(last) if last[1] >= from => last[1] = to,
@@ -244,6 +398,106 @@ fn sweep(
         }
     }
     Ok(Some(sign.unwrap_or(true)))
+}
+
+/// The slabs a shape's doubt is located in before locating stops where
+/// more than three quarters of their chains are in doubt.
+const LOCATED_SLABS: usize = 8;
+
+/// Records in `windows` the ranges holding the doubt of the placed slab
+/// (lo, hi): the x ranges of both chains beside each gap whose winding is
+/// neither 0 nor the common sign, or each neighbouring pair not kept apart,
+/// grown by the rounding margin. Wherever two chains meet in the slab, one
+/// of the chains of such a pair spans that point (walk the chains between
+/// them in order: neighbours kept apart keep their order), and so does one
+/// wherever a gap in doubt reaches. False where its own budget runs out first,
+/// or once the shape's located slabs show too little to pass over.
+///
+/// Storage the windows' own meter refuses leaves this row and every later
+/// one whole, as when locating stops, with the rows' ranges dropped at
+/// their close.
+fn locate(
+    points: &[Point],
+    active: &[Active],
+    (lo, hi): (f64, f64),
+    first: bool,
+    margins: Margins,
+    windows: &mut Windows,
+) -> bool {
+    // No row of a polygon of so few points reaches the pieces the resolver
+    // passes certified runs over at.
+    if windows.stopped || points.len() <= PROVEN_PIECES {
+        return false;
+    }
+    // At most one more located row per placed slab.
+    if windows.own.reserve_capacity(&mut windows.rows, 1).is_err() {
+        windows.stopped = true;
+        return false;
+    }
+    let sign = if first { 1 } else { -1 };
+    let mut winding = 0_i32;
+    let mut doubtful = 0_usize;
+    for (k, a) in active.iter().enumerate() {
+        winding += if a.chain.up { 1 } else { -1 };
+        let next = active.get(k + 1);
+        // The gap right of this chain, unbounded past the last one. Chains
+        // the certificate lets meet at both ends of the slab may run
+        // together between them: their pieces would cancel, not bound.
+        let bad = (winding != 0 && (winding != sign || next.is_none()))
+            || next.is_some_and(|b| {
+                !(a.range[1] + margins.rounding < b.range[0]
+                    || (apart(
+                        points,
+                        (a.segment, b.segment),
+                        (lo, hi),
+                        margins,
+                        &mut windows.work,
+                    ) && !meet_at_both_ends(points, (a.segment, b.segment), (lo, hi))))
+            });
+        if bad {
+            doubtful += 2;
+            let [left, right] = next.map_or([a.range[0], f64::INFINITY], |b| {
+                [a.range[0].min(b.range[0]), a.range[1].max(b.range[1])]
+            });
+            if windows
+                .own
+                .reserve_capacity(&mut windows.ranges, 1)
+                .is_err()
+            {
+                windows.stopped = true;
+                return false;
+            }
+            windows
+                .ranges
+                .push([left - margins.rounding, right + margins.rounding]);
+        }
+    }
+    // A shape whose first slabs hold their doubt across most of their
+    // chains leaves little to pass over: locating the rest costs more than
+    // it saves.
+    let (parts, chains, doubt) = windows.seen;
+    windows.seen = (
+        parts + 1,
+        chains + active.len(),
+        doubt + doubtful.min(active.len()),
+    );
+    if windows.seen.0 >= LOCATED_SLABS && windows.seen.2 * 4 > windows.seen.1 * 3 {
+        windows.stopped = true;
+    }
+    windows.work.add(0).is_some()
+}
+
+/// Whether two chains, from the segments holding `lo`, are at one x at both
+/// `lo` and `hi`.
+fn meet_at_both_ends(points: &[Point], (i, j): (usize, usize), (lo, hi): (f64, f64)) -> bool {
+    let x = |segment: usize, y: f64| {
+        let mut segment = segment;
+        while points[segment + 1].y < y {
+            segment += 1;
+        }
+        at(points, segment, y).0
+    };
+    x(i, lo) == x(j, lo) && x(i, hi) == x(j, hi)
 }
 
 /// Places the active chains on the slab (lo, hi): from the segments holding
@@ -847,16 +1101,70 @@ fn fans_apart(left: [Point; 2], right: [Point; 2], down: bool, margin: f64) -> b
     })
 }
 
+/// Random polygons for the certificate's and the shapes' tests.
 #[cfg(test)]
-mod tests {
-    use super::*;
+pub(super) mod random {
+    use super::Polygon;
+    use crate::Point;
     use pagura_core::Limits;
 
-    fn certifies(polygon: &Polygon, margin: f64) -> bool {
-        certified(polygon, margin, &mut crate::testing::bytes()).unwrap()
+    /// Xorshift, for repeatable random polygons.
+    pub(crate) struct Rng(pub(crate) u64);
+
+    impl Rng {
+        pub(crate) fn next(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+
+        #[expect(clippy::cast_precision_loss, reason = "53 random bits")]
+        pub(crate) fn unit(&mut self) -> f64 {
+            (self.next() >> 11) as f64 / (1_u64 << 53) as f64
+        }
+
+        /// A star around `centre`, snapped to quarter pixels where `snap`.
+        pub(crate) fn star(
+            &mut self,
+            centre: (f64, f64),
+            radius: f64,
+            snap: bool,
+        ) -> Vec<(f64, f64)> {
+            let n = 3 + self.next() % 10;
+            (0..n)
+                .map(|k| {
+                    #[expect(clippy::cast_precision_loss, reason = "small counts")]
+                    let turn = (k as f64 + self.unit() * 0.8) / n as f64 * std::f64::consts::TAU;
+                    let r = radius * (0.4 + self.unit() * 0.6);
+                    let (x, y) = (centre.0 + r * turn.cos(), centre.1 + r * turn.sin());
+                    if snap {
+                        ((x * 4.0).round() / 4.0, (y * 4.0).round() / 4.0)
+                    } else {
+                        (x, y)
+                    }
+                })
+                .collect()
+        }
+
+        /// Up to 25 stars over a strip 40 by 8, some reversed.
+        pub(crate) fn stars(&mut self) -> Vec<Vec<(f64, f64)>> {
+            let snap = self.next().is_multiple_of(3);
+            (0..=self.next() % 24)
+                .map(|_| {
+                    let centre = (self.unit() * 40.0, self.unit() * 8.0);
+                    let radius = 0.5 + self.unit() * 3.0;
+                    let mut star = self.star(centre, radius, snap);
+                    if self.next().is_multiple_of(3) {
+                        star.reverse();
+                    }
+                    star
+                })
+                .collect()
+        }
     }
 
-    fn polygon(contours: &[&[(f64, f64)]]) -> Polygon {
+    pub(crate) fn polygon(contours: &[&[(f64, f64)]]) -> Polygon {
         let mut polygon = Polygon::default();
         for contour in contours {
             polygon
@@ -872,6 +1180,17 @@ mod tests {
             polygon.end();
         }
         polygon
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::random::{Rng, polygon};
+    use super::*;
+    use pagura_core::Limits;
+
+    fn certifies(polygon: &Polygon, margin: f64) -> bool {
+        certified(polygon, margin, &mut crate::testing::bytes()).unwrap()
     }
 
     #[test]
@@ -913,6 +1232,230 @@ mod tests {
         )
         .unwrap();
         assert_eq!(slabs, Some(vec![[5.0, 10.0]]));
+    }
+
+    /// The first random polygon whose doubt the certificate locates in some
+    /// row.
+    fn located_polygon() -> Polygon {
+        let mut rng = Rng(0x2545_f491_4f6c_dd1d);
+        loop {
+            let contours = rng.stars();
+            let slices: Vec<&[(f64, f64)]> = contours.iter().map(Vec::as_slice).collect();
+            let polygon = polygon(&slices);
+            let located = doubtful(
+                &polygon,
+                0.0,
+                Some(usize::MAX),
+                &mut crate::testing::bytes(),
+            )
+            .unwrap()
+            .is_some_and(|doubtful| !doubtful.windows.rows.is_empty());
+            if located {
+                return polygon;
+            }
+        }
+    }
+
+    /// The least byte budget under which `run` succeeds.
+    fn least(run: impl Fn(&mut Meter) -> bool) -> usize {
+        let (mut lo, mut hi) = (0, 1 << 24);
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2;
+            if run(&mut Meter::new(mid, "certificate bytes")) {
+                hi = mid;
+            } else {
+                lo = mid + 1;
+            }
+        }
+        lo
+    }
+
+    /// The winding of `contours` at `p`, counting chains that run up in y
+    /// as +1, as the certificate walks them.
+    fn winding(contours: &[Vec<(f64, f64)>], p: (f64, f64)) -> i32 {
+        let mut w = 0;
+        for c in contours {
+            for (k, &a) in c.iter().enumerate() {
+                let b = c[(k + 1) % c.len()];
+                let (lo, hi) = (a.1.min(b.1), a.1.max(b.1));
+                if a.1 != b.1 && lo <= p.1 && p.1 < hi {
+                    let x = a.0 + (p.1 - a.1) / (b.1 - a.1) * (b.0 - a.0);
+                    if x < p.0 {
+                        w += if b.1 > a.1 { 1 } else { -1 };
+                    }
+                }
+            }
+        }
+        w
+    }
+
+    /// Whether two edges of `contours` cross or touch inside the open box,
+    /// other than at an end of both. Horizontal edges bound no area and are
+    /// no pieces of the resolver's.
+    fn meet_inside(contours: &[Vec<(f64, f64)>], (x0, x1, y0, y1): (f64, f64, f64, f64)) -> bool {
+        let edges: Vec<((f64, f64), (f64, f64))> = contours
+            .iter()
+            .flat_map(|c| (0..c.len()).map(move |k| (c[k], c[(k + 1) % c.len()])))
+            .filter(|(a, b)| a.1 != b.1)
+            .collect();
+        let cross = |o: (f64, f64), a: (f64, f64), b: (f64, f64)| {
+            (a.0 - o.0) * (b.1 - o.1) - (a.1 - o.1) * (b.0 - o.0)
+        };
+        for (i, &(p, q)) in edges.iter().enumerate() {
+            for &(r, t) in &edges[i + 1..] {
+                // Edges running together between shared ends meet along
+                // them; edges sharing one end meet only there.
+                if (p == t && q == r) || (p == r && q == t) {
+                    let (x, y) = (p.0.midpoint(q.0), p.1.midpoint(q.1));
+                    if x0 < x && x < x1 && y0 < y && y < y1 {
+                        return true;
+                    }
+                    continue;
+                }
+                if [p, q].iter().any(|e| *e == r || *e == t) {
+                    continue;
+                }
+                let (d1, d2, d3, d4) = (
+                    cross(r, t, p),
+                    cross(r, t, q),
+                    cross(p, q, r),
+                    cross(p, q, t),
+                );
+                if d1 * d2 > 0.0 || d3 * d4 > 0.0 || (d1 == 0.0 && d2 == 0.0) {
+                    continue;
+                }
+                let u = d1 / (d1 - d2);
+                let (x, y) = (p.0 + u * (q.0 - p.0), p.1 + u * (q.1 - p.1));
+                if x0 < x && x < x1 && y0 < y && y < y1 {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn located_doubt_leaves_the_rest_of_its_rows_certain() {
+        let mut rng = Rng(0x2545_f491_4f6c_dd1d);
+        let mut runs_checked = 0;
+        for case in 0..600 {
+            let contours = rng.stars();
+            let slices: Vec<&[(f64, f64)]> = contours.iter().map(Vec::as_slice).collect();
+            let Some(doubtful) = doubtful(
+                &polygon(&slices),
+                0.0,
+                Some(usize::MAX),
+                &mut crate::testing::bytes(),
+            )
+            .unwrap() else {
+                continue;
+            };
+            let sign = if doubtful.positive { 1 } else { -1 };
+            for y in -8_i64..20 {
+                let Some(windows) = doubtful.windows.row(y) else {
+                    continue;
+                };
+                // Runs between the windows, on whole columns.
+                let mut left = -10.0_f64;
+                for edge in windows.iter().map(|w| w[0]).chain([60.0]) {
+                    let (x0, x1) = (left.ceil(), edge.floor());
+                    if x0 < x1 {
+                        runs_checked += 1;
+                        #[expect(clippy::cast_precision_loss, reason = "a row index")]
+                        let (top, bottom) = (y as f64, y as f64 + 1.0);
+                        assert!(
+                            !meet_inside(&contours, (x0, x1, top, bottom)),
+                            "case {case} row {y}: edges meet in ({x0}, {x1})"
+                        );
+                        for i in 1..32 {
+                            for j in 1..8 {
+                                let p = (
+                                    x0 + (x1 - x0) * f64::from(i) / 32.0 + 1e-7,
+                                    top + f64::from(j) / 8.0 + 1e-7,
+                                );
+                                let w = winding(&contours, p);
+                                assert!(
+                                    w == 0 || w == sign,
+                                    "case {case} row {y}: winding {w} at {p:?}"
+                                );
+                            }
+                        }
+                    }
+                    left = left.max(windows.iter().find(|w| w[0] == edge).map_or(edge, |w| w[1]));
+                }
+            }
+        }
+        assert!(runs_checked > 500, "{runs_checked} runs checked");
+    }
+
+    #[test]
+    fn small_polygons_make_no_window_storage() {
+        // Two overlapping squares leave rows in doubt, but have too few
+        // points for the resolver to pass certified runs over.
+        let a = [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0)];
+        let b = [(2.0, 1.0), (6.0, 1.0), (6.0, 5.0), (2.0, 5.0)];
+        let polygon = polygon(&[&a, &b]);
+        let mut bytes = crate::testing::bytes();
+        let doubtful = doubtful(&polygon, 0.0, Some(usize::MAX), &mut bytes)
+            .unwrap()
+            .unwrap();
+        assert_ne!(doubtful.slabs.len(), 0);
+        assert_eq!(doubtful.windows.heap_bytes(), 0);
+        assert_eq!(
+            bytes.used(),
+            doubtful.slabs.capacity() * size_of::<[f64; 2]>()
+        );
+    }
+
+    #[test]
+    fn refused_window_storage_leaves_rows_whole() {
+        let polygon = located_polygon();
+        let slabs = uncertified(&polygon, 0.0, &mut crate::testing::bytes()).unwrap();
+        let full = doubtful(
+            &polygon,
+            0.0,
+            Some(usize::MAX),
+            &mut crate::testing::bytes(),
+        )
+        .unwrap()
+        .unwrap();
+        let mut refused = false;
+        for budget in 0..=full.windows.heap_bytes() {
+            let mut bytes = crate::testing::bytes();
+            let doubtful = doubtful(&polygon, 0.0, Some(budget), &mut bytes)
+                .unwrap()
+                .unwrap();
+            assert_eq!(Some(&doubtful.slabs), slabs.as_ref(), "budget {budget}");
+            // The windows' storage is theirs alone.
+            assert_eq!(
+                bytes.used(),
+                doubtful.slabs.capacity() * size_of::<[f64; 2]>()
+            );
+            assert!(doubtful.windows.heap_bytes() <= budget);
+            // A row it locates holds what the full run found there.
+            for &(row, _) in &doubtful.windows.rows {
+                assert_eq!(doubtful.windows.row(row), full.windows.row(row));
+            }
+            refused |= doubtful.windows.rows.len() < full.windows.rows.len();
+        }
+        assert!(refused, "no budget refused a window");
+    }
+
+    #[test]
+    fn windows_leave_the_certificates_least_budget_alone() {
+        let polygon = located_polygon();
+        let alone = least(|bytes| doubtful(&polygon, 0.0, None, bytes).is_ok());
+        let located = least(|bytes| doubtful(&polygon, 0.0, Some(usize::MAX), bytes).is_ok());
+        assert_eq!(alone, located);
+    }
+
+    #[test]
+    fn the_slab_only_certificate_keeps_no_window_charge() {
+        let polygon = located_polygon();
+        let mut bytes = crate::testing::bytes();
+        let slabs = uncertified(&polygon, 0.0, &mut bytes).unwrap().unwrap();
+        assert_ne!(slabs.len(), 0);
+        assert_eq!(bytes.used(), slabs.capacity() * size_of::<[f64; 2]>());
     }
 
     #[test]

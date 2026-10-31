@@ -4,19 +4,29 @@
 //! resolved.
 
 use super::cells::STRIP;
-use super::certify::uncertified;
+use super::certify::{self, Windows};
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
 use super::convex::Convex;
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
 use super::union::{
-    Meters, PROVEN_PIECES, Piece, Resolver, Spare, give_up, proven_runs, room, room_need,
+    Meters, PROVEN_PIECES, Piece, Resolver, Run, SPARE_WORK, Spare, give_up, proven_runs, room,
+    room_need,
 };
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
 use crate::geometry::{greater, lesser};
 use crate::stroke::{Cover, Spine, Tiling};
 use crate::{FillRule, Path, Stroke, Transform, features};
-use pagura_core::{Error, Meter, Result};
+use pagura_core::{Error, Limits, Meter, Result};
+
+/// The fewest points of a polygon whose doubt is located within its rows:
+/// four times the most pieces of a row the resolver sweeps whole.
+const LOCATED_POINTS: usize = 4 * PROVEN_PIECES;
+
+/// The most pieces of a row whose certified runs are passed over. In rows
+/// of more, the regions cut around runs as narrow as their windows leave
+/// sweeps carrying more breaks than the passes save.
+const PASSED_PIECES: usize = 64 * PROVEN_PIECES;
 
 /// The message of every preparation work budget error.
 pub(crate) const RASTER_WORK: &str = "raster work budget exceeded";
@@ -523,19 +533,24 @@ impl Shape {
         let checked = matches!(winding, Winding::Check(_));
         let before = before_rows(polygon.vertices(), rows, (checked, frame.rect.is_some()));
         give_up(spine, before, bytes);
-        // The heights the winding certificate leaves in doubt: none when
-        // certified throughout, all when unknown.
-        // A lone triangle bounds winding 0 or one sign of magnitude one,
-        // whatever its vertices.
-        let triangle =
-            polygon.starts.len() == 1 && polygon.vertices() == 3 && !polygon.points_cells;
+        // Where the doubt lies in a row is the polygon's: lines a frame cuts
+        // no longer bound the chains it was found among. A stroke's spine
+        // proves its rows on work of its own, which windows leave alone,
+        // and the rows of a polygon of fewer points than `LOCATED_POINTS`
+        // hold too few pieces for the runs passed over to repay locating.
+        // Windows may hold what the bytes left keep beyond all the shape
+        // stores before its rows, and are the shape's from then on, given
+        // up before any storage of its own.
+        let windows = (frame.rect.is_none()
+            && frame.paths.is_none()
+            && spine.is_none()
+            && polygon.points.len() >= LOCATED_POINTS)
+            .then(|| bytes.remaining().saturating_sub(before));
         let polygon_bytes = polygon.heap_bytes();
-        let doubtful = match winding {
-            Winding::Certified => Some(Vec::new()),
-            Winding::Check(_) if triangle => Some(Vec::new()),
-            Winding::Check(margin) => uncertified(&polygon, margin, bytes)?,
-            Winding::Unknown => None,
-        };
+        let Doubt {
+            slabs: doubtful,
+            mut located,
+        } = doubt(&polygon, winding, (windows, options.limits), bytes)?;
         let all_bytes = polygon.vertices().saturating_mul(size_of::<Line>());
         let all = edges::lines(&polygon, bytes)?;
         drop(polygon);
@@ -568,7 +583,8 @@ impl Shape {
             }
             None => lines,
         };
-        let Some(bounds) = frame.bounds(lines.iter().flat_map(|l| [l.a, l.b])) else {
+        let Some(bounds) = edges::hull(&lines).and_then(|hull| frame.bounds(hull.into_iter()))
+        else {
             return Ok(None);
         };
         let width = super::row::width(options.area.region.x1)?;
@@ -583,11 +599,12 @@ impl Shape {
                 &frame,
                 (bounds, &chosen),
                 (work, bytes),
-                spine,
+                (spine, &mut located),
             )?
         };
-        // The spine is done before the shape keeps its edges.
+        // The spine and windows are done before the shape keeps its edges.
         bytes.refund(spine.release());
+        bytes.refund(located.release());
         Self::edges(
             (lines, Vec::new()),
             rule,
@@ -1239,6 +1256,186 @@ impl Spare for Option<Cover> {
     }
 }
 
+/// What the winding certificate leaves a polygon in doubt.
+struct Doubt {
+    /// The heights in doubt: none when certified throughout, all when
+    /// unknown.
+    slabs: Option<Vec<[f64; 2]>>,
+    /// Where in those rows the doubt lies.
+    located: Option<Located>,
+}
+
+/// What the winding certificate leaves `polygon` in doubt, located within
+/// its rows where `windows` gives the windows a byte budget. Their storage
+/// is then charged to `bytes`, where it fits, as optional storage.
+fn doubt(
+    polygon: &Polygon,
+    winding: Winding,
+    (windows, limits): (Option<usize>, &Limits),
+    bytes: &mut Meter,
+) -> Result<Doubt> {
+    // A lone triangle bounds winding 0 or one sign of magnitude one,
+    // whatever its vertices.
+    let triangle = polygon.starts.len() == 1 && polygon.vertices() == 3 && !polygon.points_cells;
+    let (slabs, located) = match winding {
+        Winding::Certified => (Some(Vec::new()), None),
+        Winding::Check(_) if triangle => (Some(Vec::new()), None),
+        Winding::Check(margin) => match certify::doubtful(polygon, margin, windows, bytes)? {
+            Some(doubtful) => (
+                Some(doubtful.slabs),
+                (windows.is_some() && bytes.charge(doubtful.windows.heap_bytes()).is_ok()).then(
+                    || Located {
+                        windows: doubtful.windows,
+                        sign: if doubtful.positive { 1 } else { -1 },
+                        runs: Vec::new(),
+                        work: Meter::new(limits.raster_work, SPARE_WORK),
+                    },
+                ),
+            ),
+            None => (None, None),
+        },
+        Winding::Unknown => (None, None),
+    };
+    Ok(Doubt { slabs, located })
+}
+
+/// Where the certificate located a polygon's doubt within its rows: the
+/// stretches between its windows pass their pieces to the resolver as
+/// certified runs, which it emits as sides unswept.
+///
+/// A run's bounds cut none of its row's pieces, so the chunks swept beside
+/// it split no piece more finely than the row's sweep without it. Its own
+/// pieces are emitted once each, where that sweep may drop a pair that
+/// coincide running opposite ways. A row therefore keeps at most as many
+/// more resolved sides as it has pieces wholly within its certified runs,
+/// which debug builds check against the row resolved without them; a
+/// shape keeps at most that many more lines, each of a line's bytes and
+/// its cells' work, and its resolved lines may double once more as they
+/// grow.
+struct Located {
+    windows: Windows,
+    /// The winding off the pieces outside the windows: 0 or this sign.
+    sign: i32,
+    /// A row's certified runs, before the widest are kept.
+    runs: Vec<(f64, f64, Run)>,
+    /// The work of finding and passing over the runs.
+    work: Meter,
+}
+
+impl Located {
+    /// Adds row `y`'s certified runs to `proven`, which holds its proven
+    /// ranges in order, ascending and apart: the stretches of
+    /// `(left, right)` between the windows, on whole columns and a column
+    /// clear of the proven ranges, as the resolver keeps ranges apart.
+    /// While the row's ranges would pass `cap`, the narrowest are left to
+    /// the sweep.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `Limit` error where its own work or `bytes` runs out.
+    fn row(
+        &mut self,
+        y: u32,
+        (left, right): (f64, f64),
+        (proven, cap): (&mut Vec<(f64, f64, Run)>, usize),
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        let Some(windows) = self.windows.row(i64::from(y)) else {
+            return Ok(());
+        };
+        self.work
+            .charge(windows.len().saturating_add(proven.len()).saturating_add(1))?;
+        self.runs.clear();
+        let (mut edge, mut k) = (left, 0);
+        for window in windows.iter().map(Some).chain([None]) {
+            let end = window.map_or(right, |w| w[0].floor().min(right));
+            let mut start = edge.ceil().max(left);
+            while proven.get(k).is_some_and(|&(_, r, _)| r + 1.0 <= start) {
+                k += 1;
+            }
+            for &(l, r, _) in proven[k..].iter().take_while(|&&(l, _, _)| l - 1.0 < end) {
+                if l - 1.0 > start {
+                    room(&mut self.runs, 1, bytes)?;
+                    self.runs.push((start, l - 1.0, Run::Certified(self.sign)));
+                }
+                start = start.max(r + 1.0);
+            }
+            if start < end {
+                room(&mut self.runs, 1, bytes)?;
+                self.runs.push((start, end, Run::Certified(self.sign)));
+            }
+            if let Some(w) = window {
+                edge = edge.max(w[1]);
+            }
+        }
+        let kept = cap.saturating_sub(proven.len()).min(self.runs.len());
+        if kept < self.runs.len() {
+            self.work.charge(self.runs.len())?;
+            if kept > 0 {
+                self.runs
+                    .select_nth_unstable_by(kept - 1, |a, b| (b.1 - b.0).total_cmp(&(a.1 - a.0)));
+            }
+            self.runs.truncate(kept);
+        }
+        if kept > 0 {
+            let all = proven.len() + kept;
+            self.work
+                .charge_product(all, all.max(1).ilog2() as usize + 1)?;
+            room(proven, kept, bytes)?;
+            proven.extend_from_slice(&self.runs);
+            proven.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
+        }
+        Ok(())
+    }
+
+    fn heap_bytes(&self) -> usize {
+        self.windows
+            .heap_bytes()
+            .saturating_add(self.runs.capacity() * size_of::<(f64, f64, Run)>())
+    }
+}
+
+/// Its windows' and its scratch's bytes go once the shape's own storage
+/// needs them: the rows after are resolved as without them.
+impl Spare for Option<Located> {
+    fn held(&self) -> usize {
+        self.as_ref().map_or(0, Located::heap_bytes)
+    }
+
+    fn release(&mut self) -> usize {
+        self.take().map_or(0, |located| located.heap_bytes())
+    }
+
+    fn work(&mut self) -> Option<&mut Meter> {
+        self.as_mut().map(|located| &mut located.work)
+    }
+}
+
+/// The optional storage of a shape's rows: its spine's cover or the
+/// certificate's windows, which only a shape without a spine locates.
+struct Optional<'a> {
+    cover: &'a mut Option<Cover>,
+    located: &'a mut Option<Located>,
+}
+
+impl Spare for Optional<'_> {
+    fn held(&self) -> usize {
+        self.cover.held().saturating_add(self.located.held())
+    }
+
+    fn release(&mut self) -> usize {
+        self.cover.release().saturating_add(self.located.release())
+    }
+
+    fn work(&mut self) -> Option<&mut Meter> {
+        if self.cover.is_some() {
+            self.cover.work()
+        } else {
+            self.located.work()
+        }
+    }
+}
+
 /// The rows of `bounds` a line has area in, as `(first, last)`.
 /// The rows of `bounds` to resolve, each marked joint where a clip path's
 /// boundary crosses the shape's columns: those, and the rows that meet a
@@ -1288,7 +1485,7 @@ fn resolve(
     frame: &Frame<'_>,
     (bounds, chosen): (DeviceRect, &[(u32, bool)]),
     (work, bytes): (&mut Meter, &mut Meter),
-    spine: &mut Option<Spine>,
+    (spine, located): (&mut Option<Spine>, &mut Option<Located>),
 ) -> Result<Resolved> {
     // The lines of each strip, then each row's pieces from its strip.
     let strip_rows =
@@ -1305,6 +1502,7 @@ fn resolve(
         .saturating_mul(size_of::<u32>())
         .saturating_add(rules_count.saturating_mul(4 * size_of::<FillRule>()));
     give_up(spine, list_need, bytes);
+    give_up(located, list_need, bytes);
     let list = StripList::new(
         (bounds.y0, bounds.y1),
         lines.len(),
@@ -1323,11 +1521,15 @@ fn resolve(
     let (mut pieces, mut sides) = (Vec::new(), Vec::new());
     let mut resolved = Resolved::default();
     let mut cover = spine.take().map(|spine| spine.cover(frame.rect));
+    let mut optional = Optional {
+        cover: &mut cover,
+        located,
+    };
     for &(y, joint) in chosen {
         let top = f64::from(y);
         pieces.clear();
         let listed = list.strip(y / STRIP);
-        resolver.give_up(&mut cover, room_need(&pieces, listed.len()), bytes);
+        resolver.give_up(&mut optional, room_need(&pieces, listed.len()), bytes);
         room(&mut pieces, listed.len(), bytes)?;
         for &i in listed {
             if let Some(&line) = lines.get(i as usize) {
@@ -1337,7 +1539,7 @@ fn resolve(
         let groups = match (joint, frame.paths) {
             (true, Some(paths)) => {
                 // The clip's pieces of the row come before their count.
-                bytes.refund(cover.release());
+                bytes.refund(optional.release());
                 resolver.forget(bytes);
                 paths.pieces(y, 1, (&mut pieces, bytes), work)?;
                 rules.len()
@@ -1348,13 +1550,31 @@ fn resolve(
         // The cover takes the rows it proves from the top down, and any it
         // leaves out cost it nothing. Where its own work or scratch does
         // not fit, it is given up, and the rows are resolved whole.
-        if let (1, Some(held)) = (groups, &mut cover)
+        if let (1, Some(held)) = (groups, &mut *optional.cover)
             && pieces.len() > PROVEN_PIECES
             && held
                 .row(top, proven_runs(pieces.len()), resolver.runs(), bytes)
                 .is_err()
         {
-            bytes.refund(cover.release());
+            bytes.refund(optional.cover.release());
+            resolver.forget(bytes);
+        }
+        // Where the certificate located the row's doubt, the stretches
+        // between its windows pass their pieces through as sides. Where
+        // their own work or the bytes do not fit, the windows are given up,
+        // and the rows after are resolved as without them.
+        if let (1, Some(held)) = (groups, &mut *optional.located)
+            && (PROVEN_PIECES + 1..=PASSED_PIECES).contains(&pieces.len())
+            && held
+                .row(
+                    y,
+                    (f64::from(bounds.x0), f64::from(bounds.x1)),
+                    (resolver.runs(), proven_runs(pieces.len())),
+                    bytes,
+                )
+                .is_err()
+        {
+            bytes.refund(optional.located.release());
             resolver.forget(bytes);
         }
         resolve_pieces(
@@ -1362,10 +1582,10 @@ fn resolve(
             &rules[..groups],
             y,
             (&mut resolver, &mut sides, &mut resolved),
-            (Meters { work, bytes }, &mut cover),
+            (Meters { work, bytes }, &mut optional),
         )?;
     }
-    bytes.refund(cover.release());
+    bytes.refund(optional.release());
     resolver.forget(bytes);
     Ok(resolved)
 }
@@ -1382,6 +1602,8 @@ fn resolve_pieces(
     work.charge(pieces.len())?;
     sides.clear();
     let top = f64::from(y);
+    #[cfg(debug_assertions)]
+    let passed = passed_pieces(pieces, resolver.runs());
     resolver.row_proven(
         pieces,
         rules,
@@ -1389,8 +1611,53 @@ fn resolve_pieces(
         &mut *spare,
         (sides, Meters { work, bytes }),
     )?;
+    #[cfg(debug_assertions)]
+    if passed > 0 {
+        check_split((pieces, rules, top), sides.len(), passed);
+    }
     resolver.give_up(spare, resolved.push_need(sides.len()), bytes);
     resolved.push(y, sides, bytes)
+}
+
+/// The pieces wholly within the certified ones of `runs`.
+#[cfg(debug_assertions)]
+fn passed_pieces(pieces: &[Piece], runs: &[(f64, f64, Run)]) -> usize {
+    pieces
+        .iter()
+        .filter(|p| {
+            let (a, b) = (p.line.x(p.lo), p.line.x(p.hi));
+            runs.iter().any(|&(lo, hi, run)| {
+                matches!(run, Run::Certified(_)) && lo <= a.min(b) && a.max(b) <= hi
+            })
+        })
+        .count()
+}
+
+/// Checks that a row's `sides`, resolved passing `passed` pieces over in
+/// certified runs, are at most that many more than without the runs.
+/// Debug builds only, on unmetered scratch.
+#[cfg(debug_assertions)]
+fn check_split((pieces, rules, top): (&[Piece], &[FillRule], f64), sides: usize, passed: usize) {
+    let mut plain = Vec::new();
+    let (mut work, mut bytes) = (
+        Meter::new(usize::MAX, "check"),
+        Meter::new(usize::MAX, "check"),
+    );
+    let meters = Meters {
+        work: &mut work,
+        bytes: &mut bytes,
+    };
+    if Resolver::default()
+        .row(pieces, rules, top, (&mut plain, meters))
+        .is_err()
+    {
+        return;
+    }
+    debug_assert!(
+        sides <= plain.len() + passed,
+        "row {top}: {sides} sides passing {passed} pieces over, {} without",
+        plain.len()
+    );
 }
 
 #[cfg(test)]

@@ -136,13 +136,6 @@ pub(crate) enum Run {
     /// Its pieces are the covered set's sides there: off them the winding
     /// is 0 or this sign, and none cross or touch inside it but at shared
     /// vertices.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the winding certificate's column windows make these next"
-        )
-    )]
     Certified(i32),
 }
 

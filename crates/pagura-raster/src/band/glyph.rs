@@ -413,7 +413,7 @@ impl GlyphEdges {
             .any(|s| matches!(s, Segment::CubicTo { .. } | Segment::QuadTo { .. }));
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;
         let doubtful = if points.is_empty() {
-            doubtful(&polygon, 0.0, bytes)?
+            doubtful(&polygon, 0.0, None, bytes)?
         } else {
             None
         };
