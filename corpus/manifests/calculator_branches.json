@@ -1,0 +1,482 @@
+{
+  "schema": 2,
+  "area": "calculator_branches",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "calculator_branches/piecewise-endpoints",
+      "kind": "pdf",
+      "description": "Independent eight-column endpoint colors and green continuation witness",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/piecewise-endpoints.pdf",
+      "sha256": "e48c1810beef13413954f75e92db59efc50cafe7a4d8d32b14fb63bc1aeaa297",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/piecewise-endpoints.ppm",
+      "oracle_sha256": "8331a08e8bd0cd941b0bd5f1171450097c0926c8869b9bbc41f11e8b7f2472af",
+      "dpi": 72,
+      "width": 32,
+      "height": 16
+    },
+    {
+      "id": "calculator_branches/two-depth-endpoints",
+      "kind": "pdf",
+      "description": "Two unequal intermediate depths normalize to three numeric colors",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/two-depth-endpoints.pdf",
+      "sha256": "194326c573a4e19e8c1bbe0735c91149cee564ebb98a27b7679a4f9f7e246323",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/two-depth-endpoints.ppm",
+      "oracle_sha256": "6ac604d1edae8e344a2bcd9f77607f164bb2135ebfbec9176bfd78302f28ed82",
+      "dpi": 72,
+      "width": 32,
+      "height": 16
+    },
+    {
+      "id": "calculator_branches/bounded-ge",
+      "kind": "pdf",
+      "description": "Validated clamped Domain proves this comparison for every input",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/bounded-ge.pdf",
+      "sha256": "3c6d9aa9ffc1a2488f1cb8f1eb11165b12e2100a4aa305ded66749bb4272648c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/bounded-ge.ppm",
+      "oracle_sha256": "016df4c75b5cdaf1ba33ddabcfc99a40a27c91a5ab275d123b2b28aaf5615513",
+      "dpi": 72,
+      "width": 32,
+      "height": 16
+    },
+    {
+      "id": "calculator_branches/bounded-le",
+      "kind": "pdf",
+      "description": "Validated clamped Domain proves this comparison for every input",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/bounded-le.pdf",
+      "sha256": "22a03b0d614d7ac0ea2e02c219daa3d892bae08e5afe73d6544d22d2e6c4f62f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/bounded-le.ppm",
+      "oracle_sha256": "016df4c75b5cdaf1ba33ddabcfc99a40a27c91a5ab275d123b2b28aaf5615513",
+      "dpi": 72,
+      "width": 32,
+      "height": 16
+    },
+    {
+      "id": "calculator_branches/bounded-gt",
+      "kind": "pdf",
+      "description": "Validated clamped Domain proves this comparison for every input",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/bounded-gt.pdf",
+      "sha256": "d6424b51531d53c81b0d55aa674a278efefa08137131a85a687b52e7aed41f84",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/bounded-gt.ppm",
+      "oracle_sha256": "016df4c75b5cdaf1ba33ddabcfc99a40a27c91a5ab275d123b2b28aaf5615513",
+      "dpi": 72,
+      "width": 32,
+      "height": 16
+    },
+    {
+      "id": "calculator_branches/bounded-lt",
+      "kind": "pdf",
+      "description": "Validated clamped Domain proves this comparison for every input",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/bounded-lt.pdf",
+      "sha256": "0b1a2435f200bc5f793be8e07e4a96f514b8f69b07f7103f9c5dc526bf18d77e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/bounded-lt.ppm",
+      "oracle_sha256": "016df4c75b5cdaf1ba33ddabcfc99a40a27c91a5ab275d123b2b28aaf5615513",
+      "dpi": 72,
+      "width": 32,
+      "height": 16
+    },
+    {
+      "id": "calculator_branches/clamped-domain-red",
+      "kind": "pdf",
+      "description": "Every external tint clamps inside a wholly red Domain interval",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/clamped-domain-red.pdf",
+      "sha256": "defe56006e09fc468adddc69b502d7079b05ee70a921fc8cc2dbc94be5a76b1b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/clamped-domain-red.ppm",
+      "oracle_sha256": "90b8d7de7e2afe7fa81c072b9cbe466cd0f90dda7390f84e8adf853d12c37299",
+      "dpi": 72,
+      "width": 32,
+      "height": 16
+    },
+    {
+      "id": "calculator_branches/existing-same-depth",
+      "kind": "pdf",
+      "description": "Existing equal-depth proof and colors are preserved",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/existing-same-depth.pdf",
+      "sha256": "65cb6095714b0b9b1ac03363453bcd32864ae9578222714ad2e0070b239ea234",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/existing-same-depth.ppm",
+      "oracle_sha256": "15dcf9b751aa366ded83be5a6d44003beefdf8367df86a08e1fd8716ed1a8b46",
+      "dpi": 72,
+      "width": 32,
+      "height": 16
+    },
+    {
+      "id": "calculator_branches/piecewise-axial",
+      "kind": "pdf",
+      "description": "Independent center-sampled piecewise axial colors, including both branches",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/piecewise-axial.pdf",
+      "sha256": "0a0dbe5a8970d198003b3becc2469b872ca09dfe635d8cd346f970e2ba27a1b1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/piecewise-axial.ppm",
+      "oracle_sha256": "9adc1a6615aac41f6989787e4cb02102e41285256f6a63bdc8635ccf7c6ce9bd",
+      "dpi": 72,
+      "width": 400,
+      "height": 8
+    },
+    {
+      "id": "calculator_branches/three-depths",
+      "kind": "vector",
+      "description": "Direct Function API proof-boundary contract, independently checked in unit tests",
+      "requirements": [
+        "content-functions"
+      ],
+      "files": {
+        ".ps": {
+          "path": "corpus/generated/calculator_branches/three-depths.ps",
+          "sha256": "a892b1816933f42ae6f71a471d4353889929b77a72242f741e326e9e2a4ec15f"
+        }
+      },
+      "domain": [
+        [
+          0,
+          1
+        ]
+      ],
+      "range": [
+        [
+          0,
+          1
+        ]
+      ],
+      "expected": "unsupported",
+      "feature": "function.calculator"
+    },
+    {
+      "id": "calculator_branches/branch-type-mismatch",
+      "kind": "vector",
+      "description": "Direct Function API proof-boundary contract, independently checked in unit tests",
+      "requirements": [
+        "content-functions"
+      ],
+      "files": {
+        ".ps": {
+          "path": "corpus/generated/calculator_branches/branch-type-mismatch.ps",
+          "sha256": "d52d0bfa8f91fa2fe2f0bbe750cdb54903ab2c3cfef3c12617efebbb72f28130"
+        }
+      },
+      "domain": [
+        [
+          0,
+          1
+        ]
+      ],
+      "range": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "expected": "unsupported",
+      "feature": "function.calculator"
+    },
+    {
+      "id": "calculator_branches/arithmetic-facts-unproved",
+      "kind": "vector",
+      "description": "Direct Function API proof-boundary contract, independently checked in unit tests",
+      "requirements": [
+        "content-functions"
+      ],
+      "files": {
+        ".ps": {
+          "path": "corpus/generated/calculator_branches/arithmetic-facts-unproved.ps",
+          "sha256": "4274758810f4ffbd45c2b8c32b4ef1758edd63409c09eff41e44ea2672558551"
+        }
+      },
+      "domain": [
+        [
+          0,
+          1
+        ]
+      ],
+      "range": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "expected": "unsupported",
+      "feature": "function.calculator"
+    },
+    {
+      "id": "calculator_branches/output-mismatch",
+      "kind": "pdf",
+      "description": "Unproved paths preserve the original calculator feature refusal",
+      "expected": "unsupported",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/output-mismatch.pdf",
+      "sha256": "7cd86d2bbe7777eb53a802a0af01521a72f80a9be92fd97241caf0ad8ce236f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "function.calculator"
+    },
+    {
+      "id": "calculator_branches/negative-domain-empty-path",
+      "kind": "pdf",
+      "description": "Unproved paths preserve the original calculator feature refusal",
+      "expected": "unsupported",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/negative-domain-empty-path.pdf",
+      "sha256": "89a2e7b798a5c30e2bc136fc7ed8bbe80e330f105c5d088b40bb48a6b873b822",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "function.calculator"
+    },
+    {
+      "id": "calculator_branches/unknown-copy",
+      "kind": "pdf",
+      "description": "Unproved paths preserve the original calculator feature refusal",
+      "expected": "unsupported",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/unknown-copy.pdf",
+      "sha256": "1185379bd8fabe800e5bceae13c065b4b0abc8b6573501803e5f689e95510438",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "function.calculator"
+    },
+    {
+      "id": "calculator_branches/unknown-index",
+      "kind": "pdf",
+      "description": "Unproved paths preserve the original calculator feature refusal",
+      "expected": "unsupported",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/unknown-index.pdf",
+      "sha256": "4aeea80f5e51cc19ede9940e978d3aea8b2024c95903305b06e48765fe767f90",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "function.calculator"
+    },
+    {
+      "id": "calculator_branches/numeric-underflow",
+      "kind": "pdf",
+      "description": "Existing malformed paths and architectural stack limit remain authoritative",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/numeric-underflow.pdf",
+      "sha256": "17cf45d810ebdd2d0590c8d658fb1a447fdca365c01988de06cda9305e5ca0d0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "calculator_branches/wrong-result-type",
+      "kind": "pdf",
+      "description": "Existing malformed paths and architectural stack limit remain authoritative",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/wrong-result-type.pdf",
+      "sha256": "8f1dc33d0054a77e76b6dcd2bb42615c9799c1293e4f81b2e68c8681ed905691",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "calculator_branches/wrong-condition-type",
+      "kind": "pdf",
+      "description": "Existing malformed paths and architectural stack limit remain authoritative",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/wrong-condition-type.pdf",
+      "sha256": "6ae06f0641dbcf0b97c686e0a273350c59c2d7749c9127c0ee3f6bc137cf4259",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "calculator_branches/stack-overflow",
+      "kind": "pdf",
+      "description": "Existing malformed paths and architectural stack limit remain authoritative",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/stack-overflow.pdf",
+      "sha256": "aa58edb912b053d6dda114db42155e10cec2a5c37f40492dcc0a5a2ce1915728",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "calculator_branches/piecewise-square",
+      "kind": "pdf",
+      "description": "Independent square branch feature/direct-RGB memory twin;256 square at576DPI",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/piecewise-square.pdf",
+      "sha256": "600f9662852504745c406d8c2e7fc765cc9e91550c3bbff29af87d1a8e8b68b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/piecewise-square.ppm",
+      "oracle_sha256": "c44d260ce25b3d00f74f7fd2c7a6bea9b81f22bee3590f8075c06a447f97c949",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "calculator_branches/piecewise-square-direct-twin",
+      "kind": "pdf",
+      "description": "Independent square branch feature/direct-RGB memory twin;256 square at576DPI",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/piecewise-square-direct-twin.pdf",
+      "sha256": "a2119a195704cc036ba000e4c7e3224afd72d77c3c6122fc709f035587990262",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/piecewise-square-direct-twin.ppm",
+      "oracle_sha256": "c44d260ce25b3d00f74f7fd2c7a6bea9b81f22bee3590f8075c06a447f97c949",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "calculator_branches/shared-function-pages",
+      "kind": "pdf",
+      "description": "A shared function takes different branches on first and later pages",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/calculator_branches/shared-function-pages.pdf",
+      "sha256": "c12813bfc15b1abf558cb08f24da7cdad87a986a02c5d74eec4dd6ca593e2143",
+      "pages": 2,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calculator_branches/shared-function-pages.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "qualification_pages": [
+        {
+          "page": 1,
+          "dpi": 72,
+          "oracle": "corpus/generated/calculator_branches/shared-function-pages-p1.ppm",
+          "oracle_sha256": "e33a7eb7cce79c26e1788de2868e835d27e9e152617e8b8064bfe12d9b4abd9f",
+          "width": 32,
+          "height": 32
+        }
+      ]
+    },
+    {
+      "id": "calculator_branches/shared-function-pages-p1",
+      "kind": "vector",
+      "description": "Independent complete later-page pixel oracle",
+      "requirements": [
+        "content-functions"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/calculator_branches/shared-function-pages-p1.ppm",
+          "sha256": "e33a7eb7cce79c26e1788de2868e835d27e9e152617e8b8064bfe12d9b4abd9f"
+        }
+      },
+      "role": "independent-later-page-oracle",
+      "page": 1
+    }
+  ]
+}
