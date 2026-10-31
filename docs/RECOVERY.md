@@ -183,6 +183,14 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 - `jpx.mapping-box-location` (T.800 I.5.3.4–I.5.3.5): a sole mapping box before
   the codestream supplies the header palette's missing mapping; duplicate or
   late mappings and missing palettes stay errors.
+- `jpx.palette-padding` (T.800 I.5.3.4, Tables I.12–I.13): clear only unused
+  high bits above a palette column's declared precision. Low-order sample
+  bits, the sign bit and signed-offset interpretation remain authoritative;
+  stored octets do not imply a wider precision. The first affected sample
+  position is reported once per codec invocation. Strict rejects the repair.
+  Complete tables/codestreams, mapping/opacity rules and existing budgets
+  still apply. Explicit PDF Indexed colours use their own lookup and the
+  original codestream indices; this adds no container-palette opacity support.
 - `image.xobject-type` (8.9.5, Table 87): `Subtype /Image` identifies an image
   XObject despite a malformed optional `Type`; invalid subtypes remain errors.
 - `image.filter-mismatch` (7.4.4, 7.4.8): a purported JPEG with predictor
