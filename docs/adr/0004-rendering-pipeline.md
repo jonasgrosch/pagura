@@ -117,6 +117,41 @@ the contract and is closer to the oracle at every such pixel. A result beyond
 one level of its oracle is a correctness change and needs its own decision. A
 mechanism admitted under this rule records its bound here.
 
+#### Certified axial row sources
+
+An axial shading feeding F32 levels may evaluate its ramp's polynomial
+along a row and retain the result only when the whole enclosure has the
+same stored F32 level as exact conversion. This applies to one sample per
+pixel, one function input, no background, bounding box or pattern boundary,
+and a ramp with at most four channels. Every other case keeps exact
+conversion.
+
+The parameter is affine along a span. With unit roundoff u, magnitude
+bound M at its far end and parameter step b, `32u (M + |t0| + far |b|)`
+bounds its distance from the exact path's parameter. Mapping the domain
+adds `4u (|d0| + |d1-d0|)` and scales the parameter bound by `|d1-d0|`;
+the result is enlarged by a factor 1 + 10^-6.
+
+For a ramp piece with enclosure radius R and slope bound S, the polynomial
+value differs from exact conversion by at most `2R + S E`, where E bounds
+the input error. A piece serves an input only where its whole error
+interval stays inside the piece and every channel's `2R + S E`, rounded up,
+is at most 2^-30. This includes a power's cubic only where its enclosure
+qualifies; a channel whose power is bounded per sample keeps its piece out
+of rows. Every value within the channel's own bound of the polynomial value
+must have its F32 level. The check rounds the value's scaled level once and
+keeps the scaled interval, widened by `255 (2R + S E) + 2^-43` for the
+roundings of the scaling and of the check, strictly inside one F32 cell,
+which also keeps every value in it away from 0 and 1
+(`kernel::certified_level`, with its proof). Constant terms are already
+exact. Otherwise the sample uses exact conversion, as it does at uncertain
+extension boundaries and piece ends.
+
+The 2^-30 quantity bounds an intermediate enclosure; no output error is
+spent. The final level certificate preserves bytes when a row is split,
+when a small region does not build a ramp, or when storage or work admission
+changes the available pieces.
+
 ### 4. Coverage and glyphs
 
 The band rasterizer has one signed-area cell kernel. Prepared marks contain

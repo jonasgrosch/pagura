@@ -30,6 +30,9 @@ pub const MAX_RAMP_CHANNELS: usize = 4;
 /// leaves more samples undecided than bounding the power per sample.
 const CUBIC_RADIUS: f64 = 1.0 / (1_u64 << 36) as f64;
 
+/// How far a [`Piece`] may write a value from the exact one.
+pub const APPROXIMATE: f64 = 1.0 / (1_u64 << 30) as f64;
+
 /// The colour stage a ramp encloses: one function giving every colour
 /// component, or one function per component, each of one input.
 #[derive(Debug, Clone, Copy)]
@@ -57,6 +60,45 @@ pub struct Ramp {
     /// Buckets are `⌊(x − origin)·scale⌋`, clipped to the last.
     origin: f64,
     scale: f64,
+}
+
+/// One piece of a [`Ramp`] for inputs known within an error
+/// ([`Ramp::piece`]): for every input it holds, [`Self::evaluate`] writes
+/// values within [`Self::radius`], at most [`APPROXIMATE`], of the exact
+/// ones at any input within the error of it.
+#[derive(Debug, Clone, Copy)]
+pub struct Piece<'a> {
+    /// The inputs held: the piece's, short of the error at both ends.
+    low: f64,
+    high: f64,
+    terms: &'a [Term],
+    /// Each channel's [`Self::radius`].
+    radii: [f64; MAX_RAMP_CHANNELS],
+}
+
+impl Piece<'_> {
+    /// Whether the piece holds `x`.
+    #[inline]
+    pub fn holds(&self, x: f64) -> bool {
+        self.low <= x && x <= self.high
+    }
+
+    /// Writes the target's channels for `x`, an input the piece holds.
+    #[inline]
+    pub fn evaluate(&self, x: f64, output: &mut [f64]) {
+        for (out, term) in output.iter_mut().zip(self.terms) {
+            *out = horner(term.k, x - term.centre);
+        }
+    }
+
+    /// How far channel `channel`'s evaluated value may lie from the exact
+    /// one: zero for a constant term, which is exact, and otherwise the
+    /// bound `2R + S·error` of [`Ramp::piece`], rounded up, at most
+    /// [`APPROXIMATE`]; infinite past the channels.
+    #[inline]
+    pub fn radius(&self, channel: usize) -> f64 {
+        self.radii.get(channel).copied().unwrap_or(f64::INFINITY)
+    }
 }
 
 /// One channel on one piece: within `radius` of the cubic `k₀ + k₁·τ +
@@ -286,6 +328,60 @@ impl Ramp {
         true
     }
 
+    /// The piece that approximates the stage at every input within
+    /// `error` of `x` ([`Piece`]), or `None` where no piece holds all those
+    /// inputs, its polynomials are too steep for `error` or too far from
+    /// the exact values, or a channel bounds its power per sample. `hint`
+    /// is a piece to start from: inputs along a line take neighbouring
+    /// pieces.
+    ///
+    /// Every input within `error` of an input the piece holds lies in the
+    /// piece, where the exact value at any of its inputs is within the
+    /// radius `R` of the polynomial evaluated there, and the polynomial
+    /// changes by at most its slope bound `S` times `error` between the two;
+    /// so the value written is within `2R + S·error` of the exact one. A
+    /// piece serves only where that bound, rounded up, is within
+    /// [`APPROXIMATE`] for every channel.
+    #[inline]
+    pub fn piece(&self, x: f64, error: f64, hint: &mut usize) -> Option<Piece<'_>> {
+        let mut i = (*hint).min(self.pieces.len().saturating_sub(1));
+        while let Some(&[_, high]) = self.pieces.get(i)
+            && high < x
+        {
+            i += 1;
+        }
+        while let Some(&[low, _]) = self.pieces.get(i)
+            && x < low
+            && i > 0
+        {
+            i -= 1;
+        }
+        *hint = i;
+        let &[low, high] = self.pieces.get(i)?;
+        let start = i * self.channels;
+        let terms = self.terms.get(start..start + self.channels)?;
+        let mut piece = Piece {
+            low: low + error,
+            high: high - error,
+            terms,
+            radii: [f64::INFINITY; MAX_RAMP_CHANNELS],
+        };
+        if !piece.holds(x) {
+            return None;
+        }
+        for (radius, term) in piece.radii.iter_mut().zip(terms) {
+            *radius = term.bound([low, high], error);
+            #[expect(
+                clippy::neg_cmp_op_on_partial_ord,
+                reason = "a `NaN` bound fails as one above `APPROXIMATE` does"
+            )]
+            if !(*radius <= APPROXIMATE) {
+                return None;
+            }
+        }
+        Some(piece)
+    }
+
     /// The piece holding `x`. Pieces are ordered, so the first piece from
     /// the bucket's on whose end reaches `x` is the only one that can.
     #[inline]
@@ -326,6 +422,33 @@ impl Ramp {
 }
 
 impl Term {
+    /// `S`, a bound of the polynomial's slope on the piece `low..=high`
+    /// (`|k₁| + 2|k₂|h + 3|k₃|h²`, `h` the largest distance from the
+    /// centre), rounded up.
+    fn slope(&self, [low, high]: [f64; 2]) -> f64 {
+        let h =
+            (high - self.centre).abs().max((self.centre - low).abs()) * (1.0 + 4.0 * f64::EPSILON);
+        let [_, k1, k2, k3] = self.k.map(f64::abs);
+        (k1 + h * (2.0 * k2 + h * 3.0 * k3)) * (1.0 + 8.0 * f64::EPSILON)
+    }
+
+    /// `2R + S·error` on the piece `low..=high`, rounded up: how far the
+    /// polynomial evaluated at an input the piece holds lies from the exact
+    /// value at any input within `error` of it ([`Ramp::piece`]); zero for
+    /// an exact value. Infinite for a power bounded per sample, whose line
+    /// is the linear value, not the encoded one; `NaN` for an unbounded
+    /// slope at no error.
+    fn bound(&self, piece: [f64; 2], error: f64) -> f64 {
+        if self.radius == 0.0 {
+            return 0.0;
+        }
+        if self.margin != 0.0 {
+            return f64::INFINITY;
+        }
+        // Doubling is exact; the product and the sum round once each.
+        (2.0 * self.radius + self.slope(piece) * error) * (1.0 + 4.0 * f64::EPSILON)
+    }
+
     /// The term of `channel` enclosed over the input form `x` of the inputs
     /// `low..=high`.
     ///
@@ -397,6 +520,12 @@ impl Term {
             ..line
         })
     }
+}
+
+/// `k₀ + τ·(k₁ + τ·(k₂ + τ·k₃))`, as every term evaluates.
+#[inline]
+fn horner([k0, k1, k2, k3]: [f64; 4], t: f64) -> f64 {
+    k0 + t * (k1 + t * (k2 + t * k3))
 }
 
 /// Shrinks `values` to its length, charging the replacement to `bytes`

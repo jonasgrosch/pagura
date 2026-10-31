@@ -436,6 +436,19 @@ impl Source {
         }
     }
 
+    /// Writes into `out` the F32 levels a store at full opacity writes for
+    /// device pixels `x .. x + out.len()` of row `y`, where the source gives
+    /// them without forming span colours first (rows of axial shadings);
+    /// false otherwise.
+    pub(crate) fn levels(&self, pixels: Pixels<'_>, out: &mut [[f32; 4]]) -> bool {
+        match self {
+            Self::Shading(shading) => {
+                pixels.boundary.is_none() && shading.levels(pixels.x, pixels.y, out)
+            }
+            Self::Solid { .. } | Self::Image(_) => false,
+        }
+    }
+
     /// Render work units filling `region` costs besides compositing (mesh
     /// geometry tests), counted until it passes `limit`.
     pub(crate) fn geometry_work(&self, region: DeviceRect, limit: usize) -> usize {
