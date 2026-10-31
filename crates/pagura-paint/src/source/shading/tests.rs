@@ -241,17 +241,17 @@ fn compare_grid(
                     source.span(x0, y, (x1 - x0) as usize, precision, out);
                 }
             }
-            // Colours kept to F32 levels store the levels of the exact ones.
-            let level = |v: &[f64]| {
-                v.iter()
-                    .map(|&v| crate::kernel::level(v).to_bits())
-                    .collect::<Vec<_>>()
-            };
-            assert_eq!(
-                level(&levels.colors),
-                level(&out.colors),
-                "{context} row {y}: levels"
-            );
+            // Every path preserves the F32 levels of the exact colours,
+            // including rows whose polynomials first enclose them.
+            assert_eq!(levels.colors.len(), out.colors.len(), "{context} row {y}");
+            for (i, (&kept, &exact)) in levels.colors.iter().zip(&out.colors).enumerate() {
+                let level = |v: f64| crate::kernel::level(v).to_bits();
+                assert_eq!(
+                    level(kept),
+                    level(exact),
+                    "{context} row {y} value {i}: {kept} against {exact}"
+                );
+            }
             assert_eq!(levels.alpha, out.alpha, "{context} row {y}: level alpha");
             for x in x0..x1 {
                 let i = (x - x0) as usize;

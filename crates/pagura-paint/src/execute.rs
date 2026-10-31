@@ -591,9 +591,18 @@ fn paint_words(
         && compositing.mask.is_none()
         && compositing.blend == pagura_interpret::BlendMode::Normal
         && compositing.overprint == 0
-        && overwrite(&mut ws.page, frame, Pixels::new(x, y, len), |pixels| {
-            paint.words(Pixels::new(x, y, len), scratch, pixels)
-        });
+        && match paint {
+            // The rows of an axial shading write F32 levels themselves.
+            Source::Shading(_) => overwrite_levels(
+                (&mut ws.page, &mut ws.levels),
+                frame,
+                Pixels::new(x, y, len),
+                |pixels| paint.levels(Pixels::new(x, y, len), pixels),
+            ),
+            _ => overwrite(&mut ws.page, frame, Pixels::new(x, y, len), |pixels| {
+                paint.words(Pixels::new(x, y, len), scratch, pixels)
+            }),
+        };
     if written {
         ws.usage.work = ws.usage.work.saturating_add(len);
     }
@@ -628,6 +637,43 @@ fn overwrite(
         extents.mark(u32_to_usize(y - frame.rect.y0), column, end);
     }
     stored.is_some()
+}
+
+/// Overwrites `len` pixels of `frame`'s F32 levels, of the page or of a
+/// group, from pixel (`x`, `y`) on with the levels `write` gives, as a store
+/// at full opacity does; false, with nothing stored, where the frame holds
+/// no F32 levels or `write` gives none. Out of line, so that the path of
+/// other paints stays as it was.
+#[inline(never)]
+fn overwrite_levels(
+    (band, levels): (&mut PageBand, &mut [[f32; 4]]),
+    frame: Frame,
+    pixels: Pixels<'_>,
+    write: impl FnOnce(&mut [[f32; 4]]) -> bool,
+) -> bool {
+    let Pixels { x, y, len, .. } = pixels;
+    let Some(start) = frame.index(x, y) else {
+        return false;
+    };
+    match frame.buffer {
+        Buffer::Levels(offset) => levels
+            .get_mut(offset + start..offset + start + len)
+            .is_some_and(write),
+        Buffer::Page => {
+            let (page, extents) = band.parts_mut();
+            let stored = match page {
+                PageBuffer::F32(page) => page.get_mut(start..start + len).is_some_and(write),
+                PageBuffer::N16(_) | PageBuffer::F64(_) => false,
+            };
+            if stored {
+                let column = x - frame.rect.x0;
+                let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+                extents.mark(u32_to_usize(y - frame.rect.y0), column, end);
+            }
+            stored
+        }
+        Buffer::Wide(_) => false,
+    }
 }
 
 /// A constant colour stored into narrow page pixels at coverage bytes.
