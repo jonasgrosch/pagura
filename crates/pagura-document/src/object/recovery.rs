@@ -10,6 +10,80 @@ use std::ops::Range;
 
 const ENDOBJ: &[u8] = b"endobj";
 const ENDSTREAM: &[u8] = b"endstream";
+
+/// A missing separator in a scalar indirect value (7.2.3, 7.3.3, 7.3.10).
+/// Only the file's exact cross-reference entry and the following physical
+/// boundary can establish that an unsigned integer ends before `endobj`.
+pub(super) fn integer_separator(
+    document: &Document,
+    id: ObjectId,
+    offset: usize,
+    value_start: usize,
+    parser: &mut Parser<'_>,
+    diagnostics: &mut Diagnostics,
+) -> Result<Option<Value>> {
+    let entry = document
+        .revisions()
+        .iter()
+        .find_map(|revision| revision.entries.get(&id.number));
+    if entry.is_none_or(|entry| {
+        entry.generation != id.generation || entry.location != Location::Offset(offset)
+    }) {
+        return Ok(None);
+    }
+    let bytes = parser.data();
+    let limits = document.limits();
+    let mut probe = Parser::with_offset(bytes, value_start, Origin::File, limits)?;
+    if !probe.peek().is_some_and(|byte| byte.is_ascii_digit()) {
+        return Ok(None);
+    }
+    let start = probe.offset();
+    let word = probe.word()?;
+    let Some(digits) = word.strip_suffix(ENDOBJ) else {
+        return Ok(None);
+    };
+    if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
+        return Ok(None);
+    }
+    let boundaries = document.boundaries()?;
+    let Some(&boundary) = boundaries.get(boundaries.partition_point(|&at| at <= offset)) else {
+        return Ok(None);
+    };
+    if probe.offset() > boundary {
+        return Ok(None);
+    }
+    // Include the real first byte of the following physical structure. A
+    // comment must end before it, rather than at a synthetic end of input.
+    let Some(span) = bytes.get(..boundary.saturating_add(1)) else {
+        return Ok(None);
+    };
+    let mut suffix = Parser::with_offset(span, probe.offset(), Origin::File, limits)?;
+    suffix.skip_whitespace();
+    if suffix.offset() != boundary {
+        return Ok(None);
+    }
+    let end = start
+        .checked_add(digits.len())
+        .ok_or_else(|| Error::limit("integer object offset overflow").in_object(id))?;
+    let Some(prefix) = bytes.get(..end) else {
+        return Ok(None);
+    };
+    let mut integer = Parser::with_offset(prefix, start, Origin::File, limits)?;
+    let value = integer.parse().map_err(|error| error.in_object(id))?;
+    if !matches!(value, Value::Integer(_)) {
+        return Ok(None);
+    }
+    diagnostics.repair(
+        Diagnostic::new(
+            repairs::INTEGER_SEPARATOR,
+            "missing separator between unsigned integer indirect value and endobj",
+        )
+        .at(Position::File(end))
+        .in_object(id),
+    )?;
+    parser.seek(end)?;
+    Ok(Some(value))
+}
 /// How far past `start + Length` a terminator scan reads: a CRLF before
 /// `endstream`, then the keyword itself.
 pub(crate) const TERMINATOR_SLACK: usize = 2 + ENDSTREAM.len();
@@ -217,13 +291,17 @@ fn stream_length(
             _ => return Ok(None),
         }
     };
-    let Ok(length) = usize::try_from(length) else {
+    let Ok(length) = u64::try_from(length) else {
         return Ok(None);
     };
-    if length > document.limits().stream_bytes {
+    // The caller's cap is usize-sized. Check it before narrowing the valid
+    // nonnegative PDF integer, so 32-bit targets retain the same Limit error.
+    if length > pagura_core::convert::usize_to_u64(document.limits().stream_bytes) {
         return Err(Error::limit("stream size budget exceeded").in_object(id));
     }
-    Ok(Some(length))
+    usize::try_from(length)
+        .map(Some)
+        .map_err(|_| Error::limit("stream size budget exceeded").in_object(id))
 }
 
 /// Finds the terminator before the next object or revision boundary.

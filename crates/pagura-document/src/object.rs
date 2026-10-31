@@ -172,34 +172,8 @@ pub(crate) fn parse_at(
                 .in_object(id),
         );
     }
-    let (value, direct) = parser
-        .parse_with_streams(&mut |parser, dictionary| {
-            if document.security.is_none()
-                && document
-                    .trailer()
-                    .get(b"Encrypt")
-                    .is_some_and(|value| !value.is_null())
-            {
-                return Err(Error::syntax(
-                    "direct streams cannot be loaded before security initialization",
-                )
-                .in_object(id));
-            }
-            if !parser.keyword(b"stream") {
-                return Err(Error::syntax("missing direct stream keyword").in_object(id));
-            }
-            stream_extent(
-                document,
-                id,
-                dictionary,
-                parser,
-                path,
-                &mut repairs,
-                StreamContext::Direct,
-            )
-            .map(Some)
-        })
-        .map_err(in_object)?;
+    let (value, direct) =
+        read_value(document, id, offset, &mut parser, path, &mut repairs).map_err(in_object)?;
     let stream = if parser.keyword(b"stream") {
         Some(stream_extent(
             document,
@@ -255,6 +229,57 @@ pub(crate) fn parse_at(
     let mut object = IndirectObject::new(id, value, stream, source);
     object.direct = direct;
     Ok((object, repairs.take()))
+}
+
+/// Reads the one indirect value, retaining direct streams and explicit scalar recovery.
+fn read_value(
+    document: &Document,
+    id: ObjectId,
+    offset: usize,
+    parser: &mut pagura_core::syntax::Parser<'_>,
+    path: &mut Vec<ObjectId>,
+    repairs: &mut pagura_core::Diagnostics,
+) -> Result<(Value, Vec<pagura_core::syntax::DirectStream>)> {
+    let in_object = |error: Error| error.in_object(id);
+    let value_start = parser.offset();
+    let parsed = parser.parse_with_streams(&mut |parser, dictionary| {
+        if document.security.is_none()
+            && document
+                .trailer()
+                .get(b"Encrypt")
+                .is_some_and(|value| !value.is_null())
+        {
+            return Err(Error::syntax(
+                "direct streams cannot be loaded before security initialization",
+            )
+            .in_object(id));
+        }
+        if !parser.keyword(b"stream") {
+            return Err(Error::syntax("missing direct stream keyword").in_object(id));
+        }
+        stream_extent(
+            document,
+            id,
+            dictionary,
+            parser,
+            path,
+            repairs,
+            StreamContext::Direct,
+        )
+        .map(Some)
+    });
+    match parsed {
+        Ok(parsed) => Ok(parsed),
+        Err(error) if error.kind == pagura_core::ErrorKind::Syntax => {
+            let Some(value) =
+                recovery::integer_separator(document, id, offset, value_start, parser, repairs)?
+            else {
+                return Err(in_object(error));
+            };
+            Ok((value, Vec::new()))
+        }
+        Err(error) => Err(in_object(error)),
+    }
 }
 
 fn direct_objects(

@@ -58,6 +58,9 @@ pub const PAGE_PARENT: Repair = Repair::new("pages.parent-mismatch");
 pub const PAGE_TYPE_INVALID: Repair = Repair::new("pages.type-invalid");
 /// Missing white space between endobj and the next object header (7.2.3, 7.3.10).
 pub const OBJECT_SEPARATOR: Repair = Repair::new("object.separator-missing");
+/// An exact cross-reference span separates an unsigned integer from its
+/// mandatory `endobj` keyword (7.2.3, 7.3.3, 7.3.10).
+pub const INTEGER_SEPARATOR: Repair = Repair::new("object.integer-separator");
 /// Unmatched `>>` or `]` between a complete indirect value and its endobj
 /// (7.3.7, 7.3.10). A closing delimiter cannot begin a value, so nothing is skipped.
 pub const OBJECT_STRAY_DELIMITER: Repair = Repair::new("object.stray-delimiter");
@@ -158,6 +161,7 @@ pub const ALL: &[Repair] = &[
     PAGE_PARENT,
     PAGE_TYPE_INVALID,
     OBJECT_SEPARATOR,
+    INTEGER_SEPARATOR,
     OBJECT_STRAY_DELIMITER,
     PAGE_DIRECT,
     OBJECT_STREAM_TYPE,

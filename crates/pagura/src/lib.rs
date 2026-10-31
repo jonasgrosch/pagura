@@ -97,6 +97,8 @@ pub mod signatures;
 /// 12.7.4.3). Its functions take an explicit provider; [`prepare_form`] uses
 /// the feature-selected one.
 pub use pagura_appearance as form_appearance;
+/// Reported missing separator between a source unsigned integer and `endobj`.
+pub use pagura_document::repairs::INTEGER_SEPARATOR as OBJECT_INTEGER_SEPARATOR;
 pub use pagura_document::{
     Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenOptions, Page, Rotation,
 };
