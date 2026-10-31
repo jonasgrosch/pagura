@@ -1,0 +1,14 @@
+{
+  "schema": 2,
+  "files": {
+    "build.py": "fbc6a6fdfa22b3d70a0c605d8c2db1400da3b0c30e7b5116884bd5e91fae1c24",
+    "presets.json": "fd32b21d9fa004c047be4b72f98d277b22d7185c862a8e69e51f465ac744b6e8",
+    "adapter.rs": "9cebe6efa32fbffa81ee6c55d9d40e327c251c57210ac794d1170fe681ff0a6c",
+    "runtime-integer-v1.rs": "7c061a9c6683757aa2597cc9a71b271c49db1bcb8a54de5c7704314060cec9ab",
+    "runtime-inline-v2.rs": "11ab1a36beabdbe6b8adb148ba3b59ae73a461f966ff022446195b42319f919a",
+    "runtime-cid-v1.rs": "23e2c75191a1f273c0c744887f5e54fac0b86f65a762fc8186d0cd1023c97e20",
+    "memory_native.rs": "1c3d1a4191112eecfb7c3596a50586c4601001d01125b1f68e9ecdb08a5b21f4",
+    "memory_wasi.rs": "ac20709c06836c9f2c0a43c1ab4cddf653df6bff72219d7f6b7a204e36659ae0"
+  },
+  "scope": "Exact named existing probe protocols with original externalpackage names; copied sourceprofiles, pairednative deployment15.0, no workloads inCI."
+}

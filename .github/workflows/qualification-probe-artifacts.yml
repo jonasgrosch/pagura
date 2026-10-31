@@ -1,0 +1,122 @@
+name: qualification-probe-artifacts
+on:
+  # Allows a reviewed same-repository infrastructure draft PR to bootstrap
+  # this new workflow without merging it or changing any product branch.
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/qualification-probe-artifacts.yml'
+      - 'benchmarks/probes/qualification-ci/**'
+  # Available after this workflow is registered on the default branch.
+  workflow_dispatch:
+    inputs:
+      baseline_sha:
+        description: Full immutable baseline SHA; empty uses the reviewed pair.json
+        type: string
+        default: ''
+      preset:
+        description: Exact existing probe protocol; no implicit substitution
+        type: choice
+        default: inline-v2
+        options: [inline-v2, cid-v1, integer-v1]
+      candidate_sha:
+        description: Full immutable candidate SHA; empty uses the reviewed pair.json
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: qualification-probe-artifacts-v1
+  cancel-in-progress: false
+jobs:
+  build-pair:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      PROBE_BUNDLE_SHA256: 835a3d0e30a473f4731e617a8857b5c9c1422a97d472bc412e77397c9a149e19
+    steps:
+      - name: Checkout reviewed infrastructure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: infra
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13.16'
+      - name: Validate exact source pair and reviewed probe bytes
+        id: pair
+        env:
+          BASELINE_SHA: ${{ inputs.baseline_sha }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PROBE_PRESET: ${{ inputs.preset }}
+        run: |
+          python3 infra/benchmarks/probes/qualification-ci/build.py validate \
+            --bundle-sha256 "$PROBE_BUNDLE_SHA256" \
+            --baseline "$BASELINE_SHA" --candidate "$CANDIDATE_SHA" --preset "$PROBE_PRESET" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Install exact existing Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --target wasm32-wasip1
+      - name: Checkout baseline at the fixed source path
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ steps.pair.outputs.baseline }}
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+          clean: true
+      - name: Build all baseline probes with fresh targets and j2
+        env:
+          SOURCE_SHA: ${{ steps.pair.outputs.baseline }}
+        run: |
+          python3 infra/benchmarks/probes/qualification-ci/build.py build \
+            --role baseline --sha "$SOURCE_SHA" --preset "${{ steps.pair.outputs.preset }}" \
+            --bundle-sha256 "$PROBE_BUNDLE_SHA256" \
+            --output "$RUNNER_TEMP/pagura-probe-artifacts"
+      - name: Verify empty build boundaries before switching source
+        run: |
+          python3 infra/benchmarks/probes/qualification-ci/build.py boundary \
+            --output "$RUNNER_TEMP/pagura-probe-artifacts"
+      - name: Checkout candidate at the same fixed source path
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ steps.pair.outputs.candidate }}
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+          clean: true
+      - name: Build all candidate probes with fresh targets and j2
+        env:
+          SOURCE_SHA: ${{ steps.pair.outputs.candidate }}
+        run: |
+          python3 infra/benchmarks/probes/qualification-ci/build.py build \
+            --role candidate --sha "$SOURCE_SHA" --preset "${{ steps.pair.outputs.preset }}" \
+            --bundle-sha256 "$PROBE_BUNDLE_SHA256" \
+            --output "$RUNNER_TEMP/pagura-probe-artifacts"
+      - name: Verify matched provenance and freeze mode-preserving transport
+        run: |
+          python3 infra/benchmarks/probes/qualification-ci/build.py finalize \
+            --output "$RUNNER_TEMP/pagura-probe-artifacts"
+      - name: Upload verified frozen probe pair
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: qualification-probes-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/qualification-probes.tar.gz
+            ${{ runner.temp }}/qualification-probes-transport.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Preserve failed build provenance without admission
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: qualification-probe-build-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pagura-probe-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
