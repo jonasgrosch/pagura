@@ -329,10 +329,11 @@ impl Device for SceneRecorder {
             .map(|paint| self.paint(Some(paint)))
             .transpose()?;
         let info = self.mark(&mark.state)?;
-        self.bytes.charge(owned::image(mark.image))?;
-        self.interner
-            .profiles
-            .charge(owned::image_spaces(mark.image), &mut self.bytes)?;
+        if self.interner.images.charge(mark.image, &mut self.bytes)? {
+            self.interner
+                .profiles
+                .charge(owned::image_spaces(mark.image), &mut self.bytes)?;
+        }
         self.push(
             Node::Image(ImageNode {
                 image: Arc::clone(mark.image),
