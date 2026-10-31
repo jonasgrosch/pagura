@@ -405,8 +405,9 @@ pub(super) fn maximum(bits: u8) -> f64 {
 #[derive(Debug)]
 pub(super) enum Strategy {
     /// A table per code of a one-component image of at most eight bits,
-    /// and whether every entry is opaque.
-    Table(Vec<f64>, bool),
+    /// whether every entry is opaque, and whether every entry's three
+    /// colour lanes are equal ([`grey_table`]).
+    Table(Vec<f64>, bool, bool),
     /// DeviceRGB 8-bit samples into an RGB blending space: one table per
     /// channel.
     Rgb(Box<[[f64; 256]; 3]>),
@@ -452,7 +453,8 @@ impl Strategy {
                 colors.code_texel(code, texel);
             }
             let opaque = opaque_table(&table, lanes);
-            return Ok(Self::Table(table, opaque));
+            let grey = grey_table(&table, lanes);
+            return Ok(Self::Table(table, opaque, grey));
         }
         if rgb
             && components == 3
@@ -495,7 +497,7 @@ impl Strategy {
     /// Bytes the strategy's tables hold.
     pub(super) fn bytes(&self) -> usize {
         match self {
-            Self::Table(table, _) => table.capacity() * size_of::<f64>(),
+            Self::Table(table, ..) => table.capacity() * size_of::<f64>(),
             Self::Indexed(palette) => palette.bytes(),
             Self::Rgb(_) => size_of::<[[f64; 256]; 3]>(),
             Self::Memo(_) | Self::General => 0,
@@ -585,6 +587,80 @@ pub(super) fn opaque_table(table: &[f64], lanes: usize) -> bool {
         && table
             .chunks_exact(lanes)
             .all(|texel| texel[lanes - 2..] == [1.0, 1.0])
+}
+
+/// Whether every texel of `table`, `lanes` values each, is an RGB colour
+/// whose three lanes are equal, bit for bit: a grey (DeviceGray painted in
+/// an RGB space). Sums of such texels are equal in each colour lane.
+pub(super) fn grey_table(table: &[f64], lanes: usize) -> bool {
+    lanes == 5
+        && table.chunks_exact(lanes).all(|texel| {
+            texel[0].to_bits() == texel[1].to_bits() && texel[1].to_bits() == texel[2].to_bits()
+        })
+}
+
+/// The texels of a [`grey_table`] seen as one colour lane, then alpha and
+/// shape: `[grey, alpha, shape]` for each code.
+pub(super) struct GreyTexels<'a, C> {
+    pub(super) codes: C,
+    /// Five values a code: three equal colour lanes, alpha and shape.
+    pub(super) table: &'a [f64],
+    /// Whether every entry's alpha and shape are 1.
+    pub(super) opaque: bool,
+}
+
+impl<C: Codes> GreyTexels<'_, C> {
+    /// The grey, alpha and shape of `code`.
+    #[inline]
+    fn entry(&self, code: u16) -> [f64; 3] {
+        let start = usize::from(code) * 5;
+        match self.table.get(start..start + 5) {
+            Some(&[grey, _, _, alpha, shape]) => [grey, alpha, shape],
+            _ => [0.0; 3],
+        }
+    }
+}
+
+impl<C: Codes> Texels for GreyTexels<'_, C> {
+    fn lanes(&self) -> usize {
+        3
+    }
+
+    fn opaque(&self) -> bool {
+        self.opaque
+    }
+
+    fn get(&self, index: usize, out: &mut [f64]) {
+        for (out, value) in out.iter_mut().zip(self.entry(self.codes.code(index))) {
+            *out = value;
+        }
+    }
+
+    fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
+        for (sum, value) in sum.iter_mut().zip(self.entry(self.codes.code(index))) {
+            *sum += value * weight;
+        }
+    }
+
+    fn row(&self, (row, width): (u32, u32), (first, end): (u32, u32), out: &mut [f64]) {
+        let base = u64::from(row) * u64::from(width);
+        let start = sample_index(base + u64::from(first));
+        let count = usize::try_from(end.saturating_sub(first)).unwrap_or(0);
+        match out.len().checked_div(count) {
+            // An opaque texel's colour alone, as `get` gives it.
+            Some(1) => {
+                for (index, out) in (start..).zip(out.iter_mut()) {
+                    *out = self.entry(self.codes.code(index))[0];
+                }
+            }
+            Some(3) => {
+                for (index, out) in (start..).zip(out.as_chunks_mut::<3>().0) {
+                    *out = self.entry(self.codes.code(index));
+                }
+            }
+            _ => sample_row(self, (row, width), (first, end), out),
+        }
+    }
 }
 
 /// Opaque DeviceRGB texels from per-channel tables.

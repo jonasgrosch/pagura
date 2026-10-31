@@ -33,8 +33,8 @@ use sampling::Sampling;
 pub(crate) use scratch::{Layout as ScratchLayout, Scratch as ImageScratch};
 use std::sync::Arc;
 use texels::{
-    ByteCodes, Colors, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes, RgbTexels,
-    SampleTexels, Strategy, TableTexels, TexelMode, WordCodes,
+    ByteCodes, Colors, Fused, GreyTexels, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes,
+    RgbTexels, SampleTexels, Strategy, TableTexels, TexelMode, WordCodes,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
@@ -108,7 +108,7 @@ impl Paint {
     fn opaque(&self, image: &DecodedImage) -> bool {
         match self {
             Self::Colors(paint) => match &paint.1 {
-                Strategy::Table(_, opaque) => *opaque,
+                Strategy::Table(_, opaque, _) => *opaque,
                 Strategy::Indexed(palette) => palette.opaque,
                 Strategy::Rgb(_) => matches!(image.samples, Samples::Bytes(_)),
                 Strategy::Memo(layout) => layout.opaque(),
@@ -484,7 +484,7 @@ impl ImageSampler {
                 super::copy_values(texel, table.get(code * lanes..).unwrap_or(&[]));
             }
             Paint::Colors(paint) => {
-                if let Strategy::Table(table, _) = &paint.1 {
+                if let Strategy::Table(table, ..) = &paint.1 {
                     let code = usize::from(image.samples.get(0).unwrap_or(0));
                     super::copy_values(
                         texel,
@@ -960,7 +960,12 @@ impl Prepared {
                 self.table(plan, pixels, &mut buffers, (table, lanes, false), out);
             }
             Paint::Colors(paint) => match &paint.1 {
-                Strategy::Table(table, opaque) => {
+                Strategy::Table(table, opaque, true)
+                    if lanes == 5 && self.geometry.mode() == Mode::Area =>
+                {
+                    self.grey_table(plan, pixels, &mut buffers, (table, *opaque), out);
+                }
+                Strategy::Table(table, opaque, _) => {
                     self.table(plan, pixels, &mut buffers, (table, lanes, *opaque), out);
                 }
                 Strategy::Indexed(palette) => {
@@ -1052,6 +1057,78 @@ impl Prepared {
                 self.sample(plan, pixels, buffers, &texels, out);
             }
             Samples::Words(_) | Samples::Mixed { .. } | Samples::Planar(_) => {}
+        }
+    }
+
+    /// [`Self::table`] of a [`texels::grey_table`]: one colour lane is
+    /// sampled and its sums copied to the three, which sum to the same
+    /// values. The narrow texels are written at the front of `out` and
+    /// widened in place. Taken for area averages only: a nearest or
+    /// bilinear pixel reads at most four texels, which saves less than its
+    /// widening costs. Out of line, so that the path of other tables stays
+    /// as it was.
+    #[inline(never)]
+    fn grey_table(
+        &self,
+        plan: &Sampling,
+        pixels: Pixels<'_>,
+        buffers: &mut SamplingBuffers<'_>,
+        (table, opaque): (&[f64], bool),
+        out: &mut [f64],
+    ) {
+        let len = pixels.len;
+        // Each pixel's summed values: the mask opacity ahead of the
+        // texel's where a mask is on the image's grid, then five lanes.
+        let ahead = out.len().checked_div(len).and_then(|n| n.checked_sub(5));
+        let Some(ahead) = ahead.filter(|&ahead| ahead <= 1) else {
+            return self.table(plan, pixels, buffers, (table, 5, opaque), out);
+        };
+        let narrow = &mut out[..len * (ahead + 3)];
+        match &self.image.image.samples {
+            Samples::Bytes(bytes) => {
+                let texels = GreyTexels {
+                    codes: ByteCodes(bytes),
+                    table,
+                    opaque,
+                };
+                self.sample(plan, pixels, buffers, &texels, narrow);
+            }
+            Samples::Packed(packed) => {
+                let texels = GreyTexels {
+                    codes: PackedCodes(packed),
+                    table,
+                    opaque,
+                };
+                self.sample(plan, pixels, buffers, &texels, narrow);
+            }
+            Samples::Words(_) | Samples::Mixed { .. } | Samples::Planar(_) => {}
+        }
+        if ahead == 0 {
+            widen_grey::<3, 5>(out, len);
+        } else {
+            widen_grey::<4, 6>(out, len);
+        }
+    }
+}
+
+/// Widens `len` pixels of `[ahead.., grey, alpha, shape]`, `N` values
+/// each, at the front of `out` to `[ahead.., grey, grey, grey, alpha,
+/// shape]`, `W` values each, in place, last pixel first, so that no
+/// narrow pixel is overwritten before it is read. Fixed sizes, so that
+/// each pixel moves its values without a call.
+fn widen_grey<const N: usize, const W: usize>(out: &mut [f64], len: usize) {
+    let ahead = N - 3;
+    for pixel in (0..len).rev() {
+        let Some(&narrow) = out.get(pixel * N..).and_then(<[f64]>::first_chunk::<N>) else {
+            continue;
+        };
+        if let Some(wide) = out
+            .get_mut(pixel * W..)
+            .and_then(<[f64]>::first_chunk_mut::<W>)
+        {
+            let [grey, alpha, shape] = [narrow[ahead], narrow[ahead + 1], narrow[ahead + 2]];
+            wide[..ahead].copy_from_slice(&narrow[..ahead]);
+            wide[ahead..].copy_from_slice(&[grey, grey, grey, alpha, shape]);
         }
     }
 }
@@ -1364,7 +1441,7 @@ fn fast_lanes(
     match paint {
         Paint::Stencil(table) => codes::Lanes::single(table, table.len() / 2, 2, false, bytes),
         Paint::Colors(paint) => match &paint.1 {
-            Strategy::Table(table, opaque) => {
+            Strategy::Table(table, opaque, _) => {
                 let lanes = paint.0.lanes();
                 codes::Lanes::single(table, lanes, codes, *opaque, bytes)
             }
