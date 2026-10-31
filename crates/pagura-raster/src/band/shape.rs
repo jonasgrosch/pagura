@@ -9,10 +9,12 @@ use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
 use super::convex::Convex;
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
-use super::union::{Meters, Piece, Resolver, room};
+use super::union::{
+    Meters, PROVEN_PIECES, Piece, Resolver, Spare, give_up, proven_runs, room, room_need,
+};
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
 use crate::geometry::{greater, lesser};
-use crate::stroke::Tiling;
+use crate::stroke::{Cover, Spine, Tiling};
 use crate::{FillRule, Path, Stroke, Transform, features};
 use pagura_core::{Error, Meter, Result};
 
@@ -83,6 +85,11 @@ impl Resolved {
             .and_then(|i| self.rows.get(i))
             .map_or(0, |&(_, end)| end as usize);
         self.lines.get(start..end.max(start)).unwrap_or(&[])
+    }
+
+    /// The most bytes [`Self::push`] of `sides` sides charges at once.
+    fn push_need(&self, sides: usize) -> usize {
+        room_need(&self.lines, sides).saturating_add(room_need(&self.rows, 1))
     }
 
     fn push(&mut self, y: u32, sides: &[Line], bytes: &mut Meter) -> Result<()> {
@@ -274,20 +281,21 @@ impl Shape {
         adjustment: Adjustment,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        let (polygon, tiling, mut bytes) =
+        let (polygon, tiling, spine, mut bytes) =
             Self::stroke_pieces(path, stroke, (pen, transform), adjustment, options)?;
-        Self::stroke_finish(polygon, tiling, options, &mut bytes)
+        Self::stroke_finish((polygon, tiling, spine), options, &mut bytes)
     }
 
-    /// The device polygon of a stroke's pieces, how far they tile, and the
-    /// byte meter their preparation goes on with.
+    /// The device polygon of a stroke's pieces, how far they tile, the
+    /// spine of unproven pieces, and the byte meter their preparation goes
+    /// on with, which the spine is charged to.
     pub(crate) fn stroke_pieces(
         path: &Path,
         stroke: &Stroke,
         (pen, transform): (Transform, Transform),
         adjustment: Adjustment,
         options: &Prep<'_>,
-    ) -> Result<(Polygon, Tiling, Meter)> {
+    ) -> Result<(Polygon, Tiling, Option<Spine>, Meter)> {
         let limits = options.limits;
         if path.segments().len() > limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
@@ -299,7 +307,7 @@ impl Shape {
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         let path = path.transformed_with_bytes(pen, &mut bytes)?;
         let device = to_user.then(transform);
-        let (polygon, tiling) = match adjustment {
+        let (polygon, tiling, spine) = match adjustment {
             Adjustment::Adjusted => crate::stroke::adjusted_polygon_pieces(
                 &path,
                 device,
@@ -320,14 +328,15 @@ impl Shape {
         let released = path.retained_bytes();
         drop(path);
         bytes.refund(released);
-        Ok((polygon, tiling, bytes))
+        Ok((polygon, tiling, spine, bytes))
     }
 
     /// The shape of a stroke's pieces, with the rows their windings leave in
-    /// doubt resolved.
+    /// doubt resolved: where their spine proves cells covered, only around
+    /// those. The spine's bytes return to `bytes` once it is done, or once
+    /// the shape's own storage needs them.
     pub(crate) fn stroke_finish(
-        polygon: Polygon,
-        tiling: Tiling,
+        (polygon, tiling, spine): (Polygon, Tiling, Option<Spine>),
         options: &Prep<'_>,
         bytes: &mut Meter,
     ) -> Result<Option<Self>> {
@@ -338,7 +347,17 @@ impl Shape {
             Tiling::Unproven => Winding::Check(0.0),
             Tiling::Components => Winding::Unknown,
         };
-        Self::polygon(polygon, FillRule::NonZero, winding, options, bytes, None)
+        let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
+        let mut spine = spine;
+        let shape = Self::from_polygon(
+            polygon,
+            (FillRule::NonZero, winding),
+            options,
+            (bytes, &mut work),
+            (None, &mut spine),
+        );
+        bytes.refund(spine.release());
+        shape
     }
 
     /// One glyph placement outside any clip: `edges` translated to the
@@ -450,6 +469,28 @@ impl Shape {
         work: &mut Meter,
         shared: Option<(&std::sync::Arc<super::GlyphEdges>, crate::Point)>,
     ) -> Result<Option<Self>> {
+        Self::from_polygon(
+            polygon,
+            (rule, winding),
+            options,
+            (bytes, work),
+            (shared, &mut None),
+        )
+    }
+
+    /// [`Self::polygon_metered`], with a stroke's `spine` where it has one.
+    /// The spine is given up, its bytes returned, before any storage of the
+    /// shape's own that the bytes left might not cover with it.
+    fn from_polygon(
+        polygon: Polygon,
+        (rule, winding): (FillRule, Winding),
+        options: &Prep<'_>,
+        (bytes, work): (&mut Meter, &mut Meter),
+        (shared, spine): (
+            Option<(&std::sync::Arc<super::GlyphEdges>, crate::Point)>,
+            &mut Option<Spine>,
+        ),
+    ) -> Result<Option<Self>> {
         let Some(mut frame) = Frame::new(options) else {
             return Ok(None);
         };
@@ -471,6 +512,17 @@ impl Shape {
         }
         // Only the original, uncut stored polygon can supply these edges.
         let shared = shared.filter(|_| frame.rect.is_none() && frame.paths.is_none());
+        // A mark crossing convex clipping paths is clipped to them as to the
+        // rectangle, and then meets no clip row. What its spine proves
+        // covered is the mark's, not the clip's.
+        if frame.paths.and_then(Paths::convex).is_some() {
+            bytes.refund(spine.release());
+        }
+        let region = options.area.region;
+        let rows = usize::try_from(region.y1.abs_diff(region.y0)).unwrap_or(usize::MAX);
+        let checked = matches!(winding, Winding::Check(_));
+        let before = before_rows(polygon.vertices(), rows, (checked, frame.rect.is_some()));
+        give_up(spine, before, bytes);
         // The heights the winding certificate leaves in doubt: none when
         // certified throughout, all when unknown.
         // A lone triangle bounds winding 0 or one sign of magnitude one,
@@ -502,8 +554,6 @@ impl Shape {
             }
             None => all,
         };
-        // A mark crossing convex clipping paths is clipped to them as to
-        // the rectangle, and then meets no clip row.
         let lines = match frame.paths.and_then(Paths::convex) {
             Some(convex) => {
                 let hull = Bounds {
@@ -523,32 +573,21 @@ impl Shape {
         };
         let width = super::row::width(options.area.region.x1)?;
         let scan = clip::scan_columns(&lines, width);
-        // Rows that meet a doubtful slab, or where a clip path's boundary
-        // crosses the shape's columns.
-        let doubtful_row = |y: u32| {
-            doubtful.as_ref().is_none_or(|slabs| {
-                let (top, bottom) = (f64::from(y), f64::from(y) + 1.0);
-                slabs.iter().any(|&[lo, hi]| lo < bottom && hi > top)
-            })
-        };
-        let joint = |y: u32| {
-            frame
-                .paths
-                .is_some_and(|p| p.rows.crosses(y, (bounds.x0, bounds.x1)))
-        };
-        let mut chosen = Vec::new();
-        for y in bounds.y0..bounds.y1 {
-            let joint = joint(y);
-            if joint || doubtful_row(y) {
-                room(&mut chosen, 1, bytes)?;
-                chosen.push((y, joint));
-            }
-        }
+        let chosen = chosen_rows(bounds, &frame, doubtful.as_deref(), bytes)?;
         let resolved = if chosen.is_empty() {
             Resolved::default()
         } else {
-            resolve(&lines, rule, &frame, (bounds, &chosen), work, bytes)?
+            resolve(
+                &lines,
+                rule,
+                &frame,
+                (bounds, &chosen),
+                (work, bytes),
+                spine,
+            )?
         };
+        // The spine is done before the shape keeps its edges.
+        bytes.refund(spine.release());
         Self::edges(
             (lines, Vec::new()),
             rule,
@@ -1155,13 +1194,91 @@ fn clip_convex(
     Ok(lines)
 }
 
+/// An upper bound of the bytes a polygon of `vertices` vertices spanning
+/// `rows` rows charges before its rows are resolved, beside itself: where
+/// `checked`, the winding certificate's points, chains, heights, active
+/// chains and slabs; its lines; where `clipped`, their pieces within the
+/// clip's rectangle; and the rows chosen. Each buffer may double while its
+/// old allocation is still held.
+fn before_rows(vertices: usize, rows: usize, (checked, clipped): (bool, bool)) -> usize {
+    let certificate = if checked { 320 } else { 0 };
+    let clip = if clipped { 9 * size_of::<Line>() } else { 0 };
+    vertices
+        .saturating_mul(certificate + size_of::<Line>() + clip)
+        .saturating_add(rows.saturating_mul(3 * size_of::<(u32, bool)>()))
+}
+
+/// Its bytes go once the shape's own storage needs them.
+impl Spare for Option<Spine> {
+    fn held(&self) -> usize {
+        self.as_ref().map_or(0, Spine::heap_bytes)
+    }
+
+    fn release(&mut self) -> usize {
+        self.take().map_or(0, |spine| spine.heap_bytes())
+    }
+
+    fn work(&mut self) -> Option<&mut Meter> {
+        None
+    }
+}
+
+/// Its spine's and its scratch's bytes go once the shape's own storage
+/// needs them: the rows after are resolved whole.
+impl Spare for Option<Cover> {
+    fn held(&self) -> usize {
+        self.as_ref().map_or(0, Cover::heap_bytes)
+    }
+
+    fn release(&mut self) -> usize {
+        self.take().map_or(0, |cover| cover.heap_bytes())
+    }
+
+    fn work(&mut self) -> Option<&mut Meter> {
+        self.as_mut().map(|cover| &mut cover.work)
+    }
+}
+
 /// The rows of `bounds` a line has area in, as `(first, last)`.
+/// The rows of `bounds` to resolve, each marked joint where a clip path's
+/// boundary crosses the shape's columns: those, and the rows that meet a
+/// slab the winding certificate leaves in doubt (every row without one).
+fn chosen_rows(
+    bounds: DeviceRect,
+    frame: &Frame<'_>,
+    doubtful: Option<&[[f64; 2]]>,
+    bytes: &mut Meter,
+) -> Result<Vec<(u32, bool)>> {
+    let doubtful_row = |y: u32| {
+        doubtful.is_none_or(|slabs| {
+            let (top, bottom) = (f64::from(y), f64::from(y) + 1.0);
+            slabs.iter().any(|&[lo, hi]| lo < bottom && hi > top)
+        })
+    };
+    let joint = |y: u32| {
+        frame
+            .paths
+            .is_some_and(|p| p.rows.crosses(y, (bounds.x0, bounds.x1)))
+    };
+    let mut chosen = Vec::new();
+    for y in bounds.y0..bounds.y1 {
+        let joint = joint(y);
+        if joint || doubtful_row(y) {
+            room(&mut chosen, 1, bytes)?;
+            chosen.push((y, joint));
+        }
+    }
+    Ok(chosen)
+}
+
 fn rows_of(l: &Line, bounds: DeviceRect) -> Option<(u32, u32)> {
     rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds)
 }
 
 /// Resolves the rows `chosen` of `bounds`: the sides of the covered set of
 /// `lines` under `rule`, within the clip's paths in the rows marked joint.
+/// Outside those, the column ranges `spine` proves covered are passed over,
+/// until storage of the rows' own needs its bytes. It takes the spine.
 ///
 /// Its work is charged to a meter of `raster_work`, and its scratch, which
 /// it frees on return, to one of `render_bytes`.
@@ -1170,8 +1287,8 @@ fn resolve(
     rule: FillRule,
     frame: &Frame<'_>,
     (bounds, chosen): (DeviceRect, &[(u32, bool)]),
-    work: &mut Meter,
-    bytes: &mut Meter,
+    (work, bytes): (&mut Meter, &mut Meter),
+    spine: &mut Option<Spine>,
 ) -> Result<Resolved> {
     // The lines of each strip, then each row's pieces from its strip.
     let strip_rows =
@@ -1181,6 +1298,13 @@ fn resolve(
         .filter_map(strip_rows)
         .fold(0, usize::saturating_add);
     work.charge(listed.saturating_add(lines.len()))?;
+    let strips = (bounds.y1.saturating_sub(bounds.y0) / STRIP) as usize + 2;
+    let rules_count = 1 + frame.paths.map_or(0, |paths| paths.rules().count());
+    let list_need = listed
+        .saturating_add(strips)
+        .saturating_mul(size_of::<u32>())
+        .saturating_add(rules_count.saturating_mul(4 * size_of::<FillRule>()));
+    give_up(spine, list_need, bytes);
     let list = StripList::new(
         (bounds.y0, bounds.y1),
         lines.len(),
@@ -1198,10 +1322,12 @@ fn resolve(
     let mut resolver = Resolver::default();
     let (mut pieces, mut sides) = (Vec::new(), Vec::new());
     let mut resolved = Resolved::default();
+    let mut cover = spine.take().map(|spine| spine.cover(frame.rect));
     for &(y, joint) in chosen {
         let top = f64::from(y);
         pieces.clear();
         let listed = list.strip(y / STRIP);
+        resolver.give_up(&mut cover, room_need(&pieces, listed.len()), bytes);
         room(&mut pieces, listed.len(), bytes)?;
         for &i in listed {
             if let Some(&line) = lines.get(i as usize) {
@@ -1210,19 +1336,37 @@ fn resolve(
         }
         let groups = match (joint, frame.paths) {
             (true, Some(paths)) => {
+                // The clip's pieces of the row come before their count.
+                bytes.refund(cover.release());
+                resolver.forget(bytes);
                 paths.pieces(y, 1, (&mut pieces, bytes), work)?;
                 rules.len()
             }
             _ => 1,
         };
+        resolver.runs().clear();
+        // The cover takes the rows it proves from the top down, and any it
+        // leaves out cost it nothing. Where its own work or scratch does
+        // not fit, it is given up, and the rows are resolved whole.
+        if let (1, Some(held)) = (groups, &mut cover)
+            && pieces.len() > PROVEN_PIECES
+            && held
+                .row(top, proven_runs(pieces.len()), resolver.runs(), bytes)
+                .is_err()
+        {
+            bytes.refund(cover.release());
+            resolver.forget(bytes);
+        }
         resolve_pieces(
             &pieces,
             &rules[..groups],
             y,
             (&mut resolver, &mut sides, &mut resolved),
-            Meters { work, bytes },
+            (Meters { work, bytes }, &mut cover),
         )?;
     }
+    bytes.refund(cover.release());
+    resolver.forget(bytes);
     Ok(resolved)
 }
 
@@ -1233,11 +1377,19 @@ fn resolve_pieces(
     rules: &[FillRule],
     y: u32,
     (resolver, sides, resolved): (&mut Resolver, &mut Vec<Line>, &mut Resolved),
-    Meters { work, bytes }: Meters<'_>,
+    (Meters { work, bytes }, spare): (Meters<'_>, &mut dyn Spare),
 ) -> Result<()> {
     work.charge(pieces.len())?;
     sides.clear();
-    resolver.row(pieces, rules, f64::from(y), (sides, Meters { work, bytes }))?;
+    let top = f64::from(y);
+    resolver.row_proven(
+        pieces,
+        rules,
+        top,
+        &mut *spare,
+        (sides, Meters { work, bytes }),
+    )?;
+    resolver.give_up(spare, resolved.push_need(sides.len()), bytes);
     resolved.push(y, sides, bytes)
 }
 

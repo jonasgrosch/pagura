@@ -10,7 +10,12 @@ use crate::{Path, PathBuilder, Point, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 
 mod convex;
+mod spine;
 mod tiling;
+
+#[cfg(test)]
+pub(crate) use spine::without as without_spines;
+pub(crate) use spine::{Cover, Spine};
 
 /// Line cap style (8.4.3.3). Exhaustive: Table 53 closes the set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -228,7 +233,7 @@ pub(crate) fn outline(
         |_| PathBuilder::new(),
         bytes,
     )
-    .map(|(mut path, transform, _)| (path.finish(), transform))
+    .map(|mut stroked| (stroked.outline.finish(), stroked.transform))
 }
 
 /// The outline as pieces where every run admits them at least as well as
@@ -252,12 +257,16 @@ pub(crate) fn pieces(
         |_| PathBuilder::new(),
         bytes,
     )
-    .map(|(mut path, transform, tiling)| (path.finish(), transform, tiling))
+    .map(|mut stroked| {
+        bytes.refund(stroked.spine.as_ref().map_or(0, Spine::heap_bytes));
+        (stroked.outline.finish(), stroked.transform, stroked.tiling)
+    })
 }
 
 /// [`pieces`] as the device polygon of the outline: the polygon that
 /// [`Polygon::from_lines`] makes of the outline under its transform, built
-/// as the stroker makes each piece.
+/// as the stroker makes each piece; with the spine of unproven pieces,
+/// charged to `bytes` while it lives.
 pub(crate) fn polygon_pieces(
     path: &Path,
     transform: Transform,
@@ -265,7 +274,7 @@ pub(crate) fn polygon_pieces(
     limits: &Limits,
     (accept, tolerance): (Tiling, f64),
     bytes: &mut Meter,
-) -> Result<(Polygon, Tiling)> {
+) -> Result<(Polygon, Tiling, Option<Spine>)> {
     outline_with(
         path,
         transform,
@@ -275,7 +284,7 @@ pub(crate) fn polygon_pieces(
         Mapped::new,
         bytes,
     )
-    .map(|(mapped, _, tiling)| (mapped.finish(), tiling))
+    .map(|stroked| (stroked.outline.finish(), stroked.tiling, stroked.spine))
 }
 
 /// [`polygon_pieces`] of an automatically grid-fitted stroke (10.7.5): the
@@ -287,7 +296,7 @@ pub(crate) fn adjusted_polygon_pieces(
     limits: &Limits,
     accept: Tiling,
     bytes: &mut Meter,
-) -> Result<(Polygon, Tiling)> {
+) -> Result<(Polygon, Tiling, Option<Spine>)> {
     let before = bytes.used();
     let result = crate::adjust::runs(path, transform, stroke, limits, bytes).and_then(
         |(runs, pen, pen_transform)| {
@@ -306,9 +315,9 @@ pub(crate) fn adjusted_polygon_pieces(
             )
         },
     );
-    let retained = result.as_ref().map_or(0, |(out, _, _)| out.heap_bytes());
+    let retained = result.as_ref().map_or(0, Stroked::heap_bytes);
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
-    result.map(|(mapped, _, tiling)| (mapped.finish(), tiling))
+    result.map(|stroked| (stroked.outline.finish(), stroked.tiling, stroked.spine))
 }
 
 /// Whether `transform` maps circles to circles.
@@ -331,7 +340,7 @@ fn outline_with<O: Outline>(
     (accept, device_tolerance): (Tiling, f64),
     fresh: impl Fn(Transform) -> O,
     bytes: &mut Meter,
-) -> Result<(O, Transform, Tiling)> {
+) -> Result<Stroked<O>> {
     let before = bytes.used();
     let result = construct(
         path,
@@ -342,9 +351,28 @@ fn outline_with<O: Outline>(
         fresh,
         bytes,
     );
-    let retained = result.as_ref().map_or(0, |(out, _, _)| out.heap_bytes());
+    let retained = result.as_ref().map_or(0, Stroked::heap_bytes);
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
     result
+}
+
+/// A stroke's outline in `fresh(t)`, `t` the transform from construction
+/// space to device space, how far its pieces tile, and where they are
+/// unproven, what their centrelines prove covered.
+pub(crate) struct Stroked<O> {
+    pub(crate) outline: O,
+    pub(crate) transform: Transform,
+    pub(crate) tiling: Tiling,
+    pub(crate) spine: Option<Spine>,
+}
+
+impl<O: Outline> Stroked<O> {
+    /// Bytes on the heap: the outline's and the spine's.
+    fn heap_bytes(&self) -> usize {
+        self.outline
+            .heap_bytes()
+            .saturating_add(self.spine.as_ref().map_or(0, Spine::heap_bytes))
+    }
 }
 
 /// The outline in `fresh(t)`, `t` the transform from construction space
@@ -357,7 +385,7 @@ fn construct<O: Outline>(
     (accept, device_tolerance): (Tiling, f64),
     fresh: impl Fn(Transform) -> O,
     bytes: &mut Meter,
-) -> Result<(O, Transform, Tiling)> {
+) -> Result<Stroked<O>> {
     validate(stroke, limits)?;
     // Dash distances belong to user space even for a device-width hairline
     // (8.4.3.6). Flatten with a device-space error bound, split there, and only
@@ -423,7 +451,7 @@ fn construct<O: Outline>(
 /// `fresh(t)` for `t` the transform to device space: pieces where every run
 /// admits them at least as well as `accept`, else components, and how far
 /// its pieces tile. Closed runs take their convex boundaries as pieces where
-/// `boundaries` allows.
+/// `boundaries` allows. Unproven pieces come with their runs' spine.
 fn assemble<O: Outline>(
     mut runs: Vec<Run>,
     (pen, pen_transform, boundaries): (Pen, Transform, bool),
@@ -432,7 +460,7 @@ fn assemble<O: Outline>(
     accept: Tiling,
     fresh: impl Fn(Transform) -> O,
     bytes: &mut Meter,
-) -> Result<(O, Transform, Tiling)> {
+) -> Result<Stroked<O>> {
     let mut cleanup_work = 0;
     let mut closed = Vec::new();
     if boundaries {
@@ -485,7 +513,19 @@ fn assemble<O: Outline>(
         drop(chains);
         bytes.refund(released);
         if tiling <= accept {
-            return Ok((tiles, pen_transform, tiling));
+            // Only unproven pieces go to the row resolver.
+            let spine = (tiling == Tiling::Unproven)
+                .then(|| {
+                    let convex = |i: usize| matches!(closed.get(i), Some(Some(_)));
+                    Spine::of(&runs, convex, (pen, pen_transform), stroke, limits, bytes)
+                })
+                .flatten();
+            return Ok(Stroked {
+                outline: tiles,
+                transform: pen_transform,
+                tiling,
+                spine,
+            });
         }
         let released = tiles.heap_bytes();
         drop(tiles);
@@ -495,7 +535,12 @@ fn assemble<O: Outline>(
     for run in &runs {
         draw(&mut components, run, pen, stroke, limits, bytes)?;
     }
-    Ok((components, pen_transform, Tiling::Components))
+    Ok(Stroked {
+        outline: components,
+        transform: pen_transform,
+        tiling: Tiling::Components,
+        spine: None,
+    })
 }
 
 /// Clean the repeated closing vertex before attempting convex boundaries.
@@ -864,15 +909,29 @@ pub(crate) fn join_into(
     }
     bytes.reserve_capacity(points, 3)?;
     points.push(point + n1);
+    if let Some(m) = mitred((n1, n2), [a, b], radius, stroke) {
+        points.push(point + m);
+    }
+    points.push(point + n2);
+    Ok(Some(cross <= 0.0))
+}
+
+/// The miter point's offset from a joint with unit tangents `[a, b]` and
+/// outer normals `n1`, `n2` of the pen's `radius`, where the join draws one.
+fn mitred(
+    (n1, n2): (Point, Point),
+    [a, b]: [Point; 2],
+    radius: f64,
+    stroke: &Stroke,
+) -> Option<Point> {
     let denominator = 1.0 + a.dot(b);
     if stroke.join == LineJoin::Miter && denominator > 0.0 {
         let m = (n1 + n2) / denominator;
         if m.length() <= radius * stroke.miter_limit {
-            points.push(point + m);
+            return Some(m);
         }
     }
-    points.push(point + n2);
-    Ok(Some(cross <= 0.0))
+    None
 }
 
 fn cap(
@@ -938,6 +997,19 @@ fn ring(center: Point, pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<V
 /// The vertices of the pen's canonical circle polygon less its centre: each
 /// vertex of [`ring`] is its centre plus one of these, and its count.
 fn offsets(pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<Vec<Point>> {
+    let Pen { radius, .. } = pen;
+    let count = ring_count(pen, limits)?;
+    let mut points = Vec::new();
+    bytes.reserve(&mut points, count as usize)?;
+    points.extend((0..count).map(|i| {
+        let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
+        Point::new(radius * angle.cos(), radius * angle.sin())
+    }));
+    Ok(points)
+}
+
+/// The vertex count of the pen's canonical circle polygon.
+fn ring_count(pen: Pen, limits: &Limits) -> Result<u32> {
     let Pen { radius, tolerance } = pen;
     let angle = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
     let count = (std::f64::consts::TAU / angle).ceil().max(8.0);
@@ -949,14 +1021,7 @@ fn offsets(pen: Pen, limits: &Limits, bytes: &mut Meter) -> Result<Vec<Point>> {
         clippy::cast_sign_loss,
         reason = "integer count is bounded by the u32-compatible path budget above"
     )]
-    let count = count as u32;
-    let mut points = Vec::new();
-    bytes.reserve(&mut points, count as usize)?;
-    points.extend((0..count).map(|i| {
-        let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
-        Point::new(radius * angle.cos(), radius * angle.sin())
-    }));
-    Ok(points)
+    Ok(count as u32)
 }
 
 fn polygon(

@@ -150,7 +150,7 @@ impl Shape {
         templates: &mut StrokeTemplates,
     ) -> Result<Option<Self>> {
         let prep = Prep::new(options, clip);
-        let (polygon, tiling, mut bytes) =
+        let (polygon, tiling, spine, mut bytes) =
             Self::stroke_pieces(path, stroke, (pen, transform), adjustment, &prep)?;
         // Only unproven pieces may need the resolver.
         if adjustment != Adjustment::None
@@ -158,7 +158,7 @@ impl Shape {
             || polygon.points.is_empty()
             || polygon.points_cells
         {
-            return Self::stroke_finish(polygon, tiling, &prep, &mut bytes);
+            return Self::stroke_finish((polygon, tiling, spine), &prep, &mut bytes);
         }
         let key = key(path, stroke, (pen, transform));
         let hash = hash(key.clone());
@@ -184,11 +184,13 @@ impl Shape {
                     if let Ok(Some(shape)) =
                         reuse(&mut entry.template, &polygon, &prep, &mut bytes, meter)
                     {
+                        // A reused boundary needs no spine.
+                        bytes.refund(spine.as_ref().map_or(0, crate::stroke::Spine::heap_bytes));
                         return Ok(Some(shape));
                     }
                     bytes.refund(bytes.used().saturating_sub(before));
                 }
-                Self::stroke_finish(polygon, tiling, &prep, &mut bytes)
+                Self::stroke_finish((polygon, tiling, spine), &prep, &mut bytes)
             }
             Some((i, Slot::Seen(_))) if unclipped(&polygon, &prep) => {
                 let origin = polygon.points[0];
@@ -199,7 +201,7 @@ impl Shape {
                     starts: polygon.starts.as_slice().into(),
                     pieces: polygon.points.iter().map(|&p| p - origin).collect(),
                 });
-                let shape = Self::stroke_finish(polygon, tiling, &prep, &mut bytes);
+                let shape = Self::stroke_finish((polygon, tiling, spine), &prep, &mut bytes);
                 let template = match (&shape, pieces) {
                     (Ok(Some(shape)), Some(pieces)) if !shape.resolved.is_empty() => {
                         Template::new(pieces, origin, shape, meter)
@@ -219,10 +221,10 @@ impl Shape {
             Some((_, Slot::Empty)) | None => {
                 // A table the budget cannot grow records no more strokes.
                 let _ = table.insert(hash, meter);
-                Self::stroke_finish(polygon, tiling, &prep, &mut bytes)
+                Self::stroke_finish((polygon, tiling, spine), &prep, &mut bytes)
             }
             Some((_, Slot::Seen(_) | Slot::Barren(_))) => {
-                Self::stroke_finish(polygon, tiling, &prep, &mut bytes)
+                Self::stroke_finish((polygon, tiling, spine), &prep, &mut bytes)
             }
         }
     }

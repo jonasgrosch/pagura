@@ -1,6 +1,7 @@
 use super::*;
 use crate::Point;
-use pagura_core::Limits;
+use crate::band::union::SCRATCH_BOUND;
+use pagura_core::{ErrorKind, Limits};
 
 #[test]
 fn retained_union_rows_charge_before_allocating() {
@@ -260,4 +261,216 @@ fn listed_rows_are_admitted_beside_their_strip_list() {
     assert_eq!(list(peak).unwrap(), (retained, retained));
     let error = list(peak - 1).unwrap_err();
     assert_eq!(error.message, RENDER_BYTES);
+}
+
+/// `stroke` of `path` in a 128 × 128 area under `limits`.
+fn stroked(path: &Path, stroke: &Stroke, limits: &Limits) -> Result<Option<Shape>> {
+    let options = ShapeOptions {
+        area: Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 128,
+                y1: 128,
+            },
+            band_height: 16,
+        },
+        limits,
+    };
+    Shape::stroke(
+        path,
+        stroke,
+        Transform::IDENTITY,
+        Transform::IDENTITY,
+        Adjustment::None,
+        &options,
+    )
+}
+
+/// Whether `stroke` of `path` renders in a 128 × 128 area under `limits`;
+/// a refusal is a budget's.
+fn renders(path: &Path, stroke: &Stroke, limits: &Limits) -> bool {
+    match stroked(path, stroke, limits) {
+        Ok(_) => true,
+        Err(error) => {
+            assert_eq!(error.kind, ErrorKind::Limit, "{error}");
+            false
+        }
+    }
+}
+
+/// The strokes of the budget probes, each with a spine: twenty collinear
+/// segments under a 12 px round pen (the reviewed case), a loop of short
+/// segments, a mitred zigzag, and a fan dense enough for its rows to pass
+/// over chunks.
+fn probed() -> Vec<(Path, Stroke)> {
+    let line = |points: &[(f64, f64)], closed: bool| {
+        let mut path = crate::PathBuilder::new();
+        for (i, &(x, y)) in points.iter().enumerate() {
+            if i == 0 {
+                path.move_to(Point::new(x, y));
+            } else {
+                path.line_to(Point::new(x, y)).unwrap();
+            }
+        }
+        if closed {
+            path.close();
+        }
+        path.finish()
+    };
+    let around = |count: u32, radius: f64| -> Vec<(f64, f64)> {
+        (0..count)
+            .map(|k| {
+                let t = std::f64::consts::TAU * f64::from(k) / f64::from(count);
+                (64.0 + radius * t.cos(), 64.0 + radius * t.sin())
+            })
+            .collect()
+    };
+    let collinear: Vec<_> = (0..=20)
+        .map(|k| (20.0, 20.0 + 3.0 * f64::from(k)))
+        .collect();
+    let zigzag: Vec<_> = (0..24)
+        .map(|k| (20.0 + 3.0 * f64::from(k), 40.0 + 2.0 * f64::from(k % 2)))
+        .collect();
+    let round = |width: f64| Stroke {
+        width,
+        cap: crate::LineCap::Round,
+        join: crate::LineJoin::Round,
+        ..Stroke::default()
+    };
+    let mitred = Stroke {
+        width: 10.0,
+        ..Stroke::default()
+    };
+    let probed = vec![
+        (line(&collinear, false), round(12.0)),
+        (line(&around(48, 6.0), true), round(12.0)),
+        (line(&zigzag, false), mitred),
+        (line(&around(64, 3.0), true), round(16.0)),
+    ];
+    for (path, stroke) in &probed {
+        let (_, _, spine) = crate::stroke::polygon_pieces(
+            path,
+            Transform::IDENTITY,
+            stroke,
+            &Limits::default(),
+            (Tiling::Unproven, crate::flatten::TOLERANCE),
+            &mut Meter::new(usize::MAX, RENDER_BYTES),
+        )
+        .unwrap();
+        assert!(spine.is_some(), "{stroke:?}");
+    }
+    probed
+}
+
+/// The least budget `renders` succeeds in, by halving from `most`: one it
+/// succeeds in where the one below fails.
+fn halved(renders: impl Fn(usize) -> bool, most: usize) -> usize {
+    let (mut fails, mut least) = (0, most);
+    assert!(renders(least));
+    while least - fails > 1 {
+        let middle = fails + (least - fails) / 2;
+        if renders(middle) {
+            least = middle;
+        } else {
+            fails = middle;
+        }
+    }
+    least
+}
+
+/// Each of `strokes` renders, with spines, in every render budget it
+/// renders in without, of those scanned, raised by the bound on what a
+/// spine's regions can leave the resolver's scratch holding beyond the
+/// route without them (`scratch_bound`, as `SCRATCH_BOUND` notes it). The
+/// budgets scanned are `near` bytes either side of the least it renders in
+/// without spines, 8 apart, and `above` budgets spread up to four times
+/// that. Success is not monotone in the budget, since capacities double
+/// only where that fits, so halving finds a least budget where the one
+/// below fails, and the budgets around it are scanned. Nor does the shape
+/// keep more for the page's budget.
+fn never_refused(strokes: &[(Path, Stroke)], (near, above): (usize, usize)) {
+    for (path, stroke) in strokes {
+        let bytes = |render_bytes| Limits {
+            render_bytes,
+            ..Limits::default()
+        };
+        let plain =
+            |budget| crate::stroke::without_spines(|| renders(path, stroke, &bytes(budget)));
+        let least = halved(plain, Limits::default().render_bytes);
+        let around = (least.saturating_sub(near)..least + near).step_by(8);
+        let spread = (least..4 * least).step_by((3 * least / above).max(8));
+        SCRATCH_BOUND.with(|bound| bound.set(0));
+        stroked(path, stroke, &Limits::default()).unwrap();
+        let rise = SCRATCH_BOUND.with(std::cell::Cell::get);
+        for budget in around.chain(spread) {
+            if plain(budget) {
+                assert!(
+                    renders(path, stroke, &bytes(budget + rise)),
+                    "{stroke:?} at {budget} + {rise}"
+                );
+            }
+        }
+        let retained = || {
+            stroked(path, stroke, &Limits::default())
+                .unwrap()
+                .map_or(0, |shape| shape.retained_bytes())
+        };
+        let plain = crate::stroke::without_spines(retained);
+        assert!(retained() <= plain, "{stroke:?}: {} > {plain}", retained());
+    }
+}
+
+/// Each of `strokes` renders, with spines, in every `raster_work` it renders
+/// in without, of those scanned: `near` units either side of the least it
+/// renders in without spines, and `above` budgets spread up to twice that.
+/// Work is charged whatever the budget left, so halving finds the least.
+/// Near it, the spine's own work, of the same size, runs out within regions.
+fn never_raised(strokes: &[(Path, Stroke)], (near, above): (usize, usize)) {
+    for (path, stroke) in strokes {
+        let work = |raster_work| Limits {
+            raster_work,
+            ..Limits::default()
+        };
+        let plain = |budget| crate::stroke::without_spines(|| renders(path, stroke, &work(budget)));
+        let least = halved(plain, Limits::default().raster_work);
+        let around = least.saturating_sub(near)..least + near;
+        let spread = (least..2 * least).step_by(least / above + 1);
+        for budget in around.chain(spread) {
+            if plain(budget) {
+                assert!(
+                    renders(path, stroke, &work(budget)),
+                    "{stroke:?} at {budget}"
+                );
+            }
+        }
+    }
+}
+
+/// A spine raises the bytes a render needs by no more than the bound on
+/// what its regions leave the resolver's scratch holding: the reviewed case
+/// and a dense fan, scanned near their least budgets.
+#[test]
+fn spines_raise_the_least_bytes_within_their_bound() {
+    let probed = probed();
+    never_refused(&[probed[0].clone(), probed[3].clone()], (64, 8));
+}
+
+/// Nor the work: the shape's meter is charged no more with spines than
+/// without, for the reviewed case and a dense fan.
+#[test]
+fn spines_never_raise_the_least_raster_work() {
+    let probed = probed();
+    never_raised(&[probed[0].clone(), probed[3].clone()], (8, 4));
+}
+
+/// Both, for every probed stroke, scanned wider: 8 bytes apart within a KiB
+/// of the least budget and 128 budgets above, and 64 work units either side
+/// and 64 above.
+#[test]
+#[ignore = "slow unoptimized; run with --release --ignored"]
+fn spines_keep_every_probed_budget_within_their_bound() {
+    let probed = probed();
+    never_refused(&probed, (1024, 128));
+    never_raised(&probed, (64, 64));
 }

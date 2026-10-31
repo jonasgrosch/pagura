@@ -45,12 +45,13 @@ mod union;
 
 pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, RowOut, Span};
-pub(crate) use edges::{Mapped, Polygon};
+pub(crate) use edges::{Bounds, Mapped, Polygon};
 pub use glyph::GlyphEdges;
 pub use raster::BandRasterizer;
 pub use repeat::StrokeTemplates;
 pub use shape::Shape;
 pub(crate) use shape::{RASTER_WORK, RENDER_BYTES};
+pub(crate) use union::SPARE_WORK;
 
 use pagura_core::Limits;
 
