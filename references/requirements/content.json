@@ -219,7 +219,8 @@
         "8.6.5.2",
         "8.6.5.3",
         "8.6.5.4",
-        "10.3"
+        "10.3",
+        "8.6.5.9"
       ],
       "status": "CalGray, CalRGB and Lab; Bradford white adaptation to D65, sRGB output",
       "tests": [
@@ -228,10 +229,22 @@
         "content/cie-Lab",
         "content/cie-indexed-Lab",
         "content/cie-CalRGB",
-        "content/cie-CalRGB-matrix"
+        "content/cie-CalRGB-matrix",
+        "content/cie-blackpoint",
+        "calibrated_blackpoint/CalGray-neutral-off",
+        "calibrated_blackpoint/CalRGB-above-white-default",
+        "calibrated_blackpoint/Lab-chromatic-implicit",
+        "calibrated_blackpoint/CalRGB-on",
+        "calibrated_blackpoint/CalGray-negative",
+        "calibrated_blackpoint_pages/CalGray",
+        "calibrated_blackpoint_pages/CalRGB",
+        "calibrated_blackpoint_pages/Lab",
+        "calibrated_blackpoint/CalGray-at-range-limit-off",
+        "calibrated_blackpoint/CalRGB-above-range-limit-off",
+        "calibrated_blackpoint/Lab-large-finite-off"
       ],
-      "gaps": "nonzero BlackPoint unsupported",
-      "rule": "CalGray, CalRGB and Lab use the component ranges and XYZ equations of Tables 62 through 64. Bradford white adaptation, relative-colorimetric fallback, sRGB output and rounding are project device policy."
+      "gaps": "Explicit ON black-point compensation, ICC destination/inverse transforms and calibrated blending destinations remain unsupported.",
+      "rule": "CalGray, CalRGB and Lab use the component ranges and XYZ equations of Tables 62 through 64. Bradford white adaptation, relative-colorimetric fallback, sRGB output and rounding are project device policy. BlackPoint is validated and retained as diffuse-black metadata; Tables 62\u201364 do not include it in component-to-XYZ equations. Nonnegative values at or above WhitePoint remain legal metadata. Under the existing OFF and processor Default policy, compensation is disabled (8.6.5.9); ON remains an explicit refusal. The standalone CIE library accepts finite nonnegative diffuse-black metadata; the PDF WhitePoint/BlackPoint array working range remains at absolute magnitude 1e6, with explicit Limit beyond it."
     },
     {
       "id": "content-functions",
