@@ -43,7 +43,7 @@
 use super::edges::Line;
 use crate::FillRule;
 use crate::geometry::{greater, lesser};
-use pagura_core::{Error, Meter, Result};
+use pagura_core::{Error, ErrorKind, Meter, Result};
 
 /// One edge's part within the row being resolved.
 #[derive(Debug, Clone, Copy)]
@@ -167,18 +167,8 @@ pub(crate) struct Resolver {
     row_ends: Vec<(f64, f64)>,
     lasts: Vec<f64>,
     cuts: Vec<f64>,
-    /// The proven column ranges of the current row, which [`Self::runs`]
-    /// gives to fill, and the row's regions.
-    runs: Vec<(f64, f64)>,
-    regions: Vec<Region>,
-    /// The chunk walk where a region starts, to restore it from: the pieces
-    /// reaching it, and the windings carried into it.
-    kept_live: Vec<u32>,
-    kept_carry: Vec<f64>,
-    kept_carried: Vec<i64>,
-    /// In a chunk passed over, by height and group, the directions of the
-    /// pieces spanning the sub-slab below.
-    spanning: Vec<i64>,
+    /// The storage only an optional route uses.
+    optional: Optional,
     /// Sort keys of heights and spans, and spans in their sorted order.
     height_keys: Vec<u64>,
     span_keys: Vec<u128>,
@@ -211,6 +201,13 @@ pub(crate) struct Resolver {
     /// The pieces reaching the current chunk, and its pieces clipped to it.
     live: Vec<u32>,
     local: Vec<Piece>,
+    /// The pieces of the current row's largest chunk, as [`Self::cut`]
+    /// found it.
+    largest: usize,
+    /// The most pieces of a row and of a chunk, and the most groups, it has
+    /// resolved: what [`scratch_bound`] bounds its scratch by.
+    #[cfg(any(test, debug_assertions))]
+    most: (usize, usize, usize),
 }
 
 /// A run of a row's proven ranges with none of its cuts between them, and
@@ -222,6 +219,116 @@ struct Region {
     end: f64,
     /// The ranges, as an index range of the resolver's `runs`.
     ranges: (usize, usize),
+}
+
+/// The resolver's storage only an optional route uses, freed with the
+/// route's spare.
+#[derive(Debug, Default, Clone)]
+struct Optional {
+    /// The proven column ranges of the current row, which
+    /// [`Resolver::runs`] gives to fill, and the row's regions.
+    runs: Vec<(f64, f64)>,
+    regions: Vec<Region>,
+    /// The chunk walk where a region starts, to restore it from: the pieces
+    /// reaching it, and the windings carried into it.
+    kept_live: Vec<u32>,
+    kept_carry: Vec<f64>,
+    kept_carried: Vec<i64>,
+    /// A chunk passed over, which reaches across as many of the row's chunks
+    /// as its range does: its pieces clipped to it, its heights and their
+    /// sort keys, and by height and group, the directions of the pieces
+    /// spanning the sub-slab below.
+    local: Vec<Piece>,
+    heights: Vec<f64>,
+    keys: Vec<u64>,
+    spanning: Vec<i64>,
+}
+
+impl Optional {
+    /// Whether it holds any storage.
+    fn held(&self) -> bool {
+        self.runs.capacity()
+            + self.regions.capacity()
+            + self.kept_live.capacity()
+            + self.kept_carry.capacity()
+            + self.kept_carried.capacity()
+            + self.local.capacity()
+            + self.heights.capacity()
+            + self.keys.capacity()
+            + self.spanning.capacity()
+            > 0
+    }
+
+    /// Frees all of it, returning its bytes.
+    fn forget(&mut self, bytes: &mut Meter) {
+        let freed = [
+            self.local.capacity() * size_of::<Piece>(),
+            self.heights.capacity() * size_of::<f64>(),
+            self.keys.capacity() * size_of::<u64>(),
+            self.spanning.capacity() * size_of::<i64>(),
+            self.kept_live.capacity() * size_of::<u32>(),
+            self.kept_carry.capacity() * size_of::<f64>(),
+            self.kept_carried.capacity() * size_of::<i64>(),
+            self.runs.capacity() * size_of::<(f64, f64)>(),
+            self.regions.capacity() * size_of::<Region>(),
+        ];
+        bytes.refund(freed.iter().fold(0, |sum, &b| sum.saturating_add(b)));
+        *self = Self::default();
+    }
+}
+
+/// What a sweep gives up where storage it finds it needs as it goes does not
+/// fit: the optional route's spare, and with it the resolver's storage only
+/// that route uses, or `None` within a region, which that storage serves.
+type Release<'a, 's> = (&'a mut (dyn Spare + 's), Option<&'a mut Optional>);
+
+/// [`room`] for storage a sweep finds it needs as it goes, beyond what
+/// [`sweep_bound`] covers before it: as many crossings, doubtful pairs, sides
+/// and windings carried on as it meets. Where the bytes left do not cover
+/// the room's doubled charge, `release` is given up first, or within a
+/// region, the region, which then sweeps as its chunks. While the spare is
+/// held, every buffer so grows as it does without it, and once it is given
+/// up, the row goes on exactly as without it: no work is redone.
+#[inline]
+fn grow<T>(
+    values: &mut Vec<T>,
+    extra: usize,
+    release: Release<'_, '_>,
+    bytes: &mut Meter,
+) -> Result<()> {
+    if values.len().saturating_add(extra) <= values.capacity() {
+        return Ok(());
+    }
+    grow_beyond(values, extra, release, bytes)
+}
+
+/// [`grow`] where the values' capacity does not hold them.
+#[cold]
+#[inline(never)]
+fn grow_beyond<T>(
+    values: &mut Vec<T>,
+    extra: usize,
+    (spare, optional): Release<'_, '_>,
+    bytes: &mut Meter,
+) -> Result<()> {
+    let need = room_need(values, extra);
+    let held = spare.held() > 0 || optional.as_ref().is_some_and(|o| o.held());
+    if held && bytes.remaining() < need {
+        let Some(optional) = optional else {
+            return Err(Error::limit(SPARE_WORK));
+        };
+        bytes.refund(spare.release());
+        optional.forget(bytes);
+        #[cfg(test)]
+        RELEASES.with(|r| r.set(r.get() + 1));
+    }
+    room(values, extra, bytes)
+}
+
+#[cfg(test)]
+thread_local! {
+    /// How often [`grow`] gave a spare up, for tests.
+    pub(crate) static RELEASES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// A piece's side open from above: +1 or -1 (0 when none), since when, and
@@ -332,13 +439,46 @@ pub(crate) fn give_up(spare: &mut dyn Spare, need: usize, bytes: &mut Meter) {
     }
 }
 
+/// The bytes a sweep of `pieces` pieces, or a pass over them, charges at
+/// its peak for what it needs whatever the pieces' crossings: with `breaks`
+/// heights carried in under `groups` groups, appending to `lines` sides
+/// already listed, each buffer doubling while its old allocation is still
+/// held. What it finds it needs as it goes beyond that, crossings, doubtful
+/// pairs, more sides and windings carried on, [`grow`] makes room for.
+pub(crate) fn sweep_bound(pieces: usize, breaks: usize, groups: usize, lines: usize) -> usize {
+    let heights = pieces
+        .saturating_mul(2)
+        .saturating_add(2)
+        .saturating_add(breaks);
+    let piece = 3 * size_of::<Span>()
+        + size_of::<(f64, f64)>()
+        + size_of::<Lane>()
+        + size_of::<u128>()
+        + 2 * size_of::<Place>()
+        + 2 * size_of::<Open>()
+        + size_of::<(u32, i32)>()
+        + size_of::<Slot>()
+        + size_of::<i64>()
+        + size_of::<usize>();
+    let height = 3 * size_of::<f64>() + 2 * size_of::<i64>() * groups.max(1);
+    let lines = lines.saturating_add(pieces.saturating_mul(2));
+    pieces
+        .saturating_mul(piece)
+        .saturating_add(heights.saturating_mul(height))
+        .saturating_add(groups.saturating_mul(size_of::<i64>()))
+        .saturating_add(lines.saturating_mul(size_of::<Line>()))
+        .saturating_mul(3)
+}
+
 /// An upper bound of the bytes a sweep of `pieces` pieces, or a pass over
 /// them, charges at its peak: with `breaks` heights carried in under
-/// `groups` groups, appending to `lines` sides already listed. Every pair of pieces crosses once
-/// and is doubtful; a piece's side changes at each height where a piece
-/// ends or a winding is carried in, and at each of its crossings; and each
-/// buffer doubles while its old allocation is still held.
-pub(crate) fn sweep_bound(pieces: usize, breaks: usize, groups: usize, lines: usize) -> usize {
+/// `groups` groups, appending to `lines` sides already listed. Every pair of
+/// pieces crosses once and is doubtful; a piece's side changes at each
+/// height where a piece ends or a winding is carried in, and at each of its
+/// crossings; and each buffer doubles while its old allocation is still
+/// held. Debug builds check every sweep and pass against it.
+#[cfg(any(test, debug_assertions))]
+fn sweep_worst(pieces: usize, breaks: usize, groups: usize, lines: usize) -> usize {
     let pairs = pieces.saturating_mul(pieces.saturating_sub(1)) / 2;
     let heights = pieces
         .saturating_mul(2)
@@ -378,6 +518,35 @@ pub(crate) fn sweep_bound(pieces: usize, breaks: usize, groups: usize, lines: us
         .saturating_mul(3)
 }
 
+/// An upper bound of the bytes the resolver's scratch holds, beside the
+/// optional route's own storage, once the rows it has resolved held at most
+/// `most.0` pieces, their chunks at most `most.1`, under at most `most.2`
+/// groups: the cut's lists and sorts of a row's pieces, and the walk and
+/// sweep of its largest chunk with a height carried in for each piece of
+/// the row, each buffer doubled while its old allocation is held. It is
+/// known once a row is cut, before its sweeps. It bounds what the regions
+/// of a spine can leave the scratch holding beyond the route without them:
+/// a pass clips and sorts in storage of the optional route's own, keeping
+/// in the walk only the pieces reaching on past it, and each region sweep
+/// lies within one of the row's chunks.
+#[cfg(any(test, debug_assertions))]
+fn scratch_bound((pieces, largest, groups): (usize, usize, usize)) -> usize {
+    let (pieces, largest) = (pieces.max(4), largest.max(4));
+    chunks_bound(pieces).saturating_add(sweep_worst(
+        largest,
+        pieces.saturating_add(1),
+        groups.max(4),
+        0,
+    ))
+}
+
+#[cfg(test)]
+thread_local! {
+    /// The largest [`scratch_bound`] a resolver met since it was reset, for
+    /// tests.
+    pub(crate) static SCRATCH_BOUND: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// What a sweep or pass started from, to check it against its bound in
 /// debug builds.
 #[cfg(debug_assertions)]
@@ -403,7 +572,7 @@ impl Bounded {
                 .saturating_add(2),
         );
         let lines = out.len();
-        let bound = sweep_bound(pieces, breaks, groups, lines);
+        let bound = sweep_worst(pieces, breaks, groups, lines);
         Self {
             used: bytes.used(),
             bound,
@@ -480,7 +649,7 @@ impl Resolver {
         top: f64,
         (out, meters): (&mut Vec<Line>, Meters<'_>),
     ) -> Result<()> {
-        self.runs.clear();
+        self.optional.runs.clear();
         self.row_proven(pieces, rules, top, &mut (), (out, meters))
     }
 
@@ -514,18 +683,31 @@ impl Resolver {
         self.carry.push(top);
         self.carried.resize(rules.len(), 0);
         if rules.len() > 1 {
-            self.runs.clear();
+            self.optional.runs.clear();
         }
         if pieces.len() <= CHUNK {
             let bound = sweep_bound(pieces.len(), self.carry.len(), rules.len(), out.len());
             self.give_up(spare, bound, bytes);
-            return self.sweep(pieces, (rules, top), (out, work, bytes), false);
+            let swept = self.sweep(
+                pieces,
+                (rules, top),
+                (out, work, bytes),
+                (false, spare, true),
+            );
+            #[cfg(any(test, debug_assertions))]
+            self.check_scratch(pieces.len(), pieces.len(), rules.len());
+            return swept;
         }
         self.give_up(spare, chunks_bound(pieces.len()), bytes);
         #[cfg(debug_assertions)]
         let charged = work.used();
         self.cut(pieces, (work, bytes))?;
         self.prove((spare, bytes))?;
+        // Room for the largest chunk's walk, made once: every walk fits it
+        // whichever chunks a route cuts, so the walk's capacities never
+        // depend on the order of their needs.
+        room_for(&mut self.live, self.largest, bytes)?;
+        room_for(&mut self.local, self.largest, bytes)?;
         let mut live = std::mem::take(&mut self.live);
         let mut local = std::mem::take(&mut self.local);
         let result = self.chunks(
@@ -536,8 +718,10 @@ impl Resolver {
         );
         self.live = live;
         self.local = local;
+        #[cfg(any(test, debug_assertions))]
+        self.check_scratch(pieces.len(), self.largest, rules.len());
         #[cfg(debug_assertions)]
-        if result.is_ok() && !self.regions.is_empty() {
+        if result.is_ok() && !self.optional.regions.is_empty() {
             Self::check_work(pieces, (rules, top), work.used() - charged);
         }
         result
@@ -547,7 +731,7 @@ impl Resolver {
     /// the caller to fill, charging their storage to the row's bytes. It is
     /// storage only the ranges' route uses, which [`Self::forget`] frees.
     pub(crate) fn runs(&mut self) -> &mut Vec<(f64, f64)> {
-        &mut self.runs
+        &mut self.optional.runs
     }
 
     /// Gives up `spare` where `bytes` has less left than `need`, and with it
@@ -561,30 +745,17 @@ impl Resolver {
     }
 
     /// Frees the storage only an optional route uses, returning its bytes:
-    /// the passes' spans of directions, the walk kept at a region's start,
-    /// and the row's ranges and regions.
+    /// the passes' pieces, heights and spans of directions, the walk kept at
+    /// a region's start, and the row's ranges and regions.
     pub(crate) fn forget(&mut self, bytes: &mut Meter) {
-        let freed = [
-            self.spanning.capacity() * size_of::<i64>(),
-            self.kept_live.capacity() * size_of::<u32>(),
-            self.kept_carry.capacity() * size_of::<f64>(),
-            self.kept_carried.capacity() * size_of::<i64>(),
-            self.runs.capacity() * size_of::<(f64, f64)>(),
-            self.regions.capacity() * size_of::<Region>(),
-        ];
-        bytes.refund(freed.iter().fold(0, |sum, &b| sum.saturating_add(b)));
-        self.spanning = Vec::new();
-        self.kept_live = Vec::new();
-        self.kept_carry = Vec::new();
-        self.kept_carried = Vec::new();
-        self.runs = Vec::new();
-        self.regions = Vec::new();
+        self.optional.forget(bytes);
     }
 
     /// Chooses the columns to cut the row at: walking the first columns of
     /// the pieces left to right, a chunk ends at the first column where it
     /// holds `CHUNK` pieces and at most a quarter of them reach on, so that
-    /// the chunks hold about as many pieces as the row.
+    /// the chunks hold about as many pieces as the row. Notes how many the
+    /// largest holds.
     fn cut(&mut self, pieces: &[Piece], (work, bytes): (&mut Meter, &mut Meter)) -> Result<()> {
         let count = pieces.len();
         work.charge_product(sort_work(count), 3)?;
@@ -605,6 +776,7 @@ impl Resolver {
         sort_values(&mut self.lasts, &mut self.height_keys);
         self.cuts.clear();
         let (mut entered, mut reached) = (0, 0);
+        let mut largest = 0;
         for n in 1..count {
             let column = self.spans[n].0;
             if column == self.spans[n - 1].0 {
@@ -616,9 +788,11 @@ impl Resolver {
             if held >= CHUNK && reaching.saturating_mul(4) <= held {
                 room(&mut self.cuts, 1, bytes)?;
                 self.cuts.push(column);
+                largest = largest.max(held);
                 (entered, reached) = (n, reaching);
             }
         }
+        self.largest = largest.max(count - entered + reached);
         Ok(())
     }
 
@@ -628,19 +802,22 @@ impl Resolver {
     /// outside the ranges'. A spare that cannot pay, or whose plan the bytes
     /// left do not cover, plans none.
     fn prove(&mut self, (spare, bytes): (&mut dyn Spare, &mut Meter)) -> Result<()> {
-        self.regions.clear();
-        let units = self.cuts.len().saturating_add(self.runs.len());
-        let need = room_need(&self.regions, self.runs.len());
-        if self.runs.is_empty() || bytes.remaining() < need || !spare_work(spare, units, bytes) {
-            self.runs.clear();
+        self.optional.regions.clear();
+        let units = self.cuts.len().saturating_add(self.optional.runs.len());
+        let need = room_need(&self.optional.regions, self.optional.runs.len());
+        if self.optional.runs.is_empty()
+            || bytes.remaining() < need
+            || !spare_work(spare, units, bytes)
+        {
+            self.optional.runs.clear();
             if spare.held() == 0 {
                 self.forget(bytes);
             }
             return Ok(());
         }
-        room(&mut self.regions, self.runs.len(), bytes)?;
-        for r in 0..self.runs.len() {
-            let (lo, hi) = self.runs[r];
+        room(&mut self.optional.regions, self.optional.runs.len(), bytes)?;
+        for r in 0..self.optional.runs.len() {
+            let (lo, hi) = self.optional.runs[r];
             let before = self.cuts.partition_point(|&c| c < lo);
             let start = before
                 .checked_sub(1)
@@ -649,13 +826,13 @@ impl Resolver {
                 .first()
                 .copied()
                 .unwrap_or(f64::INFINITY);
-            match self.regions.last_mut() {
+            match self.optional.regions.last_mut() {
                 // No cut between it and the last range: the same region.
                 Some(region) if start < region.end => {
                     region.end = end;
                     region.ranges.1 = r + 1;
                 }
-                _ => self.regions.push(Region {
+                _ => self.optional.regions.push(Region {
                     start,
                     end,
                     ranges: (r, r + 1),
@@ -711,7 +888,7 @@ impl Resolver {
         let (mut k, mut next) = (0, 0);
         while k < chunks {
             let left = k.checked_sub(1).map_or(f64::NEG_INFINITY, |c| self.cuts[c]);
-            if let Some(&region) = self.regions.get(next)
+            if let Some(&region) = self.optional.regions.get(next)
                 && region.start == left
             {
                 next += 1;
@@ -731,7 +908,12 @@ impl Resolver {
             self.walk(pieces, ((left, right), (true, false)), walk, (work, bytes))?;
             let bound = sweep_bound(local.len(), self.carry.len(), rules.len(), out.len());
             self.give_up(spare, bound, bytes);
-            self.sweep(local, (rules, top), (out, work, bytes), k + 1 < chunks)?;
+            self.sweep(
+                local,
+                (rules, top),
+                (out, work, bytes),
+                (k + 1 < chunks, &mut *spare, true),
+            )?;
             k += 1;
         }
         Ok(())
@@ -756,21 +938,21 @@ impl Resolver {
             return Ok(false);
         };
         let mut own = std::mem::replace(own, Meter::new(0, SPARE_WORK));
-        let need = room_need(&self.kept_live, live.len())
-            .saturating_add(room_need(&self.kept_carry, self.carry.len()))
-            .saturating_add(room_need(&self.kept_carried, self.carried.len()));
+        let need = room_need(&self.optional.kept_live, live.len())
+            .saturating_add(room_need(&self.optional.kept_carry, self.carry.len()))
+            .saturating_add(room_need(&self.optional.kept_carried, self.carried.len()));
         give_up(spare, need, bytes);
         if bytes.remaining() < need {
             bytes.refund(spare.release());
             self.forget(bytes);
             return Ok(false);
         }
-        room_for(&mut self.kept_live, live.len(), bytes)?;
-        room_for(&mut self.kept_carry, self.carry.len(), bytes)?;
-        room_for(&mut self.kept_carried, self.carried.len(), bytes)?;
-        self.kept_live.extend_from_slice(live);
-        self.kept_carry.extend_from_slice(&self.carry);
-        self.kept_carried.extend_from_slice(&self.carried);
+        room_for(&mut self.optional.kept_live, live.len(), bytes)?;
+        room_for(&mut self.optional.kept_carry, self.carry.len(), bytes)?;
+        room_for(&mut self.optional.kept_carried, self.carried.len(), bytes)?;
+        self.optional.kept_live.extend_from_slice(live);
+        self.optional.kept_carry.extend_from_slice(&self.carry);
+        self.optional.kept_carried.extend_from_slice(&self.carried);
         let (kept, lines) = (*entered, out.len());
         #[cfg(debug_assertions)]
         let shadow = (self.clone(), *entered, live.clone());
@@ -791,12 +973,14 @@ impl Resolver {
                 self.check_region(pieces, (rules, top), (region, *entered), shadow);
                 Ok(true)
             }
-            Err(error) if error.message == SPARE_WORK => {
+            // Where its own work runs out, or its storage does not fit even
+            // without the spare, the region is swept as its chunks.
+            Err(error) if error.kind == ErrorKind::Limit => {
                 *entered = kept;
                 out.truncate(lines);
-                std::mem::swap(live, &mut self.kept_live);
-                std::mem::swap(&mut self.carry, &mut self.kept_carry);
-                std::mem::swap(&mut self.carried, &mut self.kept_carried);
+                std::mem::swap(live, &mut self.optional.kept_live);
+                std::mem::swap(&mut self.carry, &mut self.optional.kept_carry);
+                std::mem::swap(&mut self.carried, &mut self.optional.kept_carried);
                 bytes.refund(spare.release());
                 #[cfg(debug_assertions)]
                 debug_assert!(
@@ -827,29 +1011,18 @@ impl Resolver {
     ) -> Result<()> {
         let mut left = region.start;
         for r in region.ranges.0..region.ranges.1 {
-            let (lo, hi) = self.runs[r];
-            for (columns, owns, passed) in [
-                ((left, lo), (true, true), false),
-                ((lo, hi), (false, false), true),
-            ] {
-                let walk = (&mut *entered, &mut *live, &mut *local);
-                self.walk(pieces, (columns, owns), walk, (own, bytes))?;
-                let bound = sweep_bound(local.len(), self.carry.len(), rules.len(), out.len());
-                give_up(spare, bound, bytes);
-                if bytes.remaining() < bound {
-                    return Err(Error::limit(SPARE_WORK));
-                }
-                if passed {
-                    own.charge(pass_work(local.len(), self.carry.len(), rules.len()))?;
-                    #[cfg(debug_assertions)]
-                    let carried = (self.carry.clone(), self.carried.clone());
-                    self.pass(local, (rules, top), bytes)?;
-                    #[cfg(debug_assertions)]
-                    self.check_pass(local, (rules, top), carried);
-                } else {
-                    self.sweep(local, (rules, top), (out, own, bytes), true)?;
-                }
-            }
+            let (lo, hi) = self.optional.runs[r];
+            let walk = (&mut *entered, &mut *live, &mut *local);
+            self.walk(pieces, ((left, lo), (true, true)), walk, (own, bytes))?;
+            self.region_sweep(local, (rules, top), (true, &mut *spare), (out, own, bytes))?;
+            let walk = (&mut *entered, &mut *live);
+            self.pass_over(
+                pieces,
+                (rules, top),
+                (lo, hi),
+                walk,
+                (&mut *spare, own, bytes),
+            )?;
             left = hi;
         }
         let walk = (&mut *entered, &mut *live, &mut *local);
@@ -859,13 +1032,161 @@ impl Resolver {
             walk,
             (own, bytes),
         )?;
+        let carry = region.end.is_finite();
+        self.region_sweep(local, (rules, top), (carry, spare), (out, own, bytes))
+    }
+
+    /// Sweeps a chunk of a region on `own` work, where the bytes left cover
+    /// what it needs whatever its crossings; `SPARE_WORK` otherwise.
+    fn region_sweep(
+        &mut self,
+        local: &[Piece],
+        (rules, top): (&[FillRule], f64),
+        (carry, spare): (bool, &mut dyn Spare),
+        (out, own, bytes): (&mut Vec<Line>, &mut Meter, &mut Meter),
+    ) -> Result<()> {
         let bound = sweep_bound(local.len(), self.carry.len(), rules.len(), out.len());
         give_up(spare, bound, bytes);
         if bytes.remaining() < bound {
             return Err(Error::limit(SPARE_WORK));
         }
-        let carry = region.end.is_finite();
-        self.sweep(local, (rules, top), (out, own, bytes), carry)
+        self.sweep(
+            local,
+            (rules, top),
+            (out, own, bytes),
+            (carry, spare, false),
+        )
+    }
+
+    /// Passes over the chunk of proven columns `lo..hi` on `own` work. Its
+    /// pieces reach across as many of the row's chunks as its range does,
+    /// so they are clipped, and their heights sorted, in the optional
+    /// route's own storage; the walk keeps only those reaching on past
+    /// `hi`, no more than the row's chunk holding `hi` holds.
+    fn pass_over(
+        &mut self,
+        pieces: &[Piece],
+        (rules, top): (&[FillRule], f64),
+        columns: (f64, f64),
+        walk: (&mut usize, &mut Vec<u32>),
+        (spare, own, bytes): (&mut dyn Spare, &mut Meter, &mut Meter),
+    ) -> Result<()> {
+        let mut local = std::mem::take(&mut self.optional.local);
+        let passed = self.walk_and_pass(
+            pieces,
+            (rules, top),
+            columns,
+            (walk, &mut local),
+            (spare, own, bytes),
+        );
+        self.optional.local = local;
+        passed
+    }
+
+    /// [`Self::pass_over`] with the chunk's pieces clipped into `local`.
+    fn walk_and_pass(
+        &mut self,
+        pieces: &[Piece],
+        (rules, top): (&[FillRule], f64),
+        (lo, hi): (f64, f64),
+        ((entered, live), local): ((&mut usize, &mut Vec<u32>), &mut Vec<Piece>),
+        (spare, own, bytes): (&mut dyn Spare, &mut Meter, &mut Meter),
+    ) -> Result<()> {
+        own.charge(live.len().saturating_add(1))?;
+        live.retain(|&i| self.spans[i as usize].1 >= lo);
+        let start = *entered;
+        while self.spans.get(*entered).is_some_and(|s| s.0 < hi) {
+            *entered += 1;
+        }
+        let count = live.len() + (*entered - start);
+        own.charge(count)?;
+        local.clear();
+        room(local, count, bytes)?;
+        for n in live.iter().map(|&n| n as usize).chain(start..*entered) {
+            let i = self.spans[n].2 as usize;
+            local.extend(clip(pieces[i], self.row_ends[i], (lo, hi), (false, false)));
+        }
+        let on = |n: &usize| self.spans[*n].1 >= hi;
+        live.retain(|&n| on(&(n as usize)));
+        room(live, (start..*entered).filter(on).count(), bytes)?;
+        live.extend(
+            (start..*entered)
+                .filter(on)
+                .map(|n| u32::try_from(n).unwrap_or(u32::MAX)),
+        );
+        let bound = sweep_bound(local.len(), self.carry.len(), rules.len(), 0);
+        give_up(spare, bound, bytes);
+        if bytes.remaining() < bound {
+            return Err(Error::limit(SPARE_WORK));
+        }
+        own.charge(pass_work(local.len(), self.carry.len(), rules.len()))?;
+        #[cfg(debug_assertions)]
+        let carried = (self.carry.clone(), self.carried.clone());
+        self.pass(local, (rules, top), bytes)?;
+        #[cfg(debug_assertions)]
+        self.check_pass(local, (rules, top), carried);
+        Ok(())
+    }
+
+    /// Checks that the scratch stays within [`scratch_bound`] of the most
+    /// pieces of a row and of a chunk it has resolved; tests also note the
+    /// bound in [`SCRATCH_BOUND`].
+    #[cfg(any(test, debug_assertions))]
+    fn check_scratch(&mut self, pieces: usize, largest: usize, groups: usize) {
+        let most = self.most;
+        self.most = (most.0.max(pieces), most.1.max(largest), most.2.max(groups));
+        let bound = scratch_bound(self.most);
+        debug_assert!(
+            self.scratch_held() <= bound,
+            "the resolver's scratch holds {} bytes over its bound of {bound} for {:?}",
+            self.scratch_held(),
+            self.most
+        );
+        #[cfg(test)]
+        SCRATCH_BOUND.with(|b| b.set(b.get().max(bound)));
+    }
+
+    /// The bytes the scratch holds, beside the optional route's own storage.
+    #[cfg(any(test, debug_assertions))]
+    fn scratch_held(&self) -> usize {
+        fn held<T>(values: &Vec<T>) -> usize {
+            values.capacity() * size_of::<T>()
+        }
+        [
+            held(&self.heights),
+            held(&self.columns),
+            held(&self.rows),
+            held(&self.ends),
+            held(&self.lanes),
+            held(&self.order),
+            held(&self.joining),
+            held(&self.windings),
+            held(&self.open),
+            held(&self.sides),
+            held(&self.next),
+            held(&self.slots),
+            held(&self.carry),
+            held(&self.carried),
+            held(&self.after),
+            held(&self.carried_after),
+            held(&self.spans),
+            held(&self.row_ends),
+            held(&self.lasts),
+            held(&self.cuts),
+            held(&self.height_keys),
+            held(&self.span_keys),
+            held(&self.sorted),
+            held(&self.crosses),
+            held(&self.lefts),
+            held(&self.at),
+            held(&self.doubtful),
+            held(&self.bands),
+            held(&self.reaching),
+            held(&self.live),
+            held(&self.local),
+        ]
+        .iter()
+        .sum()
     }
 
     /// Checks a region resolved on optional work against its chunks swept
@@ -914,7 +1235,7 @@ impl Resolver {
                     &local,
                     (rules, top),
                     (&mut sides, &mut work, &mut bytes),
-                    carry,
+                    (carry, &mut (), false),
                 )
             });
             debug_assert!(swept.is_ok(), "a region's chunks do not sweep");
@@ -974,7 +1295,7 @@ impl Resolver {
             pieces,
             (rules, top),
             (&mut sides, &mut work, &mut bytes),
-            true,
+            (true, &mut (), false),
         );
         debug_assert!(
             swept.is_ok() && sides.is_empty(),
@@ -1004,51 +1325,61 @@ impl Resolver {
         let bounded = Bounded::new(count, (self.carry.len(), rules.len()), (&[], bytes));
         let heights = 2 * count + 2 + self.carry.len().saturating_sub(1);
         let groups = rules.len();
-        room_for(&mut self.heights, heights, bytes)?;
-        room_for(&mut self.height_keys, heights, bytes)?;
-        room_for(&mut self.spanning, heights.saturating_mul(groups), bytes)?;
+        room_for(&mut self.optional.heights, heights, bytes)?;
+        room_for(&mut self.optional.keys, heights, bytes)?;
+        room_for(
+            &mut self.optional.spanning,
+            heights.saturating_mul(groups),
+            bytes,
+        )?;
         room_for(&mut self.windings, groups, bytes)?;
-        self.heights.extend([top, top + 1.0]);
-        self.heights.extend_from_slice(&self.carry[1..]);
+        self.optional.heights.extend([top, top + 1.0]);
+        self.optional.heights.extend_from_slice(&self.carry[1..]);
         for p in pieces {
-            self.heights.extend([p.lo, p.hi]);
+            self.optional.heights.extend([p.lo, p.hi]);
         }
-        sort_values(&mut self.heights, &mut self.height_keys);
-        self.heights.dedup();
+        sort_values(&mut self.optional.heights, &mut self.optional.keys);
+        self.optional.heights.dedup();
         // Each piece's direction from the height it starts at, less from
         // the height it ends at, summed down the heights.
-        self.spanning.clear();
-        self.spanning.resize(self.heights.len() * groups, 0);
+        self.optional.spanning.clear();
+        self.optional
+            .spanning
+            .resize(self.optional.heights.len() * groups, 0);
         for p in pieces {
             let g = usize::from(p.group);
-            let start = self.heights.partition_point(|&h| h < p.lo);
-            let end = self.heights.partition_point(|&h| h < p.hi);
-            if let (Some(s), true) = (self.spanning.get_mut(start * groups + g), g < groups) {
+            let start = self.optional.heights.partition_point(|&h| h < p.lo);
+            let end = self.optional.heights.partition_point(|&h| h < p.hi);
+            if let (Some(s), true) = (
+                self.optional.spanning.get_mut(start * groups + g),
+                g < groups,
+            ) {
                 *s += i64::from(p.direction);
             }
-            if let (Some(s), true) = (self.spanning.get_mut(end * groups + g), g < groups) {
+            if let (Some(s), true) = (self.optional.spanning.get_mut(end * groups + g), g < groups)
+            {
                 *s -= i64::from(p.direction);
             }
         }
-        for i in groups..self.spanning.len() {
-            self.spanning[i] += self.spanning[i - groups];
+        for i in groups..self.optional.spanning.len() {
+            self.optional.spanning[i] += self.optional.spanning[i - groups];
         }
         self.windings.clear();
         self.windings.resize(groups, 0);
         self.after.clear();
         self.carried_after.clear();
         let mut segment = 0;
-        for k in 0..self.heights.len().saturating_sub(1) {
-            let a = self.heights[k];
+        for k in 0..self.optional.heights.len().saturating_sub(1) {
+            let a = self.optional.heights[k];
             while self.carry.get(segment + 1).is_some_and(|&y| y <= a) {
                 segment += 1;
             }
             let from = segment.saturating_mul(groups);
             let carried = self.carried.get(from..from.saturating_add(groups));
             for (g, w) in self.windings.iter_mut().enumerate() {
-                *w = carried.map_or(0, |c| c[g]) + self.spanning[k * groups + g];
+                *w = carried.map_or(0, |c| c[g]) + self.optional.spanning[k * groups + g];
             }
-            self.carry_on(a, bytes)?;
+            self.carry_on(a, bytes, (&mut (), false))?;
         }
         std::mem::swap(&mut self.carry, &mut self.after);
         std::mem::swap(&mut self.carried, &mut self.carried_after);
@@ -1064,7 +1395,7 @@ impl Resolver {
         pieces: &[Piece],
         (rules, top): (&[FillRule], f64),
         (out, work, bytes): (&mut Vec<Line>, &mut Meter, &mut Meter),
-        carry: bool,
+        (carry, spare, free): (bool, &mut dyn Spare, bool),
     ) -> Result<()> {
         let total = u32::try_from(pieces.len())
             .map_err(|_| Error::limit("row resolver pieces exceed u32"))?;
@@ -1094,7 +1425,7 @@ impl Resolver {
         #[cfg(test)]
         let swaps = swaps && !self.full;
         self.crosses.clear();
-        self.crossings(pieces, total, swaps, (work, bytes))?;
+        self.crossings(pieces, total, swaps, (work, bytes), (&mut *spare, free))?;
         // They pay where crossings outnumber the pieces. The doubtful
         // pairs' searches, sort and expiry queue stay within the heights'
         // O(h log h) preparation bound; otherwise keep the full sweep.
@@ -1102,32 +1433,16 @@ impl Resolver {
             swaps && self.crosses.len() >= count && self.doubtful.len() <= self.heights.len();
         // The crossings are among the heights the charge sorts.
         work.charge(sort_work(self.heights.len()))?;
-        room_for(&mut self.height_keys, self.heights.len(), bytes)?;
+        self.height_keys.clear();
+        let release = (&mut *spare, free.then_some(&mut self.optional));
+        grow(&mut self.height_keys, self.heights.len(), release, bytes)?;
         sort_values(&mut self.heights, &mut self.height_keys);
         self.heights.dedup();
         self.keep = swaps;
         if swaps {
-            self.prepare_swaps(count, bytes)?;
+            self.prepare_swaps(count, bytes, (&mut *spare, free))?;
         }
-        self.windings.clear();
-        room(&mut self.windings, rules.len(), bytes)?;
-        self.windings.resize(rules.len(), 0);
-        for v in [&mut self.order, &mut self.joining] {
-            v.clear();
-            room(v, count, bytes)?;
-        }
-        for v in [&mut self.open, &mut self.next] {
-            v.clear();
-            room(v, count, bytes)?;
-        }
-        self.sides.clear();
-        room(&mut self.sides, count, bytes)?;
-        self.slots.clear();
-        room(&mut self.slots, count, bytes)?;
-        self.slots.resize(count, Slot::default());
-        room(out, 2 * count, bytes)?;
-        self.after.clear();
-        self.carried_after.clear();
+        self.ready((count, rules.len()), (out, bytes))?;
         let (mut joined, mut segment, mut cross, mut through) = (0, 0, 0, 0);
         for k in 1..self.heights.len() {
             let (a, b) = (self.heights[k - 1], self.heights[k]);
@@ -1153,9 +1468,9 @@ impl Resolver {
                 )?;
                 self.slab(pieces, rules, segment);
                 if carry {
-                    self.carry_on(a, bytes)?;
+                    self.carry_on(a, bytes, (&mut *spare, free))?;
                 }
-                self.join(pieces, a, (out, bytes))?;
+                self.join(pieces, a, (out, bytes), (&mut *spare, free))?;
                 let height = u128::from(total_key(a.to_bits()));
                 while self.crosses.get(cross).is_some_and(|&c| c >> 64 <= height) {
                     cross += 1;
@@ -1164,7 +1479,14 @@ impl Resolver {
         }
         for open in self.open.drain(..) {
             let line = pieces[open.piece as usize].line;
-            push_side((out, bytes), line, open.side, (open.from, top + 1.0))?;
+            let release = (&mut *spare, free.then_some(&mut self.optional));
+            push_side(
+                (out, bytes),
+                line,
+                open.side,
+                (open.from, top + 1.0),
+                release,
+            )?;
         }
         if carry {
             std::mem::swap(&mut self.carry, &mut self.after);
@@ -1174,16 +1496,53 @@ impl Resolver {
         Ok(())
     }
 
+    /// Makes the per-sub-slab storage of a sweep of `count` pieces under
+    /// `groups` groups ready: its windings, places, open sides and slots,
+    /// and room for two sides per piece in `out`.
+    fn ready(
+        &mut self,
+        (count, groups): (usize, usize),
+        (out, bytes): (&mut Vec<Line>, &mut Meter),
+    ) -> Result<()> {
+        self.windings.clear();
+        room(&mut self.windings, groups, bytes)?;
+        self.windings.resize(groups, 0);
+        for v in [&mut self.order, &mut self.joining] {
+            v.clear();
+            room(v, count, bytes)?;
+        }
+        for v in [&mut self.open, &mut self.next] {
+            v.clear();
+            room(v, count, bytes)?;
+        }
+        self.sides.clear();
+        room(&mut self.sides, count, bytes)?;
+        self.slots.clear();
+        room(&mut self.slots, count, bytes)?;
+        self.slots.resize(count, Slot::default());
+        room(out, 2 * count, bytes)?;
+        self.after.clear();
+        self.carried_after.clear();
+        Ok(())
+    }
+
     /// Records the windings right of the current chunk from height `a` on,
     /// unless they equal those above.
-    fn carry_on(&mut self, a: f64, bytes: &mut Meter) -> Result<()> {
+    fn carry_on(
+        &mut self,
+        a: f64,
+        bytes: &mut Meter,
+        (spare, free): (&mut dyn Spare, bool),
+    ) -> Result<()> {
         let groups = self.windings.len();
         let last = self.carried_after.len().saturating_sub(groups);
         if !self.after.is_empty() && self.carried_after[last..] == self.windings[..] {
             return Ok(());
         }
-        room(&mut self.after, 1, bytes)?;
-        room(&mut self.carried_after, groups, bytes)?;
+        let release = (&mut *spare, free.then_some(&mut self.optional));
+        grow(&mut self.after, 1, release, bytes)?;
+        let release = (&mut *spare, free.then_some(&mut self.optional));
+        grow(&mut self.carried_after, groups, release, bytes)?;
         self.after.push(a);
         self.carried_after.extend_from_slice(&self.windings);
         Ok(())
@@ -1201,6 +1560,7 @@ impl Resolver {
         total: u32,
         record: bool,
         (work, bytes): (&mut Meter, &mut Meter),
+        (spare, free): (&mut dyn Spare, bool),
     ) -> Result<()> {
         self.columns.clear();
         self.rows.clear();
@@ -1272,16 +1632,19 @@ impl Resolver {
                 if record
                     && let Some(heights) = doubtful((p.line, q.line), (lo, hi), (d0, d1), error)
                 {
-                    room(&mut self.doubtful, 1, bytes)?;
+                    let release = (&mut *spare, free.then_some(&mut self.optional));
+                    grow(&mut self.doubtful, 1, release, bytes)?;
                     self.doubtful.push((heights.0, heights.1, i, j));
                 }
                 if (d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0) {
                     let y = lo + (hi - lo) * (d0 / (d0 - d1));
                     if y > lo && y < hi {
-                        room(&mut self.heights, 1, bytes)?;
+                        let release = (&mut *spare, free.then_some(&mut self.optional));
+                        grow(&mut self.heights, 1, release, bytes)?;
                         self.heights.push(y);
                         if record {
-                            room(&mut self.crosses, 1, bytes)?;
+                            let release = (&mut *spare, free.then_some(&mut self.optional));
+                            grow(&mut self.crosses, 1, release, bytes)?;
                             self.crosses.push(
                                 u128::from(total_key(y.to_bits())) << 64
                                     | u128::from(i) << 32
@@ -1429,6 +1792,7 @@ impl Resolver {
         pieces: &[Piece],
         a: f64,
         (out, bytes): (&mut Vec<Line>, &mut Meter),
+        (spare, free): (&mut dyn Spare, bool),
     ) -> Result<()> {
         for open in &self.open {
             self.slots[open.piece as usize] = Slot {
@@ -1448,7 +1812,14 @@ impl Resolver {
             let slot = std::mem::take(&mut self.slots[open.piece as usize]);
             if !slot.kept {
                 let line = pieces[open.piece as usize].line;
-                push_side((&mut *out, &mut *bytes), line, open.side, (open.from, a))?;
+                let release = (&mut *spare, free.then_some(&mut self.optional));
+                push_side(
+                    (&mut *out, &mut *bytes),
+                    line,
+                    open.side,
+                    (open.from, a),
+                    release,
+                )?;
             }
         }
         std::mem::swap(&mut self.open, &mut self.next);
@@ -1461,7 +1832,12 @@ impl Resolver {
     /// searches per pair, their sort, and one queue insertion/removal per
     /// pair. There are no more pairs than heights, whose sort is charged
     /// before this O(h log h) preparation and its queue updates run.
-    fn prepare_swaps(&mut self, pieces: usize, bytes: &mut Meter) -> Result<()> {
+    fn prepare_swaps(
+        &mut self,
+        pieces: usize,
+        bytes: &mut Meter,
+        (spare, free): (&mut dyn Spare, bool),
+    ) -> Result<()> {
         self.crosses.sort_unstable();
         // Every entry is written before it is read, so earlier sweeps' stay.
         if self.lefts.len() < pieces {
@@ -1475,7 +1851,8 @@ impl Resolver {
         self.bands.clear();
         self.reaching.clear();
         self.band = 0;
-        room(&mut self.bands, self.doubtful.len(), bytes)?;
+        let release = (&mut *spare, free.then_some(&mut self.optional));
+        grow(&mut self.bands, self.doubtful.len(), release, bytes)?;
         let heights = &self.heights;
         let middle = |t: usize| heights[t - 1].midpoint(heights[t]);
         for &(lo, hi, i, j) in &self.doubtful {
@@ -1495,7 +1872,8 @@ impl Resolver {
             self.bands.push((first, last, i, j));
         }
         self.bands.sort_unstable_by_key(|band| band.0);
-        room(&mut self.reaching, self.bands.len(), bytes)
+        let release = (&mut *spare, free.then_some(&mut self.optional));
+        grow(&mut self.reaching, self.bands.len(), release, bytes)
     }
 
     /// Inserts a pair into the min-heap of expiry heights. Storage for
@@ -2048,11 +2426,13 @@ fn merge(order: &mut Vec<Place>, joining: &[Place]) {
 
 /// Appends the side of `line` over heights `from..to`: downward when
 /// coverage starts at it (`side` +1), upward when it stops.
+#[inline]
 fn push_side(
     (out, bytes): (&mut Vec<Line>, &mut Meter),
     line: Line,
     side: i32,
     (from, to): (f64, f64),
+    release: Release<'_, '_>,
 ) -> Result<()> {
     let (upper, lower) = if line.a.y < line.b.y {
         (line.a, line.b)
@@ -2066,7 +2446,7 @@ fn push_side(
     }
     let a = crate::Point::new(line.x(from), from);
     let b = crate::Point::new(line.x(to), to);
-    room(out, 1, bytes)?;
+    grow(out, 1, release, bytes)?;
     out.push(if side > 0 {
         Line { a, b }
     } else {

@@ -529,7 +529,7 @@ fn dense_rows_cost_their_chunks() {
             &pieces,
             (&rules, 0.0),
             (&mut once, &mut whole, &mut bytes),
-            false,
+            (false, &mut (), false),
         )
         .unwrap();
     assert!((enclosed(&out) - enclosed(&once)).abs() < 1e-9);
@@ -919,6 +919,104 @@ fn regions_given_up_anywhere_keep_every_side() {
         }
     }
     assert!(given_up > 100, "{given_up}");
+}
+
+/// A spare holding bytes of the row's own meter, without proofs.
+struct Holding(usize);
+
+impl Spare for Holding {
+    fn held(&self) -> usize {
+        self.0
+    }
+
+    fn release(&mut self) -> usize {
+        std::mem::take(&mut self.0)
+    }
+
+    fn work(&mut self) -> Option<&mut Meter> {
+        None
+    }
+}
+
+/// The sides of row `0..1` under the nonzero rule within `limit` bytes,
+/// `spare`'s among them, and the bytes charged at its end.
+fn held_sides(pieces: &[Piece], limit: usize, spare: &mut Holding) -> Result<(Vec<Line>, usize)> {
+    let mut out = Vec::new();
+    let mut work = Meter::new(usize::MAX, "work");
+    let mut bytes = Meter::new(limit, "bytes");
+    bytes.charge(spare.0)?;
+    let meters = Meters {
+        work: &mut work,
+        bytes: &mut bytes,
+    };
+    Resolver::default().row_proven(pieces, &[FillRule::NonZero], 0.0, spare, (&mut out, meters))?;
+    Ok((out, bytes.used()))
+}
+
+/// A row of long pieces, half of whose pairs cross, so that its sweeps'
+/// crossings outgrow what [`sweep_bound`] covers before them. At budgets
+/// from the least it resolves in to twice that plus a spare's bytes, it
+/// resolves with the spare held on the same bytes too: to the same sides,
+/// charging what it charges without the spare, plus the spare where it is
+/// kept. Between, the spare is given up where the crossings' room comes
+/// short.
+#[test]
+fn spares_give_way_to_a_sweeps_crossings() {
+    let count = 160_u32;
+    let lines: Vec<(Line, u8)> = (0..count)
+        .map(|k| {
+            let (top, bottom) = (f64::from(k), f64::from(k * 37 % count) + 0.5);
+            let side = if k % 2 == 0 {
+                line(top, 0.0, bottom, 1.0)
+            } else {
+                line(bottom, 1.0, top, 0.0)
+            };
+            (side, 0)
+        })
+        .collect();
+    let pieces = pieces(&lines);
+    let plain = |limit| held_sides(&pieces, limit, &mut Holding(0)).ok();
+    let (full, _) = plain(usize::MAX).unwrap();
+    let (mut short, mut least) = (0, 1 << 24);
+    while least - short > 1 {
+        let mid = usize::midpoint(short, least);
+        if plain(mid).is_some() {
+            least = mid;
+        } else {
+            short = mid;
+        }
+    }
+    let bits = |sides: &[Line]| -> Vec<[u64; 4]> {
+        sides
+            .iter()
+            .map(|l| [l.a.x, l.a.y, l.b.x, l.b.y].map(f64::to_bits))
+            .collect()
+    };
+    RELEASES.with(|r| r.set(0));
+    let (mut kept, mut resolved) = (0, 0);
+    for held in [least / 8, least / 2, least * 2] {
+        let limits = [least - 1, least + 1].into_iter();
+        let span = held + least;
+        for limit in limits.chain((0..=32).map(|k| least + span * k / 32)) {
+            // A spare is built only where its bytes fit.
+            let Some((plain, charged)) = plain(limit).filter(|_| held <= limit) else {
+                continue;
+            };
+            let mut spare = Holding(held);
+            let (sides, used) = held_sides(&pieces, limit, &mut spare)
+                .unwrap_or_else(|e| panic!("{held} held within {limit}: {e:?}"));
+            assert_eq!(bits(&sides), bits(&full), "{held} held within {limit}");
+            assert_eq!(bits(&plain), bits(&full), "within {limit}");
+            assert_eq!(used, charged + spare.0, "{held} held within {limit}");
+            kept += usize::from(spare.0 > 0);
+            resolved += 1;
+        }
+    }
+    let released = RELEASES.with(std::cell::Cell::get);
+    assert!(
+        released > 10 && kept > 10,
+        "{released} {kept} of {resolved}"
+    );
 }
 
 /// Case `case` of strokes of short segments around a wobbly circle, whole

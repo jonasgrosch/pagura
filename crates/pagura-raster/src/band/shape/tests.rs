@@ -1,5 +1,6 @@
 use super::*;
 use crate::Point;
+use crate::band::union::SCRATCH_BOUND;
 use pagura_core::{ErrorKind, Limits};
 
 #[test]
@@ -379,12 +380,15 @@ fn halved(renders: impl Fn(usize) -> bool, most: usize) -> usize {
 }
 
 /// Each of `strokes` renders, with spines, in every render budget it
-/// renders in without, of those scanned: `near` bytes either side of the
-/// least it renders in without spines, 8 apart, and `above` budgets spread
-/// up to four times that. Success is not monotone in the budget, since
-/// capacities double only where that fits, so halving finds a least budget
-/// where the one below fails, and the budgets around it are scanned. Nor
-/// does the shape keep more for the page's budget.
+/// renders in without, of those scanned, raised by the bound on what a
+/// spine's regions can leave the resolver's scratch holding beyond the
+/// route without them (`scratch_bound`, as `SCRATCH_BOUND` notes it). The
+/// budgets scanned are `near` bytes either side of the least it renders in
+/// without spines, 8 apart, and `above` budgets spread up to four times
+/// that. Success is not monotone in the budget, since capacities double
+/// only where that fits, so halving finds a least budget where the one
+/// below fails, and the budgets around it are scanned. Nor does the shape
+/// keep more for the page's budget.
 fn never_refused(strokes: &[(Path, Stroke)], (near, above): (usize, usize)) {
     for (path, stroke) in strokes {
         let bytes = |render_bytes| Limits {
@@ -396,11 +400,14 @@ fn never_refused(strokes: &[(Path, Stroke)], (near, above): (usize, usize)) {
         let least = halved(plain, Limits::default().render_bytes);
         let around = (least.saturating_sub(near)..least + near).step_by(8);
         let spread = (least..4 * least).step_by((3 * least / above).max(8));
+        SCRATCH_BOUND.with(|bound| bound.set(0));
+        stroked(path, stroke, &Limits::default()).unwrap();
+        let rise = SCRATCH_BOUND.with(std::cell::Cell::get);
         for budget in around.chain(spread) {
             if plain(budget) {
                 assert!(
-                    renders(path, stroke, &bytes(budget)),
-                    "{stroke:?} at {budget}"
+                    renders(path, stroke, &bytes(budget + rise)),
+                    "{stroke:?} at {budget} + {rise}"
                 );
             }
         }
@@ -440,16 +447,17 @@ fn never_raised(strokes: &[(Path, Stroke)], (near, above): (usize, usize)) {
     }
 }
 
-/// A spine never turns a render into a refusal for want of bytes: the
-/// reviewed case and a dense fan, scanned near their least budgets.
+/// A spine raises the bytes a render needs by no more than the bound on
+/// what its regions leave the resolver's scratch holding: the reviewed case
+/// and a dense fan, scanned near their least budgets.
 #[test]
-fn spines_never_turn_a_render_into_a_refusal() {
+fn spines_raise_the_least_bytes_within_their_bound() {
     let probed = probed();
     never_refused(&[probed[0].clone(), probed[3].clone()], (64, 8));
 }
 
-/// Nor for want of work: the shape's meter is charged no more with spines
-/// than without, for the reviewed case and a dense fan.
+/// Nor the work: the shape's meter is charged no more with spines than
+/// without, for the reviewed case and a dense fan.
 #[test]
 fn spines_never_raise_the_least_raster_work() {
     let probed = probed();
@@ -461,7 +469,7 @@ fn spines_never_raise_the_least_raster_work() {
 /// and 64 above.
 #[test]
 #[ignore = "slow unoptimized; run with --release --ignored"]
-fn spines_never_refuse_any_probed_budget() {
+fn spines_keep_every_probed_budget_within_their_bound() {
     let probed = probed();
     never_refused(&probed, (1024, 128));
     never_raised(&probed, (64, 64));
