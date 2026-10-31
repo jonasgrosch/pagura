@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "description": "Source-owned complete RGB/Strict/information parity for four checked MinionPro styles, both CID kinds and their canonical Times controls. Font API vectors remain checked by all-target tests; external whole-page refusals/RGBA/higherDPI/memory retain separately frozen qualification evidence.",
+  "cases": [
+    "text/paint-checked-cid-regular-CIDFontType0",
+    "text/paint-legacy-cid-regular-CIDFontType0",
+    "text/paint-checked-cid-regular-CIDFontType2",
+    "text/paint-legacy-cid-regular-CIDFontType2",
+    "text/paint-checked-cid-bold-CIDFontType0",
+    "text/paint-legacy-cid-bold-CIDFontType0",
+    "text/paint-checked-cid-bold-CIDFontType2",
+    "text/paint-legacy-cid-bold-CIDFontType2",
+    "text/paint-checked-cid-italic-CIDFontType0",
+    "text/paint-legacy-cid-italic-CIDFontType0",
+    "text/paint-checked-cid-italic-CIDFontType2",
+    "text/paint-legacy-cid-italic-CIDFontType2",
+    "text/paint-checked-cid-bolditalic-CIDFontType0",
+    "text/paint-legacy-cid-bolditalic-CIDFontType0",
+    "text/paint-checked-cid-bolditalic-CIDFontType2",
+    "text/paint-legacy-cid-bolditalic-CIDFontType2"
+  ]
+}
