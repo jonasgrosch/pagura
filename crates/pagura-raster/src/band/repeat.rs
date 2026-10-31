@@ -27,6 +27,11 @@
 //! the pieces that can meet one pixel, around that area is the byte of the
 //! placement's own preparation.
 //!
+//! Stroke adjustment that only rounds the pen keeps the centrelines, so its
+//! pieces move with the stroke and repeat like any others. Adjustment that
+//! snaps centrelines to the device grid fits each placement by where it
+//! lies, so those strokes never repeat.
+//!
 //! Templates are kept from a stroke's second placement, only where it
 //! needed the resolver, within an eighth of the render's byte budget of
 //! their own, so that they never decide whether another shape fits.
@@ -150,17 +155,19 @@ impl Shape {
         templates: &mut StrokeTemplates,
     ) -> Result<Option<Self>> {
         let prep = Prep::new(options, clip);
-        let (polygon, tiling, mut bytes) =
+        let (polygon, tiling, mut bytes, translates) =
             Self::stroke_pieces(path, stroke, (pen, transform), adjustment, &prep)?;
-        // Only unproven pieces may need the resolver.
-        if adjustment != Adjustment::None
+        // Only unproven pieces may need the resolver, and only pieces that
+        // move with the stroke can repeat: stroke adjustment that snaps to
+        // the device grid fits each placement by where it lies.
+        if !translates
             || tiling != Tiling::Unproven
             || polygon.points.is_empty()
             || polygon.points_cells
         {
             return Self::stroke_finish(polygon, tiling, &prep, &mut bytes);
         }
-        let key = key(path, stroke, (pen, transform));
+        let key = key(path, stroke, (pen, transform), adjustment);
         let hash = hash(key.clone());
         let StrokeTemplates {
             meter,
@@ -442,10 +449,8 @@ impl Template {
             return None;
         }
         let reversed = swept > 0.0;
-        let mut count = 0;
-        boundary(shape, reversed, |_| count += 1);
         let mut lines = Vec::new();
-        meter.reserve(&mut lines, count).ok()?;
+        meter.reserve(&mut lines, boundary_len(shape)).ok()?;
         boundary(shape, reversed, |l| {
             lines.push(Line {
                 a: l.a - origin,
@@ -511,57 +516,88 @@ fn bound(extent: Extent, (displaced, magnitude): (f64, f64), width: f64) -> f64 
 /// begin and end and reversed where `reversed`, and the sides of the
 /// resolved rows.
 fn boundary(shape: &Shape, reversed: bool, mut emit: impl FnMut(Line)) {
+    unresolved(shape, |line, from, to| {
+        let a = Point::new(line.x(from), from);
+        let b = Point::new(line.x(to), to);
+        let part = if line.a.y < line.b.y {
+            Line { a, b }
+        } else {
+            Line { a: b, b: a }
+        };
+        emit(if reversed {
+            Line {
+                a: part.b,
+                b: part.a,
+            }
+        } else {
+            part
+        });
+    });
+    shape.resolved.sides().iter().copied().for_each(emit);
+}
+
+/// How many lines [`boundary`] emits, found without placing them.
+fn boundary_len(shape: &Shape) -> usize {
+    let mut count = shape.resolved.sides().len();
+    unresolved(shape, |_, _, _| count += 1);
+    count
+}
+
+/// Calls `part` with each line of `shape` outside its resolved rows and the
+/// heights `from < to` of each of its runs of rows there.
+fn unresolved(shape: &Shape, mut part: impl FnMut(Line, f64, f64)) {
     let Body::Edges(body) = &shape.body else {
         return;
     };
     let is_resolved = |row: i64| {
         u32::try_from(row).is_ok_and(|r| r < u32::MAX && shape.resolved.mask(&(r..r + 1)) != 0)
     };
+    // Bit k: whether row `row + k` is resolved, for up to 32 rows.
+    let resolved = |row: i64, span: i64| -> u32 {
+        match (u32::try_from(row), u32::try_from(row + span)) {
+            (Ok(start), Ok(end)) if end < u32::MAX => shape.resolved.mask(&(start..end)),
+            _ => (0..span).fold(0, |mask, k| mask | (u32::from(is_resolved(row + k)) << k)),
+        }
+    };
     for &line in &body.lines {
         if line.is_horizontal() {
             continue;
         }
         let (lo, hi) = (line.a.y.min(line.b.y), line.a.y.max(line.b.y));
-        let mut part = |from: f64, to: f64| {
+        let mut emit = |from: f64, to: f64| {
             let (from, to) = (from.max(lo), to.min(hi));
             if from < to {
-                let a = Point::new(line.x(from), from);
-                let b = Point::new(line.x(to), to);
-                let part = if line.a.y < line.b.y {
-                    Line { a, b }
-                } else {
-                    Line { a: b, b: a }
-                };
-                emit(if reversed {
-                    Line {
-                        a: part.b,
-                        b: part.a,
-                    }
-                } else {
-                    part
-                });
+                part(line, from, to);
             }
         };
         #[expect(clippy::cast_possible_truncation, reason = "device rows fit i64")]
         let (first, last) = (lo.floor() as i64, hi.ceil() as i64);
         let mut run = None;
-        for row in first..last {
-            match (is_resolved(row), run) {
-                (false, None) => run = Some(row),
-                (true, Some(start)) => {
-                    #[expect(clippy::cast_precision_loss, reason = "device rows are exact in f64")]
-                    part(start as f64, row as f64);
-                    run = None;
+        let mut row = first;
+        while row < last {
+            let span = (last - row).min(32);
+            let mask = resolved(row, span);
+            for k in 0..span {
+                match ((mask >> k) & 1 != 0, run) {
+                    (false, None) => run = Some(row + k),
+                    (true, Some(start)) => {
+                        #[expect(
+                            clippy::cast_precision_loss,
+                            reason = "device rows are exact in f64"
+                        )]
+                        emit(start as f64, (row + k) as f64);
+                        run = None;
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
+            row += span;
         }
         if let Some(start) = run {
             #[expect(clippy::cast_precision_loss, reason = "device rows are exact in f64")]
-            part(start as f64, last as f64);
+            emit(start as f64, last as f64);
         }
     }
-    shape.resolved.sides().iter().copied().for_each(emit);
 }
 
 /// The sides of the contours `starts` of `points`.
@@ -784,6 +820,7 @@ fn key<'a>(
     path: &'a Path,
     stroke: &'a Stroke,
     (pen, transform): (Transform, Transform),
+    adjustment: Adjustment,
 ) -> impl Iterator<Item = u64> + Clone + 'a {
     let origin = path
         .segments()
@@ -817,6 +854,7 @@ fn key<'a>(
             stroke.join as u64,
             stroke.miter_limit.to_bits(),
             stroke.dash_phase.to_bits(),
+            adjustment as u64,
         ])
         .chain(stroke.dash_array.iter().map(|d| d.to_bits()))
         .chain(

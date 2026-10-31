@@ -287,10 +287,10 @@ pub(crate) fn adjusted_polygon_pieces(
     limits: &Limits,
     accept: Tiling,
     bytes: &mut Meter,
-) -> Result<(Polygon, Tiling)> {
+) -> Result<(Polygon, Tiling, crate::adjust::Fit)> {
     let before = bytes.used();
     let result = crate::adjust::runs(path, transform, stroke, limits, bytes).and_then(
-        |(runs, pen, pen_transform)| {
+        |(runs, pen, pen_transform, fit)| {
             assemble(
                 runs,
                 (
@@ -304,11 +304,14 @@ pub(crate) fn adjusted_polygon_pieces(
                 Mapped::new,
                 bytes,
             )
+            .map(|assembled| (assembled, fit))
         },
     );
-    let retained = result.as_ref().map_or(0, |(out, _, _)| out.heap_bytes());
+    let retained = result
+        .as_ref()
+        .map_or(0, |((out, _, _), _)| out.heap_bytes());
     bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
-    result.map(|(mapped, _, tiling)| (mapped.finish(), tiling))
+    result.map(|((mapped, _, tiling), fit)| (mapped.finish(), tiling, fit))
 }
 
 /// Whether `transform` maps circles to circles.
