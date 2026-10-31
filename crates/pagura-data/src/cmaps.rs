@@ -15,6 +15,8 @@ use std::sync::{Arc, OnceLock};
 /// A parsed CMap keeps its ranges, with its parents' kept once: from 0.6 KB
 /// to 0.98 MB (UniCNS-UTF16-H), 6.6 MB for all 59 natively and 6.4 MB on
 /// wasm32; parsing needs little beyond what it keeps.
+#[cold]
+#[inline(never)]
 pub(crate) fn predefined_cmap(name: &[u8]) -> Result<Option<PredefinedCMap>> {
     load(name, &mut Vec::new())
 }
@@ -52,6 +54,8 @@ fn load(name: &[u8], path: &mut Vec<&'static [u8]>) -> Result<Option<PredefinedC
 /// A collection's table keeps 0.70 MB (Korea1) to 1.21 MB (GB1) natively and
 /// half that on wasm32, 3.4 MB and 1.7 MB for all four; parsing one peaks at
 /// about 1.9 times what it keeps.
+#[cold]
+#[inline(never)]
 pub(crate) fn cid_to_unicode(
     registry: &[u8],
     ordering: &[u8],
