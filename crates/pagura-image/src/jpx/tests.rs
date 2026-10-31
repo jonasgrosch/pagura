@@ -193,6 +193,33 @@ fn limits_bound_input_pixels_allocations_and_work() {
 }
 
 #[test]
+fn the_allocation_budget_bounds_live_bytes_not_their_sum() {
+    let data = fixture("jpx", "derived-three-levels.jpx");
+    let decode = |decoded_bytes| {
+        let limits = Limits {
+            decoded_bytes,
+            ..Limits::default()
+        };
+        let mut budget = super::io::Budget::new(&limits);
+        let result =
+            super::decode_bounded(&data, &mut budget, &super::Options::default(), false).map(drop);
+        (result, budget.usage())
+    };
+    let (result, (peak, charged)) = decode(Limits::default().decoded_bytes);
+    result.unwrap();
+    // Each resolution's subbands and each code-block's coefficients are
+    // freed before the next are allocated.
+    assert!(
+        charged > peak,
+        "{charged} bytes charged, {peak} live at most"
+    );
+    // The live peak is admitted, and a byte less is refused.
+    assert_eq!(decode(peak).0, Ok(()));
+    let (refused, _) = decode(peak - 1);
+    assert_eq!(refused.unwrap_err().kind, ErrorKind::Limit);
+}
+
+#[test]
 fn smooth_tile_synthesis_stays_within_work_budget() -> pagura_core::Result<()> {
     let limits = Limits {
         decode_work: 250_000,

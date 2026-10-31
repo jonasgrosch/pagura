@@ -114,7 +114,14 @@ impl<'a> Reader<'a> {
 
 pub(super) struct Budget<'a> {
     pub limits: &'a Limits,
+    /// Bytes of the allocations charged and not yet freed through
+    /// [`Self::free`].
     bytes: usize,
+    /// The most `bytes` has been.
+    peak: usize,
+    /// Every allocation's bytes, freed or not.
+    #[cfg(test)]
+    charged: usize,
     work: usize,
     pub diagnostics: Diagnostics,
     pub repaired_part_count: bool,
@@ -125,6 +132,9 @@ impl<'a> Budget<'a> {
         Self {
             limits,
             bytes: 0,
+            peak: 0,
+            #[cfg(test)]
+            charged: 0,
             work: 0,
             diagnostics: Diagnostics::new(Recovery::Strict),
             repaired_part_count: false,
@@ -143,12 +153,35 @@ impl<'a> Budget<'a> {
     pub fn charge<T>(&mut self, count: usize) -> Result<()> {
         // Initializing or copying each allocation is work even before entropy decoding.
         self.work(count)?;
-        self.bytes = count
+        let bytes = count
             .checked_mul(size_of::<T>())
-            .and_then(|n| self.bytes.checked_add(n))
+            .ok_or_else(|| Error::limit("JPEG 2000 allocation budget exceeded"))?;
+        self.bytes = self
+            .bytes
+            .checked_add(bytes)
             .filter(|&n| n <= self.limits.decoded_bytes)
             .ok_or_else(|| Error::limit("JPEG 2000 allocation budget exceeded"))?;
+        self.peak = self.peak.max(self.bytes);
+        #[cfg(test)]
+        {
+            self.charged = self.charged.saturating_add(bytes);
+        }
         Ok(())
+    }
+
+    /// Frees `values`, which [`Self::filled`] allocated, and returns their
+    /// bytes to the budget: it bounds the allocations live at once, so
+    /// memory freed during decoding is admitted again. Work stays charged.
+    pub fn free<T>(&mut self, values: Vec<T>) {
+        let bytes = values.capacity().saturating_mul(size_of::<T>());
+        drop(values);
+        self.bytes = self.bytes.saturating_sub(bytes);
+    }
+
+    /// The most bytes live at once, and every allocation's bytes.
+    #[cfg(test)]
+    pub fn usage(&self) -> (usize, usize) {
+        (self.peak, self.charged)
     }
 
     pub fn push<T>(&mut self, values: &mut Vec<T>, value: T) -> Result<()> {

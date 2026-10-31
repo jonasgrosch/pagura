@@ -448,6 +448,10 @@ impl Tile {
                 }
             }
         }
+        for plane in &mut planes {
+            budget.free(std::mem::take(&mut plane.values));
+        }
+        budget.free(planes);
         Ok(())
     }
 }
@@ -570,6 +574,7 @@ fn reconstruct_component(
                         band.plane.include_rows(block.y + y..block.y + y + 1);
                     }
                 }
+                budget.free(values);
             }
             band_index += 1;
         }
@@ -577,15 +582,20 @@ fn reconstruct_component(
             low = r.bands.pop().map(|band| band.plane);
         } else {
             let previous = low
-                .as_ref()
+                .take()
                 .ok_or_else(|| syntax("missing JPEG 2000 low-pass subband", 0))?;
             low = Some(wavelet::synthesize(
-                previous,
+                &previous,
                 [&r.bands[0].plane, &r.bands[1].plane, &r.bands[2].plane],
                 r.bounds,
                 style.reversible,
                 budget,
             )?);
+            // The next resolution's plane replaces this one's subbands.
+            budget.free(previous.values);
+            for band in r.bands {
+                budget.free(band.plane.values);
+            }
         }
     }
     low.ok_or_else(|| syntax("missing JPEG 2000 resolutions", 0))
