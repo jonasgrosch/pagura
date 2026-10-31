@@ -58,15 +58,20 @@ if (process.argv[2] === '--wasi') {
           const r=spawnSync(command[0],[...command.slice(1),input,output,mode,String(c.dpi??72)],
             {cwd:root,encoding:'utf8',timeout:60000,env:{...process.env,COMPATIBILITY_GAP_SCRATCH:scratch}});
           assert(!r.error,`${stem}: ${r.error}`);
-          const rejectedRepair=mode==='strict' && !c.strict_valid && c.repairs.length>0;
+          const strictRepair=mode==='strict' ? c.strict_repair : undefined;
+          const rejectedRepair=Boolean(strictRepair) || (mode==='strict' && !c.strict_valid && c.repairs.length>0);
           if(c.expected==='render' && !rejectedRepair) {
             assert.equal(r.status,0,`${stem}: ${r.stderr}`);
             for(const tag of c.repairs) assert(r.stdout.split('\n').includes(tag),`${stem}: missing ${tag}`);
+            for(const tag of c.information??[]) assert(r.stdout.split('\n').includes(tag),`${stem}: missing information ${tag}`);
             compare(localOutput,c.oracle,c.tolerance??0);
           } else {
             assert.equal(r.status,1,`${stem}: expected refusal: ${r.stderr}`);
             assert(!existsSync(localOutput),`${stem}: partial output after refusal`);
-            if(rejectedRepair) assert(c.repairs.some(tag=>r.stderr.includes(tag)),`${stem}: strict repair tag`);
+            if(strictRepair) {
+              assert(r.stderr.includes('Syntax'),`${stem}: strict repair error kind`);
+              assert(r.stderr.includes(strictRepair),`${stem}: strict repair tag`);
+            } else if(rejectedRepair) assert(c.repairs.some(tag=>r.stderr.includes(tag)),`${stem}: strict repair tag`);
             else if(c.expected==='unsupported') assert(r.stderr.includes(c.feature),`${stem}: feature tag`);
             else {
               const kind = {syntax:'Syntax', limit:'Limit', cycle:'Cycle', 'invalid-argument':'InvalidArgument'}[c.render_error?.toLowerCase()];

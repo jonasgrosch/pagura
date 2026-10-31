@@ -3,7 +3,8 @@
 This source combines certified opaque-black tiling, calibrated BlackPoint metadata
 with compensation disabled, unmatched-EMC recovery, literal-null annotation
 members, checked Minion CID source-Unicode fallback, complete single-page JBIG2
-packaging repair and bounded Type 4 calculator branch proofs. Component evidence
+packaging repair, bounded Type 4 calculator branch proofs, complete inline-EI
+framing and declared-precision JP2 palette-padding recovery. Component evidence
 retains its exact source provenance. This selected union requires its own
 accuracy, all-page, parity, cost, memory and exact-head CI qualification; no
 aggregate gain follows by summing branches. Referenced null annotations remain
@@ -25,7 +26,7 @@ they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
-43 capability families, all 90 literal tags reviewed, and all 335 requirement IDs assigned.
+43 capability families, all 90 literal tags reviewed, and all 364 requirement IDs assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.
@@ -98,6 +99,23 @@ multipage files remain refused; no arithmetic termination or EOF bytes are
 synthesized. See `jbig2-single-page-wrapper-recovery` and ADR 0003.
 
 ## Evidence and accuracy
+
+JP2 palette padding has an explicit reported Repair path: only unused high
+bits above the declared column precision are cleared; Strict still refuses
+them. Independent literal sample/pixel controls cover mixed signed precision,
+meaningful 16-bit high bits, PDF Indexed override, alpha and retained malformed
+or unsupported layouts. This is a source description; exact-head execution,
+public compatibility, cost/memory and integration qualification remain pending.
+
+Inline separator recovery accepts a complete `EI` token at a caller-framed
+boundary only with a reported repair. Before drawing such an image, raw and
+general-filter samples must have the exact row-padded byte count under the
+caller’s limits. Image-codec separator recovery remains refused until its
+completeness proof can share one per-image codec work budget; missing tokens,
+comment gaps and incomplete samples do not qualify through this repair.
+The independent `paint_inline_framing` controls distinguish new complete
+images from retained legacy sample-padding behavior. Runtime, public-corpus,
+performance and memory qualification of this addition remains pending.
 
 Source entry points and existing tests supporting this reconciliation include:
 

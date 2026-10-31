@@ -1,7 +1,60 @@
 //! Inline image abbreviations and data boundaries (8.9.7, Tables 91–92).
 use crate::parameters as p;
 use pagura_codec::{FilterChain, ImageCodec};
-use pagura_core::{Diagnostics, Dictionary, Error, Name, Result, Value, syntax::is_whitespace};
+use pagura_core::{
+    Diagnostics, Dictionary, Error, Limits, Name, Recovery, Result, Value, syntax::is_whitespace,
+};
+
+/// Completeness proof for a malformed separator, without sample padding.
+pub(crate) fn validate_samples(
+    dictionary: &Dictionary,
+    data: &[u8],
+    limits: &Limits,
+) -> Result<()> {
+    if data.len() > limits.stream_bytes {
+        return Err(Error::limit("inline image encoded byte budget exceeded"));
+    }
+    let dict = expanded(dictionary)?;
+    let (width, height) = p::dimensions(&dict)?;
+    let stencil = p::boolean(&dict, b"ImageMask", false)?;
+    let components = if stencil {
+        1
+    } else {
+        p::components(
+            dict.get(b"ColorSpace")
+                .ok_or(Error::syntax("missing inline ColorSpace"))?,
+        )?
+    };
+    let bits = p::integer(&dict, b"BitsPerComponent", i64::from(stencil))?;
+    if !matches!(bits, 1 | 2 | 4 | 8 | 16) {
+        return Err(Error::syntax("invalid inline BitsPerComponent"));
+    }
+    let bits = u8::try_from(bits).map_err(|_| Error::syntax("invalid inline BitsPerComponent"))?;
+    p::budget(width, height, components, bits, limits)?;
+    let expected = u64::from(width)
+        .checked_mul(u64::from(components))
+        .and_then(|n| n.checked_mul(u64::from(bits)))
+        .map(|n| n.div_ceil(8))
+        .and_then(|n| n.checked_mul(u64::from(height)))
+        .and_then(|n| usize::try_from(n).ok())
+        .ok_or(Error::limit("inline image sample size overflow"))?;
+    let mut chain = FilterChain::from_entries(dict.get(b"Filter"), dict.get(b"DecodeParms"))?;
+    if chain.split_image().is_some() || chain.take_crypt().is_some() {
+        // Codec work is budgeted per image. Do not prove completeness by
+        // decoding here and then giving a second decode a fresh work budget.
+        return Err(Error::syntax(
+            "inline separator repair requires complete raw samples",
+        ));
+    }
+    let mut diagnostics = Diagnostics::new(Recovery::Strict);
+    let decoded = chain.decode_sized(data, limits.decoded_bytes, expected, &mut diagnostics)?;
+    if decoded.len() != expected {
+        return Err(Error::syntax(
+            "inline separator repair requires exact sample bytes",
+        ));
+    }
+    Ok(())
+}
 
 pub(crate) fn expanded(dictionary: &Dictionary) -> Result<Dictionary> {
     let mut expanded = Dictionary::new();
@@ -160,8 +213,8 @@ fn valid_prefix(
     dict: &Dictionary,
     data: &[u8],
 ) -> bool {
-    let limits = pagura_core::Limits::default();
-    let mut diagnostics = Diagnostics::new(pagura_core::Recovery::Strict);
+    let limits = Limits::default();
+    let mut diagnostics = Diagnostics::new(Recovery::Strict);
     let Ok(decoded) = chain.decode(data, limits.decoded_bytes, &mut diagnostics) else {
         return false;
     };

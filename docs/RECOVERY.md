@@ -66,6 +66,18 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   for this policy; the subsampled fixture derives pixels from stated RGB
   sample arrays and grid placement.
 
+- `inline.ei-separator` (8.9.7): accept a complete `EI` token immediately
+  at the caller-framed image boundary when the intervening whitespace is
+  absent. The data bytes and following content tokens are preserved. This
+  repairs separation only: missing `EI`, an attached operator such as `EIQ`,
+  framing errors and resource/decoder limits remain errors. The tokenizer's
+  original entry point stays strict; its diagnostic-aware entry point and
+  the interpreter require explicit recovery permission. Before drawing a
+  repaired image, raw and general-filter data must supply the exact
+  row-padded sample bytes under the caller's limits; short-data padding is
+  not a completeness proof. Image-codec separator recovery remains refused
+  until completeness can share the ordinary per-image decode work budget.
+
 - `asn1.ber-set-order` (X.690 11.6; RFC 5652 5.1): retain BER SET OF source
   order with a diagnostic. Signed attributes, certificates and DER entry
   points remain strict. BER length, indefinite-container and OCTET STRING
@@ -242,6 +254,14 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 - `jpx.mapping-box-location` (T.800 I.5.3.4–I.5.3.5): a sole mapping box before
   the codestream supplies the header palette's missing mapping; duplicate or
   late mappings and missing palettes stay errors.
+- `jpx.palette-padding` (T.800 I.5.3.4, Tables I.12–I.13): clear only unused
+  high bits above a palette column's declared precision. Low-order sample
+  bits, the sign bit and signed-offset interpretation remain authoritative;
+  stored octets do not imply a wider precision. The first affected sample
+  position is reported once per codec invocation. Strict rejects the repair.
+  Complete tables/codestreams, mapping/opacity rules and existing budgets
+  still apply. Explicit PDF Indexed colours use their own lookup and the
+  original codestream indices; this adds no container-palette opacity support.
 - `image.xobject-type` (8.9.5, Table 87): `Subtype /Image` identifies an image
   XObject despite a malformed optional `Type`; invalid subtypes remain errors.
 - `image.filter-mismatch` (7.4.4, 7.4.8): a purported JPEG with predictor

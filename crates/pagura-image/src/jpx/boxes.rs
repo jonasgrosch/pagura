@@ -363,6 +363,7 @@ fn parse_palette(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Pal
                     fields.position(),
                 ));
             }
+            let position = fields.position();
             let raw = if bits <= 8 {
                 u16::from(fields.u8()?)
             } else {
@@ -370,10 +371,13 @@ fn parse_palette(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Pal
             };
             let mask = u16::MAX >> (16 - bits);
             if raw & !mask != 0 {
-                return Err(syntax(
-                    "nonzero JP2 palette sample padding",
-                    fields.position(),
-                ));
+                budget.diagnostics.repair_once(
+                    pagura_core::Diagnostic::new(
+                        crate::repairs::JPX_PALETTE_PADDING,
+                        "nonzero JP2 palette padding cleared above declared precision (T.800 I.5.3.4)",
+                    )
+                    .at(pagura_core::Position::Buffer(position)),
+                )?;
             }
             // Signed palette entries have the same unsigned-offset convention as components.
             *value = (raw & mask) ^ if depth & 128 == 0 { 0 } else { 1 << (bits - 1) };

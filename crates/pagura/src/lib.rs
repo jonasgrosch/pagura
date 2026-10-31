@@ -137,6 +137,14 @@ pub use pagura_image::jbig2::repairs::EOF_PAGE_ASSOCIATION as JBIG2_EOF_PAGE_ASS
 /// Reported complete declared single-page JBIG2 file packaging (ADR 0003).
 pub use pagura_image::jbig2::repairs::FILE_WRAPPER as JBIG2_FILE_WRAPPER;
 
+/// Stable reported-repair tags, grouped by their owning parser.
+pub mod repairs {
+    /// `jpx.`: image container repairs.
+    pub use pagura_image::repairs as image;
+    /// `inline.`: inline content framing.
+    pub use pagura_interpret::inline_repairs as inline;
+}
+
 use provider::{Provider, default_provider};
 use std::sync::Arc;
 

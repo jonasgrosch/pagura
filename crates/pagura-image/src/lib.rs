@@ -13,8 +13,9 @@ pub mod deferred;
 pub mod features;
 pub mod jbig2;
 pub mod jpx;
+pub mod repairs;
 
-use pagura_core::{Dictionary, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Limits, ObjectId, Result, Value};
 
 /// Stable reported repairs of malformed image dictionaries and data (ADR 0003).
 pub mod tags {
@@ -53,19 +54,6 @@ pub mod tags {
     /// Flate only after strict framing/checksum/predictor validation and an
     /// exact match to the declared eight-bit image sample count.
     pub const FILTER_MISMATCH: Repair = Repair::new("image.filter-mismatch");
-}
-
-/// Stable reported repairs of image framing (ADR 0003).
-pub mod repairs {
-    use pagura_core::Repair;
-
-    /// 7.4.9 requires a full JPX file. Viewing may decode an unboxed
-    /// T.800 codestream only with an explicit PDF colour space and no
-    /// embedded-opacity request; metadata is never inferred from channel count.
-    pub const JPX_CODESTREAM: Repair = Repair::new("jpx.raw-codestream");
-
-    /// Every framing repair owned by this module.
-    pub const ALL: &[Repair] = &[JPX_CODESTREAM];
 }
 
 mod dispatch;
@@ -258,6 +246,25 @@ impl DecodedImage {
 pub fn inline_data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {
     inline::data_length(dictionary, content)
         .map_err(|error| error.at(pagura_core::Position::Buffer(0)))
+}
+
+/// Proves exact row-padded sample bytes for an inline image separator repair.
+/// Named resource colour spaces must already be resolved in `dictionary`.
+/// Raw samples and general-purpose filters are checked without the legacy
+/// short-data padding or excess-data recovery. Image-codec filters require
+/// their ordinary single-decode path and are refused by this proof.
+///
+/// # Errors
+///
+/// `Syntax` for an inexact byte count or an unavailable separator-recovery
+/// route; malformed-filter errors, `Unsupported` features and the caller's
+/// work/storage limits propagate.
+pub fn validate_inline_samples(
+    dictionary: &Dictionary,
+    data: &[u8],
+    limits: &Limits,
+) -> Result<()> {
+    inline::validate_samples(dictionary, data, limits)
 }
 
 #[cfg(test)]
