@@ -140,7 +140,7 @@ def cases():
                        ("fake-header-in-comment", "comment"), ("fake-header-in-name", "name")]:
         data, xref = visitor(kind)
         override = kind in ["override", "generation-override"]
-        repairs = (REBUILT, INTEGER) if override else (REBUILT,)
+        repairs = (REBUILT,)
         if override:
             repairs += (LENGTH,)
         queries = ([{"object": [5, 0], "expected": "integer", "value": 99}] if kind == "override" else
@@ -163,7 +163,7 @@ def cases():
         yield Case(name, data, OPEN if boundary_refusal else RENDER, REQUIREMENT,
                    "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
                    oracle=None if boundary_refusal else ORACLE,
-                   strict_valid=False, repairs=(REBUILT, INTEGER) if boundary_refusal else repairs, extra=extra)
+                   strict_valid=False, repairs=(REBUILT,) if boundary_refusal else repairs, extra=extra)
     for name, options, tag in [
         ("encrypt-null", {"trailer": b" /Encrypt null"}, None),
         ("encrypt-undefined-reference", {"trailer": b" /Encrypt 99 0 R"}, None),

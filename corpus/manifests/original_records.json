@@ -1148,8 +1148,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "xref.rebuilt",
-        "object.integer-separator"
+        "xref.rebuilt"
       ],
       "mode_errors": {
         "strict": {
@@ -1196,7 +1195,6 @@
       "strict_valid": false,
       "repairs": [
         "xref.rebuilt",
-        "object.integer-separator",
         "stream.length-corrected"
       ],
       "oracle": "corpus/generated/original_records/joined-then-generation-override.ppm",
