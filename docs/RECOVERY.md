@@ -104,6 +104,14 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   unsupported construct) is replaced by the substitute a non-embedded font with
   the same name and descriptor would get, with the PDF's widths. Strict mode
   keeps the program's error; budget and cycle errors are never replaced.
+- `font.cid-descriptor-face` (9.8.1–9.8.2; ADR 0009): an Identity (or
+  unnamed-collection) CIDFont whose name is no known Latin family, whose
+  descriptor sets Nonsymbolic consistently and whose Type 0 font has a
+  `ToUnicode` map draws through that map with the Latin face its descriptor
+  selects for an unknown simple font, keeping the PDF's `W` and `DW`. Codes
+  without ToUnicode text paint nothing. Symbolic, contradictory or missing
+  flags, no ToUnicode map and vertical writing keep the refusal; strict mode
+  keeps it with this repair attached.
 - `font.widths-length` (Table 109): a `Widths` array whose length disagrees
   with `FirstChar` and `LastChar`; codes past the array use `MissingWidth`
   and extra entries are ignored.

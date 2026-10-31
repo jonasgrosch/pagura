@@ -47,6 +47,11 @@ pub const SYMBOLIC_LATIN_ENCODING: Repair = Repair::new("font.symbolic-latin-enc
 /// repairs, is replaced by the substitute a non-embedded font with the same
 /// name and descriptor would get (ADR 0009); the PDF's widths keep the advances.
 pub const EMBEDDED_UNUSABLE: Repair = Repair::new("font.embedded-unusable");
+/// An Identity CIDFont whose name is no known Latin family, with consistent
+/// Nonsymbolic flags and a `ToUnicode` map, draws with the Latin face closest
+/// to its descriptor through that map, as a known Latin family would (9.8.1,
+/// ADR 0009). The face is a guess, so strict mode keeps the refusal.
+pub const CID_DESCRIPTOR_FACE: Repair = Repair::new("font.cid-descriptor-face");
 
 /// Every repair tag defined by this crate.
 pub const ALL: &[Repair] = &[
@@ -65,4 +70,5 @@ pub const ALL: &[Repair] = &[
     STREAM_LENGTHS,
     SYMBOLIC_LATIN_ENCODING,
     EMBEDDED_UNUSABLE,
+    CID_DESCRIPTOR_FACE,
 ];
