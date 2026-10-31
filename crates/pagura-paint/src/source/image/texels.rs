@@ -1439,13 +1439,18 @@ impl Memo {
         )]
         let wanted = key as f64;
         let probing = matches!(self.state, MemoState::Probing(_));
-        let slot = if probing {
+        let (slot, held_already) = if probing {
             self.slot(key, wanted)
         } else {
-            hash_slot(key, self.slots.len() / stride - 1)
+            let slot = hash_slot(key, self.slots.len() / stride - 1);
+            let held = self
+                .slots
+                .get(slot * stride)
+                .is_some_and(|k| k.to_bits() == wanted.to_bits());
+            (slot, held)
         };
         let mut at = slot * stride;
-        if self.slots.get(at).copied() != Some(wanted) {
+        if !held_already {
             convert(&mut self.spare[..held + usize::from(self.layout.opaque) * 2]);
             if probing && self.state.miss() {
                 at = hash_slot(key, self.slots.len() / stride - 1) * stride;
@@ -1458,20 +1463,22 @@ impl Memo {
         self.slots.get(at + 1..at + stride).unwrap_or(&[])
     }
 
-    /// The slot of `key` (held as `wanted`), or the free slot it goes into.
+    /// The slot of `key` (held as `wanted`) and true, or the free slot it
+    /// goes into and false. Keys compare by their bits: each is held
+    /// exactly, and none is negative, so equal bits are equal keys.
     #[inline]
-    fn slot(&self, key: u64, wanted: f64) -> usize {
+    fn slot(&self, key: u64, wanted: f64) -> (usize, bool) {
         let stride = 1 + self.layout.held;
         let mask = self.slots.len() / stride - 1;
+        let (wanted, free) = (wanted.to_bits(), FREE.to_bits());
         let mut slot = hash_slot(key, mask);
-        while self
-            .slots
-            .get(slot * stride)
-            .is_some_and(|&k| k != wanted && k != FREE)
-        {
-            slot = (slot + 1) & mask;
+        loop {
+            match self.slots.get(slot * stride).map(|k| k.to_bits()) {
+                Some(k) if k == wanted => return (slot, true),
+                Some(k) if k != free => slot = (slot + 1) & mask,
+                _ => return (slot, false),
+            }
         }
-        slot
     }
 }
 
