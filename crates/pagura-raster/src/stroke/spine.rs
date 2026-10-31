@@ -122,6 +122,9 @@ pub(crate) fn without<R>(f: impl FnOnce() -> R) -> R {
 pub(crate) struct Spine {
     capsules: Vec<Capsule>,
     vetoes: Vec<Veto>,
+    /// What its build leaves of its own work budget, the size of
+    /// `raster_work`: the work of proving cells and passing over them.
+    work: usize,
 }
 
 impl Spine {
@@ -166,7 +169,8 @@ impl Spine {
                 bytes.refund(bytes.used().saturating_sub(mark.saturating_add(grown)));
                 added
             })
-            .and_then(|work| spine.sort(limits, work));
+            .and_then(|work| spine.sort(limits, work))
+            .map(|left| spine.work = left);
         let kept = spine.heap_bytes();
         bytes.refund(bytes.used().saturating_sub(before.saturating_add(kept)));
         match built {
@@ -444,7 +448,9 @@ impl Spine {
 
     /// Orders the capsules and vetoes by their tops, within the stroke's
     /// work budget after `work` units.
-    fn sort(&mut self, limits: &Limits, mut work: usize) -> Result<()> {
+    /// Returns what is left of the work budget after `work` units and the
+    /// sort.
+    fn sort(&mut self, limits: &Limits, mut work: usize) -> Result<usize> {
         let count = self.capsules.len().saturating_add(self.vetoes.len());
         charge(
             &mut work,
@@ -454,7 +460,7 @@ impl Spine {
         self.capsules
             .sort_unstable_by(|p, q| p.top.total_cmp(&q.top));
         self.vetoes.sort_unstable_by(|p, q| p.top.total_cmp(&q.top));
-        Ok(())
+        Ok(limits.raster_work - work)
     }
 
     /// Bytes on the heap.
@@ -469,6 +475,7 @@ impl Spine {
     /// `within` where the shape's lines were clipped to it.
     pub(crate) fn cover(self, within: Option<Bounds>) -> Cover {
         Cover {
+            work: Meter::new(self.work, crate::band::SPARE_WORK),
             spine: self,
             within,
             capsules: 0,
@@ -589,6 +596,8 @@ impl Veto {
 #[derive(Debug)]
 pub(crate) struct Cover {
     spine: Spine,
+    /// The spine's own work left: proving rows and passing over chunks.
+    pub(crate) work: Meter,
     within: Option<Bounds>,
     /// The capsules and vetoes entered so far, and those still reaching.
     capsules: usize,
@@ -627,14 +636,16 @@ impl Cover {
     /// # Errors
     ///
     /// Returns a meter's `Limit` error: the reaching capsules and vetoes
-    /// and the sorts of their cells are charged before each pass.
+    /// and the sorts of their cells are charged to the spine's own work
+    /// before each pass, their scratch to `bytes`.
     pub(crate) fn row(
         &mut self,
         top: f64,
         most: usize,
         chunks: &mut Vec<(f64, f64)>,
-        (work, bytes): (&mut Meter, &mut Meter),
+        bytes: &mut Meter,
     ) -> Result<()> {
+        let work = &mut self.work;
         let bottom = top + 1.0;
         if self
             .within
@@ -642,7 +653,9 @@ impl Cover {
         {
             return Ok(());
         }
-        let Spine { capsules, vetoes } = &self.spine;
+        let Spine {
+            capsules, vetoes, ..
+        } = &self.spine;
         while let Some(c) = capsules.get(self.capsules)
             && c.top <= top
         {

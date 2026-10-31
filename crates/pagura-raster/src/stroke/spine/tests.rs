@@ -235,16 +235,13 @@ fn cover_rows_refuse_within_their_work_budget() {
     let mut needed = 0;
     for budget in 0.. {
         let mut cover = spine.clone().cover(None);
-        let mut work = Meter::new(budget, "work");
+        cover.work = Meter::new(budget, crate::band::SPARE_WORK);
         chunks.clear();
-        if cover
-            .row(20.0, usize::MAX, &mut chunks, (&mut work, &mut bytes))
-            .is_ok()
-        {
+        if cover.row(20.0, usize::MAX, &mut chunks, &mut bytes).is_ok() {
             needed = budget;
             break;
         }
-        assert!(work.used() <= budget);
+        assert!(cover.work.used() <= budget);
     }
     assert!(needed > 0);
     assert_ne!(chunks.len(), 0);

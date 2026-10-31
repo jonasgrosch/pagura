@@ -679,9 +679,38 @@ fn swaps_inside_the_union_keep_every_side() {
     assert!(swapped > 100_000, "{swapped}");
 }
 
-/// The sides of row `top..top + 1` under the nonzero rule, with the column
-/// ranges `proven` passed over, and the work they took.
+/// Proofs with work of their own and nothing to give up.
+struct Proofs(Meter);
+
+impl Spare for Proofs {
+    fn held(&self) -> usize {
+        0
+    }
+
+    fn release(&mut self) -> usize {
+        0
+    }
+
+    fn work(&mut self) -> Option<&mut Meter> {
+        Some(&mut self.0)
+    }
+}
+
+/// The sides of row `top..top + 1` under the nonzero rule, with the chunks
+/// within the column ranges `proven` passed over, and the work they took of
+/// the row's meter.
 fn proven_sides(pieces: &[Piece], top: f64, proven: &[(f64, f64)]) -> (Vec<Line>, usize) {
+    let (sides, work, _) = proven_sides_within(pieces, top, (proven, usize::MAX));
+    (sides, work)
+}
+
+/// [`proven_sides`] with `own` units of the proofs' own work: the sides, the
+/// work of the row's meter, and the proofs' own work used.
+fn proven_sides_within(
+    pieces: &[Piece],
+    top: f64,
+    (proven, own): (&[(f64, f64)], usize),
+) -> (Vec<Line>, usize, usize) {
     let mut out = Vec::new();
     let mut work = Meter::new(usize::MAX, "work");
     let mut bytes = Meter::new(usize::MAX, "bytes");
@@ -689,16 +718,17 @@ fn proven_sides(pieces: &[Piece], top: f64, proven: &[(f64, f64)]) -> (Vec<Line>
         work: &mut work,
         bytes: &mut bytes,
     };
+    let mut proofs = Proofs(Meter::new(own, SPARE_WORK));
     Resolver::default()
         .row_proven(
             pieces,
             &[FillRule::NonZero],
             top,
-            (proven, &mut ()),
+            (proven, &mut proofs),
             (&mut out, meters),
         )
         .unwrap();
-    (out, work.used())
+    (out, work.used(), proofs.0.used())
 }
 
 /// The covered area of cell `[column, column + 1]` of row `top..top + 1`
@@ -851,6 +881,44 @@ fn proven_chunks_keep_every_side() {
     assert!(fast_work < full_work, "{fast_work} {full_work}");
 }
 
+/// A region whose own work runs out anywhere, at about 16 points from before
+/// its first chunk to within its last, is swept as its chunks without the
+/// proofs: the sides
+/// cover each cell as the full sweep's do, and the row's meter is charged
+/// no more than the full sweep's.
+#[test]
+fn regions_given_up_anywhere_keep_every_side() {
+    let mut rng = Lcg(2_031);
+    let mut given_up = 0;
+    for case in 0..20_usize {
+        let centre = (rng.grid(0.0, 64, 8), rng.grid(-0.5, 17, 8));
+        let count = 24 + rng.next() % 40;
+        let r = rng.grid(8.0, 96, 4);
+        let around = r * f64::from(1 + rng.next() % 8) / 64.0;
+        let lines = fan(centre, around, (count, r), rng.grid(0.0, 64, 8));
+        let pieces = pieces(&lines);
+        let (full, work) = proven_sides(&pieces, 0.0, &[]);
+        let ranges = oracle_ranges(&pieces, &full, 0.0);
+        let (_, _, needed) = proven_sides_within(&pieces, 0.0, (&ranges, usize::MAX));
+        if ranges.is_empty() || needed == 0 {
+            continue;
+        }
+        let step = (needed / 16).max(1);
+        for own in (0..=needed).step_by(step).chain([needed.saturating_sub(1)]) {
+            let (sides, used, _) = proven_sides_within(&pieces, 0.0, (&ranges, own));
+            same_cells(
+                &sides,
+                &full,
+                0.0,
+                &format!("case {case} with {own} of {needed}"),
+            );
+            assert!(used <= work, "case {case} with {own}: {used} > {work}");
+            given_up += usize::from(own < needed);
+        }
+    }
+    assert!(given_up > 100, "{given_up}");
+}
+
 /// Case `case` of strokes of short segments around a wobbly circle, whole
 /// or in part: its path, stroke and conformal map.
 fn fan_stroke(
@@ -941,7 +1009,6 @@ fn spines_prove_only_covered_cells_and_keep_every_side() {
                 (lo.min(l.a.y.min(l.b.y)), hi.max(l.a.y.max(l.b.y)))
             });
         let mut cover = spine.cover(None);
-        let mut work = Meter::new(usize::MAX, "work");
         let mut top = lo.floor();
         while top < hi {
             let pieces: Vec<Piece> = lines
@@ -949,9 +1016,7 @@ fn spines_prove_only_covered_cells_and_keep_every_side() {
                 .filter_map(|&l| Piece::new(l, top, 0))
                 .collect();
             let mut ranges = Vec::new();
-            cover
-                .row(top, usize::MAX, &mut ranges, (&mut work, &mut bytes))
-                .unwrap();
+            cover.row(top, usize::MAX, &mut ranges, &mut bytes).unwrap();
             if !ranges.is_empty() {
                 let (full, _) = proven_sides(&pieces, top, &[]);
                 for &(left, right) in &ranges {

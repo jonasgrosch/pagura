@@ -51,6 +51,7 @@ pub use raster::BandRasterizer;
 pub use repeat::StrokeTemplates;
 pub use shape::Shape;
 pub(crate) use shape::{RASTER_WORK, RENDER_BYTES};
+pub(crate) use union::SPARE_WORK;
 
 use pagura_core::Limits;
 

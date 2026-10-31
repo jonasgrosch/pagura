@@ -625,11 +625,9 @@ fn extent(starts: &[usize], pieces: &[Point], boundary: &[Line], meter: &mut Met
 
 /// The most heights a row sweep can stop at, wherever the shape is
 /// translated: the row's bounds, each side's two ends, a cut per chunk a
-/// side crosses (a chunk holds at least 64 pieces), two cuts per range of
-/// cells its spine proves covered (at most [`proven_runs`](super::union::proven_runs) of them), and a
-/// crossing per pair of sides whose columns overlap. Two such sides meet a
-/// common grid square of the row's band, so its squares' `counts` bound the
-/// pairs.
+/// side crosses (a chunk holds at least 64 pieces), and a crossing per pair
+/// of sides whose columns overlap. Two such sides meet a common grid square
+/// of the row's band, so its squares' `counts` bound the pairs.
 fn heights(sides: impl Iterator<Item = Line>, grid: &Grid, counts: &[f64]) -> f64 {
     let stride = grid.width + 1;
     let mut rows = vec![0_i64; grid.height + 1];
@@ -648,8 +646,7 @@ fn heights(sides: impl Iterator<Item = Line>, grid: &Grid, counts: &[f64]) -> f6
             .iter()
             .map(|&c| c * (c - 1.0).max(0.0) / 2.0)
             .sum();
-        let proven = 1.0 + n / 8.0;
-        most = most.max(2.0 + 2.0 * n + n * (1.0 + n / 64.0 + 2.0 * proven) + pairs);
+        most = most.max(2.0 + 2.0 * n + n * (1.0 + n / 64.0) + pairs);
     }
     most
 }

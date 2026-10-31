@@ -1217,6 +1217,10 @@ impl Spare for Option<Spine> {
     fn release(&mut self) -> usize {
         self.take().map_or(0, |spine| spine.heap_bytes())
     }
+
+    fn work(&mut self) -> Option<&mut Meter> {
+        None
+    }
 }
 
 /// Its spine's and its scratch's bytes go once the shape's own storage
@@ -1228,6 +1232,10 @@ impl Spare for Option<Cover> {
 
     fn release(&mut self) -> usize {
         self.take().map_or(0, |cover| cover.heap_bytes())
+    }
+
+    fn work(&mut self) -> Option<&mut Meter> {
+        self.as_mut().map(|cover| &mut cover.work)
     }
 }
 
@@ -1337,15 +1345,14 @@ fn resolve(
         };
         proven.clear();
         // The cover takes the rows it proves from the top down, and any it
-        // leaves out cost it nothing. Where its own scratch does not fit,
-        // it is given up, and the row is resolved whole.
+        // leaves out cost it nothing. Where its own work or scratch does
+        // not fit, it is given up, and the rows are resolved whole.
         if let (1, Some(held)) = (groups, &mut cover)
             && pieces.len() > PROVEN_PIECES
-            && let Err(error) = held.row(top, proven_runs(pieces.len()), &mut proven, (work, bytes))
+            && held
+                .row(top, proven_runs(pieces.len()), &mut proven, bytes)
+                .is_err()
         {
-            if error.message != RENDER_BYTES {
-                return Err(error);
-            }
             proven.clear();
             bytes.refund(cover.release());
         }
