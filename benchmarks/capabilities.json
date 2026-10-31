@@ -316,7 +316,7 @@
     "crates/pagura/tests/font_bindings.rs": "2ddd6b59ed4271776ed65c458c7db754a37ec93020b8edc1c87a0a594becf423",
     "crates/pagura/tests/font_collections.rs": "49578948011d7f637e416bec660be5deba2d7d98ca7f95adef13e0f01f59404c",
     "docs/RECOVERY.md": "8ffbe87eddabd560409d930e92bee2f48d29b85c4192db3eed64945fe4409d0d",
-    "docs/STATUS.md": "b89ddc37db4f420fb0854cd6c54c2d37e7e1484c327ae4aba9d3cb89f38dc476",
+    "docs/STATUS.md": "4121b8541147133cdf1b54caf6f1c8ed0f66442fc2196d7e95d9a11cedd56731",
     "docs/adr/0009-text-and-fonts.md": "f54752ed4bf4325cea780c80c7fd1e5fceb1741c3ac62e31c5360d75a296ee19",
     "tools/fixturegen/font.py": "6f3f2980a7f6dac67c7aefdc24dbe6fe420c75e3aa8500b56d42aa95e1af80a6",
     "tools/fixturegen/font_bindings.py": "0ffc33d7db6e802aab012f0e5b13e182c87c16b0e53239375f25501c736a38a8",
