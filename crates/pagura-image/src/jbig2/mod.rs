@@ -7,6 +7,8 @@
 //! and halftones. Later extended adaptive templates and necessary extensions
 //! are explicitly unsupported. The public decoder consumes PDF page 1;
 //! standalone file headers and EOP/EOF segments are forbidden by PDF 7.4.7.
+//! Strict decoding rejects them; explicitly reported recovery is limited to
+//! complete declared single-page sequential wrappers with validated boundaries.
 
 mod arithmetic;
 mod bitmap;
@@ -24,6 +26,7 @@ mod symbol;
 #[cfg(test)]
 mod tests;
 mod text;
+mod wrapper;
 
 use pagura_core::{Diagnostic, Diagnostics, Error, Limits, ObjectId, Position, Recovery, Result};
 use reader::Reader;
@@ -31,6 +34,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     rc::Rc,
 };
+use wrapper::{Boundary, Framing, Stream};
 
 /// Stable JBIG2 feature tags. Tags for arithmetic capabilities now supported
 /// remain available for compatibility.
@@ -85,8 +89,20 @@ pub mod repairs {
     /// validated and charged; genuine aggregation keeps its selected table.
     pub const UNUSED_AGGREGATION_TABLE: Repair = Repair::new("jbig2.unused-aggregation-table");
 
+    /// A complete declared single-page sequential file is decoded with its
+    /// validated header/EOP/EOF boundaries (PDF 7.4.7; T.88 D.1/D.4).
+    pub const FILE_WRAPPER: Repair = Repair::new("jbig2.file-wrapper");
+    /// An empty, unreferenced terminal EOF associated with the sole already
+    /// closed page is treated as file metadata (T.88 7.3.2/7.4.11).
+    pub const EOF_PAGE_ASSOCIATION: Repair = Repair::new("jbig2.eof-page-association");
+
     /// Every repair owned by the JBIG2 decoder.
-    pub const ALL: &[Repair] = &[PAGE_CAPABILITIES, UNUSED_AGGREGATION_TABLE];
+    pub const ALL: &[Repair] = &[
+        PAGE_CAPABILITIES,
+        UNUSED_AGGREGATION_TABLE,
+        FILE_WRAPPER,
+        EOF_PAGE_ASSOCIATION,
+    ];
 }
 
 /// A decoded page bitmap: 1-bit rows, MSB first, padded to bytes, 1 = black.
@@ -130,6 +146,16 @@ pub fn decode(data: &[u8], globals: Option<&[u8]>, limits: &Limits) -> Result<Bi
 /// unused aggregation table, which retains full validation and accounting.
 /// Region data, referrals, combination operators,
 /// framing and every work/memory limit retain their normal validation.
+///
+/// Only sequential files declaring exactly one page are eligible. Page
+/// information, all coded segments/referrals, EOP and terminal empty EOF are
+/// validated. The separate EOF association repair accepts only page 1 after
+/// that sole page is closed. Random-access, unknown-count, multipage and
+/// incomplete files remain errors. Internal page-0 resources must precede
+/// the page information; late global segments remain outside this policy.
+/// External globals cannot carry a file wrapper.
+/// Source bytes, arithmetic termination, sample decisions and budgets are
+/// unchanged; positions remain relative to the original stream.
 ///
 /// # Errors
 /// As [`decode`]; strict diagnostics reject each reported deviation. No partial
@@ -181,7 +207,7 @@ pub(crate) fn decode_with_globals_origin(
             object,
             offset: 0,
         });
-        let result = state.stream(globals, true);
+        let result = state.stream(globals, Stream::Globals);
         let collected = state.diagnostics.take();
         state.diagnostics = diagnostics;
         // Preserve the caller's first occurrence when its sink is reused,
@@ -200,7 +226,7 @@ pub(crate) fn decode_with_globals_origin(
     } else {
         state.diagnostics = diagnostics;
     }
-    state.stream(data, false)?;
+    state.stream(data, Stream::Page)?;
     let page = state.page.ok_or_else(|| {
         Error::syntax("missing JBIG2 page information").at(Position::Buffer(data.len()))
     })?;
@@ -267,22 +293,20 @@ struct State<'a> {
 }
 
 impl State<'_> {
-    fn stream(&mut self, data: &[u8], global: bool) -> Result<()> {
-        if data.starts_with(&[0x97, 0x4a, 0x42, 0x32, 0x0d, 0x0a, 0x1a, 0x0a]) {
-            return Err(
-                Error::syntax("JBIG2 file headers are forbidden in PDF").at(Position::Buffer(0))
-            );
-        }
+    fn stream(&mut self, data: &[u8], stream: Stream) -> Result<()> {
+        let mut framing = Framing::new(data, stream, self.diagnostics)?;
         let mut reader = Reader::new(data, 0);
+        reader.offset = framing.offset();
         while reader.offset < data.len() {
             let position = reader.position();
-            self.segment(&mut reader, global)
+            self.segment(&mut reader, &mut framing)
                 .map_err(|error| error.at(position))?;
         }
-        Ok(())
+        framing.finish(reader.position())
     }
 
-    fn segment(&mut self, reader: &mut Reader<'_>, global: bool) -> Result<()> {
+    fn segment(&mut self, reader: &mut Reader<'_>, framing: &mut Framing) -> Result<()> {
+        let segment_position = reader.position();
         if self.segments.len() >= self.limits.objects {
             return Err(Error::limit("JBIG2 segment count exceeds budget"));
         }
@@ -337,25 +361,55 @@ impl State<'_> {
             }
             references.push(reference);
         }
+        let association = reader.position();
         let page = if flags & 64 != 0 {
             reader.u32()?
         } else {
             u32::from(reader.byte()?)
         };
-        if page != u32::from(!global) {
-            return Err(Error::syntax("invalid JBIG2 embedded page association"));
-        }
+        framing.validate_page(page)?;
+        let length_position = reader.position();
         let length = reader.u32()?;
         let kind = flags & 63;
         let (mut body, actual_rows) = reader.segment(kind, length)?;
         let position = body.position();
         let reference_bytes = references.len() * size_of::<u32>();
         self.bytes += reference_bytes;
-        let segment = self
-            .body(kind, global, &references, &mut body, actual_rows)
-            .map_err(|error| error.at(position))?;
+        let scope = framing.scope(
+            &Boundary {
+                kind,
+                page,
+                referrals: count,
+                length,
+                association,
+                length_position,
+                position: segment_position,
+                last: reader.offset == reader.data.len(),
+            },
+            self.page.as_ref(),
+            self.diagnostics,
+        )?;
+        let segment = if let Some(stream) = scope {
+            self.body(kind, stream, &references, &mut body, actual_rows)
+                .map_err(|error| error.at(position))?
+        } else {
+            Segment::Metadata
+        };
         self.bytes -= reference_bytes;
         body.finish()?;
+        self.retain_segment(number, flags, &references, retention, segment);
+        Ok(())
+    }
+
+    /// Applies the original segment/referral retention and deferred attachment.
+    fn retain_segment(
+        &mut self,
+        number: u32,
+        flags: u8,
+        references: &[u32],
+        retention: &[u8],
+        segment: Segment,
+    ) {
         for (index, n) in std::iter::once(&number)
             .chain(references.iter())
             .enumerate()
@@ -374,7 +428,6 @@ impl State<'_> {
             self.attached = None;
         }
         self.segments.insert(number, segment);
-        Ok(())
     }
 
     fn retention<'a>(&self, reader: &mut Reader<'a>) -> Result<(usize, &'a [u8])> {
@@ -419,7 +472,7 @@ impl State<'_> {
     fn body(
         &mut self,
         kind: u8,
-        global: bool,
+        stream: Stream,
         references: &[u32],
         reader: &mut Reader<'_>,
         actual_rows: Option<u32>,
@@ -434,10 +487,10 @@ impl State<'_> {
                 "JBIG2 end-of-page and end-of-file segments are forbidden in PDF",
             ));
         }
-        if global && !matches!(kind, 0 | 16 | 53 | 52 | 62) {
+        if stream == Stream::Globals && !matches!(kind, 0 | 16 | 53 | 52 | 62) {
             return Err(Error::syntax("page segment in JBIG2 globals"));
         }
-        if !global && self.page.is_none() && kind != 48 {
+        if stream == Stream::Page && self.page.is_none() && kind != 48 {
             return Err(Error::syntax(
                 "JBIG2 page information must precede associated segments",
             ));
@@ -467,7 +520,7 @@ impl State<'_> {
         match kind {
             48 => self.page_info(reader)?,
             50 => self.end_stripe(reader)?,
-            52 => self.profiles(reader, global)?,
+            52 => self.profiles(reader, stream)?,
             62 => extension(reader)?,
             _ => {
                 return self
@@ -522,9 +575,9 @@ impl State<'_> {
         Ok(Segment::Dictionary(dictionary))
     }
 
-    fn profiles(&mut self, reader: &mut Reader<'_>, global: bool) -> Result<()> {
-        if global && !self.segments.is_empty()
-            || !global && (self.profiles.is_none() || self.page_profile)
+    fn profiles(&mut self, reader: &mut Reader<'_>, stream: Stream) -> Result<()> {
+        if stream == Stream::Globals && !self.segments.is_empty()
+            || stream == Stream::Page && (self.profiles.is_none() || self.page_profile)
         {
             return Err(Error::syntax("invalid JBIG2 profiles segment order"));
         }
@@ -539,7 +592,7 @@ impl State<'_> {
         for _ in 0..count {
             profiles.insert(reader.u32()?);
         }
-        if global {
+        if stream == Stream::Globals {
             self.profiles = Some(profiles);
             self.bytes += count * 32;
         } else {

@@ -130,6 +130,11 @@ pub mod tags {
     pub use pagura_interpret::features as content;
 }
 
+/// Reported terminal empty EOF1 association after the sole closed JBIG2 page.
+pub use pagura_image::jbig2::repairs::EOF_PAGE_ASSOCIATION as JBIG2_EOF_PAGE_ASSOCIATION;
+/// Reported complete declared single-page JBIG2 file packaging (ADR 0003).
+pub use pagura_image::jbig2::repairs::FILE_WRAPPER as JBIG2_FILE_WRAPPER;
+
 use provider::{Provider, default_provider};
 use std::sync::Arc;
 
