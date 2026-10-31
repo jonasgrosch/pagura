@@ -25,6 +25,7 @@ use super::edges::Polygon;
 use crate::Point;
 use crate::geometry::{greater, lesser};
 use pagura_core::{Meter, Result};
+use std::cmp::Ordering;
 
 mod cover;
 pub(crate) use cover::{Covered, covered};
@@ -281,14 +282,48 @@ fn place(
         work.add(segment - passed)?;
         a.range = [lesser(range[0], end), greater(range[1], end)];
     }
-    active.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
+    order(active);
     Some(())
 }
 
+/// Puts the placed chains in order: of x, and chains at the same x by their
+/// first point. The chains kept from the last slab mostly keep its order
+/// and the joining ones sit at the end, so each chain out of order moves
+/// into place by binary search; past twice as many chains moved as there
+/// are, the sort takes over. The order is total, so both give the same.
+///
+/// Chains at the same x meet at the slab's middle: they are apart only as
+/// identical segments across the slab, and [`alternates`] counts them
+/// whatever their order. So their order decides no slab, only which pair a
+/// doubtful one is found at, and the sign when they lead the first slab.
+#[inline(never)]
+fn order(active: &mut [Active]) {
+    let mut moved = 0;
+    for i in 1..active.len() {
+        if before(&active[i - 1], &active[i]).is_lt() {
+            continue;
+        }
+        let to = active[..i].partition_point(|a| before(a, &active[i]).is_lt());
+        moved += i - to;
+        if moved > 2 * active.len() {
+            active.sort_unstable_by(before);
+            return;
+        }
+        active[to..=i].rotate_right(1);
+    }
+}
+
+/// The order of placed chains: chains take points of their own, so no two
+/// share their first.
+fn before(a: &Active, b: &Active) -> Ordering {
+    a.x.total_cmp(&b.x).then(a.chain.start.cmp(&b.chain.start))
+}
+
 /// Whether the placed chains hold winding 0 or the common sign on the slab
-/// (lo, hi): directions alternating from the left starting with `first`,
-/// and neighbours apart. Each slab stands alone: its order, directions and
-/// separation decide its own winding, whatever another slab holds.
+/// (lo, hi): directions alternating from the left starting with `first`
+/// (see [`alternates`]), and neighbours apart. Each slab stands alone: its
+/// order, directions and separation decide its own winding, whatever another
+/// slab holds.
 fn holds(
     points: &[Point],
     active: &[Active],
@@ -297,12 +332,8 @@ fn holds(
     margins: Margins,
     work: &mut Work,
 ) -> bool {
-    let ordered = active.len().is_multiple_of(2)
-        && active
-            .iter()
-            .enumerate()
-            .all(|(k, a)| a.chain.up == (first ^ (k % 2 == 1)));
-    ordered
+    active.len().is_multiple_of(2)
+        && alternates(active, first)
         && active.windows(2).all(|w| {
             w[0].range[1] + margins.rounding < w[1].range[0]
                 || apart(
@@ -313,6 +344,51 @@ fn holds(
                     work,
                 )
         })
+}
+
+/// Whether the directions of the placed chains alternate from the left,
+/// starting with `first`. Chains at one x meet at the slab's middle, so of
+/// them only identical segments across the slab are apart, as identical
+/// vertices may touch at its ends. Opposite ones of those cancel, whatever
+/// their order: what is left at one x is one chain of the direction due, or
+/// none.
+fn alternates(active: &[Active], first: bool) -> bool {
+    // Commonly every chain comes in its turn. Otherwise only chains at one x
+    // up to the first out of turn can make up for it.
+    let Some(k) = active
+        .iter()
+        .enumerate()
+        .position(|(k, a)| a.chain.up != (first ^ (k % 2 == 1)))
+    else {
+        return true;
+    };
+    let near = &active[..active.len().min(k + 2)];
+    near.windows(2).any(|w| at_one_x(&w[0], &w[1])) && cancel(active, first)
+}
+
+/// [`alternates`] by the net direction of the chains at each x.
+fn cancel(active: &[Active], first: bool) -> bool {
+    let mut due = first;
+    active
+        .chunk_by(at_one_x)
+        .all(|same| match directions(same) {
+            (up, down) if up == down => true,
+            (up, down) if up.abs_diff(down) == 1 && (up > down) == due => {
+                due = !due;
+                true
+            }
+            _ => false,
+        })
+}
+
+fn at_one_x(a: &Active, b: &Active) -> bool {
+    a.x.total_cmp(&b.x).is_eq()
+}
+
+/// The chains running up and down among `chains`.
+fn directions(chains: &[Active]) -> (usize, usize) {
+    let up = chains.iter().filter(|a| a.chain.up).count();
+    (up, chains.len() - up)
 }
 
 // Appends the strictly y-monotone chains of one closed contour, each in
@@ -1009,11 +1085,152 @@ mod tests {
         );
         assert_eq!(tight.used(), cells.heap_bytes());
 
+        // A cell under the reverse of its own square cancels it: winding 0
+        // throughout, whichever of their coincident sides comes first.
         let opposite = [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0)];
         let mut cancelled = polygon(&[&opposite]);
         cancelled
             .cell(Point::new(0.2, 0.7), &limits, &mut bytes)
             .unwrap();
-        assert!(!certifies(&cancelled, 0.0));
+        assert!(certifies(&cancelled, 0.0));
+    }
+
+    #[test]
+    fn coincident_opposite_chains_cancel_whatever_their_order() {
+        // Squares sharing a side: their sides along it run opposite ways at
+        // one x, first in one order of the chains, then in the other.
+        let left = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
+        let right = [(1.0, 0.0), (2.0, 0.0), (2.0, 1.0), (1.0, 1.0)];
+        assert!(certifies(&polygon(&[&left, &right]), 0.0));
+        assert!(certifies(&polygon(&[&right, &left]), 0.0));
+        // A square and its reverse cancel throughout; twice the same square
+        // winds twice.
+        let reverse = [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0)];
+        assert!(certifies(&polygon(&[&left, &reverse]), 0.0));
+        assert!(certifies(&polygon(&[&reverse, &left]), 0.0));
+        assert!(!certifies(&polygon(&[&left, &left]), 0.0));
+    }
+
+    #[test]
+    fn alternation_by_turns_agrees_with_cancelling_chains_at_one_x() {
+        let mut state = 0x0431_u64;
+        let mut next = |bound: usize| {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            usize::try_from(state >> 33).unwrap() % bound
+        };
+        let chain = Chain {
+            start: 0,
+            end: 1,
+            up: false,
+        };
+        for case in 0..20_000 {
+            let len = next(9);
+            let mut x = 0.0;
+            let active: Vec<Active> = (0..len)
+                .map(|_| {
+                    x += [0.0, 1.0][next(2)];
+                    Active {
+                        chain: Chain {
+                            up: next(2) == 0,
+                            ..chain
+                        },
+                        segment: 0,
+                        x,
+                        range: [x; 2],
+                    }
+                })
+                .collect();
+            for first in [false, true] {
+                assert_eq!(
+                    alternates(&active, first),
+                    cancel(&active, first),
+                    "case {case}"
+                );
+            }
+        }
+    }
+
+    /// The fields of a placed chain, `x` by its bits.
+    fn key(a: &Active) -> (usize, usize, bool, usize, u64, [u64; 2]) {
+        let (c, r) = (a.chain, a.range);
+        (
+            c.start,
+            c.end,
+            c.up,
+            a.segment,
+            a.x.to_bits(),
+            r.map(f64::to_bits),
+        )
+    }
+
+    #[test]
+    fn ordering_placed_chains_matches_the_sort() {
+        // Kept chains in order of x alone with a few neighbours swapped, then
+        // joining chains, on a coarse grid of x so that ties are common;
+        // coincident chains of opposite directions share x and range, and -0
+        // and +0 differ in their bits. Every chain has a start of its own.
+        let mut state = 0x2026_u64;
+        let mut next = |bound: usize| {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            usize::try_from(state >> 33).unwrap() % bound
+        };
+        let real = |n: usize| f64::from(u32::try_from(n).unwrap());
+        let grids = [0.0, -0.0, 0.25, 1.0, 1.5, 3.0, 7.75];
+        for case in 0..6_000 {
+            let len = [2, 5, 17, 64, 300][case % 5] + next(8);
+            let coarse = case % 3 == 0;
+            let mut active: Vec<Active> = (0..len)
+                .map(|k| {
+                    let x = if coarse {
+                        grids[next(grids.len())]
+                    } else {
+                        real(next(1 << 20)) / 64.0
+                    };
+                    let chain = Chain {
+                        start: k,
+                        end: k + 1 + next(4),
+                        up: next(2) == 0,
+                    };
+                    Active {
+                        chain,
+                        segment: k,
+                        x,
+                        range: [x - real(next(3)), x + real(next(3))],
+                    }
+                })
+                .collect();
+            let joining = next(1 + len / [1, 4, 16, 64][case % 4]);
+            let kept = len - joining.min(len);
+            active[..kept].sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
+            for _ in 0..[0, 0, 1, 3, 40][case / 5 % 5] {
+                let k = next(len);
+                if k + 1 < kept {
+                    active.swap(k, k + 1);
+                }
+            }
+            if case % 7 == 0 && len > 2 {
+                let (k, at) = (next(len), next(len));
+                let twin = Chain {
+                    start: len + at,
+                    end: len + at + 1,
+                    up: !active[k].chain.up,
+                };
+                active[at] = Active {
+                    chain: twin,
+                    ..active[k]
+                };
+            }
+            let mut sorted = active.clone();
+            sorted.sort_by(before);
+            order(&mut active);
+            assert!(
+                active.iter().map(key).eq(sorted.iter().map(key)),
+                "case {case}"
+            );
+        }
     }
 }
