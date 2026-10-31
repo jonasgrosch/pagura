@@ -15,7 +15,7 @@
 use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
 use super::scratch::allocate;
 use crate::source::copy_values;
-use pagura_color::{ColorSpace, Converter};
+use pagura_color::{ColorSpace, Converter, RgbEncoding};
 use pagura_core::{Meter, Result};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
 use std::cell::RefCell;
@@ -132,6 +132,18 @@ pub(super) struct Colors {
     pub(super) curved: Option<Curved>,
 }
 
+/// The value of `code` in the Decode range `[low, high]`, `maximum` the
+/// largest code (8.9.5.2): every texel, curve value, table entry and soft
+/// mask opacity decodes its codes so.
+#[expect(
+    clippy::inline_always,
+    reason = "every sample's codes decode through it, as the expression it replaces did"
+)]
+#[inline(always)]
+fn decoded_code(code: u16, [low, high]: [f64; 2], maximum: f64) -> f64 {
+    low + f64::from(code) / maximum * (high - low)
+}
+
 /// The codes of a component [`Colors::curved`] tabulates: those of at most
 /// eight bits.
 pub(super) const CURVED_CODES: usize = 256;
@@ -228,13 +240,13 @@ impl Colors {
             }
             codes.len()
         } else {
-            for (((value, &code), &[low, high]), &maximum) in values
+            for (((value, &code), &range), &maximum) in values
                 .iter_mut()
                 .zip(codes)
                 .zip(&self.decode)
                 .zip(&self.maxima)
             {
-                *value = low + f64::from(code) / maximum * (high - low);
+                *value = decoded_code(code, range, maximum);
             }
             match &self.lookup {
                 Some(lookup) => lookup.expand(&mut values),
@@ -310,13 +322,23 @@ impl Colors {
     /// decoding the code as [`Self::texel_with`] decodes a texel's codes.
     #[cold]
     fn find_curved(&self, slot: &AtomicU64, i: usize, code: u16) -> f64 {
-        let (Some(&[low, high]), Some(&maximum)) = (self.decode.get(i), self.maxima.get(i)) else {
+        let (Some(&range), Some(&maximum)) = (self.decode.get(i), self.maxima.get(i)) else {
             return 0.0;
         };
-        let value = low + f64::from(code) / maximum * (high - low);
+        let value = decoded_code(code, range, maximum);
         let curved = self.convert.curve(i, value).unwrap_or(0.0);
         slot.store(curved.to_bits(), Ordering::Relaxed);
         curved
+    }
+
+    /// Component `i`'s value of code `code`, decoded as
+    /// [`Self::texel_with`] decodes a texel's codes; 0 for a component the
+    /// colours lack.
+    fn decoded(&self, i: usize, code: u16) -> f64 {
+        let (Some(&range), Some(&maximum)) = (self.decode.get(i), self.maxima.get(i)) else {
+            return 0.0;
+        };
+        decoded_code(code, range, maximum)
     }
 
     /// The texel of the one-component code `code`, for a table.
@@ -375,10 +397,9 @@ impl Opacity {
     fn of(&self, code: u16) -> f64 {
         match self.kind {
             OpacityKind::Stencil { inverted } => f64::from(u8::from((code == 1) == inverted)),
-            OpacityKind::Soft {
-                decode: [low, high],
-                maximum,
-            } => (low + f64::from(code) / maximum * (high - low)).clamp(0.0, 1.0),
+            OpacityKind::Soft { decode, maximum } => {
+                decoded_code(code, decode, maximum).clamp(0.0, 1.0)
+            }
         }
     }
 
@@ -410,6 +431,14 @@ pub(super) enum Strategy {
     /// DeviceRGB 8-bit samples into an RGB blending space: one table per
     /// channel.
     Rgb(Box<[[f64; 256]; 3]>),
+    /// Four-component 8-bit samples whose conversion takes each channel
+    /// from its own component ([`Converter::per_channel`]): DeviceCMYK into
+    /// a CMYK blending space. One table per channel.
+    Cmyk(Box<[[f64; 256]; 4]>),
+    /// DeviceRGB 8-bit samples whose conversion clips and encodes them
+    /// ([`Converter::rgb_encoding`]) into another process family: one table
+    /// per component of the clipped values, encoded sample by sample.
+    RgbEncoded(Box<[[f64; 256]; 3]>),
     /// Texels converted once per distinct sample (its codes, with the soft
     /// mask's opacity code where a Matte is removed and the embedded
     /// opacity code), kept in a memo.
@@ -476,20 +505,77 @@ impl Strategy {
             }
             return Ok(Self::Rgb(tables));
         }
-        if let Some(key) = Key::new(image, colors, mask) {
-            let samples = u64::from(image.width) * u64::from(image.height);
-            let entries = usize::try_from(samples).unwrap_or(usize::MAX);
-            let opaque = colors.key.is_none() && colors.embedded.is_none();
-            let held = if opaque { lanes - 2 } else { lanes };
-            let replacing = colors.convert.arithmetic();
-            return Ok(Self::Memo(MemoLayout::new(
-                key,
-                (held, opaque),
-                entries,
-                replacing,
-            )));
+        Ok(Self::memo(image, colors, mask).unwrap_or(Self::General))
+    }
+
+    /// [`Self::Memo`] of `image`'s samples painted with `colors`, where
+    /// they have a sample key ([`Key::new`]).
+    pub(super) fn memo(
+        image: &DecodedImage,
+        colors: &Colors,
+        mask: Option<&DecodedImage>,
+    ) -> Option<Self> {
+        let key = Key::new(image, colors, mask)?;
+        let samples = u64::from(image.width) * u64::from(image.height);
+        let entries = usize::try_from(samples).unwrap_or(usize::MAX);
+        let opaque = colors.key.is_none() && colors.embedded.is_none();
+        let lanes = colors.lanes();
+        let held = if opaque { lanes - 2 } else { lanes };
+        let replacing = colors.convert.arithmetic();
+        Some(Self::Memo(MemoLayout::new(
+            key,
+            (held, opaque),
+            entries,
+            replacing,
+        )))
+    }
+
+    /// [`Self::Cmyk`] or [`Self::RgbEncoded`] for opaque 8-bit samples of
+    /// three or four components in bytes, without colour key or lookup,
+    /// whose conversion splits so; `None` otherwise.
+    pub(super) fn separable(
+        image: &DecodedImage,
+        colors: &Colors,
+        bytes: &mut Meter,
+        functions: &mut Meter,
+    ) -> Result<Option<Self>> {
+        let components = usize::from(image.components);
+        let plain = (0..components).all(|i| image.component_bits(i) == Some(8))
+            && colors.matte.is_none()
+            && colors.embedded.is_none()
+            && colors.key.is_none()
+            && colors.lookup.is_none()
+            && matches!(image.samples, Samples::Bytes(_));
+        let channels = colors.convert.target().channels();
+        if !plain || colors.lanes() != channels + 2 {
+            return Ok(None);
         }
-        Ok(Self::General)
+        if components == 4 && colors.convert.per_channel() {
+            bytes.charge_items::<[[f64; 256]; 4]>(1)?;
+            let mut tables = Box::new([[0.0; 256]; 4]);
+            let mut texel = [0.0; 6];
+            functions.charge_product(256, colors.convert.cost())?;
+            for code in 0..=255u8 {
+                let code = u16::from(code);
+                colors.texel(&[code; 4], Extra::default(), &mut texel);
+                for (table, &value) in tables.iter_mut().zip(&texel[..4]) {
+                    table[usize::from(code)] = value;
+                }
+            }
+            return Ok(Some(Self::Cmyk(tables)));
+        }
+        // Gray and CMYK targets: an RGB one takes DeviceRGB per channel.
+        if components == 3 && matches!(channels, 1 | 4) && colors.convert.rgb_encoding().is_some() {
+            bytes.charge_items::<[[f64; 256]; 3]>(1)?;
+            let mut tables = Box::new([[0.0; 256]; 3]);
+            for (i, table) in tables.iter_mut().enumerate() {
+                for (code, value) in (0..=255u16).zip(table.iter_mut()) {
+                    *value = RgbEncoding::clip(colors.decoded(i, code));
+                }
+            }
+            return Ok(Some(Self::RgbEncoded(tables)));
+        }
+        Ok(None)
     }
 
     /// Bytes the strategy's tables hold.
@@ -497,14 +583,16 @@ impl Strategy {
         match self {
             Self::Table(table, _) => table.capacity() * size_of::<f64>(),
             Self::Indexed(palette) => palette.bytes(),
-            Self::Rgb(_) => size_of::<[[f64; 256]; 3]>(),
+            Self::Rgb(_) | Self::RgbEncoded(_) => size_of::<[[f64; 256]; 3]>(),
+            Self::Cmyk(_) => size_of::<[[f64; 256]; 4]>(),
             Self::Memo(_) | Self::General => 0,
         }
     }
 
-    /// Whether texels convert colours while painting.
+    /// Whether texels convert colours while painting: an RGB encoding
+    /// converts each sample as a memo converts each distinct one.
     pub(super) fn converts_while_painting(&self) -> bool {
-        matches!(self, Self::Memo(_) | Self::General)
+        matches!(self, Self::Memo(_) | Self::RgbEncoded(_) | Self::General)
     }
 }
 
@@ -587,26 +675,31 @@ pub(super) fn opaque_table(table: &[f64], lanes: usize) -> bool {
             .all(|texel| texel[lanes - 2..] == [1.0, 1.0])
 }
 
-/// Opaque DeviceRGB texels from per-channel tables.
-pub(super) struct RgbTexels<'a> {
-    pub(super) pixels: &'a [[u8; 3]],
-    pub(super) tables: &'a [[f64; 256]; 3],
+/// Opaque texels of `N` 8-bit components from per-channel tables, each
+/// channel its own component's.
+pub(super) struct ChannelTexels<'a, const N: usize> {
+    pub(super) pixels: &'a [[u8; N]],
+    pub(super) tables: &'a [[f64; 256]; N],
 }
 
-impl RgbTexels<'_> {
-    fn texel(&self, index: usize) -> [f64; 3] {
-        let [red, green, blue] = self.pixels.get(index).copied().unwrap_or_default();
-        [
-            self.tables[0][usize::from(red)],
-            self.tables[1][usize::from(green)],
-            self.tables[2][usize::from(blue)],
-        ]
+/// Texels of DeviceRGB samples into an RGB blending space
+/// ([`Strategy::Rgb`]).
+pub(super) type RgbTexels<'a> = ChannelTexels<'a, 3>;
+
+/// Texels of DeviceCMYK samples into a CMYK blending space
+/// ([`Strategy::Cmyk`]).
+pub(super) type CmykTexels<'a> = ChannelTexels<'a, 4>;
+
+impl<const N: usize> ChannelTexels<'_, N> {
+    fn texel(&self, index: usize) -> [f64; N] {
+        let codes = self.pixels.get(index).copied().unwrap_or([0; N]);
+        std::array::from_fn(|c| self.tables[c][usize::from(codes[c])])
     }
 }
 
-impl Texels for RgbTexels<'_> {
+impl<const N: usize> Texels for ChannelTexels<'_, N> {
     fn lanes(&self) -> usize {
-        5
+        N + 2
     }
 
     fn opaque(&self) -> bool {
@@ -620,14 +713,9 @@ impl Texels for RgbTexels<'_> {
             sample_index(base + u64::from(end)),
         );
         match self.pixels.get(start..stop) {
-            Some(pixels) if out.len() == pixels.len() * 3 => {
-                for (out, &[red, green, blue]) in out.as_chunks_mut::<3>().0.iter_mut().zip(pixels)
-                {
-                    *out = [
-                        self.tables[0][usize::from(red)],
-                        self.tables[1][usize::from(green)],
-                        self.tables[2][usize::from(blue)],
-                    ];
+            Some(pixels) if out.len() == pixels.len() * N => {
+                for (out, codes) in out.as_chunks_mut::<N>().0.iter_mut().zip(pixels) {
+                    *out = std::array::from_fn(|c| self.tables[c][usize::from(codes[c])]);
                 }
             }
             _ => sample_row(self, (row, width), (first, end), out),
@@ -642,6 +730,77 @@ impl Texels for RgbTexels<'_> {
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
         for (sum, value) in sum.iter_mut().zip(self.texel(index)) {
+            *sum += value * weight;
+        }
+    }
+}
+
+/// Texels of DeviceRGB samples through their clipped components'
+/// tables, encoded sample by sample into the target's `C` channels
+/// ([`Strategy::RgbEncoded`]).
+pub(super) struct EncodedTexels<'a, const C: usize> {
+    pub(super) pixels: &'a [[u8; 3]],
+    pub(super) tables: &'a [[f64; 256]; 3],
+    pub(super) encoding: RgbEncoding<'a>,
+}
+
+impl<const C: usize> EncodedTexels<'_, C> {
+    /// The colour of a sample's `codes`.
+    #[inline]
+    fn texel(&self, [red, green, blue]: [u8; 3]) -> [f64; C] {
+        let encoded = self.encoding.encode([
+            self.tables[0][usize::from(red)],
+            self.tables[1][usize::from(green)],
+            self.tables[2][usize::from(blue)],
+        ]);
+        std::array::from_fn(|c| encoded[c])
+    }
+
+    fn sample(&self, index: usize) -> [f64; C] {
+        self.texel(self.pixels.get(index).copied().unwrap_or_default())
+    }
+}
+
+impl<const C: usize> Texels for EncodedTexels<'_, C> {
+    fn lanes(&self) -> usize {
+        C + 2
+    }
+
+    fn opaque(&self) -> bool {
+        true
+    }
+
+    /// One encoding per run of equal samples, as a memo's rows look a run
+    /// up once.
+    fn row(&self, (row, width): (u32, u32), (first, end): (u32, u32), out: &mut [f64]) {
+        let base = u64::from(row) * u64::from(width);
+        let (start, stop) = (
+            sample_index(base + u64::from(first)),
+            sample_index(base + u64::from(end)),
+        );
+        match self.pixels.get(start..stop) {
+            Some(pixels) if out.len() == pixels.len() * C => {
+                let (mut previous, mut last) = (None, [0.0; C]);
+                for (out, &codes) in out.as_chunks_mut::<C>().0.iter_mut().zip(pixels) {
+                    if previous != Some(codes) {
+                        previous = Some(codes);
+                        last = self.texel(codes);
+                    }
+                    *out = last;
+                }
+            }
+            _ => sample_row(self, (row, width), (first, end), out),
+        }
+    }
+
+    fn get(&self, index: usize, out: &mut [f64]) {
+        for (out, value) in out.iter_mut().zip(self.sample(index)) {
+            *out = value;
+        }
+    }
+
+    fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
+        for (sum, value) in sum.iter_mut().zip(self.sample(index)) {
             *sum += value * weight;
         }
     }
@@ -1508,6 +1667,11 @@ impl<'a> MemoTexels<'a> {
 
     /// These texels converted by `mode`; a memo holding texels converted
     /// otherwise is emptied first.
+    #[expect(
+        clippy::inline_always,
+        reason = "a span's memo texels are made in place, not moved through a call"
+    )]
+    #[inline(always)]
     pub(super) fn converting(mut self, mode: TexelMode) -> Self {
         let memo = self.memo.get_mut();
         if memo.mode != mode {
