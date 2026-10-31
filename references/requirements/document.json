@@ -773,6 +773,50 @@
         "document/forms-invalid-action-target"
       ],
       "gaps": "Actions are inert data; no JavaScript or calculation execution."
+    },
+    {
+      "id": "object-integer-separator",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.2.3",
+        "7.3.3",
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "integer_separator/joined",
+        "integer_separator/joined-flate",
+        "integer_separator/joined-chain",
+        "integer_separator/joined-comment",
+        "integer_separator/joined-generation",
+        "integer_separator/joined-leading-zero",
+        "integer_separator/clean",
+        "integer_separator/clean-flate",
+        "integer_separator/clean-chain",
+        "integer_separator/negative",
+        "integer_separator/positive-sign",
+        "integer_separator/real",
+        "integer_separator/exponent",
+        "integer_separator/reference",
+        "integer_separator/array",
+        "integer_separator/name",
+        "integer_separator/string",
+        "integer_separator/hex-string",
+        "integer_separator/comment",
+        "integer_separator/overflow",
+        "integer_separator/integer-max",
+        "integer_separator/trailing-token",
+        "integer_separator/generation-mismatch",
+        "integer_separator/incremental-current-joined",
+        "integer_separator/incremental-old-joined-current-clean",
+        "integer_separator/length-cycle",
+        "integer_separator/joined-zero",
+        "integer_separator/corrected-offset",
+        "integer_separator/overlapping-span",
+        "integer_separator/joined-source-like",
+        "integer_separator/unterminated-comment-boundary"
+      ],
+      "gaps": "Repair only a top-level unsigned integer joined to complete endobj within its exact current generation-aware xref/physical boundary span. No stream extent inference, object reconstruction, signs, real/exponent syntax, references, nested values or ambiguous suffix tokens."
     }
   ]
 }

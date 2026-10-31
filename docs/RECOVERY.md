@@ -148,6 +148,15 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   complete indirect value and its `endobj` are ignored. A closing delimiter
   cannot begin a value, so nothing that could hold content is skipped; any
   other token before `endobj` remains an error.
+- `object.integer-separator` (7.2.3, 7.3.3, 7.3.10): a top-level unsigned
+  integer joined to its complete `endobj` is separated only when the exact
+  generation-aware cross-reference entry and next physical object or revision
+  boundary identify that whole indirect object. Only whitespace and comments
+  may follow the keyword within that span. The existing parser checks the
+  unchanged decimal value and limits. Signs, real/exponent syntax, references,
+  nested values, overflowing integers and ambiguous spans are not repaired.
+  Stream lengths, encoded bytes, decoding and signature-history checks are
+  unchanged; Strict rejects the repair.
 - `security.permissions-unsigned`, `security.literal-hash`,
   `security.hash-padding`: malformed encryption entries recovered; normal
   authentication is still required.

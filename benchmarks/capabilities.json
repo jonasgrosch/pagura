@@ -146,7 +146,7 @@
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
     "crates/pagura/src/editing/transaction.rs": "6c9eb981bf2e66b2a8232fa01985c901a832d92bc0a48c6015f8936b4c37de4c",
-    "crates/pagura/src/lib.rs": "8957891da773217d57e291c1ea4e016fb865115d8e1ee7e16b9ff7173a38a5c2",
+    "crates/pagura/src/lib.rs": "ec1e3a81d35098c573ba6b7cbce5f08ec04b9a7a4f50f6d4257c1f3a45bd38fc",
     "crates/pagura/src/signatures.rs": "d1c4bc5f08c51f91ac404af43171956d0e4b742af74b0645414da1323b4a3663",
     "crates/pagura/src/signatures/algorithms.rs": "ea77c8d611932f022b83b36f058e2227461b6d3b6f9f65c7c9ae4ec69b31f8cd",
     "crates/pagura/tests/api/document.rs": "e5ecf107fdb648e90faf90e13b5703aeb151afbd7ad1cb7ea6e59c8548a5a102",
@@ -163,7 +163,7 @@
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
-    "references/requirements/document.json": "fd4309bc8dbf5ef28329ede06859f31dbdea1c109612fe0da94d323da44144e9",
+    "references/requirements/document.json": "bf620962e5732957896c07a7d6ead72b5f3023f94225019c76f05bb4a73f6097",
     "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
@@ -188,7 +188,13 @@
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
+    "crates/pagura-document/src/object.rs": "0f15c51dd2007f64aaab9d3837b75c100146bd83c922d54b001e17533347b3b2",
+    "crates/pagura-document/src/object/recovery.rs": "97e2203e7bdfbd6b1648cd26442763143dc766cfc00ac82ede8c5dab4fe613ea",
+    "crates/pagura-document/src/repairs.rs": "5e04d392a03c67660813b51b9def7314fcb90e5fe1fd128a9ecc9337fb9ed79c",
+    "crates/pagura-document/tests/integer_separator.rs": "5514dc340fa2120fb8cbb6d3c224ae48193230349e01c3747f53d75bb86335f0",
+    "crates/pagura/tests/api/tags.rs": "c7daaf8254843b8200391aa6f647c59016050d67944c98ed7515dd50d2696a94",
+    "corpus/manifests/integer_separator.json": "420e25cc472f7b2cf925babb6c4d927bd149d808f04790f8dcf547079551eb0b"
   },
   "capabilities": [
     {
@@ -206,17 +212,22 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction.",
+      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. Reported unsigned integer/endobj separation requires its exact effective xref generation/offset and complete physical span; original bytes, ordinary stream validation and strict historical snapshots remain unchanged.",
       "remaining": "Current-corpus recovery classification; external resources require a host contract.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
         "crates/pagura-document/src/features.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-document/src/object.rs",
+        "crates/pagura-document/src/object/recovery.rs",
+        "crates/pagura-document/src/repairs.rs"
       ],
       "tests": [
-        "crates/pagura/tests/api/document.rs"
+        "crates/pagura/tests/api/document.rs",
+        "crates/pagura-document/tests/integer_separator.rs",
+        "crates/pagura/tests/api/tags.rs"
       ],
       "requirements": [
         "catalog-identity-recovery",
@@ -244,9 +255,42 @@
         "syntax-classic-xref",
         "undefined-reference-null",
         "xref-lazy-offset-validation",
-        "xref-streams"
+        "xref-streams",
+        "object-integer-separator"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "integer_separator/joined",
+        "integer_separator/joined-flate",
+        "integer_separator/joined-source-like",
+        "integer_separator/joined-chain",
+        "integer_separator/joined-comment",
+        "integer_separator/joined-generation",
+        "integer_separator/joined-leading-zero",
+        "integer_separator/clean",
+        "integer_separator/clean-flate",
+        "integer_separator/clean-chain",
+        "integer_separator/negative",
+        "integer_separator/positive-sign",
+        "integer_separator/real",
+        "integer_separator/exponent",
+        "integer_separator/reference",
+        "integer_separator/array",
+        "integer_separator/name",
+        "integer_separator/string",
+        "integer_separator/hex-string",
+        "integer_separator/comment",
+        "integer_separator/overflow",
+        "integer_separator/integer-max",
+        "integer_separator/trailing-token",
+        "integer_separator/generation-mismatch",
+        "integer_separator/incremental-current-joined",
+        "integer_separator/incremental-old-joined-current-clean",
+        "integer_separator/length-cycle",
+        "integer_separator/joined-zero",
+        "integer_separator/corrected-offset",
+        "integer_separator/overlapping-span",
+        "integer_separator/unterminated-comment-boundary"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",

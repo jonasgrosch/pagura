@@ -1,0 +1,545 @@
+{
+  "schema": 2,
+  "area": "integer_separator",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "integer_separator/joined",
+      "kind": "pdf",
+      "description": "Full blue/red/green page after exact scalar object repair",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/joined.pdf",
+      "sha256": "e2624e2b6d00be9c55d1b3f754aaaa85e747c817d19b76c316e205728af45259",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/integer_separator/joined.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/joined-flate",
+      "kind": "pdf",
+      "description": "Full blue/red/green page after exact scalar object repair",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/joined-flate.pdf",
+      "sha256": "f6c448939ada0812b1335d5819f8196cb7078357242fef379fba1f845d2e5a09",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/integer_separator/joined-flate.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/joined-source-like",
+      "kind": "pdf",
+      "description": "Full blue/red/green page after exact scalar object repair",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/joined-source-like.pdf",
+      "sha256": "62e08b6d97604ba23870f2329c6e4e713da3ec1326430d2f6f3bb98be6e83dd2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/integer_separator/joined-source-like.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/joined-chain",
+      "kind": "pdf",
+      "description": "Full blue/red/green page after exact scalar object repair",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/joined-chain.pdf",
+      "sha256": "6a4b3811dcc7aa2f3a429f7992b5f184dea298f98c89a59caeb14ca2646441ad",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/integer_separator/joined-chain.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/joined-comment",
+      "kind": "pdf",
+      "description": "Full blue/red/green page after exact scalar object repair",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/joined-comment.pdf",
+      "sha256": "d99cbddb8889eba4841a5783333c09efb693823a3c8fd8ae663e4f41525ad93c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/integer_separator/joined-comment.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/joined-generation",
+      "kind": "pdf",
+      "description": "Full blue/red/green page after exact scalar object repair",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/joined-generation.pdf",
+      "sha256": "49632fbac14b6f56a1fb5da74c21f1d2efc3c1adf75a6abb774c55fe48d08735",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/integer_separator/joined-generation.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/joined-leading-zero",
+      "kind": "pdf",
+      "description": "Full blue/red/green page after exact scalar object repair",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/joined-leading-zero.pdf",
+      "sha256": "05274a9a7fa16918039360be1b5ebc53a868f3d7671912bdca02747ff778357f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/integer_separator/joined-leading-zero.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/clean",
+      "kind": "pdf",
+      "description": "Legal separated scalar control",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/clean.pdf",
+      "sha256": "c32399cfdce3082004cfc13fe9140f00dda80ffbe2e239b33770e907e15b584a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/integer_separator/clean.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/clean-flate",
+      "kind": "pdf",
+      "description": "Legal separated scalar control",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/clean-flate.pdf",
+      "sha256": "e5b967d9e306a4d7093cb27a3aa8b9abf061513571c8ed89ff649038d5c2fc5c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/integer_separator/clean-flate.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/clean-chain",
+      "kind": "pdf",
+      "description": "Legal separated scalar control",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/clean-chain.pdf",
+      "sha256": "f9cfc5662d0c15dc6e6337a8a423e60a4aab05d36c27a8b3b62ccedcf54face7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/integer_separator/clean-chain.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/negative",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/negative.pdf",
+      "sha256": "0da86fc19a564d59229f0dfa5f2559eb1e0a68af145279d8b25137cf4e4c2ffe",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/positive-sign",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/positive-sign.pdf",
+      "sha256": "120e35f6d154d01581d2afa5ed47fcbb28b68ce98ad201c7db536df1bd1cacd2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/real",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/real.pdf",
+      "sha256": "781da6cf7ec01663b32d6623f156c07feb905aa33a3e7746942f6c1d6ae29b48",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/exponent",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/exponent.pdf",
+      "sha256": "95630f8ee372785b22cca80d251a0337b43165b1c08a96aad76b00271d157af4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/reference",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/reference.pdf",
+      "sha256": "0ee1ed722aeb3f78767427d9c16d0ff6b2c578a8d20a7c5226a37e5bd1ee7894",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/array",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/array.pdf",
+      "sha256": "1f85c5946435e4d93b7bedbd4d3bc92591799509fcc2f970413bc0f1e91e9df9",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/name",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/name.pdf",
+      "sha256": "e26c36647fa685d3eb7104db102ffcb8fc36655c3f8db1db10960d8d89c14d16",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/string",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/string.pdf",
+      "sha256": "46b8d0b762faae7ae2f0b34fe97fb542d1a75943e9d28b393c6b52f9250057aa",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/hex-string",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/hex-string.pdf",
+      "sha256": "aeef1ad309b2f0069a8126f93660289abe2bceaa7cc4d92690774e729c3f638b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/comment",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/comment.pdf",
+      "sha256": "fcce3e7a527bab25c5af3d64c62995b62a4cac05b4c817bc82031865d8cd7672",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/overflow",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/overflow.pdf",
+      "sha256": "5652ae5fa0fc5b6eb5f941c4c07ac272a6c0fc958093acb053e7631c133d2f35",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/integer-max",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/integer-max.pdf",
+      "sha256": "99ad1b914db7fe2a83655591853571868453aeb02e50b92e911328e7598fa1c6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "render_error": "limit"
+    },
+    {
+      "id": "integer_separator/trailing-token",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/trailing-token.pdf",
+      "sha256": "61a530f72610100dac8a1f223278fae315f51a7aa0416b8ca05a65df29c2f34e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/generation-mismatch",
+      "kind": "pdf",
+      "description": "Invalid or unusable source cannot become a partial page",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/generation-mismatch.pdf",
+      "sha256": "d4b903f769fc60af077ea6560d1131b9e39f195739bfdee518945418993a86dc",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/incremental-current-joined",
+      "kind": "pdf",
+      "description": "Newest exact xref slot supplies the joined integer",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/incremental-current-joined.pdf",
+      "sha256": "fd42b7bd7fb018fc9c76875668469a2291a3a02923345fbb8a7d8f064037fa18",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/integer_separator/incremental-current-joined.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/incremental-old-joined-current-clean",
+      "kind": "pdf",
+      "description": "A clean current integer does not normalize historical bytes",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/incremental-old-joined-current-clean.pdf",
+      "sha256": "79486db657fb88a208ca7bdf1c7e2903bbeb6085c982fac32bc7e9c6f1ac1790",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/integer_separator/incremental-old-joined-current-clean.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/length-cycle",
+      "kind": "pdf",
+      "description": "A surviving indirect Length cycle is an explicit Cycle refusal",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/length-cycle.pdf",
+      "sha256": "7b55a49103795a8c680a948a9b9ece1ff04c626563b0d9849055b8cc3ba74b20",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "cycle"
+    },
+    {
+      "id": "integer_separator/joined-zero",
+      "kind": "pdf",
+      "description": "An exact zero-length stream preserves subsequent content",
+      "expected": "render",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/joined-zero.pdf",
+      "sha256": "0df1a5997d8dc3c4048b2cba944e57139fad26e311c96fc48d1062bc06735050",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.integer-separator"
+      ],
+      "oracle": "corpus/generated/integer_separator/joined-zero.ppm",
+      "oracle_sha256": "818bcea3c455996f0953f84485c27206189685f5ff5bdc411ed8292fff45ad61",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "integer_separator/corrected-offset",
+      "kind": "pdf",
+      "description": "Nonexact or overlapping xref evidence cannot justify an integer repair",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/corrected-offset.pdf",
+      "sha256": "4e94c8f0d2f7196cf961a1dc766396741946ef01d49d50902061a8f6e9a0ff20",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/overlapping-span",
+      "kind": "pdf",
+      "description": "Nonexact or overlapping xref evidence cannot justify an integer repair",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/overlapping-span.pdf",
+      "sha256": "709d05fd5a93ed8a323602287d826ce6a30c5b5dc6906df6d1eb6b2b717cae66",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "integer_separator/unterminated-comment-boundary",
+      "kind": "pdf",
+      "description": "An EOF-truncated comment must not establish a physical boundary",
+      "expected": "open",
+      "requirements": [
+        "object-integer-separator"
+      ],
+      "path": "corpus/generated/integer_separator/unterminated-comment-boundary.pdf",
+      "sha256": "a16ffd5222949e24e557b403aff4adbec010ffc1d3a9819e13f02265afe5ff48",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    }
+  ]
+}

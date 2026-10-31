@@ -23,7 +23,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 | ID / package | Feature | Library / CLI / host / viewer | Existing support | Remaining |
 |---|---|---|---|---|
-| `document.structure` / R01 | PDF file structures and reported recovery | partial / partial / partial / partial | Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. | Current-corpus recovery classification; external resources require a host contract. |
+| `document.structure` / R01 | PDF file structures and reported recovery | partial / partial / partial / partial | Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. Reported unsigned integer/endobj separation requires its exact effective xref generation/offset and complete physical span; original bytes, ordinary stream validation and strict historical snapshots remain unchanged. | Current-corpus recovery classification; external resources require a host contract. |
 | `document.range-input` / D01 | Range and linearization-aware loading | missing / missing / missing / missing | Complete-buffer opening, lazy object caches and immutable source bytes are available. | Immutable range sources, missing-data state, scoped loading, linearization and resumable host jobs (ADR 0035 proposed). |
 | `security.passwords` / D03 | Password security and encoding | partial / partial / partial / partial | Standard security R2-R6, RC4/AES and R6 SASLprep; CLI supports legacy text conversion. | Public-key handlers, encrypted history and browser legacy text conversion; writing encryption is E01. |
 | `fonts.programs` / R04 | Embedded font programs | partial / partial / partial / partial | TrueType/OpenType glyf, Type 1, CFF Expert/ExpertSubset and FDSelect 4; default CFF2 blends. | Remaining formats, variations, executable programs and policy-controlled hinting; see the font inventory. |
@@ -80,7 +80,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 ## Requirement ownership
 
-All 335 registered requirement IDs map to capability rows in the ledger.
+All 336 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery
