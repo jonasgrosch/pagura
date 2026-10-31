@@ -1,61 +1,75 @@
 //! Pinned Table 116 CMaps and the CID-to-Unicode data of their collections.
-use crate::{cache::Cache, entry::File, unicode};
+//!
+//! The pinned files are trusted data that no PDF supplies, so each is parsed
+//! once per process, at its first use, under the fixed default limits rather
+//! than a provider's, and every provider shares the result. The files are
+//! static data and are not copied; what a parsed table keeps is listed with
+//! each loader.
+use crate::{entry::File, unicode};
 use pagura_core::{Error, Limits, Result};
 use pagura_text::{CidToUnicode, PredefinedCMap};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 /// The predefined CMap `name`, with its `usecmap` parents resolved.
-pub(crate) fn predefined_cmap(
-    name: &[u8],
-    cache: &Cache<PredefinedCMap>,
-    limits: &Limits,
-) -> Result<Option<PredefinedCMap>> {
-    load(name, cache, limits, &mut Vec::new())
+///
+/// A parsed CMap keeps its ranges, with its parents' kept once: from 0.6 KB
+/// to 0.98 MB (UniCNS-UTF16-H), 6.6 MB for all 59 natively and 6.4 MB on
+/// wasm32; parsing needs little beyond what it keeps.
+#[cold]
+#[inline(never)]
+pub(crate) fn predefined_cmap(name: &[u8]) -> Result<Option<PredefinedCMap>> {
+    load(name, &mut Vec::new())
 }
 
 /// Loads `name`, where `path` holds the CMaps whose `usecmap` led here.
-fn load(
-    name: &[u8],
-    cache: &Cache<PredefinedCMap>,
-    limits: &Limits,
-    path: &mut Vec<&'static [u8]>,
-) -> Result<Option<PredefinedCMap>> {
-    let Some(file) = CMAPS.iter().find(|file| file.key == name) else {
+fn load(name: &[u8], path: &mut Vec<&'static [u8]>) -> Result<Option<PredefinedCMap>> {
+    static PARSED: [OnceLock<Result<PredefinedCMap>>; CMAPS.len()] =
+        [const { OnceLock::new() }; CMAPS.len()];
+    let Some(index) = CMAPS.iter().position(|file| file.key == name) else {
         return Ok(None);
     };
+    let (file, limits) = (&CMAPS[index], Limits::default());
     if path.contains(&file.key) {
         return Err(Error::cycle("predefined usecmap cycle"));
     }
     if path.len() >= limits.depth {
         return Err(Error::limit("predefined CMap depth exceeded"));
     }
-    cache
-        .get_or_try_insert(file.key, || {
+    PARSED[index]
+        .get_or_init(|| {
             path.push(file.key);
-            let cmap = PredefinedCMap::parse(file.data, limits, |parent| {
-                load(parent, cache, limits, path)?
+            let cmap = PredefinedCMap::parse(file.data, &limits, |parent| {
+                load(parent, path)?
                     .ok_or_else(|| Error::syntax("missing predefined usecmap parent"))
             });
             path.pop();
             cmap
         })
-        .map(|cmap| Some(PredefinedCMap::clone(&cmap)))
+        .clone()
+        .map(Some)
 }
 
 /// CID-to-Unicode data for an Adobe character collection (9.10.2).
+///
+/// A collection's table keeps 0.70 MB (Korea1) to 1.21 MB (GB1) natively and
+/// half that on wasm32, 3.4 MB and 1.7 MB for all four; parsing one peaks at
+/// about 1.9 times what it keeps.
+#[cold]
+#[inline(never)]
 pub(crate) fn cid_to_unicode(
     registry: &[u8],
     ordering: &[u8],
-    cache: &Cache<CidToUnicode>,
-    limits: &Limits,
 ) -> Result<Option<Arc<CidToUnicode>>> {
-    let Some(file) = crate::adobe_ordering(registry, ordering)
-        .and_then(|ordering| UNICODE.iter().find(|file| file.key == ordering))
+    static PARSED: [OnceLock<Result<Arc<CidToUnicode>>>; UNICODE.len()] =
+        [const { OnceLock::new() }; UNICODE.len()];
+    let Some(index) = crate::adobe_ordering(registry, ordering)
+        .and_then(|ordering| UNICODE.iter().position(|file| file.key == ordering))
     else {
         return Ok(None);
     };
-    cache
-        .get_or_try_insert(file.key, || unicode::parse(file.data, limits))
+    PARSED[index]
+        .get_or_init(|| unicode::parse(UNICODE[index].data, &Limits::default()).map(Arc::new))
+        .clone()
         .map(Some)
 }
 
@@ -431,16 +445,35 @@ mod tests {
     }
 
     #[test]
-    fn usecmap_chains_are_bounded_by_depth() {
-        let shallow = Bundled::new(Limits {
-            depth: 1,
+    fn every_pinned_cmap_and_table_fits_the_fixed_limits_and_is_shared() -> Result<()> {
+        // A provider whose budgets would refuse every file still gets the
+        // tables parsed under the fixed limits, the same values every other
+        // provider gets.
+        let tight = Bundled::new(Limits {
+            depth: 0,
+            font_work: 0,
+            operations: 0,
+            font_entries: 0,
+            value_nodes: 0,
+            decoded_bytes: 0,
             ..Limits::default()
         });
-        // 90ms-RKSJ-V inherits from 90ms-RKSJ-H, one level deeper.
-        assert_eq!(
-            shallow.predefined_cmap(b"90ms-RKSJ-V").unwrap_err().kind,
-            ErrorKind::Limit
-        );
-        assert!(shallow.predefined_cmap(b"90ms-RKSJ-H").is_ok());
+        for file in super::CMAPS {
+            let cmap = super::predefined_cmap(file.key)?
+                .ok_or_else(|| Error::syntax("missing predefined CMap"))?;
+            let shared = tight
+                .predefined_cmap(file.key)?
+                .ok_or_else(|| Error::syntax("missing shared CMap"))?;
+            assert!(PredefinedCMap::ptr_eq(&cmap, &shared));
+        }
+        for file in super::UNICODE {
+            let table = super::cid_to_unicode(b"Adobe", file.key)?
+                .ok_or_else(|| Error::syntax("missing collection"))?;
+            let shared = tight
+                .cid_to_unicode(b"Adobe", file.key)?
+                .ok_or_else(|| Error::syntax("missing shared collection"))?;
+            assert!(Arc::ptr_eq(&table, &shared));
+        }
+        Ok(())
     }
 }

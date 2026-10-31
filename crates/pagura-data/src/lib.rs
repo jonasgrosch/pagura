@@ -16,8 +16,10 @@
 //! [`Provider`] with lazy resources instead. Without `standard-outlines`,
 //! non-embedded standard fonts keep their metrics but have no outlines.
 //!
-//! Each instance owns bounded, lazy caches. No build script, runtime filesystem
-//! access, network access or global mutable state is involved. Data provenance,
+//! Each instance owns a bounded, lazy cache of CID substitutes; standard
+//! fonts, CMaps and Unicode tables are fixed data parsed once per process.
+//! No build script, runtime filesystem access or network access is involved,
+//! and nothing a document supplies reaches the shared data. Data provenance,
 //! hashes and licences are recorded in `data/README.md` and `data/lock.json`.
 
 use cache::Cache;
@@ -88,30 +90,29 @@ pub fn notices() -> impl Iterator<Item = (&'static str, &'static str)> {
         .map(|notice| (notice.subject, notice.text))
 }
 
-/// Bundled font data. CID substitutes, CMaps and Unicode tables are parsed
-/// into instance-local lazy caches within the limits selected at
-/// construction, independent of any PDF's contents. The standard fonts are
-/// fixed data parsed once per process, at first use, under the default
-/// limits and shared by every instance: about 0.2 MB each, 2.6 MB for all 14.
+/// Bundled font data. CID substitutes are parsed into an instance-local lazy
+/// cache within the limits selected at construction, independent of any
+/// PDF's contents. Standard fonts, predefined CMaps and CID-to-Unicode tables
+/// are fixed data parsed once per process, at first use, under the default
+/// limits and shared by every instance; they sit outside every document's
+/// meters because no document chooses or changes them. A standard font keeps
+/// about 0.2 MB (2.6 MB for all 14); what CMaps and Unicode tables keep is
+/// listed in the `cmaps` module.
 #[derive(Debug)]
 pub struct Bundled {
     limits: Limits,
     cid_fonts: Cache<FontProgram>,
-    cmaps: Cache<PredefinedCMap>,
-    cid_to_unicode: Cache<CidToUnicode>,
 }
 
 impl Bundled {
-    /// Creates empty caches with explicit parsing budgets. The inventory bounds
-    /// cache keys (four CID substitutes, 59 CMaps, four Unicode tables);
-    /// unknown names are never retained. Sharing this provider amortizes
-    /// parsing across documents.
+    /// Creates an empty cache of CID substitutes with an explicit parsing
+    /// budget. The inventory bounds its keys (four CID substitutes); unknown
+    /// names are never retained. Sharing this provider amortizes their parsing
+    /// across documents.
     pub fn new(limits: Limits) -> Self {
         Self {
             limits,
             cid_fonts: Cache::new(),
-            cmaps: Cache::new(),
-            cid_to_unicode: Cache::new(),
         }
     }
 }
@@ -130,14 +131,14 @@ impl Provider for Bundled {
         fonts::standard_font(base_name)
     }
     fn predefined_cmap(&self, name: &[u8]) -> Result<Option<PredefinedCMap>> {
-        cmaps::predefined_cmap(name, &self.cmaps, &self.limits)
+        cmaps::predefined_cmap(name)
     }
     fn cid_to_unicode(
         &self,
         registry: &[u8],
         ordering: &[u8],
     ) -> Result<Option<Arc<CidToUnicode>>> {
-        cmaps::cid_to_unicode(registry, ordering, &self.cid_to_unicode, &self.limits)
+        cmaps::cid_to_unicode(registry, ordering)
     }
 }
 
@@ -189,8 +190,8 @@ mod tests {
         // debug output lists their names rather than their bytes.
         let debug = format!("{provider:?}");
         assert!(debug.len() < 4096, "{debug}");
-        if cfg!(feature = "cmaps") {
-            assert!(debug.contains(r#"cmaps: {"90ms-RKSJ-H"}"#), "{debug}");
+        if cfg!(feature = "cjk-fonts") {
+            assert!(debug.contains(r#"cid_fonts: {"Japan1"}"#), "{debug}");
         }
         assert!(!debug.contains("Unknown"), "{debug}");
         Ok(())
@@ -217,28 +218,30 @@ mod tests {
             },
         ] {
             let provider = Bundled::new(limits);
-            let results = [
-                provider.cid_font(b"Adobe", b"Japan1").map(|_| ()),
-                provider.predefined_cmap(b"90ms-RKSJ-H").map(|_| ()),
-                provider.cid_to_unicode(b"Adobe", b"Japan1").map(|_| ()),
-            ];
-            let linked = [
-                cfg!(feature = "cjk-fonts"),
-                cfg!(feature = "cmaps"),
-                cfg!(feature = "cmaps"),
-            ];
-            for (result, linked) in results.into_iter().zip(linked) {
-                match result {
-                    Err(error) => assert_eq!(error.kind, ErrorKind::Limit),
-                    Ok(()) => assert!(!linked, "{limits:?}"),
-                }
+            let linked = cfg!(feature = "cjk-fonts");
+            match provider.cid_font(b"Adobe", b"Japan1") {
+                Err(error) => assert_eq!(error.kind, ErrorKind::Limit),
+                Ok(_) => assert!(!linked, "{limits:?}"),
             }
             // Nothing was published: the debug output names no cached key.
             assert_eq!(format!("{provider:?}").matches('"').count(), 0);
-            // The standard fonts are fixed data under fixed limits.
+            // Standard fonts, CMaps and Unicode tables are fixed data under
+            // fixed limits.
             assert_eq!(
                 provider.standard_font(b"Helvetica").map(|f| f.is_some()),
                 Ok(cfg!(feature = "standard-metrics"))
+            );
+            assert_eq!(
+                provider
+                    .predefined_cmap(b"90ms-RKSJ-H")
+                    .map(|c| c.is_some()),
+                Ok(cfg!(feature = "cmaps"))
+            );
+            assert_eq!(
+                provider
+                    .cid_to_unicode(b"Adobe", b"Japan1")
+                    .map(|t| t.is_some()),
+                Ok(cfg!(feature = "cmaps"))
             );
         }
     }
