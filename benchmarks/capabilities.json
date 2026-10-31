@@ -194,7 +194,7 @@
     "crates/pagura-image/src/dispatch.rs": "1ded39be4d7b8d07e60cce70d02c27995768b899fd0a8934b45767a3081c569a",
     "crates/pagura-image/src/jbig2/wrapper.rs": "c427cd8c9cc8e1e102bb8112565db02e1c390f676c5dbd1fb03e6ee184071496",
     "crates/pagura-image/src/source/codec.rs": "2a8697f132992295113366114cb0fbe5b1e44d00e2caca3961cbf84b85aef5a3",
-    "crates/pagura-image/tests/jbig2_wrapper.rs": "c2b0c53ec6b96e023d19a46539d437401fb65597bd8459fa1287d772f00e2b9c",
+    "crates/pagura-image/tests/jbig2_wrapper.rs": "c718fb7a2c9465b88d29dcc75fa91550f6b1798422ac7e2f21d2e0a7a73543ea",
     "crates/pagura/examples/jbig2_wrapper_parity.rs": "7f16395602b3a18deb43386f2b049b9183acba8c6487186f9990a23027d37cbe",
     "crates/pagura/tests/api/tags.rs": "2ab47c951dbbc22362ee68a98d3db7e8072f85b877311218ffaa44848f478f12",
     "docs/STATUS.md": "77b0d0f517dcc7085702db1af39d770bf20533cf020609f23d09c267219d9087",

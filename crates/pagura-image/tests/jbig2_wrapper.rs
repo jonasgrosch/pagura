@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Complete packaging and hostile metadata, using independent T.88 encoders.
 
 use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
