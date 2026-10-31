@@ -172,11 +172,13 @@ impl<'a> Budget<'a> {
         Ok(())
     }
 
-    /// Frees `values`, which [`Self::filled`] allocated, and returns their
-    /// bytes to the budget: it bounds the allocations live at once, so
-    /// memory freed during decoding is admitted again. Work stays charged.
+    /// Frees `values`, an allocation charged at its length and never grown,
+    /// and returns their bytes to the budget: it bounds the allocations live
+    /// at once, so memory freed during decoding is admitted again. Work
+    /// stays charged.
     pub fn free<T>(&mut self, values: Vec<T>) {
-        let bytes = values.capacity().saturating_mul(size_of::<T>());
+        let bytes = values.len().saturating_mul(size_of::<T>());
+        debug_assert!(bytes <= self.bytes, "freeing more than is charged");
         drop(values);
         self.bytes = self.bytes.saturating_sub(bytes);
     }
