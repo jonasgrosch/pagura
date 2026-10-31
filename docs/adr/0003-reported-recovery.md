@@ -58,6 +58,8 @@ explicit, bounded and visible to the caller.
 | `filter.checksum-mismatch` | decoded Flate data is kept despite a wrong Adler-32 |
 | `filter.trailing-data` | bytes after a filter's end marker are ignored |
 | `filter.raw-deflate` | FlateDecode data without the zlib wrapper is decoded as raw DEFLATE |
+| `jbig2.file-wrapper` | decode complete sequential file packaging declaring one page, validating PageInfo/EOP/EOF, coded segments, referrals and dimensions |
+| `jbig2.eof-page-association` | treat empty, unreferenced terminal EOF1 after the sole EOP1 as file metadata; no other page identity is inferred |
 
 The catalogue grows with the implementation; every new tag needs a
 minimized fixture showing both the strict error and the repaired result.
