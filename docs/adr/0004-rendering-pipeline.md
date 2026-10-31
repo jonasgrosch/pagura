@@ -408,18 +408,21 @@ allowance alone cannot decide a coverage byte near a half-level. The
 reference therefore retains each accepted hull's outward bounds and area
 (including placed-coordinate mapping and translation rounding),
 sums the errors of hulls that touch each pixel, and quantizes both ends of
-the resulting area interval. Each curve is halved in its own frame: its
-controls less its first one, in the outline's space, mapped by the linear
-map alone, and placed by adding the mapped first control once. A piece's
-mapped controls and its placed end point then lie within
-ε·(32·(d + 4)·own + (elevation + 8)·mapped + 4·placed) + tail of exact,
-per coordinate, at depth d: own is the curve's largest mapped control in its
-frame, mapped its largest mapped control, placed its largest placed control,
-elevation the rounding units of a quadratic's elevated controls and tail a
-localized pixel's two-sum tail. Its hull's area and bounds are outward by
-that much. Only the first term grows with depth, and it scales with the
-curve's own extent, so a piece far from the device origin still meets its
-share of the allowance. Paths and polygon glyph references are accepted at a
+the resulting area interval. Each curve is halved in its own frame, in
+double-word arithmetic: its controls less its first one, exact, with a
+quadratic elevated in that frame, mapped by the linear map alone, and placed
+by adding its first control placed in double-words. A piece's placed
+controls then lie within δ(d) = 4·(d + 4)·ε²·(own + placed) of exact, per
+coordinate, at depth d: own bounds the sums of the curve's mapped terms in
+its frame, and placed its placed coordinates. A test checks this against
+exact rational arithmetic. Every vertex is then a double, the curve's ends
+placed in doubles like every other vertex of the outline, so it lies within
+δ(d) + 2ε·placed + tail, where tail is a localized pixel's two-sum tail.
+A piece stops when its hull, outward by δ(d), meets its share of the
+allowance. The vertex error does not shrink with depth, so it does not
+decide when to stop. It stays in the emitted hull's area and bounds, which
+the pixel's interval sums, so a piece far from the device origin still
+meets its share. Paths and polygon glyph references are accepted at a
 fixed 1/256-pixel distance from the chord instead, which halving reaches
 whatever the magnitude: placed rounding is many orders below it. When those
 bytes differ it refines, in the pixel's local frame, the pieces of the

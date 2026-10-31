@@ -27,6 +27,7 @@ mod area;
 mod blend;
 mod buffer;
 mod color;
+mod double;
 pub mod exact;
 mod flatten;
 mod glyph;
