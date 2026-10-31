@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries.",
+  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Added21 literal-null annotation PDF contracts; the original1446-case prefix is unchanged.",
   "cases": [
     "rich_annotations/plain-72",
     "rich_annotations/stored-72",
@@ -1447,6 +1447,27 @@
     "recovery_jbig2_tables/repeated-main-unused",
     "recovery_jbig2_tables/repeated-both-valid",
     "recovery_jbig2_tables/repeated-both-unused",
-    "recovery_jbig2_tables/hostile-repeated-missing-table"
+    "recovery_jbig2_tables/hostile-repeated-missing-table",
+    "recovery_annotations/clean",
+    "recovery_annotations/empty",
+    "recovery_annotations/leading",
+    "recovery_annotations/middle",
+    "recovery_annotations/trailing",
+    "recovery_annotations/repeated",
+    "recovery_annotations/null-only",
+    "recovery_annotations/reverse-order",
+    "recovery_annotations/indirect-array",
+    "recovery_annotations/many-nulls",
+    "recovery_annotations/indirect-null",
+    "recovery_annotations/undefined-reference",
+    "recovery_annotations/wrong-generation",
+    "recovery_annotations/boolean",
+    "recovery_annotations/number",
+    "recovery_annotations/string",
+    "recovery_annotations/nested-array",
+    "recovery_annotations/after-null-boolean",
+    "recovery_annotations/after-null-bbox",
+    "recovery_annotations/after-null-cycle",
+    "recovery_annotations/after-null-subtype"
   ]
 }

@@ -48,7 +48,7 @@ fn literal_null_members_keep_pixels_order_links_and_original_bytes() {
         let repaired = !["clean", "empty"].contains(&name);
         assert_eq!(diagnostics.len(), usize::from(repaired), "{name}");
         if repaired {
-            assert_eq!(diagnostics[0].tag(), "pages.annotation-null");
+            assert_eq!(diagnostics[0].tag(), pagura::PAGES_ANNOTATION_NULL.as_str());
             assert_eq!(diagnostics[0].object, Some(ObjectId::new(3, 0)));
             assert_eq!(diagnostics[0].position, Position::Unknown);
         }
@@ -81,10 +81,7 @@ fn strict_null_rejection_has_page_context_and_no_applied_repair() {
             page.links(&document).unwrap_err(),
         ] {
             assert_eq!(error.kind, ErrorKind::Syntax);
-            assert_eq!(
-                error.repair.map(pagura::Repair::as_str),
-                Some("pages.annotation-null")
-            );
+            assert_eq!(error.repair, Some(pagura::PAGES_ANNOTATION_NULL));
             assert_eq!(error.object, Some(ObjectId::new(3, 0)));
             assert_eq!(error.position, Position::Unknown);
         }

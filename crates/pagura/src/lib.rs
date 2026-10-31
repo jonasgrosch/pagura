@@ -91,6 +91,8 @@ pub use pagura_document::forms;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
+/// Reported recovery of literal null members in page annotation arrays.
+pub use pagura_document::repairs::ANNOTATION_NULL as PAGES_ANNOTATION_NULL;
 /// Reported repair of contradicting JBIG2 page capability declarations.
 pub use pagura_image::jbig2::repairs::PAGE_CAPABILITIES as JBIG2_PAGE_CAPABILITIES;
 /// Reported repair of an unused JBIG2 Huffman aggregation-table selector.
