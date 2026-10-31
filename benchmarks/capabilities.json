@@ -72,7 +72,7 @@
     "crates/pagura-document/src/signatures.rs": "ddd26dd2f51712107ddb1b1e5ebea18caf1c7b3707ab6d838b34278cc9a08c6e",
     "crates/pagura-document/src/signatures/change_tests.rs": "aa06cc1d51b037fce2b5f0f357bfa46f7e792b96f25a40cbd86c81a17aa2e809",
     "crates/pagura-document/src/signatures/model.rs": "3a63fbb6d9aa873fe0cc5ee90a14046f0bb5d7187955c754663c762d6b98813f",
-    "crates/pagura-document/src/signatures/roles.rs": "91546bbb0d5c9769f17f72c8567834618308536141efb65c666f646ac01398b2",
+    "crates/pagura-document/src/signatures/roles.rs": "630bb9d163062b62ad4be3af526d8bb44ec8584ff6b6be574d9ce2647698c0ec",
     "crates/pagura-document/src/stream.rs": "bd31422ffc587b869344e0ee91fda881e2ed40f5dd2820299b4978a5bad72187",
     "crates/pagura-extract/src/features.rs": "96c570d9e51e100d7e5ec75c08607d65e22038c0f5db1c99322ee04987dbd864",
     "crates/pagura-extract/src/lib.rs": "9f99ff35f57983ebce2ec84d618f0eb258dd13fea8a12264a84b3759e84a0dec",
