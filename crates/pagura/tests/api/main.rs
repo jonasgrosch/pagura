@@ -7,6 +7,7 @@ mod annotation_empty_widgets;
 mod document;
 mod editing;
 mod facade;
+mod original_records;
 mod overprint;
 mod provider;
 mod render;
