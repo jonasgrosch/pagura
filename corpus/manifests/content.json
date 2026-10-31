@@ -7154,6 +7154,110 @@
       "api": "compile_page"
     },
     {
+      "id": "content/repair-operand-number-sign",
+      "kind": "pdf",
+      "description": "Reported recovery: syntax.number-sign",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-operand-number-sign.pdf",
+      "sha256": "94e25468e9917f1f556f403dbeefec1d61304d28f71bca55e747697501e44e02",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.number-sign"
+      ],
+      "oracle": "corpus/generated/content/repair-operand-number-sign.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-operand-number-sign-array",
+      "kind": "pdf",
+      "description": "Reported recovery: syntax.number-sign",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-operand-number-sign-array.pdf",
+      "sha256": "9f12e56b3aab3eebf40e8fb3605fbde9241295fabfa511ae9cb2d497e63cbdf8",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.number-sign"
+      ],
+      "oracle": "corpus/generated/content/repair-operand-number-sign-array.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-operand-hex-digit",
+      "kind": "pdf",
+      "description": "Reported recovery: syntax.hex-digit",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-operand-hex-digit.pdf",
+      "sha256": "f05303fe7c8908ce5f00385c16e1964e0293f9d0bf6847d4926a39acd5bf69bb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.hex-digit"
+      ],
+      "oracle": "corpus/generated/content/repair-operand-hex-digit.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-operand-name-escape",
+      "kind": "pdf",
+      "description": "Reported recovery: syntax.name-escape",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-operand-name-escape.pdf",
+      "sha256": "1b15c7a6abb2489bd52acbd95160bd7a144b404068dba55de0bed2143cfb2218",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.name-escape"
+      ],
+      "oracle": "corpus/generated/content/repair-operand-name-escape.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-operand-reference-zero",
+      "kind": "pdf",
+      "description": "Reference repairs stay errors in content",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-operand-reference-zero.pdf",
+      "sha256": "cffe43719b56a84eab2cbde10ceccbeaf3a0af2913ec817a39690594c6cdb9bc",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
       "id": "content/icc-1-identity",
       "kind": "pdf",
       "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",

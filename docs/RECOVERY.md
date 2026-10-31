@@ -38,6 +38,14 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   diagnostics. Page outline decoding already forwards its sink through the
   document reporting API.
 - `syntax.duplicate-key`: the last value of a repeated key wins.
+- `syntax.number-sign` (7.3.3): a `+` or `-` with no digits reads as the
+  integer 0; `syntax.hex-digit` (7.3.4.3): a byte that is neither a
+  hexadecimal digit nor white space inside a hexadecimal string is skipped.
+  PDFium, MuPDF, Poppler and pdf.js read both so, in content and objects.
+- Content operands get the object parser's repairs in the document's
+  recovery mode, as objects do; its reference repairs
+  (`syntax.reference-zero`, `syntax.reference-leading-zero`) stay errors
+  there, since content operands are direct (7.8.2).
 - `image.data-short`, `image.data-excess` (8.9.3, 8.9.5.1): zero-fill missing
   packed bytes or ignore the excess suffix; `jpeg.entropy-padding` (T.81
   B.1.1.5, E.1.4): ignore non-one unused entropy bits; `jpeg.adobe-marker`

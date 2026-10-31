@@ -16,7 +16,9 @@ use crate::token::{self, skip, word};
 use crate::{Content, Op, Operator};
 use pagura_core::repairs::{LEADING_ZERO_REFERENCE, ZERO_REFERENCE};
 use pagura_core::syntax::{Origin, Parser, is_whitespace};
-use pagura_core::{Diagnostic, Dictionary, Error, Limits, Meter, Position, Result, Value};
+use pagura_core::{
+    Diagnostic, Dictionary, Error, Limits, Meter, Position, Recovery, Result, Value,
+};
 
 /// The most operands one operator takes, with room for long `SCN` lists:
 /// DeviceN's 32 components and a pattern name.
@@ -56,6 +58,8 @@ pub struct Reader<'c> {
     /// The offsets of `BI` and of the data of an inline image whose header
     /// was yielded and whose data has not been read yet.
     inline: Option<(usize, usize)>,
+    /// The object parser's repairs on operands read so far, not yet taken.
+    repairs: Vec<Diagnostic>,
 }
 
 impl<'c> Reader<'c> {
@@ -73,7 +77,30 @@ impl<'c> Reader<'c> {
             taken: false,
             compatibility: 0,
             inline: None,
+            repairs: Vec::new(),
         }
+    }
+
+    /// Applies the object parser's repairs to malformed operands under
+    /// `mode` instead of rejecting them, as it applies them to document
+    /// objects; [`Self::take_diagnostics`] returns the repairs applied. Its
+    /// reference repairs stay errors: content operands are direct (7.8.2).
+    #[must_use]
+    pub fn with_recovery(mut self, mode: Recovery) -> Self {
+        self.parser = Parser::new(self.data, Origin::Buffer, self.limits).with_recovery(mode);
+        self
+    }
+
+    /// Whether the object parser repaired an operand read since the repairs
+    /// were last taken.
+    pub fn has_repairs(&self) -> bool {
+        !self.repairs.is_empty()
+    }
+
+    /// The repairs the object parser applied to the operands read since the
+    /// last call, positioned in the content's bytes.
+    pub fn take_diagnostics(&mut self) -> Vec<Diagnostic> {
+        std::mem::take(&mut self.repairs)
     }
 
     /// The content being read.
@@ -151,11 +178,14 @@ impl<'c> Reader<'c> {
         let data = self.data;
         let next = data.get(offset + 1).copied();
         let operand = match byte {
-            b'+' | b'-' | b'.' | b'0'..=b'9' if budget => {
-                let (number, end) = number::read(data, offset)?;
-                self.position = end;
-                Operand::from(number)
-            }
+            b'+' | b'-' | b'.' | b'0'..=b'9' if budget => match number::read(data, offset) {
+                Ok((number, end)) => {
+                    self.position = end;
+                    Operand::from(number)
+                }
+                // The object parser gives the same errors, and its repairs.
+                Err(_) => self.parse(offset)?,
+            },
             b'(' | b'<' if budget && (byte, next) != (b'<', Some(b'<')) => {
                 let start = self.buffers.bytes.len();
                 if let Some(end) = self.string(byte, offset) {
@@ -264,6 +294,7 @@ impl<'c> Reader<'c> {
     fn parse(&mut self, offset: usize) -> Result<Operand> {
         self.parser.seek(offset)?;
         let value = self.parser.parse()?;
+        self.keep_repairs()?;
         self.position = self.parser.offset();
         Ok(match value {
             Value::Integer(n) => Operand::Integer(n),
@@ -276,6 +307,21 @@ impl<'c> Reader<'c> {
             }
             value => Operand::Value(value),
         })
+    }
+
+    /// Keeps the repairs the object parser applied to the value it just
+    /// read, except those of references, which fail in content.
+    fn keep_repairs(&mut self) -> Result<()> {
+        for diagnostic in self.parser.take_diagnostics() {
+            let repair = diagnostic.repair();
+            if repair == Some(LEADING_ZERO_REFERENCE) || repair == Some(ZERO_REFERENCE) {
+                return Err(diagnostic
+                    .to_error()
+                    .unwrap_or(Error::syntax("indirect reference in content")));
+            }
+            self.repairs.push(diagnostic);
+        }
+        Ok(())
     }
 
     fn push(&mut self, offset: usize, operand: Operand) -> Result<()> {
@@ -367,7 +413,9 @@ impl<'c> Reader<'c> {
                 .as_name()
                 .cloned()
                 .ok_or(Error::syntax("inline image key must be name"))?;
+            self.keep_repairs()?;
             let value = self.parser.parse()?;
+            self.keep_repairs()?;
             no_references(&value)?;
             if dictionary.contains_key(key.as_bytes()) {
                 return Err(Error::syntax("duplicate inline image key"));
