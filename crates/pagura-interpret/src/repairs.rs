@@ -35,6 +35,9 @@ pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
 pub const GRAPHICS_UNMATCHED: Repair = Repair::new("content.graphics-unmatched");
 /// 9.4.1: an unmatched ET has no text object to close.
 pub const TEXT_UNMATCHED: Repair = Repair::new("content.text-unmatched");
+/// 14.6: an unmatched EMC has no sequence to close; retain visibility and
+/// the structure device's current marked-content stack.
+pub const MARKED_UNMATCHED: Repair = Repair::new("content.marked-unmatched");
 /// 14.6: close marked-content sequences left open at the end of a content
 /// sequence, after all painting and text objects have finished.
 pub const MARKED_UNCLOSED: Repair = Repair::new("content.marked-unclosed");
@@ -60,6 +63,7 @@ pub const ALL: &[Repair] = &[
     GRAPHICS_UNMATCHED,
     TEXT_UNMATCHED,
     MARKED_UNCLOSED,
+    MARKED_UNMATCHED,
     TYPE3_WIDTH,
     PATTERN_UNDERLYING,
 ];

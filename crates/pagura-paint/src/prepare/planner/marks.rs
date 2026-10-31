@@ -64,6 +64,51 @@ struct Spec<'a> {
 }
 
 impl Planner<'_> {
+    /// A certified constant pattern source through the normal mark pipeline.
+    /// Only the per-cell geometry is replaced: the original solid paint,
+    /// composite/conversion state and operator position remain authoritative.
+    pub(super) fn constant_pattern_fill(
+        &mut self,
+        scope: &Scope,
+        group: u32,
+        node: &FillNode,
+        bounds: pagura_raster::DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<()> {
+        let mut inner = scope.clone();
+        inner.group = group;
+        inner.transform = Transform::IDENTITY;
+        inner.crop = false;
+        inner.bounds = bounds;
+        inner.plain = false;
+        inner.records = false;
+        inner.depth += 1;
+        // This replaces a cell walk, which ordinarily checks the same depth.
+        if inner.depth >= self.limits.depth {
+            return Err(Error::limit("compositing depth exceeded"));
+        }
+        let info = MarkInfo {
+            state: node.mark.state,
+            clip: None,
+            position: node.mark.position,
+        };
+        let spec = Spec {
+            info: &info,
+            position: info.position,
+            hull: Some([
+                f64::from(bounds.x0),
+                f64::from(bounds.y0),
+                f64::from(bounds.x1),
+                f64::from(bounds.y1),
+            ]),
+            geometry: Geometry::Area(None),
+            colour: Colour::Paint(node.paint),
+            stencil: false,
+            opacity: None,
+        };
+        self.mark(&inner, &spec, budget)
+    }
+
     pub(super) fn fill(
         &mut self,
         scope: &Scope,

@@ -96,6 +96,43 @@ exact result.
   for f64 evaluation. `TilingType 3` has no distortion limit.
   `pagura-reference` implements this definition separately from the
   renderer.
+- **Opaque constant tiling fields:** only a pattern exceeding the ordinary
+  instance cap may replace enumeration with a certified constant field. The
+  cell must be one opaque Normal DeviceGray-black rectangular fill, with no
+  transfer, soft mask, overprint, alpha-as-shape, or selected black-generation
+  or undercolour-removal function; all its local clips and
+  `BBox` must be positive-area axis-aligned rectangles after their stored
+  local transforms. An uncoloured override or inherited image-stencil clip
+  declines this certificate. Ordinary accepted enumeration remains unchanged.
+  The selected lattice and numeric instance ranges are validated first.
+  Let `u,v` be outward upper bounds on the inverse lattice's unit-pixel
+  x/y spans, and `e` a componentwise device placement-error bound. The inward
+  width of the clipped cell rectangle must exceed
+  `abs(XStep) + 3*u + 2*u*e`, and its height the corresponding y expression.
+  Each permissible-translation interval then contains a lattice point whose
+  cell contains the complete 3-by-3 device-pixel neighbourhood. Outward inverse
+  intervals enclose the target pixel centres; the floor-selected witness range
+  must fit completely inside the actual enumerated index bounds. Uncertain or
+  missing witnesses decline the certificate. At least one
+  opaque black instance therefore gives full alpha and shape independently
+  of partially covered overlapping cells; geometric plane coverage alone
+  would not prove this for independently antialiased instances.
+  Determinant intervals exclude zero, and outward gamma16 arithmetic bounds
+  placement using absolute affine terms before cancellation. A conservative
+  certificate domain requires `e < 2^-16` device pixel; unresolved arithmetic
+  retains enumeration or its existing refusal. This is an eligibility bound,
+  not a changed coverage tolerance or product working-range limit. Inspection
+  and clip traversal are metered before work; ordinary preparation, raster,
+  surface, depth and memory limits remain in force. The field uses the original
+  solid paint and composite/conversion state through the normal mark pipeline
+  and original pattern group. The outer mark/clip coverage, alpha, soft mask
+  and backdrop composition still apply once. Independent rational controls
+  cover the admitted geometry/compositing and retained refusal boundaries.
+  The independent reference instead checks actual finite placed fill, BBox
+  and local clip quadrilaterals against every corner of each requested pixel;
+  its candidate and clip visits share one cumulative render-work meter. Raw
+  geometry remains subject to the existing working-range policy before
+  transformation or clipping can hide an excessive coordinate.
 - **Composition through non-amplifying operations:** the imaging model of
   clause 11 in exact arithmetic on the same coverage bytes and sources, for
   any number of overlapping marks. These operations are Normal compositing,

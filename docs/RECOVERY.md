@@ -264,3 +264,10 @@ lose the correlation needed for nonlinear transfer functions.
   also correct an overlong declaration crossing a following object, but its
   repaired extent must end at one unambiguous complete terminator before the
   next physical object/revision boundary; it never consumes that object.
+
+- `content.marked-unmatched` (14.6): an `EMC` with no open marked-content
+  sequence in the current scope is a reported no-op in Repair. Visibility,
+  text/graphics/path/clip state and the structure device stack are retained;
+  no synthetic begin or device end is emitted. A form cannot close its
+  caller's sequence. Strict rejects, and later syntax/resource/cycle/limit
+  failures remain errors without successful partial output.
