@@ -962,6 +962,8 @@ def bundled_cases():
     lock = json.loads((data/"lock.json").read_text())
     yield from symbol_substitute_cases(data, lock)
     yield from cid_substitute_cases(data, lock)
+    from .text_checked_cid import cases as checked_cid_cases
+    yield from checked_cid_cases(data, lock)
     names = []
     aliases = {
         "Helvetica": ["Arial", "ArialMT", "Arial,Regular"],

@@ -137,11 +137,11 @@
     "crates/pagura-render/src/options.rs": "131de2afe8e6ee17a96f3f1432f76861608b9558b5dad53ffed0e68779452c31",
     "crates/pagura-text/src/cmap.rs": "74684da05e8e13c4fae27e8bd9272aa57fd9bdc982645e407ca73e5756bfa8b4",
     "crates/pagura-text/src/features.rs": "488e4cab6c106cd3df8d3722c23b8d7add6674891350c2a8aa45e523b8ce0e1c",
-    "crates/pagura-text/src/font.rs": "bdf5cf2f606dc08ae88b759535b2b9b5227c03e67158c3726fcdf107d768901c",
+    "crates/pagura-text/src/font.rs": "9b5b6a72f65be63fd19759b43bdb465183e6723fff54d1f6c57170b4cdf30e30",
     "crates/pagura-text/src/font/load.rs": "535fd40d2f39d0f50c93da0a8ae6f8004370c3d306b020f8e2d60f4a9c367696",
     "crates/pagura-text/src/program.rs": "c24e0a892d90f6d3a36fc3b1ea91ecd7eaf11ac9188ab7b53b08c8d34aa5088d",
     "crates/pagura-text/src/substitute.rs": "1a8cef1d0c58721e61ccdbf30d677aeed03053a2cdc2f9994013577685434db4",
-    "crates/pagura-text/src/substitute/cid.rs": "6ba76ff13c02b40134d03a60ca260aa9b6900edb6a6c936aa1ef9996fcb8d8ad",
+    "crates/pagura-text/src/substitute/cid.rs": "2561b798cf2973246c839b9af1facf1caaf94e8a73fcb715dde96064f8a3f0b3",
     "crates/pagura-write/src/lib.rs": "c51a1ce95091e024ba999884b6b1f558f9723426f0c7b248cf079887d1fdbb54",
     "crates/pagura/src/editing.rs": "f1e7165d7cd479b6c5b9556162f1e763c2b0938bc29eb9c0691ead78df75c557",
     "crates/pagura/src/editing/forms.rs": "1a306facc290ca34c4436e828782d92c2c0b3a56bca1e785cb985ef66c41f018",
@@ -178,7 +178,7 @@
     "references/requirements/recovery.json": "dcb81c1ec7710576e04a7b08020c077935563d4f7cdc7a2d74202097037fb283",
     "references/requirements/render.json": "46af479379624a91df4e1484ae214d1cbe22b1de291563820888795b133a7c4a",
     "references/requirements/signatures.json": "419d4510b33005077ff96a4671f4bd25b135141aebf6ac6508137361f8a1fbe0",
-    "references/requirements/text.json": "b486b86c6c94cf97d8e0bd704cd8fd08d2aabc68745f2c48fe965fda9a1c4f46",
+    "references/requirements/text.json": "32baa50a4e715207e86a99c9ed987ce920f2bca2f9e9f5f5ee3b14fc5b212878",
     "references/requirements/transparency.json": "cab37438b0cc588560de989d8b25b8488d210d8171998c0ba159abedfbf93070",
     "references/requirements/write.json": "fbbfb36efbdf0eb832a5ed6b40a498bb89ec59e104deb64b08bc46981ffb173e",
     "tools/check.py": "4c148dcbf9942c1c79f9e09308548a72bc1cf7d05aca7252a0d3b1a61916ce65",
@@ -188,7 +188,11 @@
     "web/text_layer.mjs": "413754b1f3344467d160ca7c1e8d9c8df034704a77728e235cfdb1c82196d275",
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
-    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71"
+    "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
+    "crates/pagura-text/src/font/shape.rs": "c6c8a98ae5a385604cdb335d94b2dc509f67b45274555191e264ec233951b433",
+    "crates/pagura-text/src/substitute/family.rs": "e3c0861c1f21ecf6d05b58ccc64476f7aba9a3b52e00c75eac9d4b6014836928",
+    "crates/pagura-text/tests/fonts/checked_cid.rs": "94db6dba75a80c1205acbeeac1ca32ac6bac6ef258aefcc67d1000569c92e3d7",
+    "corpus/manifests/text.json": "e117a2eca28a07290300ce33addca6b2b3ef0af599bf626c3c341ac4a28cfac9"
   },
   "capabilities": [
     {
@@ -450,21 +454,36 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works.",
-      "remaining": "Vertical substituted glyph forms/metrics and unavailable provider/collection coverage.",
+      "implemented": "Provider-backed horizontal substitution for the supported Adobe collections; embedded vertical text works. Exact-name horizontal MinionPro Identity CID fallback requires complete used-code Encoding/Unicode/glyph coverage and retains PDF W/DW; it is an explicit visual substitute.",
+      "remaining": "Vertical substituted glyph forms/metrics and unavailable provider/collection coverage. Original Minion appearance equivalence, multi-scalar shaping and unknown Minion names/styles are not supplied by this policy.",
       "sources": [
         "crates/pagura-text/src/substitute/cid.rs",
         "crates/pagura-cli/src/args.rs",
         "crates/pagura-host/src/protocol.rs",
-        "web/viewer.mjs"
+        "web/viewer.mjs",
+        "crates/pagura-text/src/font.rs",
+        "crates/pagura-text/src/font/shape.rs",
+        "crates/pagura-text/src/substitute/family.rs"
       ],
-      "tests": [],
+      "tests": [
+        "crates/pagura-text/tests/fonts/checked_cid.rs"
+      ],
       "requirements": [
         "paint-bundled-cjk-substitute",
         "text-cid-substitution",
-        "text-font-substitution"
+        "text-font-substitution",
+        "text-checked-cid-substitution"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "text/paint-checked-cid-regular-CIDFontType0",
+        "text/paint-checked-cid-regular-CIDFontType2",
+        "text/paint-checked-cid-bold-CIDFontType0",
+        "text/paint-checked-cid-bold-CIDFontType2",
+        "text/paint-checked-cid-italic-CIDFontType0",
+        "text/paint-checked-cid-italic-CIDFontType2",
+        "text/paint-checked-cid-bolditalic-CIDFontType0",
+        "text/paint-checked-cid-bolditalic-CIDFontType2"
+      ],
       "comparisons": {
         "pdfium": "unprobed",
         "mupdf": "unprobed",

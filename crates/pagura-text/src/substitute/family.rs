@@ -137,6 +137,24 @@ pub(crate) fn standard_name(name: &[u8]) -> Option<Standard14> {
     None
 }
 
+/// CID-only visual fallback. This does not declare a simple-font alias or
+/// metric compatibility with Minion; source W/DW remain authoritative.
+pub(super) fn checked_cid_face(name: &[u8]) -> Option<Standard14> {
+    let name = if name.get(6) == Some(&b'+') && name.get(..6)?.iter().all(u8::is_ascii_uppercase) {
+        name.get(7..)?
+    } else {
+        name
+    };
+    let style = match name {
+        b"MinionPro" | b"MinionPro-Regular" => Style::Regular,
+        b"MinionPro-Bold" => Style::Bold,
+        b"MinionPro-Italic" => Style::Italic,
+        b"MinionPro-BoldItalic" => Style::BoldItalic,
+        _ => return None,
+    };
+    Some(Family::Times.face(style))
+}
+
 /// Latin text families beyond the standard aliases whose name rules out a
 /// symbol font: the metric-compatible Liberation and croscore faces and DejaVu.
 /// Only a Symbolic font with an explicit Latin encoding consults this list;
