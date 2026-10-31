@@ -34,14 +34,17 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
             let inline;
             let value = match properties {
                 Properties::Name(name) => {
-                    resource(document, resources, b"Properties", name.as_bytes())?
+                    self.named_resource(resources, b"Properties", name.as_bytes())?
                 }
                 Properties::Inline(dictionary) => {
                     inline = Value::Dictionary(dictionary.as_ref().clone());
-                    &inline
+                    Some(&inline)
                 }
             };
-            visible = self.session.visibility.marked(document, value)?;
+            // An undefined group is reported; its content stays visible.
+            if let Some(value) = value {
+                visible = self.session.visibility.marked(document, value)?;
+            }
         }
         scope.marked.push(scope.visible);
         scope.visible &= visible;

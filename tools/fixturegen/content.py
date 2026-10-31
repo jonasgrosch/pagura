@@ -177,14 +177,31 @@ def cases():
         yield Case("optional-"+policy.decode(), optional_pdf(b"/OC /Members BDC 0 0 8 8 re f EMC", b"<< /Type /OCMD /OCGs [5 0 R 6 0 R] /P /"+policy+b" >>"), RENDER, ("content-optional",), "Membership policy", oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)] if visible else []), extra={"api":"compile_page"})
     yield Case("optional-expression", optional_pdf(b"/OC /Members BDC 0 0 8 8 re f EMC", b"<< /Type /OCMD /VE [/And 5 0 R [/Not 6 0 R]] >>"), RENDER, ("content-optional",), "Boolean visibility expression", oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)]), extra={"api":"compile_page"})
     # Malformed text and image contexts are syntax errors: showing text outside
-    # BT (9.4.1), an unterminated inline image (8.9.7), an undefined font
-    # resource (7.8.3), glyph metrics outside a Type 3 glyph (9.6.4), and an
-    # ExtGState Font entry that is not [font-reference size] (Table 57).
+    # BT (9.4.1), an unterminated inline image (8.9.7), glyph metrics outside a
+    # Type 3 glyph (9.6.4), and an ExtGState Font entry that is not
+    # [font-reference size] (Table 57).
     for name, command, resources in [("text", b"(text) Tj", b"<< >>"), ("inline-image", b"BI", b"<< >>"),
-                                     ("text-state", b"/F 12 Tf", b"<< >>"), ("type3", b"1 2 d0", b"<< >>"),
+                                     ("type3", b"1 2 d0", b"<< >>"),
                                      ("font-state", b"/GS gs", b"<< /ExtGState << /GS << /Font [/F 12] >> >> >>")]:
         yield Case(name, single_page([command], resources=resources), OPEN, ("content-explicit-operators",),
                    "Malformed text or image context", extra={"api": "compile_page", "render_error": "Syntax"})
+    # An undefined font resource (7.8.3) fails in strict mode; repair mode
+    # ignores Tf, and the strings shown after it paint nothing and do not move.
+    yield Case("text-state", single_page([b"/F 12 Tf BT (text) Tj ET"]), RENDER, ("content-explicit-operators",),
+               "Undefined font resource: Tf ignored as a reported repair", oracle=opaque_rectangles(64, 64, []),
+               strict_valid=False, repairs=("content.undefined-resource",))
+    # Each other resource category: the operator naming an undefined (absent,
+    # null or undefined-object) entry is ignored, and later content renders.
+    for name, command, resources in [
+        ("undefined-extgstate", b"/GS gs", b"<< /ExtGState << /Other << >> >> >>"),
+        ("undefined-xobject", b"/X Do", b"<< /XObject << /X null >> >>"),
+        ("undefined-shading", b"/S sh", b"<< /Shading << /S 99 0 R >> >>"),
+        ("undefined-optional-group", b"/OC /G BDC 0 0 8 8 re f EMC", b"<< >>"),
+    ]:
+        yield Case(name, single_page([command + b" 0 g 0 0 8 8 re f"], resources=resources), RENDER,
+                   ("content-explicit-operators",), "Operator naming an undefined resource ignored as a reported repair",
+                   oracle=opaque_rectangles(64, 64, [((0, 0, 8, 8), BLACK)]),
+                   strict_valid=False, repairs=("content.undefined-resource",))
     for family, definition in [
         ("Separation", b"[/Separation /Spot /DeviceRGB << /FunctionType 2 /Domain [0 1] /C0 [1 1 1] /C1 [0 0 0] /N 1 >>]"),
         ("DeviceN", b"[/DeviceN [/Cyan] /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 0 0] /N 1 >>]"),

@@ -79,6 +79,14 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   discarded; `image.stencil-color-space` (8.9.5.1, Table 87): an image mask's
   extraneous ColorSpace is ignored; `image.filter-abbreviation` (8.9.7, Table
   92): the inline-image filter abbreviations are accepted on image XObjects.
+- `content.undefined-resource` (7.8.3, 7.3.9–7.3.10): an operator naming a
+  Font, ExtGState, XObject, Shading or Properties resource that is undefined
+  (absent, null, or a reference to an undefined object) is ignored. Strings
+  shown after an ignored `Tf` paint nothing and do not move, because their
+  widths are unknown; an undefined optional-content group leaves its content
+  visible. Colour spaces and patterns stay errors, as the colour operands
+  that follow depend on them. Readers differ: some substitute a default font
+  for a missing `Tf` resource; Pagura draws no glyph it cannot identify.
 - `content.text-clip-reset` (9.3.6, 9.4.1): a text rendering mode reset to a
   non-clipping mode before `ET` keeps the clip already accumulated.
 - `text.marked-property` (14.6.2, 14.9.3–14.9.5): an unusable marked-content

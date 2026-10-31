@@ -40,6 +40,13 @@ pub const TYPE3_WIDTH: Repair = Repair::new("font.type3-width");
 /// numeric operands supplied with an underlying pattern colour space.
 pub const PATTERN_UNDERLYING: Repair = Repair::new("content.pattern-underlying");
 
+/// 7.8.3, 7.3.9–7.3.10: an operator naming an undefined Font, ExtGState,
+/// XObject, Shading or Properties resource (absent, null or an undefined
+/// object) is ignored. Strings shown after an ignored `Tf` paint nothing and do
+/// not move, as their widths are unknown. Colour spaces and patterns stay
+/// errors, since the colour operands that follow depend on them.
+pub const UNDEFINED_RESOURCE: Repair = Repair::new("content.undefined-resource");
+
 /// Every tag above.
 pub const ALL: &[Repair] = &[
     COLOR_OPERATOR,
@@ -56,4 +63,5 @@ pub const ALL: &[Repair] = &[
     MARKED_UNCLOSED,
     TYPE3_WIDTH,
     PATTERN_UNDERLYING,
+    UNDEFINED_RESOURCE,
 ];

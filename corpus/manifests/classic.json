@@ -307,18 +307,24 @@
     {
       "id": "classic/text-undefined-font",
       "kind": "pdf",
-      "description": "a font name that is not a page resource is malformed content (7.8.3)",
-      "expected": "open",
+      "description": "A font name that is not a page resource is malformed content (7.8.3): strict mode fails; repair mode ignores Tf, the string paints nothing, and later content still renders",
+      "expected": "render",
       "requirements": [
         "syntax-classic-xref",
         "page-tree"
       ],
       "path": "corpus/generated/classic/text-undefined-font.pdf",
-      "sha256": "cea8e143a0a136af6d9364d1eec5e935ecef9052e8886d02bd460bc3beaec775",
+      "sha256": "821f4af82932b9168daeba1aac5f24f01eeda8604f63214c33c1dfb5a12666b5",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.undefined-resource"
+      ],
+      "oracle": "corpus/generated/classic/text-undefined-font.ppm",
+      "oracle_sha256": "e63d8e53faad71c6b272d33d2617352f7192550e7cc8649988d6ce6651709936",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
     },
     {
       "id": "classic/alpha-unsupported",
