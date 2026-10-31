@@ -719,12 +719,14 @@ fn proven_sides_within(
         bytes: &mut bytes,
     };
     let mut proofs = Proofs(Meter::new(own, SPARE_WORK));
-    Resolver::default()
+    let mut resolver = Resolver::default();
+    resolver.runs().extend_from_slice(proven);
+    resolver
         .row_proven(
             pieces,
             &[FillRule::NonZero],
             top,
-            (proven, &mut proofs),
+            &mut proofs,
             (&mut out, meters),
         )
         .unwrap();

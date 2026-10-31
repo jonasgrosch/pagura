@@ -167,8 +167,9 @@ pub(crate) struct Resolver {
     row_ends: Vec<(f64, f64)>,
     lasts: Vec<f64>,
     cuts: Vec<f64>,
-    /// The proven ranges of the row's regions, and the regions.
-    bounds: Vec<(f64, f64)>,
+    /// The proven column ranges of the current row, which [`Self::runs`]
+    /// gives to fill, and the row's regions.
+    runs: Vec<(f64, f64)>,
     regions: Vec<Region>,
     /// The chunk walk where a region starts, to restore it from: the pieces
     /// reaching it, and the windings carried into it.
@@ -219,7 +220,7 @@ pub(crate) struct Resolver {
 struct Region {
     start: f64,
     end: f64,
-    /// The ranges, as an index range of the resolver's `bounds`.
+    /// The ranges, as an index range of the resolver's `runs`.
     ranges: (usize, usize),
 }
 
@@ -479,12 +480,14 @@ impl Resolver {
         top: f64,
         (out, meters): (&mut Vec<Line>, Meters<'_>),
     ) -> Result<()> {
-        self.row_proven(pieces, rules, top, (&[], &mut ()), (out, meters))
+        self.runs.clear();
+        self.row_proven(pieces, rules, top, &mut (), (out, meters))
     }
 
-    /// [`Self::row`], where under one group `proven` lists column ranges,
-    /// ascending and apart, in which every cell of the row is known covered:
-    /// their chunks are passed over, at the sorts of their pieces' ends.
+    /// [`Self::row`], where under one group [`Self::runs`] lists column
+    /// ranges, ascending and apart, in which every cell of the row is known
+    /// covered: their chunks are passed over, at the sorts of their pieces'
+    /// ends.
     /// `spare` is given up before any storage of the row the bytes left
     /// might not cover with it.
     ///
@@ -496,7 +499,7 @@ impl Resolver {
         pieces: &[Piece],
         rules: &[FillRule],
         top: f64,
-        (proven, spare): (&[(f64, f64)], &mut dyn Spare),
+        spare: &mut dyn Spare,
         (out, meters): (&mut Vec<Line>, Meters<'_>),
     ) -> Result<()> {
         let Meters { work, bytes } = meters;
@@ -505,25 +508,24 @@ impl Resolver {
         self.carried.clear();
         let carried =
             room_need(&self.carry, 1).saturating_add(room_need(&self.carried, rules.len()));
-        give_up(spare, carried, bytes);
+        self.give_up(spare, carried, bytes);
         room(&mut self.carry, 1, bytes)?;
         room(&mut self.carried, rules.len(), bytes)?;
         self.carry.push(top);
         self.carried.resize(rules.len(), 0);
-        let proven = if rules.len() == 1 { proven } else { &[] };
+        if rules.len() > 1 {
+            self.runs.clear();
+        }
         if pieces.len() <= CHUNK {
-            give_up(
-                spare,
-                sweep_bound(pieces.len(), self.carry.len(), rules.len(), out.len()),
-                bytes,
-            );
+            let bound = sweep_bound(pieces.len(), self.carry.len(), rules.len(), out.len());
+            self.give_up(spare, bound, bytes);
             return self.sweep(pieces, (rules, top), (out, work, bytes), false);
         }
-        give_up(spare, chunks_bound(pieces.len()), bytes);
+        self.give_up(spare, chunks_bound(pieces.len()), bytes);
         #[cfg(debug_assertions)]
         let charged = work.used();
         self.cut(pieces, (work, bytes))?;
-        self.prove(proven, (spare, bytes))?;
+        self.prove((spare, bytes))?;
         let mut live = std::mem::take(&mut self.live);
         let mut local = std::mem::take(&mut self.local);
         let result = self.chunks(
@@ -539,6 +541,44 @@ impl Resolver {
             Self::check_work(pieces, (rules, top), work.used() - charged);
         }
         result
+    }
+
+    /// The proven column ranges of the next row to [`Self::row_proven`], for
+    /// the caller to fill, charging their storage to the row's bytes. It is
+    /// storage only the ranges' route uses, which [`Self::forget`] frees.
+    pub(crate) fn runs(&mut self) -> &mut Vec<(f64, f64)> {
+        &mut self.runs
+    }
+
+    /// Gives up `spare` where `bytes` has less left than `need`, and with it
+    /// the storage only the spare's route uses: outside regions, where none
+    /// of it is in use.
+    pub(crate) fn give_up(&mut self, spare: &mut dyn Spare, need: usize, bytes: &mut Meter) {
+        if bytes.remaining() < need {
+            bytes.refund(spare.release());
+            self.forget(bytes);
+        }
+    }
+
+    /// Frees the storage only an optional route uses, returning its bytes:
+    /// the passes' spans of directions, the walk kept at a region's start,
+    /// and the row's ranges and regions.
+    pub(crate) fn forget(&mut self, bytes: &mut Meter) {
+        let freed = [
+            self.spanning.capacity() * size_of::<i64>(),
+            self.kept_live.capacity() * size_of::<u32>(),
+            self.kept_carry.capacity() * size_of::<f64>(),
+            self.kept_carried.capacity() * size_of::<i64>(),
+            self.runs.capacity() * size_of::<(f64, f64)>(),
+            self.regions.capacity() * size_of::<Region>(),
+        ];
+        bytes.refund(freed.iter().fold(0, |sum, &b| sum.saturating_add(b)));
+        self.spanning = Vec::new();
+        self.kept_live = Vec::new();
+        self.kept_carry = Vec::new();
+        self.kept_carried = Vec::new();
+        self.runs = Vec::new();
+        self.regions = Vec::new();
     }
 
     /// Chooses the columns to cut the row at: walking the first columns of
@@ -582,27 +622,25 @@ impl Resolver {
         Ok(())
     }
 
-    /// Plans the regions of `proven` ranges, charged to `spare`'s own work:
+    /// Plans the regions of the row's runs, charged to `spare`'s own work:
     /// each run of ranges with none of [`Self::cut`]'s cuts between them, from
     /// the last cut before it to the first after. Its bounds lie strictly
     /// outside the ranges'. A spare that cannot pay, or whose plan the bytes
     /// left do not cover, plans none.
-    fn prove(
-        &mut self,
-        proven: &[(f64, f64)],
-        (spare, bytes): (&mut dyn Spare, &mut Meter),
-    ) -> Result<()> {
-        self.bounds.clear();
+    fn prove(&mut self, (spare, bytes): (&mut dyn Spare, &mut Meter)) -> Result<()> {
         self.regions.clear();
-        let units = self.cuts.len().saturating_add(proven.len());
-        let need = room_need(&self.bounds, proven.len())
-            .saturating_add(room_need(&self.regions, proven.len()));
-        if proven.is_empty() || bytes.remaining() < need || !spare_work(spare, units, bytes) {
+        let units = self.cuts.len().saturating_add(self.runs.len());
+        let need = room_need(&self.regions, self.runs.len());
+        if self.runs.is_empty() || bytes.remaining() < need || !spare_work(spare, units, bytes) {
+            self.runs.clear();
+            if spare.held() == 0 {
+                self.forget(bytes);
+            }
             return Ok(());
         }
-        room(&mut self.bounds, proven.len(), bytes)?;
-        room(&mut self.regions, proven.len(), bytes)?;
-        for &(lo, hi) in proven {
+        room(&mut self.regions, self.runs.len(), bytes)?;
+        for r in 0..self.runs.len() {
+            let (lo, hi) = self.runs[r];
             let before = self.cuts.partition_point(|&c| c < lo);
             let start = before
                 .checked_sub(1)
@@ -611,8 +649,6 @@ impl Resolver {
                 .first()
                 .copied()
                 .unwrap_or(f64::INFINITY);
-            let r = self.bounds.len();
-            self.bounds.push((lo, hi));
             match self.regions.last_mut() {
                 // No cut between it and the last range: the same region.
                 Some(region) if start < region.end => {
@@ -694,7 +730,7 @@ impl Resolver {
             let walk = (&mut entered, &mut *live, &mut *local);
             self.walk(pieces, ((left, right), (true, false)), walk, (work, bytes))?;
             let bound = sweep_bound(local.len(), self.carry.len(), rules.len(), out.len());
-            give_up(spare, bound, bytes);
+            self.give_up(spare, bound, bytes);
             self.sweep(local, (rules, top), (out, work, bytes), k + 1 < chunks)?;
             k += 1;
         }
@@ -726,6 +762,7 @@ impl Resolver {
         give_up(spare, need, bytes);
         if bytes.remaining() < need {
             bytes.refund(spare.release());
+            self.forget(bytes);
             return Ok(false);
         }
         room_for(&mut self.kept_live, live.len(), bytes)?;
@@ -745,7 +782,7 @@ impl Resolver {
             walk,
             (out, &mut own, bytes),
         );
-        match run {
+        let done = match run {
             Ok(()) => {
                 if let Some(work) = spare.work() {
                     *work = own;
@@ -770,7 +807,12 @@ impl Resolver {
                 Ok(false)
             }
             Err(error) => Err(error),
+        };
+        // Once the spare is gone, so is the storage only its route uses.
+        if spare.held() == 0 {
+            self.forget(bytes);
         }
+        done
     }
 
     /// The chunks of `region`, on `own` work; `SPARE_WORK` where that or the
@@ -785,7 +827,7 @@ impl Resolver {
     ) -> Result<()> {
         let mut left = region.start;
         for r in region.ranges.0..region.ranges.1 {
-            let (lo, hi) = self.bounds[r];
+            let (lo, hi) = self.runs[r];
             for (columns, owns, passed) in [
                 ((left, lo), (true, true), false),
                 ((lo, hi), (false, false), true),

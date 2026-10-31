@@ -1320,14 +1320,14 @@ fn resolve(
         rules.extend(paths.rules());
     }
     let mut resolver = Resolver::default();
-    let (mut pieces, mut sides, mut proven) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut pieces, mut sides) = (Vec::new(), Vec::new());
     let mut resolved = Resolved::default();
     let mut cover = spine.take().map(|spine| spine.cover(frame.rect));
     for &(y, joint) in chosen {
         let top = f64::from(y);
         pieces.clear();
         let listed = list.strip(y / STRIP);
-        give_up(&mut cover, room_need(&pieces, listed.len()), bytes);
+        resolver.give_up(&mut cover, room_need(&pieces, listed.len()), bytes);
         room(&mut pieces, listed.len(), bytes)?;
         for &i in listed {
             if let Some(&line) = lines.get(i as usize) {
@@ -1338,26 +1338,27 @@ fn resolve(
             (true, Some(paths)) => {
                 // The clip's pieces of the row come before their count.
                 bytes.refund(cover.release());
+                resolver.forget(bytes);
                 paths.pieces(y, 1, (&mut pieces, bytes), work)?;
                 rules.len()
             }
             _ => 1,
         };
-        proven.clear();
+        resolver.runs().clear();
         // The cover takes the rows it proves from the top down, and any it
         // leaves out cost it nothing. Where its own work or scratch does
         // not fit, it is given up, and the rows are resolved whole.
         if let (1, Some(held)) = (groups, &mut cover)
             && pieces.len() > PROVEN_PIECES
             && held
-                .row(top, proven_runs(pieces.len()), &mut proven, bytes)
+                .row(top, proven_runs(pieces.len()), resolver.runs(), bytes)
                 .is_err()
         {
-            proven.clear();
             bytes.refund(cover.release());
+            resolver.forget(bytes);
         }
         resolve_pieces(
-            (&pieces, &proven),
+            &pieces,
             &rules[..groups],
             y,
             (&mut resolver, &mut sides, &mut resolved),
@@ -1365,13 +1366,14 @@ fn resolve(
         )?;
     }
     bytes.refund(cover.release());
+    resolver.forget(bytes);
     Ok(resolved)
 }
 
 /// Shared winding resolution and retained-row assembly for polygon and
 /// joint clip preparation.
 fn resolve_pieces(
-    (pieces, proven): (&[Piece], &[(f64, f64)]),
+    pieces: &[Piece],
     rules: &[FillRule],
     y: u32,
     (resolver, sides, resolved): (&mut Resolver, &mut Vec<Line>, &mut Resolved),
@@ -1384,10 +1386,10 @@ fn resolve_pieces(
         pieces,
         rules,
         top,
-        (proven, &mut *spare),
+        &mut *spare,
         (sides, Meters { work, bytes }),
     )?;
-    give_up(spare, resolved.push_need(sides.len()), bytes);
+    resolver.give_up(spare, resolved.push_need(sides.len()), bytes);
     resolved.push(y, sides, bytes)
 }
 
