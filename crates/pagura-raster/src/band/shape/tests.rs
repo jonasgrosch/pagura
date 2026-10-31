@@ -492,17 +492,17 @@ fn strip_of_stars(rng: &mut certify::random::Rng, stars: usize) -> Vec<Vec<(f64,
         .collect()
 }
 
-/// The work the fill of `contours` takes in a 128 × 16 area under
-/// `limits`, its polygon's heap charged first; `None` where a limit refuses
-/// it.
-fn filled(contours: &[Vec<(f64, f64)>], limits: &Limits) -> Option<usize> {
+/// The work the fill of `contours` takes in an area `(x1, y1)` in bands of
+/// 16 rows under `limits`, its polygon's heap charged first; `None` where a
+/// limit refuses it.
+fn filled(contours: &[Vec<(f64, f64)>], (x1, y1): (u32, u32), limits: &Limits) -> Option<usize> {
     let options = ShapeOptions {
         area: Area {
             region: DeviceRect {
                 x0: 0,
                 y0: 0,
-                x1: 128,
-                y1: 16,
+                x1,
+                y1,
             },
             band_height: 16,
         },
@@ -565,8 +565,8 @@ fn windows_never_turn_a_preparation_into_a_refusal() {
             ..Limits::default()
         };
         admitted(
-            |b| certify::without(|| filled(&contours, &bytes(b))).is_some(),
-            |b| filled(&contours, &bytes(b)).is_some(),
+            |b| certify::without(|| filled(&contours, (128, 16), &bytes(b))).is_some(),
+            |b| filled(&contours, (128, 16), &bytes(b)).is_some(),
             defaults.render_bytes,
             (512, 32),
         );
@@ -575,14 +575,14 @@ fn windows_never_turn_a_preparation_into_a_refusal() {
             ..Limits::default()
         };
         admitted(
-            |w| certify::without(|| filled(&contours, &work(w))).is_some(),
-            |w| filled(&contours, &work(w)).is_some(),
+            |w| certify::without(|| filled(&contours, (128, 16), &work(w))).is_some(),
+            |w| filled(&contours, (128, 16), &work(w)).is_some(),
             defaults.raster_work,
             (64, 32),
         );
         // Rows passed over leave the shape's own meter less work.
-        let whole = certify::without(|| filled(&contours, &defaults));
-        passed += usize::from(filled(&contours, &defaults) < whole);
+        let whole = certify::without(|| filled(&contours, (128, 16), &defaults));
+        passed += usize::from(filled(&contours, (128, 16), &defaults) < whole);
     }
     assert!(
         passed >= 3,
@@ -604,5 +604,39 @@ fn windows_never_refuse_a_probed_stroke() {
             Limits::default().render_bytes,
             (256, 16),
         );
+    }
+}
+
+/// The review's reproduction: the certificate tests' random stars moved
+/// into a 64-pixel square, whose third shape the first windows refused at
+/// the least budget its whole rows met. Every budget from that least on
+/// admits the shape with its windows too.
+#[test]
+fn windows_never_raise_a_shapes_least_budget() {
+    let mut rng = certify::random::Rng(0x2545_f491_4f6c_dd1d);
+    for case in 0..16 {
+        let contours: Vec<Vec<(f64, f64)>> = rng
+            .stars()
+            .into_iter()
+            .map(|star| {
+                star.into_iter()
+                    .map(|(x, y)| (x + 10.0, y + 10.0))
+                    .collect()
+            })
+            .collect();
+        let bytes = |render_bytes| Limits {
+            render_bytes,
+            ..Limits::default()
+        };
+        let plain = |b| certify::without(|| filled(&contours, (64, 64), &bytes(b))).is_some();
+        let least = halved(plain, Limits::default().render_bytes);
+        for budget in (least..least + 4096).step_by(16) {
+            if plain(budget) {
+                assert!(
+                    filled(&contours, (64, 64), &bytes(budget)).is_some(),
+                    "case {case}: refused at {budget} bytes with windows, least {least} without"
+                );
+            }
+        }
     }
 }
