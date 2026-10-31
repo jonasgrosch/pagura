@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Joint qualified-slice interactions append20 single-page contracts; two clean-page0/repaired-page1 documents are qualified separately at both page indices.",
+  "scope": "Introduced annotation view cases:907 independent positives,54 explicit Unsupported,209 explicit render refusals.79 model/observation OPEN cases are excluded from view refusal claims. Common safe runner/workflow reused from PR327 at48d51d813. Added14empty-widget controls preserve complete field inspection/editing and lazy geometry boundaries. Joint qualified-slice interactions append20 single-page contracts; two clean-page0/repaired-page1 documents are qualified separately at both page indices. Includes21 literal-null annotation contracts; all previous selectors remain in order.",
   "cases": [
     "rich_annotations/plain-72",
     "rich_annotations/stored-72",
@@ -1647,6 +1647,27 @@
     "compatibility_union/required-resource-144",
     "compatibility_union/required-cycle-144",
     "compatibility_union/sparse-stays-limit-144",
-    "compatibility_union/compensation-on-refused-144"
+    "compatibility_union/compensation-on-refused-144",
+    "recovery_annotations/clean",
+    "recovery_annotations/empty",
+    "recovery_annotations/leading",
+    "recovery_annotations/middle",
+    "recovery_annotations/trailing",
+    "recovery_annotations/repeated",
+    "recovery_annotations/null-only",
+    "recovery_annotations/reverse-order",
+    "recovery_annotations/indirect-array",
+    "recovery_annotations/many-nulls",
+    "recovery_annotations/indirect-null",
+    "recovery_annotations/undefined-reference",
+    "recovery_annotations/wrong-generation",
+    "recovery_annotations/boolean",
+    "recovery_annotations/number",
+    "recovery_annotations/string",
+    "recovery_annotations/nested-array",
+    "recovery_annotations/after-null-boolean",
+    "recovery_annotations/after-null-bbox",
+    "recovery_annotations/after-null-cycle",
+    "recovery_annotations/after-null-subtype"
   ]
 }

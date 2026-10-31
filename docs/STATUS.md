@@ -1,11 +1,11 @@
 # Capability and evidence status
 
-This candidate combines certified opaque-black constant tiling, bounded calibrated
-BlackPoint metadata with compensation disabled, and reported unmatched-EMC recovery.
-Each feature was qualified separately; this combined source still requires its own
-exact-head accuracy, all-page, parity, cost and memory qualification. No union gain
-or performance claim follows from parallel donor results. Unqualified null/CID/JBIG
-changes are excluded; source metadata and previous recovery policies are retained.
+This source combines certified opaque-black tiling, calibrated BlackPoint metadata
+with compensation disabled, unmatched-EMC recovery and literal-null annotation
+members. The original component evidence retains its exact source provenance;
+this selected union still requires its own accuracy, all-page, parity, cost,
+memory and exact-head CI qualification. No aggregate gain follows by summing
+component branches. Referenced null annotations remain errors in this source.
 
 Pagura has substantial rendering, reading, form-filling and incremental-writing
 support. It is **not a complete PDF implementation**, and feature parity with

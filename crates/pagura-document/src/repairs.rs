@@ -7,6 +7,9 @@ use pagura_core::Repair;
 pub const TRAILING_BYTES: Repair = Repair::new("file.trailing-bytes");
 /// A page tree `/Count` that disagrees with the leaves found.
 pub const PAGE_COUNT: Repair = Repair::new("pages.count-mismatch");
+/// Table 31; 12.5.2: skip only literal null members of a page Annots array.
+/// This is reported reader policy, not the dictionary-null rule of 7.3.9.
+pub const ANNOTATION_NULL: Repair = Repair::new("pages.annotation-null");
 /// Header found after leading junk (ADR 0003).
 pub const HEADER_OFFSET: Repair = Repair::new("file.header-offset");
 /// Cross-reference data reconstructed from unambiguous indirect objects.
@@ -137,6 +140,7 @@ pub const FORM_FIELDS: Repair = Repair::new("form.fields");
 pub const ALL: &[Repair] = &[
     TRAILING_BYTES,
     PAGE_COUNT,
+    ANNOTATION_NULL,
     HEADER_OFFSET,
     XREF_REBUILT,
     OFFSET_CORRECTED,
