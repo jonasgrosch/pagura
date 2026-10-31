@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Source-owned exact-xref unsigned integer/endobj recovery: 31 hashed PDF/oracle render and refusal controls on native/SIMD/scalar in Strict/Repair. Full output written only after success and source-byte verification; geometry controls distinguish prefix from complete page. Public API tests separately pin source position/cache/generation/history/budgets/cycles. No whole-corpus or memory claim follows from this RGB selector.",
+  "description": "Source-owned42PDF controls for exact scalar recovery and portable nonnegative Length caps; native/SIMD/scalar Strict/Repair complete pixels/refusals. Three valid default-limit pages also use explicit LOWER caller caps in this runtime probe; canonical conformance keeps their full-page default-limit oracles. No default cap, source bytes or old oracle changes.",
   "cases": [
     "integer_separator/joined",
     "integer_separator/joined-flate",
@@ -32,6 +32,17 @@
     "integer_separator/joined-zero",
     "integer_separator/corrected-offset",
     "integer_separator/overlapping-span",
-    "integer_separator/unterminated-comment-boundary"
+    "integer_separator/unterminated-comment-boundary",
+    "integer_separator/declared-cap-minus1",
+    "integer_separator/declared-cap-exact",
+    "integer_separator/declared-cap-plus1",
+    "integer_separator/declared-u32-minus1",
+    "integer_separator/declared-u32-max",
+    "integer_separator/declared-u32-plus1",
+    "integer_separator/declared-i64-max",
+    "integer_separator/declared-negative",
+    "integer_separator/caller-cap-minus1",
+    "integer_separator/caller-cap-exact",
+    "integer_separator/caller-cap-plus1"
   ]
 }

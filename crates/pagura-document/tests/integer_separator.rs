@@ -200,3 +200,68 @@ fn integer_and_stream_resource_guards_remain_authoritative() {
     );
     assert_eq!(document.diagnostics(), [] as [Diagnostic; 0]);
 }
+
+#[test]
+fn nonnegative_length_budget_precedes_pointer_width_conversion() {
+    for name in [
+        "declared-cap-plus1",
+        "declared-u32-minus1",
+        "declared-u32-max",
+        "declared-u32-plus1",
+        "declared-i64-max",
+    ] {
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let document = open(name, recovery);
+            assert!(matches!(
+                document.object(ObjectId::new(5, 0)).unwrap().value(),
+                Value::Integer(_)
+            ));
+            let error = document.object(ObjectId::new(4, 0)).unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit, "{name}");
+            assert_eq!(error.message, "stream size budget exceeded");
+            assert_eq!(error.object, Some(ObjectId::new(4, 0)));
+            assert_eq!(error.position, Position::Unknown);
+            assert_eq!(error.repair, None);
+            assert_eq!(document.diagnostics(), [] as [Diagnostic; 0]);
+        }
+    }
+    for name in [
+        "declared-cap-minus1",
+        "declared-cap-exact",
+        "declared-negative",
+    ] {
+        let document = open(name, Recovery::Repair);
+        assert_eq!(
+            document.object(ObjectId::new(4, 0)).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
+        assert_eq!(document.diagnostics(), [] as [Diagnostic; 0]);
+    }
+}
+
+#[test]
+fn actual_stream_capacity_edges_keep_complete_original_bytes() {
+    for capacity in [CONTENT.len() - 1, CONTENT.len(), CONTENT.len() + 1] {
+        let document = Document::open(
+            fixture("integer_separator", "clean.pdf"),
+            &OpenOptions {
+                recovery: Recovery::Strict,
+                limits: Limits {
+                    stream_bytes: capacity,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let result = document
+            .object(ObjectId::new(4, 0))
+            .and_then(|object| document.stream_data(object));
+        if capacity < CONTENT.len() {
+            assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
+        } else {
+            assert_eq!(&*result.unwrap(), CONTENT);
+        }
+        assert_eq!(document.diagnostics(), [] as [Diagnostic; 0]);
+    }
+}

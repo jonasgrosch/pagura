@@ -291,13 +291,17 @@ fn stream_length(
             _ => return Ok(None),
         }
     };
-    let Ok(length) = usize::try_from(length) else {
+    let Ok(length) = u64::try_from(length) else {
         return Ok(None);
     };
-    if length > document.limits().stream_bytes {
+    // The caller's cap is usize-sized. Check it before narrowing the valid
+    // nonnegative PDF integer, so 32-bit targets retain the same Limit error.
+    if length > pagura_core::convert::usize_to_u64(document.limits().stream_bytes) {
         return Err(Error::limit("stream size budget exceeded").in_object(id));
     }
-    Ok(Some(length))
+    usize::try_from(length)
+        .map(Some)
+        .map_err(|_| Error::limit("stream size budget exceeded").in_object(id))
 }
 
 /// Finds the terminator before the next object or revision boundary.

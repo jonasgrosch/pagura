@@ -163,7 +163,7 @@
     "references/requirements/core.json": "1c7b7408ed070e654772043b975aacb993716fd0fe0e44e35a3040d659bb882d",
     "references/requirements/crypto-signatures.json": "2efe9114b8529fec004be940d2f006a5118bdba6612848c36edf66542285b361",
     "references/requirements/crypto.json": "84ee5fd17f82f9dc45bf6dab9cd69fe62597dea3ef5a1a1bad9bf7b1bf156c98",
-    "references/requirements/document.json": "bf620962e5732957896c07a7d6ead72b5f3023f94225019c76f05bb4a73f6097",
+    "references/requirements/document.json": "801b3ba3b8c9900ef0e95942a592aab51bcc7dfae3574d676be237fe39a415eb",
     "references/requirements/font.json": "81f0fa2da62e79a3dc1a89ff88b9581bdb4f92a12358dfd2336305aae6a6da86",
     "references/requirements/forms.json": "1015c3b824f452998e69795df1332ea357e7d565349e76d449bd87163132ba98",
     "references/requirements/fuzz.json": "2695838e7b55aa3127616006bb1ea718aa1fe15465dcd6a1147a8c95b21b6c65",
@@ -190,11 +190,16 @@
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
     "crates/pagura-document/src/object.rs": "0f15c51dd2007f64aaab9d3837b75c100146bd83c922d54b001e17533347b3b2",
-    "crates/pagura-document/src/object/recovery.rs": "97e2203e7bdfbd6b1648cd26442763143dc766cfc00ac82ede8c5dab4fe613ea",
+    "crates/pagura-document/src/object/recovery.rs": "1163a7bce519489c948ecbc1442d53c566107dee24dea523f82fe83f0d2ef8c4",
     "crates/pagura-document/src/repairs.rs": "5e04d392a03c67660813b51b9def7314fcb90e5fe1fd128a9ecc9337fb9ed79c",
-    "crates/pagura-document/tests/integer_separator.rs": "5514dc340fa2120fb8cbb6d3c224ae48193230349e01c3747f53d75bb86335f0",
+    "crates/pagura-document/tests/integer_separator.rs": "cb8101749f0265a39de94b08e9a42aa78bb5ffce44e5172327e724764c984ccd",
     "crates/pagura/tests/api/tags.rs": "c7daaf8254843b8200391aa6f647c59016050d67944c98ed7515dd50d2696a94",
-    "corpus/manifests/integer_separator.json": "420e25cc472f7b2cf925babb6c4d927bd149d808f04790f8dcf547079551eb0b"
+    "corpus/manifests/integer_separator.json": "def6a151e62cccef343c82e2ae66da14a48dfac66dd7c550210fe246b9c52583",
+    "crates/pagura/examples/compatibility_gap_parity.rs": "1af63fcfcaccef10b383c674156d5c593b895057ba94dfcd0cf4033f0e9d8829",
+    "tools/compatibility_gap_parity.mjs": "6dfe0d6c830544fcc5a3273585ec0a63ab42bf5ea769da6db4e1c29920e6d543",
+    "tools/fixturegen/integer_separator.py": "2c80ec03263808f26c12584f47bb9048054f56ae09fc7ff66837d60bd8590833",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "ef8edb716e74d7979b9a51705fc18c68802b95ad640de83022ad8e5abeedb083",
+    ".github/workflows/compatibility-gap-parity.yml": "4cf5c3b9364fec987bb93dd3f081e90436c98c0ff16c894ccda56044ad10dc0e"
   },
   "capabilities": [
     {
@@ -212,7 +217,7 @@
         "host": "partial",
         "viewer": "partial"
       },
-      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. Reported unsigned integer/endobj separation requires its exact effective xref generation/offset and complete physical span; original bytes, ordinary stream validation and strict historical snapshots remain unchanged.",
+      "implemented": "Classic/xref streams, object streams, hybrid revisions, page trees and reported reconstruction. Reported unsigned integer/endobj separation requires its exact effective xref generation/offset and complete physical span; original bytes, ordinary stream validation and strict historical snapshots remain unchanged. Nonnegative declared stream lengths are checked against the unchanged caller cap before usize conversion; negative/malformed, in-cap and cyclic rules remain unchanged.",
       "remaining": "Current-corpus recovery classification; external resources require a host contract.",
       "sources": [
         "crates/pagura-document/src/lib.rs",
@@ -227,7 +232,12 @@
       "tests": [
         "crates/pagura/tests/api/document.rs",
         "crates/pagura-document/tests/integer_separator.rs",
-        "crates/pagura/tests/api/tags.rs"
+        "crates/pagura/tests/api/tags.rs",
+        "crates/pagura/examples/compatibility_gap_parity.rs",
+        "tools/compatibility_gap_parity.mjs",
+        "tools/fixturegen/integer_separator.py",
+        "benchmarks/probes/compatibility-gap-fixtures.json",
+        ".github/workflows/compatibility-gap-parity.yml"
       ],
       "requirements": [
         "catalog-identity-recovery",
@@ -256,7 +266,8 @@
         "undefined-reference-null",
         "xref-lazy-offset-validation",
         "xref-streams",
-        "object-integer-separator"
+        "object-integer-separator",
+        "stream-length-budget-portability"
       ],
       "fixtures": [
         "integer_separator/joined",
@@ -289,7 +300,18 @@
         "integer_separator/joined-zero",
         "integer_separator/corrected-offset",
         "integer_separator/overlapping-span",
-        "integer_separator/unterminated-comment-boundary"
+        "integer_separator/unterminated-comment-boundary",
+        "integer_separator/declared-cap-minus1",
+        "integer_separator/declared-cap-exact",
+        "integer_separator/declared-cap-plus1",
+        "integer_separator/declared-u32-minus1",
+        "integer_separator/declared-u32-max",
+        "integer_separator/declared-u32-plus1",
+        "integer_separator/declared-i64-max",
+        "integer_separator/declared-negative",
+        "integer_separator/caller-cap-minus1",
+        "integer_separator/caller-cap-exact",
+        "integer_separator/caller-cap-plus1"
       ],
       "comparisons": {
         "pdfium": "unprobed",

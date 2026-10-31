@@ -112,7 +112,7 @@ def cases():
         repairs = (TAG,) if name == "integer-max" else ()
         yield Case(name, page(value, data_eol=False, **options), OPEN, REQUIREMENT,
                    "Invalid or unusable source cannot become a partial page",
-                   strict_valid=False, repairs=repairs, extra={"render_error": error})
+                   strict_valid=not repairs, repairs=repairs, extra={"render_error": error})
 
     yield Case("incremental-current-joined", updated(old_joined=False, current_joined=True),
                RENDER, REQUIREMENT, "Newest exact xref slot supplies the joined integer", oracle=ORACLE,
@@ -121,7 +121,7 @@ def cases():
                RENDER, REQUIREMENT, "A clean current integer does not normalize historical bytes", oracle=ORACLE)
     yield Case("length-cycle", cycle(), OPEN, REQUIREMENT,
                "A surviving indirect Length cycle is an explicit Cycle refusal",
-               strict_valid=False, extra={"render_error": "cycle"})
+               strict_valid=True, extra={"render_error": "cycle"})
 
     yield Case("joined-zero", zero(), RENDER, REQUIREMENT,
                "An exact zero-length stream preserves subsequent content", oracle=ORACLE,
@@ -129,8 +129,34 @@ def cases():
     for name, pdf in [("corrected-offset", altered_xref()), ("overlapping-span", altered_xref(inside=True))]:
         yield Case(name, pdf, OPEN, REQUIREMENT,
                    "Nonexact or overlapping xref evidence cannot justify an integer repair",
-                   strict_valid=False, extra={"render_error": "syntax"})
+                   strict_valid=name == "overlapping-span", extra={"render_error": "syntax", **({"strict_error_tag": "xref.offset-corrected"} if name == "corrected-offset" else {})})
 
     yield Case("unterminated-comment-boundary", page(data_eol=False, suffix=b"% no real line ending before "),
                OPEN, REQUIREMENT, "An EOF-truncated comment must not establish a physical boundary",
-               strict_valid=False, extra={"render_error": "syntax"})
+               strict_valid=True, extra={"render_error": "syntax"})
+
+    # Budget checks use a source integer, not a platform-sized conversion.
+    # These are declarations only; no large buffer is constructed.
+    budget_requirement = ("stream-length-budget-portability",)
+    cap = 256 * 1024 * 1024
+    for name, declared, error in [
+        ("declared-cap-minus1", cap-1, "syntax"),
+        ("declared-cap-exact", cap, "syntax"),
+        ("declared-cap-plus1", cap+1, "limit"),
+        ("declared-u32-minus1", 2**32-2, "limit"),
+        ("declared-u32-max", 2**32-1, "limit"),
+        ("declared-u32-plus1", 2**32, "limit"),
+        ("declared-i64-max", 2**63-1, "limit"),
+        ("declared-negative", -1, "syntax"),
+    ]:
+        yield Case(name, page(str(declared).encode(), separated=True, data_eol=False),
+                   OPEN, budget_requirement, "Portable declared Length refusal; no allocation or partial page",
+                   strict_valid=True, extra={"render_error": error})
+    for suffix, caller_cap in [("minus1", len(CONTENT)-1), ("exact", len(CONTENT)), ("plus1", len(CONTENT)+1)]:
+        # Canonical conformance uses default limits and the full valid page.
+        # The source-owned runtime probe also exercises this LOWER caller cap.
+        extra: dict[str, object] = {"runtime_limits": {"stream_bytes": caller_cap}}
+        if caller_cap < len(CONTENT):
+            extra["runtime_expected_error_kind"] = "limit"
+        yield Case("caller-cap-"+suffix, page(separated=True), RENDER, budget_requirement,
+                   "Default full-page oracle plus explicit lower caller-cap probe", oracle=ORACLE, extra=extra)

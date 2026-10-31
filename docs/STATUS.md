@@ -57,6 +57,9 @@ cross-reference identity and next physical object/revision boundary. Source
 bytes and stream extents remain unchanged. Signs, real/exponent syntax,
 noninteger/nested values, overflow and ambiguous spans remain outside this
 repair. Strict and historical-source checks remain strict; see [recovery](RECOVERY.md).
+Nonnegative declared stream lengths exceed the same caller cap on native and
+WebAssembly before platform-sized conversion; this preserves the default
+budget and the existing negative/malformed, in-cap and cyclic length rules.
 
 Source entry points and existing tests supporting this reconciliation include:
 

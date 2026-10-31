@@ -157,6 +157,11 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   nested values, overflowing integers and ambiguous spans are not repaired.
   Stream lengths, encoded bytes, decoding and signature-history checks are
   unchanged; Strict rejects the repair.
+- Declared nonnegative stream lengths are compared with the existing caller
+  `Limits::stream_bytes` cap before conversion to the target's `usize`.
+  Oversized declarations return the same `Limit` object context on 32- and
+  64-bit targets. Negative/malformed lengths, in-cap extents and cycles keep
+  their existing validation and recovery rules; the default cap is unchanged.
 - `security.permissions-unsigned`, `security.literal-hash`,
   `security.hash-padding`: malformed encryption entries recovered; normal
   authentication is still required.
