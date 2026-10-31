@@ -676,6 +676,88 @@ fn indexed_images_look_up_their_base_colours() {
     }
 }
 
+/// Grey tables on an RGB target sample one colour lane and copy its sums to
+/// the three: for grey images of random codes, with decodes that invert or
+/// pass the colour range, soft masks on the image's grid and colour keys,
+/// under every placement, each span's summed texels are those of the
+/// five-lane table, bit for bit.
+#[test]
+fn grey_tables_sum_as_their_three_lanes_do() {
+    let decodes = [[0.0, 1.0], [1.0, 0.0], [-0.25, 1.25], [0.1, 0.7]];
+    let mut spans = 0;
+    for seed in 0..8u32 {
+        let (width, height) = (9 + seed % 4, 7 + seed % 3);
+        let count = usize::try_from(width * height).unwrap();
+        let mut grey = case(image((width, height), 1, 8, bytes(count, 8, 11 + seed)));
+        grey.decode = vec![decodes[usize::try_from(seed).unwrap() % decodes.len()]];
+        if seed % 2 == 1 {
+            let mask = image((width, height), 1, 8, bytes(count, 8, 29 + seed));
+            grey.mask = Some((mask, [0.0, 1.0], MaskUse::Soft(None)));
+        }
+        if seed % 3 == 2 {
+            grey.key = Some(vec![[40, 90]]);
+        }
+        for unit_to_device in placements(width, height) {
+            let sampler = sampler(&grey, unit_to_device, 3);
+            let prepared = sampler.prepared.as_deref().unwrap();
+            // Unmasked opaque tables may average codes instead.
+            let super::Plan::Texels {
+                sampling,
+                paint: Paint::Colors(paint),
+            } = &prepared.plan
+            else {
+                continue;
+            };
+            let super::texels::Strategy::Table(table, opaque, true) = &paint.1 else {
+                panic!("DeviceGray in an RGB space has equal colour lanes");
+            };
+            let ahead = usize::from(
+                prepared
+                    .mask
+                    .as_ref()
+                    .is_some_and(|mask| mask.independent.is_none()),
+            );
+            let (x0, y0, x1, y1) = window(unit_to_device);
+            let len = usize::try_from(x1 - x0).unwrap();
+            let (mut five, mut one) = (scratch(&sampler), scratch(&sampler));
+            for y in y0..y1 {
+                let pixels = Pixels::new(x0, y, len);
+                let (mut wide, mut narrow) =
+                    (vec![0.0; len * (5 + ahead)], vec![0.0; len * (5 + ahead)]);
+                let mut buffers = super::SamplingBuffers {
+                    storage: &mut five.plan,
+                    fused: &mut five.fused,
+                };
+                prepared.table(
+                    sampling,
+                    pixels,
+                    &mut buffers,
+                    (table, 5, *opaque),
+                    &mut wide,
+                );
+                let mut buffers = super::SamplingBuffers {
+                    storage: &mut one.plan,
+                    fused: &mut one.fused,
+                };
+                prepared.grey_table(
+                    sampling,
+                    pixels,
+                    &mut buffers,
+                    (table, *opaque),
+                    &mut narrow,
+                );
+                assert_eq!(
+                    bits(&narrow),
+                    bits(&wide),
+                    "seed {seed}, {unit_to_device:?}, row {y}"
+                );
+                spans += 1;
+            }
+        }
+    }
+    assert!(spans > 100, "the shortcut was compared on {spans} spans");
+}
+
 #[test]
 fn colour_keys_mask_matching_samples() {
     let mut rgb = case(image((8, 8), 3, 8, bytes(8 * 8 * 3, 8, 11)));
