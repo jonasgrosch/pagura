@@ -16,7 +16,7 @@ they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
-43 capability families, all 90 literal tags reviewed, and all 335 requirement IDs assigned.
+43 capability families, all 90 literal tags reviewed, and all 364 requirement IDs assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.
@@ -74,6 +74,23 @@ This does not infer missing colour/channel metadata or extend codec coverage.
 | Safety and release evidence | Safe Rust and workspace-only product dependencies, bounded APIs, deterministic replay, fuzz drivers, generated independent fixtures, conversion/regression harnesses | Long fuzz campaigns, host/process containment and cancellation evidence, refreshed compatibility reports, non-render operation adapters and the complete controlled performance gate. |
 
 ## Evidence and accuracy
+
+JP2 palette padding has an explicit reported Repair path: only unused high
+bits above the declared column precision are cleared; Strict still refuses
+them. Independent literal sample/pixel controls cover mixed signed precision,
+meaningful 16-bit high bits, PDF Indexed override, alpha and retained malformed
+or unsupported layouts. This is a source description; exact-head execution,
+public compatibility, cost/memory and integration qualification remain pending.
+
+Inline separator recovery accepts a complete `EI` token at a caller-framed
+boundary only with a reported repair. Before drawing such an image, raw and
+general-filter samples must have the exact row-padded byte count under the
+caller’s limits. Image-codec separator recovery remains refused until its
+completeness proof can share one per-image codec work budget; missing tokens,
+comment gaps and incomplete samples do not qualify through this repair.
+The independent `paint_inline_framing` controls distinguish new complete
+images from retained legacy sample-padding behavior. Runtime, public-corpus,
+performance and memory qualification of this addition remains pending.
 
 Source entry points and existing tests supporting this reconciliation include:
 

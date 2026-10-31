@@ -1,0 +1,705 @@
+{
+  "schema": 2,
+  "area": "jp2_palette",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "jp2_palette/gray-signed1-conforming",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/gray-signed1-conforming.pdf",
+      "sha256": "ca9ab9831bbb364f691910799ab885d0fd1b982f62b44336ddaecc34b6cc07fb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jp2_palette/gray-signed1-conforming.ppm",
+      "oracle_sha256": "ec215db65b461f4d6d3c0db302360da8fc2ba40c14e8150b77ec43ac461ac7c4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        128
+      ],
+      "codec_expected_codes": [
+        [
+          0,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/gray-signed1-padding",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/gray-signed1-padding.pdf",
+      "sha256": "00b68022d111da17740fb04fc198f3ccc8ad149928cb170a230c2a02083720fa",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.palette-padding"
+      ],
+      "oracle": "corpus/generated/jp2_palette/gray-signed1-padding.ppm",
+      "oracle_sha256": "ec215db65b461f4d6d3c0db302360da8fc2ba40c14e8150b77ec43ac461ac7c4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        128
+      ],
+      "codec_expected_codes": [
+        [
+          0,
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/gray-unsigned4-conforming",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/gray-unsigned4-conforming.pdf",
+      "sha256": "24fc9ed411c4100b5a690ced3781204567d209b33bf77fae0a17b910047e3c4e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jp2_palette/gray-unsigned4-conforming.ppm",
+      "oracle_sha256": "b39ee5cf264ee368c07cd7c28755673ac6d5fb568b6ec8250d85b343d44005f0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        3
+      ],
+      "codec_expected_codes": [
+        [
+          0,
+          5,
+          10,
+          15
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/gray-unsigned4-padding",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/gray-unsigned4-padding.pdf",
+      "sha256": "bdc00dc5fec65d557d0b0f4adce663f0179153f2ddadbf6ff8b4aeecd60c26fd",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.palette-padding"
+      ],
+      "oracle": "corpus/generated/jp2_palette/gray-unsigned4-padding.ppm",
+      "oracle_sha256": "b39ee5cf264ee368c07cd7c28755673ac6d5fb568b6ec8250d85b343d44005f0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        3
+      ],
+      "codec_expected_codes": [
+        [
+          0,
+          5,
+          10,
+          15
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/rgb-mixed-small-conforming",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/rgb-mixed-small-conforming.pdf",
+      "sha256": "416bb332e88c93ed4a629413e2c35f69781c3b531e28fbf492bf07721230f9d2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jp2_palette/rgb-mixed-small-conforming.ppm",
+      "oracle_sha256": "68a6e1d0e4f62e1e3094c5cff0545de53f4058224d7979e986154a8c6daea0f6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        0,
+        131,
+        8
+      ],
+      "codec_expected_codes": [
+        [
+          0,
+          1,
+          1,
+          0
+        ],
+        [
+          0,
+          7,
+          8,
+          15
+        ],
+        [
+          0,
+          170,
+          341,
+          511
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/rgb-mixed-small-padding",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/rgb-mixed-small-padding.pdf",
+      "sha256": "f5bf8b01c73ace04becccc03041787dfdc5ecef0ff40ef2fa26f1d8d9329cefe",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.palette-padding"
+      ],
+      "oracle": "corpus/generated/jp2_palette/rgb-mixed-small-padding.ppm",
+      "oracle_sha256": "68a6e1d0e4f62e1e3094c5cff0545de53f4058224d7979e986154a8c6daea0f6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        0,
+        131,
+        8
+      ],
+      "codec_expected_codes": [
+        [
+          0,
+          1,
+          1,
+          0
+        ],
+        [
+          0,
+          7,
+          8,
+          15
+        ],
+        [
+          0,
+          170,
+          341,
+          511
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/rgb-mixed-wide-conforming",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/rgb-mixed-wide-conforming.pdf",
+      "sha256": "94c7b6004c1ac390175eca85045be6bb7182b3a0738c2aa9bc9b9e9e26c13efa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jp2_palette/rgb-mixed-wide-conforming.ppm",
+      "oracle_sha256": "4ccd5a44163fc3259f095c465a1a495758e9637d24c637a7cb2dc30bed596c5d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        3,
+        136,
+        142
+      ],
+      "codec_expected_codes": [
+        [
+          0,
+          5,
+          10,
+          15
+        ],
+        [
+          0,
+          255,
+          256,
+          511
+        ],
+        [
+          0,
+          16383,
+          16384,
+          32767
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/rgb-mixed-wide-padding",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/rgb-mixed-wide-padding.pdf",
+      "sha256": "656937055dcead9538d1dce0b134056ad8cb71bec67ca2bb35b37ca3edde4a0f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.palette-padding"
+      ],
+      "oracle": "corpus/generated/jp2_palette/rgb-mixed-wide-padding.ppm",
+      "oracle_sha256": "4ccd5a44163fc3259f095c465a1a495758e9637d24c637a7cb2dc30bed596c5d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        3,
+        136,
+        142
+      ],
+      "codec_expected_codes": [
+        [
+          0,
+          5,
+          10,
+          15
+        ],
+        [
+          0,
+          255,
+          256,
+          511
+        ],
+        [
+          0,
+          16383,
+          16384,
+          32767
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/rgb-full16-conforming",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/rgb-full16-conforming.pdf",
+      "sha256": "96ab0469b585a4500f4149ec4077b20b4ecd6556b428e1624b60f7a92608e44c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jp2_palette/rgb-full16-conforming.ppm",
+      "oracle_sha256": "ed7f7e7287d9df9a04ac0b6ed99b3b3dd639cf5aeeef442874c3eb3d37c9302a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        15,
+        143,
+        7
+      ],
+      "codec_expected_codes": [
+        [
+          0,
+          21845,
+          43690,
+          65535
+        ],
+        [
+          0,
+          32767,
+          32768,
+          65535
+        ],
+        [
+          0,
+          85,
+          170,
+          255
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/rgb-full16-meaningful-high-conforming",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/rgb-full16-meaningful-high-conforming.pdf",
+      "sha256": "fdacae38d8f450f7b613283975fdc43c130f676afec7e1312df06165a3d478de",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jp2_palette/rgb-full16-meaningful-high-conforming.ppm",
+      "oracle_sha256": "49d8b00342e8dc3bfd8bce81386380125642dde62aac7718eed5b5102f2d84a9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [
+        15,
+        143,
+        7
+      ],
+      "codec_expected_codes": [
+        [
+          32768,
+          54613,
+          10922,
+          32767
+        ],
+        [
+          0,
+          32767,
+          32768,
+          65535
+        ],
+        [
+          0,
+          85,
+          170,
+          255
+        ]
+      ]
+    },
+    {
+      "id": "jp2_palette/indexed-override-conforming",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/indexed-override-conforming.pdf",
+      "sha256": "4c60455eaa20526b326461bdb932d64e4c81816207c8100ae6839f4354e7efe2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jp2_palette/indexed-override-conforming.ppm",
+      "oracle_sha256": "1b4c83bd006779733460794867884d2ac55d17a18bfca4e4b13bc13595e08582",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [],
+      "codec_expected_codes": []
+    },
+    {
+      "id": "jp2_palette/indexed-override-padding",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/indexed-override-padding.pdf",
+      "sha256": "caf84ba3cf12cd12c4b1373675b2dab2c3b0c05effb84ab7e38cc9849494befb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.palette-padding"
+      ],
+      "oracle": "corpus/generated/jp2_palette/indexed-override-padding.ppm",
+      "oracle_sha256": "1b4c83bd006779733460794867884d2ac55d17a18bfca4e4b13bc13595e08582",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [],
+      "codec_expected_codes": []
+    },
+    {
+      "id": "jp2_palette/mixed-padding-external-alpha",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/mixed-padding-external-alpha.pdf",
+      "sha256": "4ded25c15249f641e5489b2df6441538277bdbf0818e33c7d95b025c245a819d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.palette-padding"
+      ],
+      "oracle": "corpus/generated/jp2_palette/mixed-padding-external-alpha.ppm",
+      "oracle_sha256": "65da58e982471757b3799ef04e5074b35158acf225e21cecd4dc7da03c8f820d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [],
+      "codec_expected_codes": []
+    },
+    {
+      "id": "jp2_palette/raw-index-opacity-control",
+      "kind": "pdf",
+      "description": "Declared palette codes and signed offset are preserved; only unused high padding is repairable",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/raw-index-opacity-control.pdf",
+      "sha256": "a260c483d707fc4ba60a9a027639e0f01406dd0862130d85b571385724e1df29",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/jp2_palette/raw-index-opacity-control.ppm",
+      "oracle_sha256": "0d6a1446f18801a427e219d169bf1b0fd1f05185b7e46732909b806d74d8e1c4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "palette_depths": [],
+      "codec_expected_codes": []
+    },
+    {
+      "id": "jp2_palette/short-palette-conforming",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/short-palette-conforming.pdf",
+      "sha256": "610fdb1c0e7a021d2f8c0335e250516946a77d8b68fb3b93e845494a992ecd09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "jp2_palette/short-palette-padding",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/short-palette-padding.pdf",
+      "sha256": "d108962e6e2754ed7dc19a91df140410bcd80ae1f75e456c14b2fe5162689dae",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "strict_repair": "jpx.palette-padding",
+      "render_error": "syntax"
+    },
+    {
+      "id": "jp2_palette/missing-mapping-conforming",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/missing-mapping-conforming.pdf",
+      "sha256": "c7a0d527fb654f6acd09df439ce09937fab2f73052ff1bfa0eeab6d33a5e756d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "jp2_palette/missing-mapping-padding",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/missing-mapping-padding.pdf",
+      "sha256": "cce17bb678423dae1eec37afd34a624df57ec72b57f9d1334a4e337b8a5368c4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "strict_repair": "jpx.palette-padding",
+      "render_error": "syntax"
+    },
+    {
+      "id": "jp2_palette/missing-eoc-conforming",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/missing-eoc-conforming.pdf",
+      "sha256": "52491ad7ddb08001fe9458464d093a1e5eb3093e73c5c75999963a77e3ac17cd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "jp2_palette/missing-eoc-padding",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/missing-eoc-padding.pdf",
+      "sha256": "5d6e7034a7d24aa9d4894571637a10757b10fb29d100224b17be9959e58f9d9b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "strict_repair": "jpx.palette-padding",
+      "render_error": "syntax"
+    },
+    {
+      "id": "jp2_palette/bad-component-conforming",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/bad-component-conforming.pdf",
+      "sha256": "631ccb9d51ddba32ab28d8a6da54d226a351d3a8d959e373d73a546c8b07f9b3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "jp2_palette/bad-component-padding",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/bad-component-padding.pdf",
+      "sha256": "186e5df13cf9694d3bf168caddc5d88814824aca264ae26283fe94574f2764ab",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "strict_repair": "jpx.palette-padding",
+      "render_error": "syntax"
+    },
+    {
+      "id": "jp2_palette/opacity-1-conforming",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/opacity-1-conforming.pdf",
+      "sha256": "42e0ff0e9814835aae554bf9479c03ff200b065d1e794587de7ed616213b3ef2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "image.JPX-sample-layout"
+    },
+    {
+      "id": "jp2_palette/opacity-1-padding",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/opacity-1-padding.pdf",
+      "sha256": "6fe83d5370f12fe9f7c9611a5e496c3e68863ec6c2bd9d89b141606be8369c7d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "image.JPX-sample-layout",
+      "strict_repair": "jpx.palette-padding"
+    },
+    {
+      "id": "jp2_palette/opacity-2-conforming",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/opacity-2-conforming.pdf",
+      "sha256": "a1d6c556bd6f7ae76194315aaaaf9a43e64e934585aec03606a985f402ab7b2c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "image.JPX-sample-layout"
+    },
+    {
+      "id": "jp2_palette/opacity-2-padding",
+      "kind": "pdf",
+      "description": "Palette padding does not repair incomplete data, missing mappings, invalid components or palette-derived opacity",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/opacity-2-padding.pdf",
+      "sha256": "0c96c3bf096c5214717ae7066dd4f5111b6f38aa8ccfdb6a24a5c56ed92ba18b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "image.JPX-sample-layout",
+      "strict_repair": "jpx.palette-padding"
+    },
+    {
+      "id": "jp2_palette/opacity-2-premultiplied-conforming",
+      "kind": "pdf",
+      "description": "A complete valid premultiplied container palette still requires the explicit Indexed opacity mapping feature",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/opacity-2-premultiplied-conforming.pdf",
+      "sha256": "1c19ba5d199156f05d7f0d2af31930a3f64a98beeb535ce6858b105a9bdf2fb3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "image.JPX-sample-layout"
+    },
+    {
+      "id": "jp2_palette/opacity-2-premultiplied-padding",
+      "kind": "pdf",
+      "description": "A complete valid premultiplied container palette still requires the explicit Indexed opacity mapping feature",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-jpx-palette-padding"
+      ],
+      "path": "corpus/generated/jp2_palette/opacity-2-premultiplied-padding.pdf",
+      "sha256": "e8c2a764bd8f6fece17f3aa8e7cfe133db2c4c69d81f8e373518ff833e0171d0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "image.JPX-sample-layout",
+      "strict_repair": "jpx.palette-padding"
+    }
+  ]
+}

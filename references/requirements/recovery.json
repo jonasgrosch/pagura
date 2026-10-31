@@ -298,6 +298,49 @@
         "recovery_jbig2_tables/hostile-repeated-missing-table"
       ],
       "rule": "Reported viewing policy: only Huffman symbol dictionaries with SDREFAGG=0 may retain the otherwise invalid, unused bit7 aggregation-table selector. Strict rejects it. Its raw selector still selects and validates a referenced custom table, including OOB eligibility, exact table counts and ordinary referral rules; parse, retained storage and work remain charged. Genuine aggregation and all other flag restrictions are unchanged. The first occurrence per diagnostics sink is reported in decode order (Globals before page); reuse coalesces the tag and preserves its first source location. Independent literal matrices cover main/Globals, repeated dictionaries, grayscale/stencils, genuine aggregation and malformed/limited controls."
+    },
+    {
+      "id": "recovery-jpx-palette-padding",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "8.9.5.1",
+        "Table 87"
+      ],
+      "codec_reference": "ITU-T T.800 (06/2019), I.5.3.4, Tables I.12-I.13, I.5.3.5-I.5.3.6",
+      "status": "Explicit reported repair policy; execution qualification pending",
+      "tests": [
+        "jp2_palette/gray-signed1-conforming",
+        "jp2_palette/gray-signed1-padding",
+        "jp2_palette/gray-unsigned4-conforming",
+        "jp2_palette/gray-unsigned4-padding",
+        "jp2_palette/rgb-mixed-small-conforming",
+        "jp2_palette/rgb-mixed-small-padding",
+        "jp2_palette/rgb-mixed-wide-conforming",
+        "jp2_palette/rgb-mixed-wide-padding",
+        "jp2_palette/rgb-full16-conforming",
+        "jp2_palette/rgb-full16-meaningful-high-conforming",
+        "jp2_palette/indexed-override-conforming",
+        "jp2_palette/indexed-override-padding",
+        "jp2_palette/mixed-padding-external-alpha",
+        "jp2_palette/raw-index-opacity-control",
+        "jp2_palette/short-palette-conforming",
+        "jp2_palette/short-palette-padding",
+        "jp2_palette/missing-mapping-conforming",
+        "jp2_palette/missing-mapping-padding",
+        "jp2_palette/missing-eoc-conforming",
+        "jp2_palette/missing-eoc-padding",
+        "jp2_palette/bad-component-conforming",
+        "jp2_palette/bad-component-padding",
+        "jp2_palette/opacity-1-conforming",
+        "jp2_palette/opacity-1-padding",
+        "jp2_palette/opacity-2-conforming",
+        "jp2_palette/opacity-2-padding",
+        "jp2_palette/opacity-2-premultiplied-conforming",
+        "jp2_palette/opacity-2-premultiplied-padding"
+      ],
+      "rule": "Strict rejects nonzero high padding above a JP2 palette column precision. Repair clears only those unused bits, retaining every declared low-order bit, precision and signed-offset interpretation, and reports the first affected position. Meaningful 8/16-bit high bits, complete table/codestream validation, mapping rules, opacity refusals and all limits remain authoritative. PDF Indexed uses its own lookup and the original codestream index precision; stored palette octets do not imply a wider precision.",
+      "gaps": "No inferred palette precision, incomplete-table/codestream recovery, or new Indexed container-palette opacity support. Public-page credit, full-source exact-head native/WASM, performance/memory and integration qualification remain pending."
     }
   ]
 }

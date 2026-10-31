@@ -17,6 +17,7 @@ mod number;
 mod op;
 mod operator;
 mod reader;
+pub mod repairs;
 mod token;
 
 use operator::Operator;
