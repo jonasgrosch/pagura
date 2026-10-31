@@ -365,3 +365,79 @@ fn a_profile_shared_by_paints_is_charged_once() {
     filled(&mut profiled, &path, &cyan(&icc(&other), 0.5), &composite);
     assert_eq!(profiled.interner.profiles.len(), 2);
 }
+
+/// A `side` × `side` gray image of an inline source.
+fn gray_image(side: u32) -> Arc<crate::model::Image> {
+    let document = pagura_document::Document::open(
+        pagura_testkit::fixture("classic", "rectangle.pdf"),
+        &pagura_document::OpenOptions::default(),
+    )
+    .unwrap();
+    let mut dictionary = pagura_core::Dictionary::new();
+    for (key, value) in [(&b"W"[..], side), (b"H", side), (b"BPC", 8)] {
+        dictionary.insert(
+            pagura_core::Name::new(key),
+            pagura_core::Value::Integer(i64::from(value)),
+        );
+    }
+    dictionary.insert(
+        pagura_core::Name::new(b"CS"),
+        pagura_core::Value::name(b"G"),
+    );
+    let data = vec![0; usize::try_from(side * side).unwrap()];
+    let source = pagura_image::ImageSource::from_inline(
+        &document,
+        &pagura_core::Dictionary::new(),
+        &dictionary,
+        &data,
+        pagura_image::ImageId::Inline {
+            stream: None,
+            offset: 0,
+        },
+    )
+    .unwrap();
+    Arc::new(crate::model::Image {
+        source: Arc::new(source),
+        space: Some(Arc::new(ColorSpace::DeviceGray)),
+        decode: Arc::from([[0.0, 1.0]]),
+        interpolate: false,
+        intent: None,
+        mask: crate::model::ImageMask::None,
+    })
+}
+
+#[test]
+fn an_image_drawn_many_times_is_charged_once() {
+    let composite = Arc::new(Composite::default());
+    let draw = |recorder: &mut SceneRecorder, image: &Arc<crate::model::Image>| {
+        recorder
+            .image(&ImageMark {
+                image,
+                transform: Transform::IDENTITY,
+                stencil: None,
+                state: state(&composite),
+            })
+            .unwrap();
+    };
+    let record = |image: &Arc<crate::model::Image>| {
+        let mut recorder = SceneRecorder::new(Limits::default());
+        recorder.begin_page(&page()).unwrap();
+        for _ in 0..100 {
+            draw(&mut recorder, image);
+        }
+        recorder
+    };
+    let (small, large) = (gray_image(1), gray_image(256));
+    let (mut few, many) = (record(&small), record(&large));
+    // A hundred drawings of either image differ by one image's charge.
+    assert_eq!(
+        many.bytes.used() - few.bytes.used(),
+        owned::image(&large) - owned::image(&small)
+    );
+    assert_eq!(many.interner.images.len(), 1);
+    // Another description of the same size is charged in full.
+    let before = few.bytes.used();
+    draw(&mut few, &gray_image(1));
+    assert_eq!(few.interner.images.len(), 2);
+    assert!(few.bytes.used() - before >= owned::image(&small));
+}
