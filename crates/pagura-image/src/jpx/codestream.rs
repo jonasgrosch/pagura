@@ -390,7 +390,12 @@ impl Tile {
         Ok(())
     }
 
-    fn reconstruct(self, size: &Size, image: &mut JpxImage, budget: &mut Budget<'_>) -> Result<()> {
+    fn reconstruct(
+        self,
+        size: &Size,
+        image: &mut JpxImage,
+        (budget, states): (&mut Budget<'_>, &mut tier1::States),
+    ) -> Result<()> {
         if self.part_count.is_some_and(|n| self.next_part != n) {
             return Err(syntax("incomplete JPEG 2000 tile or tile-parts", 0));
         }
@@ -409,7 +414,7 @@ impl Tile {
                 quant,
                 source.bits,
                 roi,
-                budget,
+                (budget, &mut *states),
             )?);
         }
         let shared_luma = self.config.transform
@@ -496,7 +501,7 @@ fn reconstruct_component(
     quant: &Quantization,
     bits: u8,
     roi: u8,
-    budget: &mut Budget<'_>,
+    (budget, states): (&mut Budget<'_>, &mut tier1::States),
 ) -> Result<Plane> {
     let mut low = None;
     let mut band_index = 0;
@@ -549,7 +554,7 @@ fn reconstruct_component(
                     passes: block.passes,
                     modes: style.modes,
                 };
-                let values = tier1::decode(&block.segments, &parameters, budget)?;
+                let values = tier1::decode(&block.segments, &parameters, (budget, states))?;
                 let width = usize_from(band.plane.width)?;
                 for (y, row) in values.chunks_exact(block.width).enumerate() {
                     let start = (block.y + y) * width + block.x;
@@ -825,9 +830,11 @@ pub(super) fn decode(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Resul
     }
     reader.finish()?;
     ppm.finish()?;
+    // One code-block state buffer serves every code-block of the image.
+    let mut states = tier1::States::default();
     for tile in tiles {
         tile.ok_or_else(|| syntax("missing JPEG 2000 tile", base))?
-            .reconstruct(&size, &mut image.image, budget)?;
+            .reconstruct(&size, &mut image.image, (budget, &mut states))?;
     }
     Ok(image)
 }
