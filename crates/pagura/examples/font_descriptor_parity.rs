@@ -15,6 +15,8 @@ struct Arguments {
     dpi: f64,
     page: usize,
     text: bool,
+    geometry: bool,
+    prior0: bool,
 }
 
 impl Arguments {
@@ -29,10 +31,16 @@ impl Arguments {
         };
         let dpi = args.next().ok_or("dpi required")?.parse()?;
         let page = args.next().ok_or("page required")?.parse()?;
-        let text = match args.next().as_deref() {
-            Some("text") => true,
-            Some("paint") => false,
+        let (text, geometry) = match args.next().as_deref() {
+            Some("text") => (true, false),
+            Some("geometry") => (true, true),
+            Some("paint") => (false, false),
             _ => return Err("text or paint required".into()),
+        };
+        let prior0 = match args.next().as_deref() {
+            None => false,
+            Some("prior0") if recovery == Recovery::Repair && page == 1 => true,
+            _ => return Err("prior0 requires Repair page1".into()),
         };
         if args.next().is_some() {
             return Err("unexpected argument".into());
@@ -44,6 +52,8 @@ impl Arguments {
             dpi,
             page,
             text,
+            geometry,
+            prior0,
         })
     }
 }
@@ -67,7 +77,7 @@ fn write_bytes(path: &str, bytes: &[u8]) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn text_contract(context: &pagura::RenderContext, page: &pagura::Page) {
+fn text_contract(context: &pagura::RenderContext, page: &pagura::Page, geometry: bool) {
     match context.text_page(page) {
         Ok(text) => {
             println!("text-glyph-count={}", text.glyphs().len());
@@ -77,10 +87,47 @@ fn text_contract(context: &pagura::RenderContext, page: &pagura::Page) {
                     "text-quad=[{},{},{},{},{},{},{},{}]",
                     p[0].x, p[0].y, p[1].x, p[1].y, p[2].x, p[2].y, p[3].x, p[3].y
                 );
+                if geometry {
+                    println!(
+                        "text-position=[{},{},{},{},{}]",
+                        glyph.font,
+                        glyph.origin.x,
+                        glyph.origin.y,
+                        glyph.advance_end.x,
+                        glyph.advance_end.y
+                    );
+                    println!("text-unicode={}", glyph.unicode.as_deref().unwrap_or(""));
+                }
             }
         }
         Err(error) => println!("text-error={error:?}"),
     }
+}
+
+fn prior_contract(args: &Arguments, context: &pagura::RenderContext) -> Result<(), Box<dyn Error>> {
+    if !args.prior0 {
+        return Ok(());
+    }
+    let page = context.document().page(0)?;
+    let options = RenderOptions::from_dpi(args.dpi);
+    let white = context.render_page(page, &options)?;
+    let transparent = context.render_page(
+        page,
+        &RenderOptions {
+            background: Rgba8::TRANSPARENT,
+            ..options
+        },
+    )?;
+    write_frame(&format!("{}.prior0.ppm", args.output), &white)?;
+    write_bytes(&format!("{}.prior0.rgba", args.output), white.data())?;
+    write_bytes(
+        &format!("{}.prior0.transparent.rgba", args.output),
+        transparent.data(),
+    )?;
+    drop(white);
+    drop(transparent);
+    println!("prior-page-rendered-dropped=0");
+    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -96,6 +143,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
     )?);
     let context = pagura::render_context(Arc::clone(&document));
+    prior_contract(&args, &context)?;
     let page = document.page(args.page)?;
     let options = RenderOptions::from_dpi(args.dpi);
     let white = context.render_page(page, &options);
@@ -115,7 +163,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
     )?;
     if args.text {
-        text_contract(&context, page);
+        text_contract(&context, page, args.geometry);
     }
     if document.original_bytes() != original {
         return Err("source bytes changed after additional consumers".into());

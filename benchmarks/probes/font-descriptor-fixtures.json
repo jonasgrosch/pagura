@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "All64 independently authored descriptor/program/selection/geometry contracts; full source hashes, complete pixels, original Strict errors/no target output, immutable source bytes and native/SIMD/scalar equality. No general public-font/appearance claim.",
+  "scope": "All64 original contracts retained as an exact selector prefix, plus13 independently frozen mixed CID/descriptor/TTC interactions;77cases/native+SIMD+scalar/Strict+Repair=462 processes. Complete target RGB/white/transparent, typed refusals, source geometry and same-context page0 pixels before Repair page1. No public admission/performance/memory claim.",
   "cases": [
     "recovery_font_descriptor/descriptor-canonical",
     "recovery_font_descriptor/descriptor-alias",
@@ -65,6 +65,62 @@
     "recovery_font_descriptor/selection-canonical-descriptor-bbox-witness",
     "recovery_font_descriptor/selection-invalid-supplied-bbox",
     "recovery_font_descriptor/selection-cyclic-supplied-bbox",
-    "recovery_font_descriptor/selection-legacy-invalid-bbox"
-  ]
+    "recovery_font_descriptor/selection-legacy-invalid-bbox",
+    "selected_font_interactions/mixed-visible",
+    "selected_font_interactions/empty-nonzero-alias-space",
+    "selected_font_interactions/source-widths-bbox",
+    "selected_font_interactions/after-visible-alias-missing",
+    "selected_font_interactions/invisible-alias-missing",
+    "selected_font_interactions/later-first-alias-missing",
+    "selected_font_interactions/later-first-alias-valid",
+    "selected_font_interactions/cid-hole-with-empty-alias",
+    "selected_font_interactions/canonical-ttc-second",
+    "selected_font_interactions/alias-ttc-single",
+    "selected_font_interactions/alias-ttc-pair-first",
+    "selected_font_interactions/alias-ttc-pair-second",
+    "selected_font_interactions/alias-ttc-ambiguous"
+  ],
+  "mixed_strict_errors": {
+    "selected_font_interactions/mixed-visible": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 49 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+    "selected_font_interactions/empty-nonzero-alias-space": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 49 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+    "selected_font_interactions/source-widths-bbox": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 49 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+    "selected_font_interactions/after-visible-alias-missing": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 49 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+    "selected_font_interactions/invisible-alias-missing": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 49 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+    "selected_font_interactions/later-first-alias-missing": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 49 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+    "selected_font_interactions/later-first-alias-valid": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 49 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+    "selected_font_interactions/cid-hole-with-empty-alias": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"checked CID substitute requires a non-notdef Encoding mapping for every used code\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 34 }, object: Some(ObjectId { number: 3, generation: 0 }), repair: None }"
+  },
+  "mixed_additional_errors": {
+    "selected_font_interactions/after-visible-alias-missing": {
+      "repair": "Error: Error { kind: Unsupported(Feature(\"font.descriptor-glyph\")), message: \"recovered font has no proven source-named glyph\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 73 }, object: Some(ObjectId { number: 3, generation: 0 }), repair: None }"
+    },
+    "selected_font_interactions/invisible-alias-missing": {
+      "repair": "Error: Error { kind: Unsupported(Feature(\"font.descriptor-glyph\")), message: \"recovered font has no proven source-named glyph\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 78 }, object: Some(ObjectId { number: 3, generation: 0 }), repair: None }"
+    },
+    "selected_font_interactions/later-first-alias-missing": {
+      "repair": "Error: Error { kind: Unsupported(Feature(\"font.descriptor-glyph\")), message: \"recovered font has no proven source-named glyph\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 73 }, object: Some(ObjectId { number: 3, generation: 0 }), repair: None }"
+    },
+    "selected_font_interactions/cid-hole-with-empty-alias": {
+      "repair": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"checked CID substitute requires a non-notdef Encoding mapping for every used code\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 34 }, object: Some(ObjectId { number: 3, generation: 0 }), repair: None }"
+    },
+    "selected_font_interactions/alias-ttc-single": {
+      "strict": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+      "repair": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }"
+    },
+    "selected_font_interactions/alias-ttc-pair-first": {
+      "strict": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+      "repair": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }"
+    },
+    "selected_font_interactions/alias-ttc-pair-second": {
+      "strict": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+      "repair": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }"
+    },
+    "selected_font_interactions/alias-ttc-ambiguous": {
+      "strict": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }",
+      "repair": "Error: Error { kind: Unsupported(Feature(\"font.non-embedded\")), message: \"font has no safe available substitute\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }, object: Some(ObjectId { number: 5, generation: 0 }), repair: None }"
+    },
+    "selected_font_interactions/canonical-ttc-second": {
+      "strict": "Error: Error { kind: Syntax, message: \"embedded font collection uses the unique PDF FontName/BaseFont match; PDF does not define a collection face index\", position: Stream { object: ObjectId { number: 7, generation: 0 }, offset: 0 }, object: Some(ObjectId { number: 7, generation: 0 }), repair: Some(Repair(\"font.collection-face\")) }"
+    }
+  }
 }
