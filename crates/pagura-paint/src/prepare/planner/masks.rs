@@ -108,6 +108,7 @@ impl Planner<'_> {
             layout,
             plain: false,
             alpha: 1.0,
+            mask: None,
             records: false,
             separated: false,
             masked: true,

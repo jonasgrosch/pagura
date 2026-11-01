@@ -13,6 +13,15 @@ use std::sync::Arc;
 
 const PAGE: GroupId = GroupId(0);
 
+/// The buffers planned: the page, groups and soft masks.
+fn planned(b: &Build) -> usize {
+    b.prepare(&b.request(b.page(), 32), &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"))
+        .plan
+        .groups
+        .len()
+}
+
 /// The formats of the page and every buffer that has items, in plan order.
 fn formats(b: &Build) -> Vec<Format> {
     let request = b.request(b.page(), 32);
@@ -414,13 +423,6 @@ fn groups_of_one_store_fold_into_their_parents() {
         (b, group)
     };
     let opaque = |_: &mut Build| StateId(0);
-    let planned = |b: &Build| {
-        b.prepare(&b.request(b.page(), 32), &Limits::default())
-            .unwrap_or_else(|e| panic!("{e}"))
-            .plan
-            .groups
-            .len()
-    };
     // Its member composites at 0.4 times its own opacity, with no buffer.
     for attributes in [GroupAttributes::default(), isolated] {
         let (b, _) = page(attributes, &opaque);
@@ -452,7 +454,8 @@ fn groups_of_one_store_fold_into_their_parents() {
     let (b, _) = page(GroupAttributes::default(), &multiply);
     assert_eq!(planned(&b), 2);
     check(&b);
-    // So does a group under a soft mask of its own.
+    // A group under a soft mask of its own folds too, its member taking
+    // the mask, unless the member has one.
     let (mut b, group) = page(GroupAttributes::default(), &opaque);
     let ink = b.rgb([0.8, 0.1, 0.1]);
     let (mask, mask_group) = b.mask(MaskKind::Alpha, GroupAttributes::default(), None);
@@ -462,7 +465,18 @@ fn groups_of_one_store_fold_into_their_parents() {
         s.soft_mask = Some(mask);
     });
     b.scene.groups[group.index()].mark.state = masked_group;
-    assert_eq!(planned(&b), 3);
+    assert_eq!(planned(&b), 2);
+    check(&b);
+    let (mut b, group) = page(GroupAttributes::default(), &masked);
+    let ink = b.rgb([0.8, 0.1, 0.1]);
+    let (mask, mask_group) = b.mask(MaskKind::Alpha, GroupAttributes::default(), None);
+    b.rect(mask_group, [0.5, 2.0, 6.0, 5.5], ink, mark(StateId(0)));
+    let masked_group = b.state(|s| {
+        s.alpha = 0.4;
+        s.soft_mask = Some(mask);
+    });
+    b.scene.groups[group.index()].mark.state = masked_group;
+    assert_eq!(planned(&b), 4);
     check(&b);
     // Under a knockout parent the group stays one element of its own.
     let mut b = Build::new(8.0, 6.0);
@@ -478,5 +492,73 @@ fn groups_of_one_store_fold_into_their_parents() {
     let group = b.transparency(knockout, GroupAttributes::default(), mark(alpha));
     b.rect(group, [2.0, 1.0, 7.0, 5.0], ink, mark(StateId(0)));
     assert_eq!(planned(&b), 3);
+    check(&b);
+}
+
+#[test]
+fn groups_of_one_group_fold_and_alpha_as_shape_where_no_knockout_reads_it() {
+    let isolated = GroupAttributes {
+        isolated: true,
+        ..GroupAttributes::default()
+    };
+    // A group of one group folds into it: a translucent group around a
+    // soft-masked group with alpha as shape around one mark folds both;
+    // with two marks the inner group keeps its buffer, composited at 0.3
+    // times its alpha through its mask.
+    let nested = |second: bool| {
+        let mut b = Build::new(8.0, 6.0);
+        let back = b.rgb([0.9, 0.8, 0.3]);
+        let ink = b.rgb([0.2, 0.4, 0.7]);
+        let red = b.rgb([0.8, 0.1, 0.1]);
+        b.rect(PAGE, [0.0, 0.0, 8.0, 6.0], back, mark(StateId(0)));
+        let (mask, mask_group) = b.mask(MaskKind::Luminosity, GroupAttributes::default(), None);
+        b.rect(mask_group, [1.0, 1.0, 7.0, 5.0], red, mark(StateId(0)));
+        let alpha = b.state(|s| s.alpha = 0.3);
+        let outer = b.transparency(PAGE, isolated, mark(alpha));
+        let masked = b.state(|s| {
+            s.alpha_is_shape = true;
+            s.soft_mask = Some(mask);
+        });
+        let inner = b.transparency(outer, GroupAttributes::default(), mark(masked));
+        let shaped = b.state(|s| s.alpha_is_shape = true);
+        b.rect(inner, [0.5, 1.25, 6.75, 4.5], ink, mark(shaped));
+        if second {
+            b.rect(inner, [3.0, 0.25, 7.75, 3.0], red, mark(StateId(0)));
+        }
+        b
+    };
+    let b = nested(false);
+    assert_eq!(planned(&b), 2);
+    check(&b);
+    let b = nested(true);
+    assert_eq!(planned(&b), 3);
+    check(&b);
+    // Alpha as shape folds only where no knockout above reads shape.
+    let ancestor = |state: &dyn Fn(&mut Build) -> StateId| {
+        let mut b = Build::new(8.0, 6.0);
+        let ink = b.rgb([0.2, 0.4, 0.7]);
+        let knockout = GroupAttributes {
+            knockout: true,
+            ..GroupAttributes::default()
+        };
+        let knockout = b.transparency(PAGE, knockout, mark(StateId(0)));
+        let half = b.state(|s| s.alpha = 0.5);
+        b.rect(knockout, [0.0, 0.0, 5.0, 4.0], ink, mark(half));
+        let parent = b.transparency(knockout, isolated, mark(StateId(0)));
+        let state = state(&mut b);
+        let group = b.transparency(parent, GroupAttributes::default(), mark(state));
+        b.rect(group, [2.0, 1.0, 7.0, 5.0], ink, mark(StateId(0)));
+        b
+    };
+    let b = ancestor(&|b: &mut Build| b.state(|s| s.alpha = 0.4));
+    assert_eq!(planned(&b), 3);
+    check(&b);
+    let b = ancestor(&|b: &mut Build| {
+        b.state(|s| {
+            s.alpha = 0.4;
+            s.alpha_is_shape = true;
+        })
+    });
+    assert_eq!(planned(&b), 4);
     check(&b);
 }
