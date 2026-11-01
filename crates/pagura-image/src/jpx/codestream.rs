@@ -109,7 +109,7 @@ fn read_size(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Size> {
     let columns = (x1 - tile_x0).div_ceil(tile_width);
     let rows = (y1 - tile_y0).div_ceil(tile_height);
     let tiles = area(columns, rows)?;
-    if tiles > budget.limits.operations || tiles > budget.limits.objects {
+    if tiles > budget.limits.decode_work || tiles > budget.limits.objects {
         return Err(Error::limit("JPEG 2000 tile budget exceeded"));
     }
     if tiles > 65535 {
@@ -390,7 +390,12 @@ impl Tile {
         Ok(())
     }
 
-    fn reconstruct(self, size: &Size, image: &mut JpxImage, budget: &mut Budget<'_>) -> Result<()> {
+    fn reconstruct(
+        self,
+        size: &Size,
+        image: &mut JpxImage,
+        (budget, states): (&mut Budget<'_>, &mut tier1::States),
+    ) -> Result<()> {
         if self.part_count.is_some_and(|n| self.next_part != n) {
             return Err(syntax("incomplete JPEG 2000 tile or tile-parts", 0));
         }
@@ -409,7 +414,7 @@ impl Tile {
                 quant,
                 source.bits,
                 roi,
-                budget,
+                (budget, &mut *states),
             )?);
         }
         let shared_luma = self.config.transform
@@ -448,6 +453,10 @@ impl Tile {
                 }
             }
         }
+        for plane in &mut planes {
+            budget.free(std::mem::take(&mut plane.values));
+        }
+        budget.free(planes);
         Ok(())
     }
 }
@@ -496,7 +505,7 @@ fn reconstruct_component(
     quant: &Quantization,
     bits: u8,
     roi: u8,
-    budget: &mut Budget<'_>,
+    (budget, states): (&mut Budget<'_>, &mut tier1::States),
 ) -> Result<Plane> {
     let mut low = None;
     let mut band_index = 0;
@@ -549,7 +558,7 @@ fn reconstruct_component(
                     passes: block.passes,
                     modes: style.modes,
                 };
-                let values = tier1::decode(&block.segments, &parameters, budget)?;
+                let values = tier1::decode(&block.segments, &parameters, (budget, states))?;
                 let width = usize_from(band.plane.width)?;
                 for (y, row) in values.chunks_exact(block.width).enumerate() {
                     let start = (block.y + y) * width + block.x;
@@ -559,14 +568,18 @@ fn reconstruct_component(
                         if coefficient == 0.0 {
                             continue;
                         }
-                        band.plane.materialize(budget)?;
+                        // The first nonzero coefficient of the plane allocates it.
+                        if !nonzero {
+                            band.plane.materialize(budget)?;
+                            nonzero = true;
+                        }
                         band.plane.values[start + x] = coefficient * step;
-                        nonzero = true;
                     }
                     if nonzero {
                         band.plane.include_rows(block.y + y..block.y + y + 1);
                     }
                 }
+                budget.free(values);
             }
             band_index += 1;
         }
@@ -574,15 +587,20 @@ fn reconstruct_component(
             low = r.bands.pop().map(|band| band.plane);
         } else {
             let previous = low
-                .as_ref()
+                .take()
                 .ok_or_else(|| syntax("missing JPEG 2000 low-pass subband", 0))?;
             low = Some(wavelet::synthesize(
-                previous,
+                &previous,
                 [&r.bands[0].plane, &r.bands[1].plane, &r.bands[2].plane],
                 r.bounds,
                 style.reversible,
                 budget,
             )?);
+            // The next resolution's plane replaces this one's subbands.
+            budget.free(previous.values);
+            for band in r.bands {
+                budget.free(band.plane.values);
+            }
         }
     }
     low.ok_or_else(|| syntax("missing JPEG 2000 resolutions", 0))
@@ -682,7 +700,20 @@ fn component_transform(
     Ok(false)
 }
 
+/// The image a codestream declares, with its components' precisions and
+/// placement but no samples: what [`decode`] returns before reconstruction,
+/// after the same main-header validation.
+pub(super) fn describe(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Result<Decoded> {
+    let mut reader = Reader::new(data, base);
+    let size = read_header(&mut reader, budget)?.size;
+    allocate(&size, budget, false)
+}
+
 fn allocate_image(size: &Size, budget: &mut Budget<'_>) -> Result<Decoded> {
+    allocate(size, budget, true)
+}
+
+fn allocate(size: &Size, budget: &mut Budget<'_>, samples: bool) -> Result<Decoded> {
     budget.charge::<JpxComponent>(size.components.len())?;
     let mut components = Vec::with_capacity(size.components.len());
     for c in &size.components {
@@ -693,7 +724,11 @@ fn allocate_image(size: &Size, budget: &mut Budget<'_>) -> Result<Decoded> {
             signed: c.signed,
             width,
             height,
-            samples: budget.filled(area(width, height)?, 0)?,
+            samples: if samples {
+                budget.samples(area(width, height)?, 0)?
+            } else {
+                Vec::new()
+            },
         });
     }
     let mut geometry = budget.filled(
@@ -805,9 +840,11 @@ pub(super) fn decode(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Resul
     }
     reader.finish()?;
     ppm.finish()?;
+    // One code-block state buffer serves every code-block of the image.
+    let mut states = tier1::States::default();
     for tile in tiles {
         tile.ok_or_else(|| syntax("missing JPEG 2000 tile", base))?
-            .reconstruct(&size, &mut image.image, budget)?;
+            .reconstruct(&size, &mut image.image, (budget, &mut states))?;
     }
     Ok(image)
 }

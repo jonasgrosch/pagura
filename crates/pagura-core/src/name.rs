@@ -58,7 +58,9 @@ impl Name {
         Ok(Self::new(bytes))
     }
 
-    pub(crate) fn heap_bytes(&self) -> usize {
+    /// Bytes of owned name storage, besides the inline [`Name`] value.
+    /// Cloning a name duplicates these bytes; short names need no allocation.
+    pub fn heap_bytes(&self) -> usize {
         match &self.0 {
             Repr::Heap(bytes) => bytes.len(),
             Repr::Inline { .. } => 0,

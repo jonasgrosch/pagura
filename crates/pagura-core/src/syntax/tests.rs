@@ -3,10 +3,10 @@
 
 use super::{Origin, Parser, hex_digit};
 use crate::repairs::{
-    DICTIONARY_CLOSER, DICTIONARY_OPENER, KEY_SOLIDUS, LEADING_ZERO_REFERENCE, NAME_ESCAPE,
-    ZERO_REFERENCE,
+    DICTIONARY_CLOSER, DICTIONARY_OPENER, HEX_DIGIT, KEY_SOLIDUS, LEADING_ZERO_REFERENCE,
+    NAME_ESCAPE, NUMBER_SIGN, ZERO_REFERENCE,
 };
-use crate::{ErrorKind, Limits, Name, ObjectId, Position, Recovery, Value};
+use crate::{Diagnostic, Error, ErrorKind, Limits, Name, ObjectId, Position, Recovery, Value};
 
 fn parse(data: &[u8]) -> crate::Result<Value> {
     Parser::new(data, Origin::Buffer, Limits::default()).parse()
@@ -244,6 +244,45 @@ fn braces_are_regular_characters_in_ordinary_pdf_names() {
 }
 
 #[test]
+fn lone_signs_read_as_zero_and_other_hex_bytes_are_skipped() {
+    let mut parser = Parser::new(b"- + [-] <48!4> <4!!8>", Origin::File, Limits::default())
+        .with_recovery(Recovery::Repair);
+    assert_eq!(parser.parse().unwrap(), Value::Integer(0));
+    assert_eq!(parser.parse().unwrap(), Value::Integer(0));
+    assert_eq!(
+        parser.parse().unwrap(),
+        Value::Array(vec![Value::Integer(0)])
+    );
+    for expected in [[0x48, 0x40].as_slice(), &[0x48]] {
+        assert_eq!(parser.parse().unwrap(), Value::String(expected.to_vec()));
+    }
+    let repairs: Vec<_> = parser
+        .take_diagnostics()
+        .iter()
+        .map(Diagnostic::repair)
+        .collect();
+    // One hexadecimal repair is kept however many bytes are skipped.
+    assert_eq!(
+        repairs,
+        [
+            Some(NUMBER_SIGN),
+            Some(NUMBER_SIGN),
+            Some(NUMBER_SIGN),
+            Some(HEX_DIGIT)
+        ]
+    );
+    for bytes in [b"-.".as_slice(), b"--", b"+-1", b"."] {
+        assert!(
+            Parser::new(bytes, Origin::File, Limits::default())
+                .with_recovery(Recovery::Repair)
+                .parse()
+                .is_err(),
+            "{bytes:?}"
+        );
+    }
+}
+
+#[test]
 fn hex_digits_accept_both_cases_only() {
     let digits: Vec<_> = b"09afAF".iter().map(|&b| hex_digit(b)).collect();
     assert_eq!(
@@ -301,4 +340,20 @@ fn direct_stream_handlers_must_end_after_endstream() {
         error.message,
         "direct stream handler did not consume endstream"
     );
+}
+
+#[test]
+fn new_operand_repairs_preserve_the_original_full_strict_errors() {
+    for (bytes, message, offset) in [
+        (b"-".as_slice(), "invalid number", 0),
+        (b"+".as_slice(), "invalid number", 0),
+        (b"<4!1>".as_slice(), "invalid hexadecimal string", 3),
+    ] {
+        let mut strict = Parser::new(bytes, Origin::File, Limits::default());
+        assert_eq!(
+            strict.parse().unwrap_err(),
+            Error::syntax(message).at(Position::File(offset))
+        );
+        assert_eq!(strict.take_diagnostics(), []);
+    }
 }

@@ -80,12 +80,17 @@ pub fn limits() -> Limits {
         string_bytes: 1 << 20,
         stream_bytes: 4 << 20,
         decoded_bytes: 16 << 20,
+        // Decoders' working memory, under the same small cap as their output.
+        decode_bytes: 16 << 20,
         revisions: 64,
         pages: 256,
         pixels: 1 << 18,
         operations: 100_000,
         path_segments: 200_000,
         raster_work: 50_000_000,
+        function_work: 50_000_000,
+        // The default ratio: 32 units per pixel at the pixel cap.
+        decode_work: 32 << 18,
         mask_sources: 32,
         display_commands: 10_000,
         font_work: 100_000,

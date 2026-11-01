@@ -80,6 +80,10 @@ fn load(path: &Path, limits: &Limits) -> Result<Arc<[u8]>, Failure> {
 
 /// Creates `path` and writes `bytes`; never truncates an existing file.
 pub(crate) fn write_new(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let mut file = File::options().write(true).create_new(true).open(path)?;
-    file.write_all(bytes)
+    create_new(path)?.write_all(bytes)
+}
+
+/// Creates `path` without truncating an existing file.
+pub(crate) fn create_new(path: &Path) -> std::io::Result<File> {
+    File::options().write(true).create_new(true).open(path)
 }

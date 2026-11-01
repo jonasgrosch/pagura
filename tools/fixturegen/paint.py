@@ -144,6 +144,12 @@ def text_cases():
         ("type3-metrics-repeated",b"BT /F 20 Tf (A) Tj ET",type3(b"400 0 d0 400 0 d0")),
         ("type3-metrics-outside",b"400 0 d0",[]),
     ]:
+        if name == "text-end-without-begin":
+            yield Case(name,page(b"ET"),RENDER,
+                       ("paint-text-errors", "recovery-content-state"),
+                       "An unmatched ET is a reported viewing no-op; Strict rejects it",
+                       oracle=rects([]), repairs=("content.text-unmatched",), strict_valid=False)
+            continue
         yield Case(name,page(content,objects,FONT if objects else b"<< >>"),OPEN,("paint-text-errors",),name.replace("-"," "),extra={"render_error":"syntax"})
 
 
@@ -392,8 +398,9 @@ def extra_cases():
     for content,name in [(b"BI","image-inline-unfinished"),(b"ID","image-inline-id-outside"),(b"EI","image-inline-ei-outside"),(b"BI /W 1 /W 2 ID \0 EI","image-inline-duplicate"),(b"BI /W 1 /H 1 /BPC 8 /CS /G ID \0","image-inline-missing-ei")]:
         yield Case(name,page(content),OPEN,("paint-inline",),name.replace("-"," "),extra={"render_error":"syntax"})
 
+    yield image_case("image-jpx-icc-explicit",jpx.jp2(jpx.codestream([[0]],1,1),1,1,1,method=2),
+                     b"/Filter /JPXDecode",[0],1,1,requirement="paint-jpx-icc")
     for name,data,dictionary,fill,tag in [
-        ("image-jpx-icc-explicit",jpx.jp2(jpx.codestream([[0]],1,1),1,1,1,method=2),b"/Filter /JPXDecode",b"","xobject.jpx-color"),
         ("image-stencil-pattern-explicit",b"\0",b"/ImageMask true /BitsPerComponent 1",b"/Pattern cs ","pattern.image-mask"),
     ]:
         image=stream(data,b"/Subtype /Image /Width 1 /Height 1 "+dictionary)
@@ -417,11 +424,8 @@ def extra_cases():
     yield case("type3-rotated-horizontal-width",b"1 0 0 rg BT /F 20 Tf 16 4 Td (A) Tj 0 0 1 rg (A) Tj ET",objects,FONT,[((4,4,12,8),BLUE)],requirement="paint-type3")
 
 
-def bundled_contours(path, character):
-    """Read simple TrueType contours independently, per the sfnt/glyf format.
-    The selected fixture letters have only on-curve points, so their covered
-    area has an exact rational polygon oracle, with no curve approximation.
-    """
+def bundled_points(path, character):
+    """Read simple TrueType coordinates and on-curve flags independently."""
     data = path.read_bytes()
     u16 = lambda at: struct.unpack_from('>H', data, at)[0]
     i16 = lambda at: struct.unpack_from('>h', data, at)[0]
@@ -464,12 +468,18 @@ def bundled_contours(path, character):
                 value += i16(pos); pos += 2
             axis.append(value)
         coordinates.append(axis)
-    assert all(flag & 1 for flag in flags), 'select straight-sided glyphs for an exact oracle'
     contours = []; start = 0
     for end in ends:
-        contours.append(list(zip(coordinates[0][start:end+1], coordinates[1][start:end+1])))
+        contours.append([(coordinates[0][i], coordinates[1][i], bool(flags[i] & 1)) for i in range(start,end+1)])
         start = end+1
     return contours, u16(tables[b'head']+18)
+
+
+def bundled_contours(path, character):
+    """Straight-only view for the existing exact rational polygon oracles."""
+    contours, units = bundled_points(path, character)
+    assert all(on for contour in contours for _,_,on in contour), 'select straight-sided glyphs for an exact oracle'
+    return [[(x,y) for x,y,_ in contour] for contour in contours], units
 
 
 def bundled_oracle(font_path, afm_path, text, *, advance=None, size=64):

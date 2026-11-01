@@ -30,6 +30,26 @@ pub(crate) fn read(
     diagnostics: &mut Diagnostics,
     position: Position,
 ) -> Result<XrefTable> {
+    read_objects(bytes, limits, diagnostics, position, None)
+}
+
+pub(crate) fn read_with_original(
+    bytes: &[u8],
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+    position: Position,
+    original: &super::original::OriginalRecords,
+) -> Result<XrefTable> {
+    read_objects(bytes, limits, diagnostics, position, Some(original))
+}
+
+fn read_objects(
+    bytes: &[u8],
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+    position: Position,
+    original: Option<&super::original::OriginalRecords>,
+) -> Result<XrefTable> {
     diagnostics.repair(
         Diagnostic::new(
             repairs::XREF_REBUILT,
@@ -55,7 +75,7 @@ pub(crate) fn read(
                 _ => Err(Error::syntax("trailer must be a dictionary").at(parser.position())),
             })
         } else if let Some(id) = header(bytes, offset, limits) {
-            object(&mut scan, &mut parser, id, limits, diagnostics)
+            object(&mut scan, &mut parser, id, limits, diagnostics, original)
         } else {
             match parser.peek() {
                 Some(b'(' | b'<' | b'[' | b'/') => parser.parse().map(|_| ()),
@@ -107,6 +127,7 @@ fn object(
     id: ObjectId,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
+    original: Option<&super::original::OriginalRecords>,
 ) -> Result<()> {
     let offset = parser.offset();
     scan.objects
@@ -117,10 +138,34 @@ fn object(
     if !parser.keyword(b"obj") {
         return Err(Error::syntax("missing object header").at(parser.position()));
     }
-    let (value, _) = parser.parse_with_streams(&mut |parser, dictionary| {
+    let value_start = parser.offset();
+    let parsed = parser.parse_with_streams(&mut |parser, dictionary| {
         skip_direct(parser, dictionary, id, limits, diagnostics)?;
         Ok(None)
-    })?;
+    });
+    let (value, pending) = match parsed {
+        Ok((value, _)) => (value, None),
+        Err(error) if error.kind == pagura_core::ErrorKind::Syntax => {
+            let Some(original) = original else {
+                return Err(error);
+            };
+            let mut pending = Diagnostics::new(diagnostics.mode());
+            let Some(value) = recovery::integer_separator_from_original(
+                original,
+                id,
+                offset,
+                value_start,
+                parser,
+                limits,
+                &mut pending,
+            )?
+            else {
+                return Err(error);
+            };
+            (value, Some(pending))
+        }
+        Err(error) => return Err(error),
+    };
     diagnostics.absorb(
         parser
             .take_diagnostics()
@@ -154,6 +199,9 @@ fn object(
             location: Location::Offset(offset),
         },
     );
+    if let Some(mut pending) = pending {
+        diagnostics.absorb(pending.take())?;
+    }
     Ok(())
 }
 

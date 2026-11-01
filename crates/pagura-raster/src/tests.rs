@@ -1,102 +1,131 @@
-//! Independent generated-vector and API invariant tests.
+//! The band rasterizer against the independent generated vectors
+//! (`corpus/generated/raster`), and stroke and fill invariants.
 
-use crate::coverage::{self, Scratch, Shape};
+use crate::testing::{fill, raster, stroke as band_stroke, window};
 use crate::{
-    FillRule, LineCap, LineJoin, Mask, Paint, Path, PathBuilder, Pixmap, Point, Rgba8, Stroke,
-    Transform, fill_path, stroke_path,
+    Adjustment, Area, ClipShape, DeviceRect, FillRule, LineCap, LineJoin, Path, PathBuilder, Point,
+    Shape, ShapeOptions, Stroke, Transform,
 };
-use pagura_core::{ErrorKind, Limits, Result};
-use std::sync::Arc;
+use pagura_core::{ErrorKind, Limits};
 
+/// One vector: the path, its fill rule, its stroke if it is stroked, its
+/// clipping paths and the budgets it is rasterized under.
+struct Vector {
+    path: Path,
+    rule: FillRule,
+    stroke: Option<Stroke>,
+    clips: Vec<Path>,
+    limits: Limits,
+}
+
+impl Vector {
+    fn read(name: &str) -> Self {
+        let text =
+            String::from_utf8(pagura_testkit::fixture("raster", &format!("{name}.path"))).unwrap();
+        let (path, rule, stroke, clips) = vector_geometry(&text);
+        Self {
+            path,
+            rule,
+            stroke,
+            clips,
+            limits: Limits::default(),
+        }
+    }
+
+    /// The fixture's expected coverage of ordinary scan conversion, or, for
+    /// a fill whose region is empty with a boundary, the coverage of its
+    /// hairline outline, which every fill paints there (10.7.4).
+    fn expected(&self, ordinary: &[u8]) -> Vec<u8> {
+        let mut classified = self.path.clone();
+        classified
+            .classify_fill(self.rule, &self.limits, &mut 0)
+            .unwrap();
+        if self.stroke.is_some()
+            || classified.fill_region(self.rule) != Some(crate::FillRegion::EmptyBoundary)
+        {
+            return ordinary.to_vec();
+        }
+        let outline =
+            crate::empty_fill_outline(&classified, Transform::IDENTITY, self.rule, &self.limits)
+                .unwrap()
+                .unwrap();
+        let hairline = (&outline, Transform::IDENTITY, FillRule::NonZero);
+        fill(window(8, 8), hairline, &[], &self.limits).unwrap()
+    }
+
+    /// The coverage over `region` as a stroke or fill (through the stroker's
+    /// pieces), and for a stroke also as a fill of its component outline.
+    fn coverage(&self, region: DeviceRect) -> Vec<Vec<u8>> {
+        let limits = &self.limits;
+        let area = Area {
+            region,
+            band_height: 3,
+        };
+        let options = ShapeOptions { area, limits };
+        let clips: Vec<(&Path, FillRule)> = self.clips.iter().map(|c| (c, self.rule)).collect();
+        let clip = (!clips.is_empty())
+            .then(|| ClipShape::new(&clips, Transform::IDENTITY, &options).unwrap());
+        let bytes = |shape: Option<Shape>| {
+            shape.map_or_else(
+                || vec![0; (region.width() * region.height()) as usize],
+                |s| raster(&area, Some(&s), clip.as_ref()).0,
+            )
+        };
+        let identity = Transform::IDENTITY;
+        let Some(stroke) = &self.stroke else {
+            let shape =
+                Shape::fill_with_clip(&self.path, identity, self.rule, clip.as_ref(), &options);
+            return vec![bytes(shape.unwrap())];
+        };
+        let stroked = Shape::stroke_with_clip(
+            &self.path,
+            stroke,
+            (identity, identity),
+            Adjustment::None,
+            clip.as_ref(),
+            &options,
+        );
+        let (outline, transform) =
+            crate::stroke_outline(&self.path, identity, stroke, limits).unwrap();
+        let filled = Shape::fill_with_clip(
+            &outline,
+            transform,
+            FillRule::NonZero,
+            clip.as_ref(),
+            &options,
+        );
+        vec![bytes(stroked.unwrap()), bytes(filled.unwrap())]
+    }
+}
+
+/// Checks the vector `name` against its expected coverage within
+/// `tolerance` levels, and every pixel rendered alone against the whole.
 fn vector(name: &str, tolerance: u8) {
-    let text =
-        String::from_utf8(pagura_testkit::fixture("raster", &format!("{name}.path"))).unwrap();
-    let (path, rule, stroke, clips) = vector_geometry(&text);
     let expected = pagura_testkit::fixture("raster", &format!("{name}.pgm"));
     let expected = expected.strip_prefix(b"P5\n8 8\n255\n").unwrap();
-    let (path, transform, rule) = if let Some(stroke) = stroke {
-        let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-        stroke_path(
-            &mut target,
-            &path,
-            Transform::IDENTITY,
-            &stroke,
-            &Paint::Solid(Rgba8::BLACK),
-            None,
-        )
-        .unwrap();
-        let actual: Vec<_> = target
-            .data()
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|p| p[3])
-            .collect();
-        assert_vector_samples(name, "stroke API", &actual, expected, tolerance);
-        let (outline, transform) =
-            crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &Limits::default()).unwrap();
-        (outline, transform, FillRule::NonZero)
-    } else {
-        (path, Transform::IDENTITY, rule)
-    };
-    // Fill and clips are intersected geometrically in one call. In particular,
-    // the forced backend cannot admit a short first contour to the strip sweep.
-    let shapes: Vec<_> = std::iter::once(Shape {
-        geometry: coverage::Geometry::Path(Arc::new(path)),
-        transform,
-        rule,
-    })
-    .chain(clips.into_iter().map(|path| Shape {
-        geometry: coverage::Geometry::Path(Arc::new(path)),
-        transform: Transform::IDENTITY,
-        rule,
-    }))
-    .collect();
-    let glyphs: Vec<_> = shapes
-        .iter()
-        .map(|shape| {
-            let coverage::Geometry::Path(path) = &shape.geometry else {
-                unreachable!()
-            };
-            let t = shape.transform;
-            Shape {
-                geometry: coverage::Geometry::Glyph(Arc::new(
-                    crate::GlyphGeometry::new(path, [t.a, t.b, t.c, t.d], &Limits::default())
-                        .unwrap(),
-                )),
-                transform: Transform::translate(t.e, t.f),
-                rule: shape.rule,
+    let vector = Vector::read(name);
+    let expected = vector.expected(expected);
+    let whole = vector.coverage(window(8, 8));
+    for (route, whole) in ["shape", "outline"].iter().zip(&whole) {
+        assert_vector_samples(name, route, whole, &expected, tolerance);
+    }
+    for y in 0..8 {
+        for x in 0..8 {
+            let pixel = vector.coverage(DeviceRect {
+                x0: x,
+                y0: y,
+                x1: x + 1,
+                y1: y + 1,
+            });
+            for (route, (pixel, whole)) in ["shape", "outline"].iter().zip(pixel.iter().zip(&whole))
+            {
+                assert_eq!(
+                    pixel[0],
+                    whole[(y * 8 + x) as usize],
+                    "{name} {route} tile {x},{y}"
+                );
             }
-        })
-        .collect();
-    for (backend, render, shapes) in [
-        (
-            "path dispatch",
-            coverage::coverage as CoverageRenderer,
-            shapes.as_slice(),
-        ),
-        (
-            "glyph dispatch",
-            coverage::coverage as CoverageRenderer,
-            glyphs.as_slice(),
-        ),
-        (
-            "glyph accumulator",
-            coverage::coverage_accumulated as CoverageRenderer,
-            glyphs.as_slice(),
-        ),
-        (
-            "accumulator",
-            coverage::coverage_accumulated as CoverageRenderer,
-            shapes.as_slice(),
-        ),
-    ] {
-        let mut whole = [0; 64];
-        let mut scratch = Scratch::default();
-        let limits = Limits::default();
-        render(8, 8, shapes, &mut whole, (0, 0), &limits, &mut scratch).unwrap();
-        assert_vector_samples(name, backend, &whole, expected, tolerance);
-        assert_vector_tiles(name, backend, render, shapes, &whole, &limits, &mut scratch);
+        }
     }
 }
 
@@ -158,9 +187,6 @@ fn vector_geometry(text: &str) -> (Path, FillRule, Option<Stroke>, Vec<Path>) {
     (builder.finish(), rule, stroke, clips)
 }
 
-type CoverageRenderer =
-    fn(u32, u32, &[Shape], &mut [u8], (u32, u32), &Limits, &mut Scratch) -> Result<()>;
-
 fn assert_vector_samples(name: &str, backend: &str, actual: &[u8], expected: &[u8], tolerance: u8) {
     assert_eq!(actual.len(), expected.len(), "{name} {backend}");
     for (i, (&actual, &expected)) in actual.iter().zip(expected).enumerate() {
@@ -168,28 +194,6 @@ fn assert_vector_samples(name: &str, backend: &str, actual: &[u8], expected: &[u
             actual.abs_diff(expected) <= tolerance,
             "{name} {backend} pixel {i}: {actual} vs {expected}"
         );
-    }
-}
-
-fn assert_vector_tiles(
-    name: &str,
-    backend: &str,
-    render: CoverageRenderer,
-    shapes: &[Shape],
-    whole: &[u8],
-    limits: &Limits,
-    scratch: &mut Scratch,
-) {
-    for y in 0..8 {
-        for x in 0..8 {
-            let mut pixel = [0];
-            render(1, 1, shapes, &mut pixel, (x, y), limits, scratch).unwrap();
-            assert_eq!(
-                pixel[0],
-                whole[(y * 8 + x) as usize],
-                "{name} {backend} tile {x},{y}"
-            );
-        }
     }
 }
 
@@ -230,39 +234,8 @@ fn independent_curved_and_stroke_oracles() {
 }
 
 #[test]
-fn clipping_and_premultiplied_composition() {
-    let mut path = PathBuilder::new();
-    path.rect(0.0, 0.0, 1.0, 1.0);
-    let path = path.finish();
-    let mut clip_path = PathBuilder::new();
-    clip_path.rect(0.0, 0.0, 0.5, 1.0);
-    let mut clip = Mask::from_path(
-        1,
-        1,
-        &clip_path.finish(),
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        1,
-    )
-    .unwrap();
-    let full = Mask::from_path(1, 1, &path, Transform::IDENTITY, FillRule::NonZero, 1).unwrap();
-    clip.intersect(&full).unwrap();
-    assert_eq!(clip.coverage(), &[128]);
-    let mut target = Pixmap::new(1, 1, Rgba8::TRANSPARENT, 1).unwrap();
-    fill_path(
-        &mut target,
-        &path,
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        &Paint::Solid(Rgba8::new(255, 0, 0, 128)),
-        Some(&clip),
-    )
-    .unwrap();
-    assert_eq!(target.data(), &[64, 0, 0, 64]);
-}
-
-#[test]
 fn stroke_transform_hairline_dash_and_miter() {
+    let limits = Limits::default();
     let mut builder = PathBuilder::new();
     builder
         .move_to(Point::new(1.0, 2.0))
@@ -270,67 +243,41 @@ fn stroke_transform_hairline_dash_and_miter() {
         .unwrap();
     let path = builder.finish();
     let transform = Transform::scale(2.0, 1.0);
-    let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-    stroke_path(
-        &mut target,
-        &path,
-        transform,
-        &Stroke {
-            width: 2.0,
-            cap: LineCap::ProjectingSquare,
-            ..Stroke::default()
-        },
-        &Paint::Solid(Rgba8::BLACK),
-        None,
-    )
-    .unwrap();
+    let square = Stroke {
+        width: 2.0,
+        cap: LineCap::ProjectingSquare,
+        ..Stroke::default()
+    };
+    let coverage = band_stroke(window(8, 8), &path, &square, transform, &limits).unwrap();
     // User-space square cap extends 1 unit, hence 2 device pixels in x.
-    assert_eq!(
-        target
-            .row(1)
-            .unwrap()
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|p| p[3])
-            .collect::<Vec<_>>(),
-        vec![255; 8]
-    );
-    let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-    stroke_path(
-        &mut target,
-        &path,
-        transform,
-        &Stroke {
-            width: 0.0,
-            ..Stroke::default()
-        },
-        &Paint::Solid(Rgba8::BLACK),
-        None,
-    )
-    .unwrap();
-    assert_eq!(
-        target
-            .data()
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|p| u32::from(p[3]))
-            .sum::<u32>(),
-        4 * 256
-    );
+    assert_eq!(coverage[8..16], [255; 8]);
+    let hairline = Stroke {
+        width: 0.0,
+        ..Stroke::default()
+    };
+    let coverage = band_stroke(window(8, 8), &path, &hairline, transform, &limits).unwrap();
+    assert_eq!(coverage.iter().map(|&c| u32::from(c)).sum::<u32>(), 4 * 256);
     let stroke = Stroke {
         width: 2.0,
         dash_array: vec![1.0, 1.0],
         ..Stroke::default()
     };
-    let (outline, _) =
-        crate::stroke::outline(&path, Transform::IDENTITY, &stroke, &Limits::default()).unwrap();
-    let mask = Mask::from_path(8, 8, &outline, Transform::IDENTITY, FillRule::NonZero, 64).unwrap();
-    assert_eq!(
-        mask.coverage().iter().map(|&n| u32::from(n)).sum::<u32>(),
-        2 * 255
-    );
+    let (outline, _) = crate::stroke::outline(
+        &path,
+        Transform::IDENTITY,
+        &stroke,
+        &limits,
+        &mut crate::testing::bytes(),
+    )
+    .unwrap();
+    let coverage = fill(
+        window(8, 8),
+        (&outline, Transform::IDENTITY, FillRule::NonZero),
+        &[],
+        &limits,
+    )
+    .unwrap();
+    assert_eq!(coverage.iter().map(|&n| u32::from(n)).sum::<u32>(), 2 * 255);
     for join in [LineJoin::Miter, LineJoin::Bevel, LineJoin::Round] {
         let mut p = PathBuilder::new();
         p.move_to(Point::new(1.0, 6.0))
@@ -345,7 +292,8 @@ fn stroke_transform_hairline_dash_and_miter() {
                 join,
                 ..Stroke::default()
             },
-            &Limits::default(),
+            &limits,
+            &mut crate::testing::bytes(),
         )
         .unwrap();
         assert!(!outline.is_empty());
@@ -353,92 +301,35 @@ fn stroke_transform_hairline_dash_and_miter() {
 }
 
 #[test]
-fn invalid_geometry_and_budgets_return_errors() {
+fn invalid_geometry_and_strokes_return_errors() {
+    let limits = Limits::default();
     let mut builder = PathBuilder::new();
     builder.move_to(Point::new(f64::NAN, 0.0));
-    assert_eq!(
-        Mask::from_path(
-            1,
-            1,
-            &builder.finish(),
-            Transform::IDENTITY,
-            FillRule::NonZero,
-            1
-        )
-        .unwrap_err()
-        .kind,
-        ErrorKind::InvalidArgument
-    );
-    assert_eq!(
-        Mask::from_path(
-            8,
-            8,
-            &Path::default(),
-            Transform::IDENTITY,
-            FillRule::NonZero,
-            63
-        )
-        .unwrap_err()
-        .kind,
-        ErrorKind::Limit
-    );
-    let mut target = Pixmap::new(1, 1, Rgba8::WHITE, 1).unwrap();
+    let error = fill(
+        window(1, 1),
+        (&builder.finish(), Transform::IDENTITY, FillRule::NonZero),
+        &[],
+        &limits,
+    )
+    .unwrap_err();
+    assert_eq!(error.kind, ErrorKind::InvalidArgument);
     let stroke = Stroke {
         dash_array: vec![0.0],
         ..Stroke::default()
     };
+    let mut builder = PathBuilder::new();
+    builder.move_to(Point::new(0.0, 0.0));
+    builder.line_to(Point::new(1.0, 0.0)).unwrap();
     assert!(
-        stroke_path(
-            &mut target,
-            &Path::default(),
-            Transform::IDENTITY,
+        band_stroke(
+            window(1, 1),
+            &builder.finish(),
             &stroke,
-            &Paint::Solid(Rgba8::BLACK),
-            None
+            Transform::IDENTITY,
+            &limits
         )
         .is_err()
     );
-}
-
-#[test]
-fn mask_intersection_uses_geometry_and_is_atomic() {
-    let mut builder = PathBuilder::new();
-    builder.rect(0.0, 0.0, 0.5, 1.0);
-    let left = Mask::from_path(
-        1,
-        1,
-        &builder.finish(),
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        1,
-    )
-    .unwrap();
-    let mut intersection = left.clone();
-    intersection.intersect(&left).unwrap();
-    assert_eq!(intersection.coverage(), &[128]);
-    builder.rect(0.5, 0.0, 0.5, 1.0);
-    let right = Mask::from_path(
-        1,
-        1,
-        &builder.finish(),
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        1,
-    )
-    .unwrap();
-    intersection.intersect(&right).unwrap();
-    assert_eq!(intersection.coverage(), &[0]);
-    let mut current = left;
-    for _ in 0..8 {
-        let other = current.clone();
-        current.intersect(&other).unwrap();
-    }
-    let previous = current.clone();
-    assert_eq!(
-        current.intersect(&previous).unwrap_err().kind,
-        ErrorKind::Limit
-    );
-    assert_eq!(current, previous);
 }
 
 #[test]
@@ -457,16 +348,9 @@ fn large_compound_triangles_and_caller_budgets() {
         }
     }
     let path = builder.finish();
-    let mask = Mask::from_path(
-        500,
-        400,
-        &path,
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        200_000,
-    )
-    .unwrap();
-    for (y, row) in mask.coverage().as_chunks::<500>().0.iter().enumerate() {
+    let triangles = (&path, Transform::IDENTITY, FillRule::NonZero);
+    let coverage = fill(window(500, 400), triangles, &[], &Limits::default()).unwrap();
+    for (y, row) in coverage.as_chunks::<500>().0.iter().enumerate() {
         for (x, &value) in row.iter().enumerate() {
             assert_eq!(value, if x % 2 == 0 && y % 2 == 0 { 128 } else { 0 });
         }
@@ -480,25 +364,9 @@ fn large_compound_triangles_and_caller_budgets() {
             raster_work: 0,
             ..Limits::default()
         },
-        Limits {
-            mask_sources: 0,
-            ..Limits::default()
-        },
     ] {
-        assert_eq!(
-            Mask::from_path_with_limits(
-                500,
-                400,
-                &path,
-                Transform::IDENTITY,
-                FillRule::NonZero,
-                limits,
-                (0, 0)
-            )
-            .unwrap_err()
-            .kind,
-            ErrorKind::Limit
-        );
+        let error = fill(window(500, 400), triangles, &[], &limits).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
     }
 }
 
@@ -601,20 +469,76 @@ fn convex_strokes_preserve_reflected_oracles_at_large_origins() {
             f64::from(origin.0) + 8.0,
             f64::from(origin.1),
         ));
+        let limits = Limits::default();
         let (outline, transform) =
-            crate::stroke_outline(&path, transform, &stroke, &Limits::default()).unwrap();
-        let mask =
-            Mask::from_path_at(8, 8, &outline, transform, FillRule::NonZero, 64, origin).unwrap();
+            crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
+        let region = DeviceRect {
+            x0: origin.0,
+            y0: origin.1,
+            x1: origin.0 + 8,
+            y1: origin.1 + 8,
+        };
+        let area = Area {
+            region,
+            band_height: 16,
+        };
+        let shape = Shape::fill(
+            &outline,
+            transform,
+            FillRule::NonZero,
+            &ShapeOptions {
+                area,
+                limits: &limits,
+            },
+        )
+        .unwrap()
+        .unwrap();
+        // The ordinary rasterizer reserves a prefix through region.x1.
+        // At 2^30 this would allocate over 17 GiB through the unlimited
+        // test helper, despite this being an eight-by-eight oracle.
+        // Inspection accumulates the same device-space geometry in the
+        // shape's compact window, preserving the large-origin arithmetic.
+        let coverage = crate::band::inspected_coverage(&shape, area);
+        if origin.0 < 1 << 30 {
+            assert_eq!(
+                coverage,
+                fill(
+                    region,
+                    (&outline, transform, FillRule::NonZero),
+                    &[],
+                    &limits
+                )
+                .unwrap()
+            );
+        } else {
+            let mut bytes = crate::testing::bytes();
+            assert!(crate::BandRasterizer::new(area, &mut bytes).is_err());
+        }
         for y in 0..8 {
             for x in 0..8 {
                 assert_eq!(
-                    mask.coverage()[y * 8 + x],
+                    coverage[y * 8 + x],
                     expected[y * 8 + 7 - x],
                     "{origin:?} {x},{y}"
                 );
             }
         }
     }
+}
+
+/// The stroke of `path` under `transform` as pieces when they are proven to
+/// tile, else as components, and whether they are proven.
+fn tiled(path: &Path, transform: Transform, stroke: &Stroke) -> (Path, Transform, bool) {
+    let (outline, pen, tiling) = crate::stroke::pieces(
+        path,
+        transform,
+        stroke,
+        &Limits::default(),
+        (crate::stroke::Tiling::Proven, crate::flatten::TOLERANCE),
+        &mut crate::testing::bytes(),
+    )
+    .unwrap();
+    (outline, pen, tiling == crate::stroke::Tiling::Proven)
 }
 
 #[test]
@@ -627,18 +551,8 @@ fn sixteen_sided_oracles_exercise_boundary_and_reversed_inner_fallback() {
             ))
             .unwrap();
             let (path, _, stroke, _) = vector_geometry(&text);
-            let (outline, _) = crate::stroke_outline(
-                &path,
-                Transform::IDENTITY,
-                &stroke.unwrap(),
-                &Limits::default(),
-            )
-            .unwrap();
-            assert_eq!(
-                outline.boundary.is_some(),
-                shape != "reversed-inner",
-                "{shape} {order}"
-            );
+            let (_, _, proven) = tiled(&path, Transform::IDENTITY, &stroke.unwrap());
+            assert_eq!(proven, shape != "reversed-inner", "{shape} {order}");
         }
     }
 }
@@ -666,7 +580,7 @@ fn sixteen_sided(offset: Point) -> (Path, Stroke) {
             crate::Segment::Close => {
                 moved.close();
             }
-            crate::Segment::CubicTo { .. } => panic!("polygon"),
+            crate::Segment::CubicTo { .. } | crate::Segment::QuadTo { .. } => panic!("polygon"),
         }
     }
     let stroke = Stroke {
@@ -681,15 +595,28 @@ fn components(path: &Path, transform: Transform, stroke: &Stroke) -> Path {
     let limits = Limits::default();
     let stretch = transform.a.hypot(transform.b) + transform.c.hypot(transform.d);
     let mut components = PathBuilder::new();
-    for contour in crate::flatten::flatten(path, transform, &limits).unwrap() {
-        for run in crate::stroke::dash(contour.points, contour.closed, stroke, &limits).unwrap() {
+    for contour in
+        crate::flatten::flatten(path, transform, &limits, &mut crate::testing::bytes()).unwrap()
+    {
+        for run in crate::stroke::dash(
+            contour.points,
+            contour.closed,
+            stroke,
+            &limits,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap()
+        {
             crate::stroke::draw(
                 &mut components,
                 &run,
-                stroke.width / 2.0,
-                crate::flatten::TOLERANCE / stretch,
+                crate::stroke::Pen {
+                    radius: stroke.width / 2.0,
+                    tolerance: crate::flatten::TOLERANCE / stretch,
+                },
                 stroke,
                 &limits,
+                &mut crate::testing::bytes(),
             )
             .unwrap();
         }
@@ -698,7 +625,7 @@ fn components(path: &Path, transform: Transform, stroke: &Stroke) -> Path {
 }
 
 #[test]
-fn boundary_strokes_preserve_component_rounding_under_uniform_scales() {
+fn boundary_strokes_cover_their_components_under_uniform_scales() {
     let limits = Limits::default();
     for phase in 0..256 {
         let (path, stroke) = sixteen_sided(Point::new(
@@ -708,83 +635,13 @@ fn boundary_strokes_preserve_component_rounding_under_uniform_scales() {
         for scale in [0.75, 1.0, 1.25] {
             let transform = Transform::scale(scale, scale);
             let (outline, pen) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
-            assert!(outline.boundary.is_some());
+            let (boundary, _, proven) = tiled(&path, transform, &stroke);
+            assert!(proven);
             let components = components(&path, transform, &stroke);
             assert_eq!(outline.segments(), components.segments());
-            let old = Mask::from_path(12, 12, &components, pen, FillRule::NonZero, 144).unwrap();
-            let new = Mask::from_path(12, 12, &outline, pen, FillRule::NonZero, 144).unwrap();
-            assert_eq!(new.coverage(), old.coverage(), "{phase} {scale}");
-        }
-    }
-}
-
-// Far from its user origin a stroke leaves the sweep's frame. Its boundary
-// would then be accumulated with different rounding (phase 185 at scale 1.25),
-// so coverage keeps the components there.
-#[test]
-fn boundary_strokes_keep_components_outside_the_sweep_frame() {
-    let limits = Limits::default();
-    for phase in 0..256 {
-        let (path, stroke) = sixteen_sided(Point::new(
-            70_000.0 + f64::from(phase) / 97.0,
-            70_000.0 + f64::from(phase) / 113.0,
-        ));
-        for scale in [0.75, 1.0, 1.25] {
-            let transform = Transform::scale(scale, scale)
-                .then(Transform::translate(-70_000.0 * scale, -70_000.0 * scale));
-            let (outline, pen) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
-            assert!(outline.boundary.is_some());
-            let components = components(&path, transform, &stroke);
-            let old = Mask::from_path(12, 12, &components, pen, FillRule::NonZero, 144).unwrap();
-            let new = Mask::from_path(12, 12, &outline, pen, FillRule::NonZero, 144).unwrap();
-            assert_eq!(new.coverage(), old.coverage(), "{phase} {scale}");
-        }
-    }
-}
-
-// A nonrectangular clip far from its own user origin leaves the sweep's frame
-// too, so the clipped stroke keeps its components.
-#[test]
-fn boundary_strokes_keep_components_under_distant_clips() {
-    let limits = Limits::default();
-    let mut circle = PathBuilder::new();
-    for i in 0..64 {
-        let angle = f64::from(i) * std::f64::consts::TAU / 64.0;
-        let point = Point::new(70_006.0 + 8.0 * angle.cos(), 70_006.0 + 8.0 * angle.sin());
-        if i == 0 {
-            circle.move_to(point);
-        } else {
-            circle.line_to(point).unwrap();
-        }
-    }
-    circle.close();
-    let clip = Mask::from_path(
-        12,
-        12,
-        &circle.finish(),
-        Transform::translate(-70_000.0, -70_000.0),
-        FillRule::NonZero,
-        144,
-    )
-    .unwrap();
-    for phase in 0..256 {
-        let (path, stroke) = sixteen_sided(Point::new(
-            f64::from(phase) / 97.0,
-            f64::from(phase) / 113.0,
-        ));
-        for scale in [0.75, 1.0, 1.25] {
-            let transform = Transform::scale(scale, scale);
-            let (outline, pen) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
-            assert!(outline.boundary.is_some());
-            let components = components(&path, transform, &stroke);
-            let clipped = |path: &Path| {
-                let mask = clip
-                    .clipped_path(path, pen, FillRule::NonZero, limits)
-                    .unwrap()
-                    .unwrap();
-                (mask.origin(), mask.coverage().to_vec())
-            };
-            assert_eq!(clipped(&outline), clipped(&components), "{phase} {scale}");
+            let window = window(12, 12);
+            let fill = |path| fill(window, (path, pen, FillRule::NonZero), &[], &limits).unwrap();
+            assert_eq!(fill(&boundary), fill(&components), "{phase} {scale}");
         }
     }
 }
@@ -813,29 +670,36 @@ fn boundary_strokes_clean_repeated_closure_and_exclude_dashes_and_affine_pens() 
                 repeated.line_to(first).unwrap();
                 repeated.close();
             }
-            crate::Segment::CubicTo { .. } => panic!("polygon"),
+            crate::Segment::CubicTo { .. } | crate::Segment::QuadTo { .. } => panic!("polygon"),
         }
     }
     let path = repeated.finish();
     let stroke = stroke.unwrap();
     let limits = Limits::default();
-    let (boundary, _) =
-        crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
-    assert!(boundary.boundary.is_some());
-    for transform in [
-        Transform::scale(1.0, 2.0),
-        Transform {
-            c: 0.5,
-            ..Transform::IDENTITY
-        },
-    ] {
-        let (outline, _) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
-        assert!(outline.boundary.is_none());
-    }
+    assert!(tiled(&path, Transform::IDENTITY, &stroke).2);
+    // Affine pens and dashes take no convex boundary; their pieces still
+    // cover the components' set.
     let dashed = Stroke {
         dash_array: vec![1000.0, 1.0],
-        ..stroke
+        ..stroke.clone()
     };
-    let (outline, _) = crate::stroke_outline(&path, Transform::IDENTITY, &dashed, &limits).unwrap();
-    assert!(outline.boundary.is_none());
+    for (transform, stroke) in [
+        (Transform::scale(1.0, 2.0), &stroke),
+        (
+            Transform {
+                c: 0.5,
+                ..Transform::IDENTITY
+            },
+            &stroke,
+        ),
+        (Transform::IDENTITY, &dashed),
+    ] {
+        let (outline, pen) = crate::stroke_outline(&path, transform, stroke, &limits).unwrap();
+        let (pieces, _, _) = tiled(&path, transform, stroke);
+        let window = window(24, 24);
+        let fill = |path| fill(window, (path, pen, FillRule::NonZero), &[], &limits).unwrap();
+        let (a, b) = (fill(&pieces), fill(&outline));
+        let worst = a.iter().zip(&b).map(|(x, y)| x.abs_diff(*y)).max();
+        assert!(worst <= Some(1), "{transform:?}: {worst:?}");
+    }
 }

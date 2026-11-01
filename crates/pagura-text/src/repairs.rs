@@ -38,6 +38,29 @@ pub const WIDTHS_LENGTH: Repair = Repair::new("font.widths-length");
 /// with its decoded program (Table 125). The program is parsed as decoded.
 pub const STREAM_LENGTHS: Repair = Repair::new("font.stream-lengths");
 
+/// A non-embedded font flagged Symbolic whose name is a known Latin family
+/// and whose `/Encoding` names a Latin base encoding (9.6.5, 9.8.2). The named
+/// encoding selects the standard face's glyphs instead of refusing the font;
+/// symbol and dingbat families and unknown names stay unsupported.
+pub const SYMBOLIC_LATIN_ENCODING: Repair = Repair::new("font.symbolic-latin-encoding");
+/// An embedded font program that cannot be used, even with the parser's own
+/// repairs, is replaced by the substitute a non-embedded font with the same
+/// name and descriptor would get (ADR 0009); the PDF's widths keep the advances.
+pub const EMBEDDED_UNUSABLE: Repair = Repair::new("font.embedded-unusable");
+
+/// A CIDFontType0's embedding key/subtype disagrees with an intact CFF or
+/// sfnt program. The parsed program's charset/GIDs and PDF metrics remain
+/// unchanged; Type 1 name dictionaries cannot supply a CID order.
+pub const PROGRAM_BINDING: Repair = Repair::new("font.program-binding");
+
+/// PDF embedding supplies no collection face index (Table 124). A valid
+/// collection is selected by its unique FontName/BaseFont PostScript name,
+/// including standardized subset-tag removal, as explicit reader policy.
+pub const COLLECTION_FACE: Repair = Repair::new("font.collection-face");
+/// Exact GontDescriptor spelling recovered after unavailable TrueType loading.
+/// The typed matching descriptor and original complete strict-valid program are required.
+pub const DESCRIPTOR_KEY: Repair = Repair::new("font.descriptor-key");
+
 /// Every repair tag defined by this crate.
 pub const ALL: &[Repair] = &[
     CID_TO_GID_IDENTITY,
@@ -48,9 +71,14 @@ pub const ALL: &[Repair] = &[
     CMAP_BLOCK_COUNT,
     CMAP_CODESPACE,
     DESCRIPTOR_FLAGS,
+    DESCRIPTOR_KEY,
     DESCRIPTOR_WEIGHT,
     TYPE3_EMPTY_BOUNDS,
     ENCODING_NAME,
     WIDTHS_LENGTH,
     STREAM_LENGTHS,
+    PROGRAM_BINDING,
+    COLLECTION_FACE,
+    SYMBOLIC_LATIN_ENCODING,
+    EMBEDDED_UNUSABLE,
 ];

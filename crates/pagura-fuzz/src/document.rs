@@ -1,5 +1,5 @@
 //! `document`: opening, lazy object loading, stream decoding, page
-//! enumeration and content compilation return structured errors in both
+//! enumeration and page recording return structured errors in both
 //! recovery modes, and strict mode never repairs (ADR 0003).
 
 use pagura::{Document, ErrorKind, OpenOptions, Recovery};
@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 /// How many objects of one document are loaded and decoded.
 const OBJECTS: usize = 256;
-/// How many pages of one document are compiled.
+/// How many pages of one document are recorded.
 const PAGES: usize = 4;
 
 /// Opens the input as a PDF file and walks it.
@@ -28,10 +28,11 @@ pub fn run(data: &[u8]) {
     }
 }
 
-/// Loads and decodes the first objects and compiles the first pages of an
+/// Loads and decodes the first objects and records the first pages of an
 /// opened document through one render context, checking its diagnostics
-/// before and after, and checks its signatures. Compiling a page again from the context's caches gives
-/// a display list of the same length, unless a budget runs out.
+/// before and after, and checks its signatures. Asking the context for a
+/// page's scene again gives the stored scene, or one with the same marks
+/// when the store could not keep it, unless a budget runs out.
 pub(crate) fn walk(document: Document) {
     super::assert_diagnostics(&document.diagnostics(), document.recovery());
     super::checked(document.catalog());
@@ -49,14 +50,14 @@ pub(crate) fn walk(document: Document) {
     if let Some(pages) = super::checked(document.pages()) {
         for page in pages.iter().take(PAGES) {
             super::checked(document.content_streams(page));
-            if let Some(list) = super::checked(context.compile_page(page)) {
-                match context.compile_page(page) {
-                    Ok(again) => assert_eq!(again.len(), list.len(), "the recompilation differs"),
+            if let Some(scene) = super::checked(context.scene(page)) {
+                match context.scene(page) {
+                    Ok(again) => assert_eq!(again.marks(), scene.marks(), "the scene differs"),
                     Err(error) => {
                         assert_eq!(
                             error.kind,
                             ErrorKind::Limit,
-                            "the recompilation failed: {error}"
+                            "recording again failed: {error}"
                         );
                     }
                 }

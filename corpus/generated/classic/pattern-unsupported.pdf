@@ -17,7 +17,7 @@ stream
 endstream
 endobj
 5 0 obj
-<< /Length 12 /Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /Matrix [.3 .3 .3 .4 0 0] /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>>>
+<< /Length 12 /Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /Matrix [0 0 0 1 0 0] /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>>>
 stream
 0 0 1 1 re f
 endstream
@@ -33,5 +33,5 @@ xref
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-526
+522
 %%EOF

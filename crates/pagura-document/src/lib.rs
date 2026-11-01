@@ -10,14 +10,19 @@
 //! [`Document::diagnostics`].
 
 mod access;
+mod annotations;
 mod builder;
 mod catalog;
 mod diagnostics;
 pub mod features;
+pub mod files;
 pub mod forms;
 mod history;
+pub mod images;
+pub mod information;
 mod load;
 mod memory;
+pub mod metadata;
 pub mod navigation;
 mod object;
 mod options;
@@ -32,8 +37,9 @@ mod xref;
 
 pub use object::{IndirectObject, ObjectSource};
 pub use options::OpenOptions;
-pub use pages::{Page, Rotation};
+pub use pages::Page;
 pub use pagura_codec::{ImageCodec, Prefix};
+pub use pagura_core::Rotation;
 pub use stream::ImageStream;
 pub use xref::{Revision, RevisionKind};
 
@@ -57,6 +63,7 @@ pub struct Document {
     trailer: Dictionary,
     slots: BTreeMap<ObjectId, Slot>,
     revisions: Vec<Revision>,
+    original: Option<Arc<xref::original::OriginalRecords>>,
     object_streams: BTreeMap<u32, OnceLock<Result<object::stream::Contents>>>,
     security: Option<security::Security>,
     /// Sorted offsets where physical objects and revisions start.

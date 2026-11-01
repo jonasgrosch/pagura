@@ -11,6 +11,19 @@ pub struct Packed {
 }
 
 impl Packed {
+    /// Samples of `width` × `height` in `bytes`, rows of `width` bits padded
+    /// to whole bytes; `None` when `bytes` does not hold exactly the rows.
+    #[must_use]
+    pub fn from_rows(width: usize, height: usize, bytes: Vec<u8>) -> Option<Self> {
+        let stride = width.div_ceil(8);
+        (width > 0 && stride.checked_mul(height) == Some(bytes.len())).then_some(Self {
+            width,
+            height,
+            stride,
+            bytes,
+        })
+    }
+
     /// Width in samples.
     #[must_use]
     pub fn width(&self) -> usize {

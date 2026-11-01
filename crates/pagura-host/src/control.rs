@@ -1,4 +1,5 @@
-//! Safe supervisor-side cancellation state. Renderer checkpoints are a separate API.
+//! Safe supervisor-side cancellation state, which generated tiles check
+//! between the bands of their rendering.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -7,7 +8,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 ///
 /// Set from a native supervisor thread. Reset only after the cancelled request
 /// has completed; the synchronous WASI command has no shared-memory flag bridge.
-/// Checking this flag does not interrupt an executing renderer operation.
+/// A generated tile checks it before recording, after recording and before
+/// every band it paints; recording a page is not interrupted.
 #[derive(Debug, Clone, Default)]
 pub struct Cancellation(Arc<AtomicBool>);
 

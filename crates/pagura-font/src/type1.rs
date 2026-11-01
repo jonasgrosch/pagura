@@ -6,7 +6,7 @@ use crate::budget::Work;
 use crate::cff::strings;
 use crate::memory::{encoding, names, vector};
 use crate::read::{self, glyph_id, here, syntax, unsupported};
-use crate::{GlyphId, features};
+use crate::{GlyphId, features, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Name, Position, Result};
@@ -38,28 +38,88 @@ const FONT_TYPE: usize = 1;
 /// The default charstring lenIV (Type 1 5.1, Private dictionary).
 const DEFAULT_LEN_IV: usize = 4;
 
-/// A decrypted charstring and the plaintext offset of its first byte.
+/// A charstring: where its bytes are in the program's plaintext, and its
+/// decryption, made when it is first interpreted (ADR 0034: an unused
+/// glyph is never examined).
 #[derive(Debug)]
 struct Charstring {
-    bytes: Vec<u8>,
-    at: usize,
+    /// The bytes as the plaintext holds them, encrypted unless lenIV is -1.
+    start: usize,
+    len: usize,
+    /// lenIV: the decrypted bytes to drop; `None` for plain charstrings.
+    discard: Option<usize>,
+    decrypted: std::sync::OnceLock<Vec<u8>>,
 }
 
 impl Charstring {
-    fn cursor(&self) -> Cursor<'_> {
-        read::cursor(&self.bytes).with_base(self.at)
+    const fn new(start: usize, len: usize, discard: Option<usize>) -> Self {
+        Self {
+            start,
+            len,
+            discard,
+            decrypted: std::sync::OnceLock::new(),
+        }
     }
 
+    /// The plaintext offset of the first interpreted byte.
+    const fn at(&self) -> usize {
+        match self.discard {
+            Some(discard) => self.start.saturating_add(discard),
+            None => self.start,
+        }
+    }
+
+    /// The interpreted bytes, decrypted from `plain` on first use.
+    ///
+    /// # Errors
+    ///
+    /// `Syntax` at the charstring when it is shorter than lenIV.
+    fn bytes<'a>(&'a self, plain: &'a [u8]) -> Result<&'a [u8]> {
+        let source = plain
+            .get(self.start..self.start.saturating_add(self.len))
+            .ok_or_else(|| {
+                syntax(
+                    Position::Buffer(self.start),
+                    "Type 1 charstring outside data",
+                )
+            })?;
+        let Some(discard) = self.discard else {
+            return Ok(source);
+        };
+        if let Some(bytes) = self.decrypted.get() {
+            return Ok(bytes);
+        }
+        let bytes = decrypt(
+            source,
+            CHARSTRING_KEY,
+            discard,
+            Position::Buffer(self.start),
+        )?;
+        Ok(self.decrypted.get_or_init(|| bytes))
+    }
+
+    fn cursor<'a>(&'a self, plain: &'a [u8]) -> Result<Cursor<'a>> {
+        Ok(read::cursor(self.bytes(plain)?).with_base(self.at()))
+    }
+
+    /// Bytes reserved for this charstring's lazy decrypted copy.
+    const fn decrypted_bytes(&self) -> usize {
+        if self.discard.is_some() { self.len } else { 0 }
+    }
+
+    /// The plaintext offset after the interpreted bytes.
     const fn end(&self) -> usize {
-        self.at.saturating_add(self.bytes.len())
+        self.start.saturating_add(self.len)
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct Type1 {
+    /// The eexec plaintext, which holds the charstrings.
+    plain: Vec<u8>,
     glyphs: Vec<Charstring>,
     glyph_count: u32,
-    subrs: Vec<Charstring>,
+    subrs: Vec<Option<Charstring>>,
     names: BTreeMap<Name, GlyphId>,
     glyph_names: Vec<Option<Name>>,
     encoding: Box<[Option<Name>; 256]>,
@@ -87,6 +147,7 @@ impl Type1 {
             locator.position(clear.start, Space::Flat),
         )?;
         Ok(Self {
+            plain: plain.into_owned(),
             glyph_count: glyph_id(charstrings.glyphs.len(), Position::Unknown)?.0,
             glyphs: charstrings.glyphs,
             subrs,
@@ -135,8 +196,16 @@ impl Type1 {
     }
 
     pub(crate) fn heap_bytes(&self) -> usize {
-        charstrings(&self.glyphs)
-            .saturating_add(charstrings(&self.subrs))
+        vector(&self.plain)
+            .saturating_add(charstrings(&self.glyphs))
+            .saturating_add(
+                self.subrs
+                    .iter()
+                    .flatten()
+                    .fold(vector(&self.subrs), |sum, c| {
+                        sum.saturating_add(c.decrypted_bytes())
+                    }),
+            )
             .saturating_add(names(&self.names))
             .saturating_add(crate::names::heap_bytes(&self.glyph_names))
             .saturating_add(encoding(&self.encoding))
@@ -144,26 +213,11 @@ impl Type1 {
     }
 }
 
-/// Type 1 keeps decrypted charstrings and subroutines, not decrypted
-/// dictionaries.
+/// Type 1 keeps its plaintext and the charstrings and subroutines
+/// decrypted from it, at most one copy each.
 fn charstrings(values: &Vec<Charstring>) -> usize {
     values.iter().fold(vector(values), |sum, c| {
-        sum.saturating_add(vector(&c.bytes))
-    })
-}
-
-/// A charstring's bytes, decrypted unless lenIV is -1; `start` is their
-/// plaintext offset.
-fn charstring_bytes(bytes: &[u8], start: usize, len_iv: Option<usize>) -> Result<Charstring> {
-    let Some(discard) = len_iv else {
-        return Ok(Charstring {
-            bytes: bytes.to_vec(),
-            at: start,
-        });
-    };
-    Ok(Charstring {
-        bytes: decrypt(bytes, CHARSTRING_KEY, discard, Position::Buffer(start))?,
-        at: start.saturating_add(discard),
+        sum.saturating_add(c.decrypted_bytes())
     })
 }
 
@@ -349,7 +403,7 @@ fn computed(r: &Tokens<'_, '_, '_>, message: &'static str) -> pagura_core::Error
 
 /// The Private dictionary's subroutines and the CharStrings dictionary.
 struct Private {
-    subrs: Vec<Charstring>,
+    subrs: Vec<Option<Charstring>>,
     charstrings: CharStrings,
 }
 
@@ -384,7 +438,7 @@ fn private(
                 if subrs.is_some() {
                     return Err(syntax(r.position(), "duplicate Type 1 Subrs array"));
                 }
-                subrs = Some(subroutines(&mut r, len_iv, &aliases)?);
+                subrs = Some(subroutines(&mut r, len_iv, &aliases, locator)?);
             }
             b"/CharStrings" => {
                 if charstrings.is_some() {
@@ -420,7 +474,8 @@ fn subroutines(
     r: &mut Tokens<'_, '_, '_>,
     len_iv: Option<usize>,
     aliases: &Aliases,
-) -> Result<Vec<Charstring>> {
+    locator: &Locator,
+) -> Result<Vec<Option<Charstring>>> {
     let count = r.integer()?;
     let at = r.position();
     r.work().entries(count, at)?;
@@ -432,7 +487,7 @@ fn subroutines(
         r.required()?;
         let index = r.integer()?;
         let (program, start) = r.binary(aliases)?;
-        let program = charstring_bytes(program, start, len_iv)?;
+        let program = Charstring::new(start, program.len(), len_iv);
         let slot = slots
             .get_mut(index)
             .ok_or_else(|| syntax(r.position(), "Type 1 Subrs index out of range"))?;
@@ -442,9 +497,18 @@ fn subroutines(
         *slot = Some(program);
         aliases.finish(r, Assignment::Put)?;
     }
-    let mut subrs = Vec::with_capacity(count);
-    for slot in slots {
-        subrs.push(slot.ok_or_else(|| syntax(r.position(), "incomplete Type 1 Subrs array"))?);
+    // Type 1 6/8 requires charstrings in Subrs. Retain unassigned slots as
+    // unavailable, without compacting indexes or inventing return programs.
+    if slots.iter().any(Option::is_none) {
+        let input_at = match at {
+            Position::Buffer(offset) => locator.position(offset, Space::Plain),
+            other => other,
+        };
+        r.work().repair(
+            repairs::TYPE1_SPARSE_SUBRS,
+            "unassigned Type 1 subroutines retained as unavailable",
+            input_at,
+        )?;
     }
-    Ok(subrs)
+    Ok(slots)
 }

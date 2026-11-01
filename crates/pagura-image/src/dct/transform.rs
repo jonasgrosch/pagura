@@ -1,5 +1,4 @@
 //! T.81 A.3.3 inverse DCT and PDF Table 13 colour transforms.
-mod cells;
 mod idct;
 mod rgb;
 
@@ -7,9 +6,12 @@ use super::{
     DctImage,
     frame::{Frame, Storage},
 };
-pub(super) use cells::Cells;
 pub(super) use idct::Idct;
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{
+    Error, Limits, Result,
+    convert::{round_u8, round_u16},
+};
+pub(super) use rgb::ROW_BYTES;
 use rgb::{Offsets, Rgb};
 
 // T.81 Figure A.6 diagonal coefficient order, independent of any encoder.
@@ -18,6 +20,18 @@ pub(in crate::dct) const ORDER: [usize; 64] = [
     13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59,
     52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63,
 ];
+
+/// [`ORDER`] with rows and columns exchanged: the zigzag coefficients'
+/// positions in a block stored column by column.
+pub(in crate::dct) const COLUMN_ORDER: [usize; 64] = {
+    let mut order = [0; 64];
+    let mut k = 0;
+    while k < 64 {
+        order[k] = ORDER[k] % 8 * 8 + ORDER[k] / 8;
+        k += 1;
+    }
+    order
+};
 
 /// A block's zigzag coefficients with the positions of its nonzero ones.
 #[derive(Clone, Copy)]
@@ -74,54 +88,20 @@ impl<'a> Sparse<'a> {
     }
 }
 
-/// Whether the target lacks a rounding instruction: baseline x86-64 calls a
-/// library function for `round`.
-const NO_ROUNDING_INSTRUCTION: bool =
-    cfg!(all(target_arch = "x86_64", not(target_feature = "sse4.1")));
+/// Whether the target lacks a rounding instruction: WebAssembly and baseline
+/// x86-64 call a library function for `round`.
+const NO_ROUNDING_INSTRUCTION: bool = cfg!(any(
+    target_family = "wasm",
+    all(target_arch = "x86_64", not(target_feature = "sse4.1"))
+));
 
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "rounded samples are clamped to the byte domain"
-)]
+/// The byte of a reconstructed sample, rounded and clamped.
 fn sample(value: f64) -> u8 {
-    if NO_ROUNDING_INSTRUCTION {
-        sample_by_truncation(value)
-    } else {
-        value.round().clamp(0.0, 255.0) as u8
-    }
-}
-
-/// [`sample`] from the truncation and its remainder, which is exact: below
-/// 2^52 by Sterbenz's lemma (or as the value itself below 1), and from there
-/// every value is integral. Saturating conversions keep NaN, infinities and
-/// huge values in their bytes.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    reason = "saturating conversions, clamped to the byte domain"
-)]
-fn sample_by_truncation(value: f64) -> u8 {
-    let truncated = value as i64;
-    let rounded = truncated.saturating_add(i64::from(value - truncated as f64 >= 0.5));
-    rounded.clamp(0, 255) as u8
+    round_u8(value)
 }
 
 pub(super) trait Sample: Copy + Default {
     fn from_idct(value: f64) -> Self;
-    /// Reconstructs one block at full size, or into fewer cells.
-    fn reconstruct(
-        idct: &Idct,
-        cells: Option<&Cells>,
-        quant: &[u16; 64],
-        coefficients: Sparse<'_>,
-        plane: &mut [Self],
-        (stride, index): (usize, usize),
-    ) -> Option<()> {
-        debug_assert!(cells.is_none());
-        reconstruct(idct, quant, coefficients, plane, stride, index)
-    }
     /// The samples of a sequential component, reconstructed during its scan.
     fn plane(storage: &mut Storage) -> Option<&mut Vec<Self>>;
     fn fused(_frame: &Frame, _planes: &[Vec<Self>], _samples: &mut [Self]) -> bool {
@@ -131,19 +111,6 @@ pub(super) trait Sample: Copy + Default {
 }
 
 impl Sample for u8 {
-    fn reconstruct(
-        idct: &Idct,
-        cells: Option<&Cells>,
-        quant: &[u16; 64],
-        coefficients: Sparse<'_>,
-        plane: &mut [Self],
-        (stride, index): (usize, usize),
-    ) -> Option<()> {
-        match cells {
-            Some(cells) => cells.reconstruct(idct, quant, coefficients, plane, stride, index),
-            None => reconstruct(idct, quant, coefficients, plane, stride, index),
-        }
-    }
     fn fused(frame: &Frame, planes: &[Vec<Self>], samples: &mut [Self]) -> bool {
         fused_rgb(frame, planes, samples)
     }
@@ -174,13 +141,9 @@ impl Sample for u8 {
 }
 
 impl Sample for u16 {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "T.81 A.3.1 native samples are rounded and clamped to 0..4095"
-    )]
+    /// T.81 A.3.1 native samples, rounded and clamped to 0..4095.
     fn from_idct(value: f64) -> Self {
-        (value + 2048.0).round().clamp(0.0, 4095.0) as Self
+        round_u16(value + 2048.0).min(4095)
     }
     fn plane(storage: &mut Storage) -> Option<&mut Vec<Self>> {
         match storage {
@@ -275,13 +238,6 @@ pub(super) fn reconstruct<T: Sample>(
     Some(())
 }
 
-/// The length of a frame axis that keeps `cells` samples per eight: whole
-/// blocks plus the partial cells of a final partial block.
-pub(super) fn scaled(length: u32, cells: usize) -> u32 {
-    let cells = u64::try_from(cells).unwrap_or(8);
-    u32::try_from((u64::from(length) * cells).div_ceil(8)).unwrap_or(length)
-}
-
 fn output_native<T: Sample>(
     frame: &mut Frame,
     adobe: Option<u8>,
@@ -290,13 +246,9 @@ fn output_native<T: Sample>(
 ) -> Result<DctImage> {
     let n = u8::try_from(frame.components.len())
         .map_err(|_| Error::syntax("invalid JPEG component count"))?;
-    let (width, height) = (
-        scaled(frame.width, frame.cells),
-        scaled(frame.height, frame.cells),
-    );
+    let (width, height) = (frame.width, frame.height);
     let count = crate::parameters::budget(width, height, n, 8, limits)?;
     let idct = Idct::new();
-    let cells = (frame.cells < 8).then(|| Cells::new(frame.cells));
     let mut planes = Vec::with_capacity(usize::from(n));
     for c in &mut frame.components {
         if c.approximation[0] < 0 || (!frame.progressive && c.approximation.iter().any(|&v| v < 0))
@@ -311,16 +263,15 @@ fn output_native<T: Sample>(
         let Storage::Coefficients(blocks) = &c.storage else {
             return Err(Error::syntax("JPEG component precision mismatch"));
         };
-        let side = frame.cells;
-        let mut plane = vec![T::default(); c.stride * c.rows * side * side];
+        let mut plane = vec![T::default(); c.stride * c.rows * 64];
         for (index, coefficients) in blocks.iter().enumerate() {
-            T::reconstruct(
+            reconstruct(
                 &idct,
-                cells.as_ref(),
                 &quant,
                 Sparse::new(coefficients),
                 &mut plane,
-                (c.stride, index),
+                c.stride,
+                index,
             )
             .ok_or(Error::syntax("JPEG block outside component"))?;
         }
@@ -346,12 +297,11 @@ fn output_native<T: Sample>(
             height,
             components: n,
             samples: T::finish(samples, usize::from(n), false),
-            cells: u8::try_from(frame.cells).unwrap_or(8),
         });
     }
     let components = usize::from(n);
     for (i, c) in frame.components.iter().enumerate() {
-        let pitch = c.stride * frame.cells;
+        let pitch = c.stride * 8;
         for (y, row) in samples
             .chunks_exact_mut(width as usize * components)
             .enumerate()
@@ -366,7 +316,6 @@ fn output_native<T: Sample>(
         height,
         components: n,
         samples: T::finish(samples, components, convert),
-        cells: u8::try_from(frame.cells).unwrap_or(8),
     })
 }
 
@@ -386,9 +335,9 @@ fn fused_rgb(frame: &Frame, planes: &[Vec<u8>], samples: &mut [u8]) -> bool {
         return false;
     }
     let repeat = frame.max_h / cb.h;
-    let width = scaled(frame.width, frame.cells) as usize;
-    let pitch = y.stride * frame.cells;
-    let chroma_pitch = cb.stride * frame.cells;
+    let width = frame.width as usize;
+    let pitch = y.stride * 8;
+    let chroma_pitch = cb.stride * 8;
     let mut offsets = Offsets::default();
     let mut filled = None;
     for (line, output) in samples.chunks_exact_mut(width * 3).enumerate() {
@@ -464,7 +413,6 @@ mod tests {
                             ],
                             0xc0,
                             &limits,
-                            8,
                         )
                         .unwrap();
                         let planes: Vec<Vec<_>> = frame
@@ -615,14 +563,12 @@ mod tests {
             &[8, 0, 9, 0, 29, 3, 1, 0x31, 0, 2, 0x21, 0, 3, 0x11, 0],
             0xc2,
             &limits,
-            8,
         )
         .unwrap();
         let mut sequential = super::Frame::parse(
             &[8, 0, 9, 0, 29, 3, 1, 0x31, 0, 2, 0x21, 0, 3, 0x11, 0],
             0xc0,
             &limits,
-            8,
         )
         .unwrap();
         let idct = super::Idct::new();

@@ -377,13 +377,15 @@ fn assert_form_roundtrip(
     input: FillValue<'_>,
 ) -> Result<(Vec<u8>, Document), Box<dyn std::error::Error>> {
     let original = fixture("forms", &format!("{name}.pdf"));
-    let document = open(original.clone())?;
+    let document = std::sync::Arc::new(open(original.clone())?);
+    let context = pagura::render_context(std::sync::Arc::clone(&document));
     let mut filler = document
         .form_filler()?
         .ok_or(Error::invalid_argument("missing test form"))?;
     filler.set(0, input)?;
-    let before = pagura::compile_filled_page(&filler, document.page(0)?)?
-        .render(&RenderOptions::default())?
+    let scene = context.filled_scene(&filler, document.page(0)?)?;
+    let before = context
+        .render_scene(&scene, &RenderOptions::default(), None)?
         .to_rgb_over(Rgba8::WHITE);
     let saved = save_filled_form(&filler, &SaveOptions::default())?;
     assert!(saved.starts_with(&original));

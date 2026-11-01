@@ -5,8 +5,8 @@ use crate::budget::Work;
 use crate::cff::strings;
 use crate::charstring::{Flow, Operands, integer, shared_number};
 use crate::outline::{Pen, finite};
-use crate::read::{syntax, unsupported};
-use crate::{GlyphId, features, repairs};
+use crate::read::syntax;
+use crate::{GlyphId, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Position, Result};
@@ -39,10 +39,10 @@ enum Mode {
     Width,
 }
 
-/// One glyph's outline, advance width and side-bearing point.
+/// One glyph's outline, complete advance vector and side-bearing point.
 struct Glyph {
     path: Path,
-    width: f64,
+    width: Point,
     bearing: Point,
 }
 
@@ -68,7 +68,7 @@ struct State {
     results: Operands<MAX_OPERANDS>,
     pen: Pen,
     point: Point,
-    width: Option<f64>,
+    width: Option<Point>,
     bearing: Point,
     seac: Option<Seac>,
     flex: Option<Flex>,
@@ -87,7 +87,7 @@ pub(super) fn outline(font: &Type1, glyph: GlyphId, work: &mut Work<'_>) -> Resu
 }
 
 pub(super) fn advance(font: &Type1, glyph: GlyphId, work: &mut Work<'_>) -> Result<f64> {
-    run(font, glyph, Mode::Width, work).map(|g| g.width)
+    run(font, glyph, Mode::Width, work).map(|g| g.width.x)
 }
 
 fn run(font: &Type1, glyph: GlyphId, mode: Mode, work: &mut Work<'_>) -> Result<Glyph> {
@@ -107,7 +107,7 @@ impl Run<'_, '_> {
             .glyphs
             .get(u32_to_usize(glyph.0))
             .ok_or_else(|| syntax(Position::Unknown, "glyph index outside Type 1 font"))?;
-        let r = charstring.cursor();
+        let r = charstring.cursor(&self.font.plain)?;
         let (start, end) = (r.position(), Position::Buffer(charstring.end()));
         self.work.depth(depth, usize::MAX, start)?;
         let mut s = State {
@@ -220,8 +220,10 @@ impl Run<'_, '_> {
                         .font
                         .subrs
                         .get(index)
-                        .ok_or_else(|| syntax(at, "Type 1 subroutine index out of range"))?;
-                    if self.charstring(subr.cursor(), depth + 1, s)? == Flow::End {
+                        .ok_or_else(|| syntax(at, "Type 1 subroutine index out of range"))?
+                        .as_ref()
+                        .ok_or_else(|| syntax(at, "unassigned Type 1 subroutine called"))?;
+                    if self.charstring(subr.cursor(&self.font.plain)?, depth + 1, s)? == Flow::End {
                         return self.end(&r, "data after Type 1 character end");
                     }
                 }
@@ -254,7 +256,7 @@ impl Run<'_, '_> {
                     let &[sbx, wx] = s.operands.exactly(2, at)? else {
                         return Err(syntax(at, "invalid Type 1 operand count"));
                     };
-                    s.set_width(Point::new(sbx, 0.0), wx, at)?;
+                    s.set_width(Point::new(sbx, 0.0), Point::new(wx, 0.0), at)?;
                 }
                 Operator::Endchar => {
                     s.operands.exactly(0, at)?;
@@ -309,17 +311,7 @@ impl Run<'_, '_> {
                 let &[sbx, sby, wx, wy] = s.operands.exactly(4, at)? else {
                     return Err(syntax(at, "invalid Type 1 operand count"));
                 };
-                if s.width.is_some() {
-                    return Err(syntax(at, "duplicate Type 1 width"));
-                }
-                if wy != 0.0 {
-                    return Err(unsupported(
-                        features::TYPE1_POSTSCRIPT,
-                        at,
-                        "nonhorizontal Type 1 advance is not implemented",
-                    ));
-                }
-                s.set_width(Point::new(sbx, sby), wx, at)?;
+                s.set_width(Point::new(sbx, sby), Point::new(wx, wy), at)?;
             }
             Escape::Div => {
                 let b = s.operands.pop(at)?;
@@ -344,7 +336,7 @@ impl Run<'_, '_> {
 }
 
 impl State {
-    fn set_width(&mut self, bearing: Point, width: f64, at: Position) -> Result<()> {
+    fn set_width(&mut self, bearing: Point, width: Point, at: Position) -> Result<()> {
         if self.width.is_some() {
             return Err(syntax(at, "duplicate Type 1 width"));
         }
@@ -497,10 +489,8 @@ mod tests {
 
     fn font(charstring: &[u8]) -> Type1 {
         Type1 {
-            glyphs: vec![Charstring {
-                bytes: charstring.to_vec(),
-                at: 0,
-            }],
+            plain: charstring.to_vec(),
+            glyphs: vec![Charstring::new(0, charstring.len(), None)],
             glyph_count: 1,
             subrs: Vec::new(),
             names: BTreeMap::new(),
@@ -549,6 +539,36 @@ mod tests {
             run(&[239, 239, 21, 14]).unwrap_err().kind,
             ErrorKind::Syntax
         );
+    }
+
+    #[test]
+    fn charstrings_are_decrypted_when_first_drawn() {
+        // A plain glyph and an encrypted one too short for its lenIV: the
+        // damage surfaces only when that glyph is drawn, at its plaintext
+        // offset, and the decryption of a good glyph is kept.
+        let mut program = HSBW.to_vec();
+        program.extend([239, 239, 21, 14]);
+        let mut font = font(&program);
+        let good = program.len();
+        font.plain.extend([1, 2]);
+        font.glyphs.push(Charstring::new(good, 2, Some(4)));
+        font.glyph_count = 2;
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
+        assert!(outline(&font, GlyphId(0), &mut work).is_ok());
+        let error = outline(&font, GlyphId(1), &mut work).unwrap_err();
+        assert_eq!(
+            (error.kind, error.position),
+            (ErrorKind::Syntax, pagura_core::Position::Buffer(good))
+        );
+        let encrypted = Charstring::new(0, 6, Some(4));
+        let cipher = [1, 2, 3, 4, 5, 6];
+        let bytes = encrypted.bytes(&cipher).unwrap().to_vec();
+        assert_eq!(bytes.len(), 2);
+        assert!(std::ptr::eq(
+            encrypted.bytes(&cipher).unwrap(),
+            encrypted.decrypted.get().unwrap().as_slice()
+        ));
     }
 
     #[test]

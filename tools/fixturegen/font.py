@@ -24,6 +24,8 @@ def u32(n):
 
 RECT = "m 0 0\nl 100 0\nl 100 200\nl 0 200\nh\n"
 QUAD = "m 0 0\nc 0 200 100 200 300 0\nh\n"
+# The same glyph from glyf, whose quadratic outlines keep.
+TRUETYPE_QUAD = "m 0 0\nq 0 300 300 0\nh\n"
 
 
 def simple(points, contours=None):
@@ -70,7 +72,7 @@ def sfnt(tables, otto=False):
     return (b"OTTO" if otto else u32(0x10000))+u16(len(tables))+bytes(6)+directory+body
 
 
-def truetype(fmt=4, short=False, glyph_override=None, cff=None, cff2=False, table_overrides=None, omit_tables=()):
+def truetype(fmt=4, short=False, glyph_override=None, cff=None, cff2=False, table_overrides=None, omit_tables=(), empty_glyphs=0):
     head = bytearray(54)
     head[:4] = u32(0x10000)
     head[12:16] = u32(0x5f0f3cf5)
@@ -84,7 +86,7 @@ def truetype(fmt=4, short=False, glyph_override=None, cff=None, cff2=False, tabl
     curve = simple([(0,0,True),(0,300,False),(300,0,True)])
     composite = i16(-1)+bytes(8)+u16(0x83)+u16(1)+i16(20)+i16(30)+i16(8192)+i16(4096)+i16(0)+i16(8192)
     attached = i16(-1)+bytes(8)+u16(0x23)+u16(1)+i16(0)+i16(0)+u16(1)+u16(1)+u16(2)+u16(0)
-    glyphs = [b"", rect, curve, composite, attached]
+    glyphs = [b"", rect, curve, composite, attached] + [b""] * empty_glyphs
     if glyph_override is not None:
         glyphs[1] = glyph_override
     if cff is not None:
@@ -137,7 +139,7 @@ def offset(n):
     return b"\x1d"+u32(n)
 
 
-def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, font_set=False, line_count=0, conforming=False):
+def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, font_set=False, line_count=0, conforming=False, top_matrix=None, fd_matrix=None):
     end = b"" if cff2 else b"\x0e"
     rect_subr = operands(100,0,0,200,-100,0)+b"\x05"+(b"" if cff2 else b"\x0b")
     rect = operands(0,0)+b"\x15"+number(-107)+b"\x0a"+end
@@ -180,6 +182,11 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
         glyphs[1] = operands(0,0)+b"\x15"+number(-107)+b"\x1d"+end
     charstrings = index(glyphs, cff2)
     private_extra = operands(-210,10)+b"\x07"+operands(-10,10)+b"\x06" if variant == "blue-order" else b""
+    # CFF2 clears operands of operators unknown in the current DICT, even
+    # when they are repeated or meaningful in a different CFF namespace.
+    ignored = {"dict-top":b"\x0c\x14", "dict-font":b"\x11", "dict-private":b"\x14"}.get(variant) if variant is not None else None
+    unknown = operands(1)+ignored+operands(1,2)+ignored+operands(3)+b"\x0c\xff" if ignored else b""
+    if variant == "dict-private": private_extra = unknown
     if variant in ("private-blend","private-blend-override"):
         # Dataset 1 has one active region. Blend 10 + 20*1 = 30,
         # leaving the leading BlueValues operand 5 untouched.
@@ -205,13 +212,21 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
     fdselect = b"\x03"+u16(1)+u16(0)+b"\x00"+u16(5)
     def top(chars, chars_set, encoding, private_at, fdarray_at, fdselect_at, vstore_at=0):
         result = operands(393,394,0)+b"\x0c\x1e" if cid and conforming else b""
+        if variant == "dict-top": result += unknown
+        if top_matrix is not None:
+            result += top_matrix+b"\x0c\x07"
         result += offset(chars)+b"\x11"
         if not cff2:
             result += offset(chars_set)+b"\x0f"+(b"" if cid and conforming else offset(encoding)+b"\x10")
         if cid and not conforming:
             result += operands(0,0,0)+b"\x0c\x1e"
         if cid or cff2:
-            result += offset(fdarray_at)+b"\x0c\x24"+offset(fdselect_at)+b"\x0c\x25"
+            result += offset(fdarray_at)+b"\x0c\x24"
+            # Current CFF2 forbids FDSelect when only one FontDICT exists.
+            # Keep historical vectors unchanged; the new namespace controls
+            # use one dictionary and omit the unnecessary selector.
+            if variant not in ('dict-control','dict-top','dict-font','dict-private'):
+                result += offset(fdselect_at)+b"\x0c\x25"
         else:
             result += offset(private_size)+offset(private_at)+b"\x12"
         if variant == "cid-count":
@@ -241,8 +256,10 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
         if hostile == "fd-sentinel": fdselect = fdselect[:-4]+u32(4)
         if hostile == "fd-order": fdselect = fdselect[:11]+u32(0)+fdselect[15:]
     fonts = [offset(private_size)+offset(private_at)+b"\x12"]
+    if variant == "dict-font": fonts[0] = unknown+fonts[0]
     if variant in ("fd-array","fd4","fd4-wide","fd-matrix"):
-        fonts.append(offset(6 if cff2 else 18)+offset(private_at+first_private_len)+b"\x12"+(b"" if cff2 and variant != "fd-matrix" else operands(2,0,0,2,0,0)+b"\x0c\x07"))
+        matrix = b"" if cff2 and variant != "fd-matrix" else (operands(2,0,0,2,0,0) if fd_matrix is None else fd_matrix)+b"\x0c\x07"
+        fonts.append(offset(6 if cff2 else 18)+offset(private_at+first_private_len)+b"\x12"+matrix)
     if variant == "fd4-wide": fonts = [fonts[0]]*256+[fonts[1]]
     fdarray = index(fonts, cff2)
     select_at = fdarray_at+len(fdarray)
@@ -327,8 +344,12 @@ def type1_font(pfb=False, hex_eexec=False, len_iv=4, hostile=None, variant=None,
         plain += f"/lenIV {len_iv} def\n".encode()
     plain += f"/Subrs {len(subrs)} array\n".encode()
     for i, subroutine in enumerate(subrs):
+        if subroutine is None:
+            continue
         encrypted_subr = enc_char(subroutine)
-        plain += f"dup {i} {len(encrypted_subr)} RD ".encode()+encrypted_subr+b" NP\n"
+        index = 0 if variant == "subrs-duplicate" else len(subrs) if variant == "subrs-index" else i
+        length = len(encrypted_subr)+10000 if variant == "subrs-record" else len(encrypted_subr)
+        plain += f"dup {index} {length} RD ".encode()+encrypted_subr+b" NP\n"
     plain += b"/CharStrings 6 dict dup begin\n"
     for name, program in glyphs:
         program = enc_char(program)
@@ -374,7 +395,7 @@ def cases():
     for fmt in (0,4,6,12):
         expected = "count 5\nmatrix 0.001 0 0 0.001 0 0\nname A 1\nadvance 1 600\nadvance 4 600\n"
         expected += f"code {('mac' if fmt == 0 else 'symbol' if fmt == 6 else 'full' if fmt == 12 else 'unicode')} {0x1f600 if fmt == 12 else 65} 1\n"
-        expected += "outline 1\n"+RECT+"outline 2\n"+QUAD
+        expected += "outline 1\n"+RECT+"outline 2\n"+TRUETYPE_QUAD
         expected += "outline 3\nm 20 30\nl 70 55\nl 70 155\nl 20 130\nh\n"
         expected += "outline 4\n"+RECT+"m 100 200\nl 200 200\nl 200 400\nl 100 400\nh\n"
         yield vector(f"truetype-cmap{fmt}", truetype(fmt, short=fmt == 0), expected, "font-truetype")
@@ -437,7 +458,7 @@ def cases():
     for variant in ("hint-replacement", "custom-encoding"):
         yield vector("type1-"+variant,type1_font(conforming=True,variant=variant),"count 6\nname A 1\nencoding 65 A\nadvance 1 600\noutline 1\n"+RECT,"font-type1","type1")
     yield vector("truetype-implied-points",truetype(glyph_override=simple([(0,100,False),(100,100,False),(100,0,True),(0,0,False)])),
-                 "outline 1\nm 0 50\nc 0 83.33333333333333 16.66666666666667 100 50 100\nc 83.33333333333333 100 100 66.66666666666667 100 0\nc 33.33333333333333 0 0 16.66666666666667 0 50\nh\n", "font-truetype")
+                 "outline 1\nm 0 50\nq 0 100 50 100\nq 100 100 100 0\nq 0 0 0 50\nh\n", "font-truetype")
 
     yield vector("cff-cid-fd-array",cff_font(conforming=True,cid=True,variant="fd-array"),
                  "count 5\nis-cid 1\ncid 17 1\nadvance 1 1400\nadvance 2 600\noutline 1\nm 0 0\nl 200 0\nl 200 400\nl 0 400\nh\noutline 2\n"+QUAD,"font-cff","cff")
@@ -518,16 +539,23 @@ def cases():
     yield vector("cff2-private-blend-override",truetype(cff=cff_font(conforming=True,cff2=True,variable=True,variant="private-blend-override"),cff2=True),
                  "outline 1\nm 0 0\nl 130 0\nl 130 200\nl 0 200\nh\n","font-cff","opentype")
 
+    # Current CFF2 FontDICT ignores the deprecated FontMatrix operator.
+    # The same original font bytes now expose the untransformed 200x400 path.
     yield vector("cff2-font-dict-matrix",truetype(cff=cff_font(conforming=True,cff2=True,variant="fd-matrix"),cff2=True),
-                 "unsupported font.format\n","font-cff","opentype")
+                 "count 5\noutline 1\nm 0 0\nl 200 0\nl 200 400\nl 0 400\nh\n","font-cff","opentype")
     yield from specification_cases()
     yield from recovery_cases()
     yield from static_font_cases()
     yield from metadata_recovery_cases()
     yield from descriptor_flag_cases()
     yield from glyph_name_cases()
+    yield from sparse_subr_cases()
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
+    yield from type1_advance_cases()
+    for label,variant in [('control','dict-control'),('top','dict-top'),('font','dict-font'),('private','dict-private')]:
+        yield vector('cff2-dict-'+label,truetype(cff=cff_font(conforming=True,cff2=True,variant=variant),cff2=True),
+                     'count 5\nadvance 1 600\noutline 1\n'+RECT,'font-cff','opentype')
 
 
 def metadata_font(charset_kind=0, encoding_kind=0, charset_format=0):
@@ -874,7 +902,7 @@ def recovery_cases():
     yield recovery_vector("glyf-truncated", truetype(table_overrides={b"glyf":glyf}),
                           result+"outline 4\n", "font.table-bounds")
     yield recovery_vector("glyph-truncated", truetype(glyph_override=b"\x00"),
-                          "outline 1\noutline 2\n"+QUAD, "font.glyph-data", 1)
+                          "outline 1\noutline 2\n"+TRUETYPE_QUAD, "font.glyph-data", 1)
     # Put the component in glyph 3 instead to avoid a recursive reference.
     glyf = bytearray(tables[b"glyf"])
     start = int.from_bytes(tables[b"loca"][12:16], "big")
@@ -946,7 +974,8 @@ def recovery_cases():
 
 
 def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
-                 qualifier=b"executeonly", short=False, comments=False, computed=None, duplicate=None, glyph_name=b"A", notdef_last=False):
+                 qualifier=b"executeonly", short=False, comments=False, computed=None, duplicate=None, glyph_name=b"A", notdef_last=False,
+                 glyphs=None, font_name=None):
     """Type 1 2.4/7.3/10.3: explicit procedures and length-delimited cipher bytes."""
     reader, define, put = aliases
     bodies = [b"string currentfile exch readstring pop", b"def" if short else b"noaccess def",
@@ -960,32 +989,72 @@ def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
                             for name,body in zip(aliases,bodies))
     clear = (b"%!PS-AdobeFont-1.0: Static 1.0\n/FontType 1 def\n"
              b"/FontMatrix [0.001 0 0 0.001 0 0] def\n/Encoding StandardEncoding def\n")
+    if font_name is not None:
+        # Complete, independently constructed font dictionary for PDF controls
+        # (Type 1 chapters 2/5/10); existing parser-only vectors retain their bytes.
+        clear = (b"%!PS-AdobeFont-1.0: " + font_name + b" 1.0\n12 dict begin\n"
+                 b"/FontType 1 def\n/FontName /" + font_name + b" def\n/PaintType 0 def\n"
+                 b"/FontBBox [-100 -100 1000 1000] def\n"
+                 b"/FontMatrix [0.001 0 0 0.001 0 0] def\n/Encoding StandardEncoding def\n")
     if clear_definitions:
         clear += b"userdict begin\n"+declarations+b"end\n"
-    clear += b"currentfile eexec\n"
+    clear += (b"currentdict end\n" if font_name is not None else b"") + b"currentfile eexec\n"
     private = b"dup /Private 8 dict dup begin\n"
     if not clear_definitions:
         private += declarations
+    if font_name is not None:
+        private += b"/BlueValues [] def\n/MinFeature [16 16] def\n/password 5839 def\n"
     private += b"/lenIV 4 def\n/Subrs "+str(subrs).encode()+b" array\n"
     line = (operands(100,0)+b"\x05"+operands(0,200)+b"\x05"+operands(-100,0)+b"\x05\x0b")
     for i in range(subrs):
         cipher = encrypt(bytes(4)+(line if i==0 else b"\x0b"),4330)
         private += b"dup "+str(i).encode()+b" "+str(len(cipher)).encode()+b" "+reader+b" "+cipher+b" "+put+b"\n"
-    private += define+b"\n2 index /CharStrings "+(b"4" if duplicate==b"" else b"3" if duplicate is not None else b"2")+b" dict dup begin\n"
     width = operands(0,600)+b"\x0d"
-    glyphs = [(b".notdef",width+b"\x0e"),
-              (glyph_name,width+operands(0,0)+b"\x15"+operands(0)+b"\x0a\x0e")]
+    glyphs = list(glyphs) if glyphs is not None else [
+        (b".notdef",width+b"\x0e"),
+        (glyph_name,width+operands(0,0)+b"\x15"+operands(0)+b"\x0a\x0e")]
     if notdef_last:
         glyphs.reverse()
     if duplicate is not None:
         if duplicate==b"":
             glyphs.append((b"",width+b"\x0e"))
         glyphs.append((duplicate,operands(0,800)+b"\x0d\x0e"))
+    private += define+b"\n2 index /CharStrings "+str(len(glyphs)).encode()+b" dict dup begin\n"
     for name, program in glyphs:
         cipher = encrypt(bytes(4)+program,4330)
         private += b"/"+name+b" "+str(len(cipher)).encode()+b" "+reader+b" "+cipher+b" "+define+b"\n"
-    private += b"end end readonly put noaccess put\ncurrentfile closefile\n"
+    private += b"end end readonly put noaccess put\n"
+    if font_name is not None:
+        private += b"dup /FontName get exch definefont pop\n"
+    private += b"currentfile closefile\n"
     return clear+encrypt(bytes(4)+private,55665)
+
+
+def type1_advance_cases():
+    """Type 1 6.4: sbw retains both advance components; PDF uses its own widths."""
+    end, sbw = b"\x0e", b"\x0c\x07"
+    move, line = operands(0,0)+b"\x15", operands(12,0)+b"\x05"
+    def emit(name, program, expected, extra=()):
+        glyphs = [(b'.notdef',operands(0,600)+b'\x0d\x0e'),(b'A',program),*extra]
+        return vector('type1-advance-'+name,static_type1(glyphs=glyphs,font_name=b'Advance'),
+                      expected,'font-type1','type1')
+    for name, wx, wy in [('horizontal',600,0),('up',600,200),('down',600,-200),
+                         ('vertical',0,600),('negative',-300,200)]:
+        yield emit(name,operands(3,4,wx,wy)+sbw+move+line+end,
+                   f'advance 1 {wx}\noutline 1\nm 3 4\nl 15 4\nh\n')
+    valid = operands(3,4,600,200)+sbw
+    for name, program in [('duplicate',valid+valid+end),('arity',operands(3,4,600)+sbw+end),
+                          ('nonfinite',operands(3,4,600,1,0)+b'\x0c\x0c'+sbw+end)]:
+        yield emit(name,program,'outline-error 1\n')
+    # Width-only access intentionally stops before later malformed drawing.
+    yield emit('width-only',valid+b'\x05'+end,'advance 1 600\noutline-error 1\n')
+    base = operands(20,40,600,200)+sbw+move+line+end
+    accent = operands(10,50,0,0)+sbw+move+line+end
+    for name, wy in [('seac',200),('seac-y-mismatch',201)]:
+        composite = operands(20,40,600,wy)+sbw+operands(10,30,200,65,194)+b'\x0c\x06'
+        expected = ('advance 2 600\noutline 2\nm 20 40\nl 32 40\nh\nm 40 250\nl 52 250\nh\n'
+                    if wy==200 else 'advance 2 600\noutline-error 2\n')
+        yield emit(name,base,expected,[(b'Aacute',composite),(b'acute',accent)])
 
 
 def static_font_cases():
@@ -1225,10 +1294,10 @@ def glyph_name_cases():
     aliases = named_post([b".notdef",b"A",b"A",b"composite",b"attached"])
     yield vector("glyph-names-post-alias",truetype(table_overrides={b"post":aliases}),
                  "count 5\nname A 1\nglyph-name 0 .notdef\nglyph-name 1 A\nglyph-name 2 A\n"
-                 "glyph-name-none 5\nglyph-name-none 4294967295\noutline 1\n"+RECT+"outline 2\n"+QUAD,req)
+                 "glyph-name-none 5\nglyph-name-none 4294967295\noutline 1\n"+RECT+"outline 2\n"+TRUETYPE_QUAD,req)
     standard = u32(0x10000)+bytes(28)
-    yield vector("glyph-names-post-standard",truetype(table_overrides={b"post":standard}),
-                 "count 5\nglyph-name 0 .notdef\nglyph-name 3 space\n",req)
+    yield vector("glyph-names-post-standard",truetype(table_overrides={b"post":standard},empty_glyphs=253),
+                 "count 258\nglyph-name 0 .notdef\nglyph-name 3 space\nglyph-name 257 dcroat\n",req)
     yield vector("glyph-names-type1-reordered",static_type1(notdef_last=True),
                  "count 2\nname A 1\nglyph-name 0 .notdef\nglyph-name 1 A\noutline 1\n"+RECT,req,"type1")
     yield vector("glyph-names-cff",cff_font(conforming=True),
@@ -1237,3 +1306,49 @@ def glyph_name_cases():
                  "count 5\nglyph-name-none 0\nglyph-name-none 1\n",req,"cff")
     yield vector("glyph-names-cff2",cff_font(cff2=True,conforming=True),
                  "count 5\nglyph-name-none 0\nglyph-name-none 1\n",req,"cff")
+
+
+def sparse_subr_program(name, *, filled=False, malformed=None):
+    """Type 1 6/8: keep explicitly assigned indexes, never invent hole programs."""
+    width = operands(0,600)+b"\x0d"
+    move = operands(0,0)+b"\x15"
+    rectangle = operands(100,0)+b"\x05"+operands(0,200)+b"\x05"+operands(-100,0)+b"\x05"
+    end = b"\x09\x0e"
+    if name == "all-unused":
+        program, subrs = width+move+rectangle+end, [None]*4
+    elif name == "interior":
+        program, subrs = width+move+operands(2)+b"\x0a"+end, [None,b"\x0b",rectangle+b"\x0b",None]
+    elif name == "nested":
+        program = width+move+operands(2)+b"\x0a"+end
+        subrs = [None,rectangle+b"\x0b",operands(1)+b"\x0a\x0b",None]
+    elif name == "called":
+        program, subrs = width+move+operands(1)+b"\x0a"+end, [b"\x0b",None]
+    else:
+        assert name == "tail"
+        program, subrs = width+move+operands(0)+b"\x0a"+end, [rectangle+b"\x0b",None]
+    if filled:
+        subrs = [b"\x0b" if subr is None else subr for subr in subrs]
+    return type1_font(program=program,custom_subrs=subrs,conforming=True,variant=malformed)
+
+
+def sparse_subr_cases():
+    req = "font-type1-sparse-subrs"
+    expected = "count 6\nname A 1\nencoding 65 A\nadvance 1 600\noutline 1\n"+RECT
+    for name in ("tail","interior","nested","all-unused"):
+        for framing in ("pfa","pfb","hex"):
+            program = sparse_subr_program(name)
+            if framing != "pfa":
+                # Reframe only the independent writer's own cipher bytes.
+                marker = program.index(b"currentfile eexec\n")+len(b"currentfile eexec\n")
+                clear, cipher = program[:marker], program[marker:]
+                if framing == "hex":
+                    program = clear+cipher.hex().encode()+b"\n"
+                else:
+                    program = b"\x80\x01"+struct.pack("<I",len(clear))+clear+b"\x80\x02"+struct.pack("<I",len(cipher))+cipher+b"\x80\x03"
+            yield recovery_vector("type1-sparse-"+name+"-"+framing,program,expected,
+                                  "font.type1-sparse-subrs",fmt="type1",requirement=req)
+    yield vector("type1-sparse-called",sparse_subr_program("called"),"parse-error\n",req,"type1")
+    yield vector("type1-sparse-dense-twin",sparse_subr_program("interior",filled=True),expected,req,"type1")
+    for malformed in ("duplicate","index","record"):
+        yield vector("type1-sparse-invalid-"+malformed,sparse_subr_program("tail",filled=True,malformed="subrs-"+malformed),
+                     "parse-error\n",req,"type1")

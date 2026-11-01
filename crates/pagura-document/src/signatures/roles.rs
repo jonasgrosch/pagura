@@ -104,7 +104,10 @@ pub(super) fn read(
     Ok(roles)
 }
 
-fn read_pages(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Result<()> {
+fn read_pages(doc: &Document, shared: &mut Context<'_>, roles: &mut Roles) -> Result<()> {
+    // Role snapshots share the inspection budget, but references must resolve
+    // in this exact revision rather than the shared context's current source.
+    let mut ctx = shared.for_document(doc);
     for page in doc.pages()? {
         ctx.step(0, Source::default())?;
         ctx.allocate::<usize>(8, Source::default())?;
@@ -127,13 +130,25 @@ fn read_pages(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Resul
                     .as_array()
                     .ok_or_else(|| Error::syntax("page Annots must be an array"))?;
                 ctx.allocate::<ObjectId>(array.len(), Source::default())?;
-                array
-                    .iter()
-                    .map(|v| {
-                        v.as_reference()
-                            .ok_or_else(|| Error::syntax("annotation must be indirect"))
-                    })
-                    .collect::<Result<Vec<_>>>()?
+                let mut annotations = Vec::with_capacity(array.len());
+                for value in array {
+                    ctx.step(0, Source::default())?;
+                    let Some(value) = doc.annotation_entry(value, page.id())? else {
+                        // A repaired signed graph cannot establish an Allowed
+                        // semantic change. Original bytes still feed walk().
+                        roles.ambiguous = true;
+                        continue;
+                    };
+                    let id = value
+                        .as_reference()
+                        .ok_or_else(|| Error::syntax("annotation must be indirect"))?;
+                    // Keep the original reference, but require an actual
+                    // dictionary. Missing and indirect-null values are not
+                    // evidence of a complete annotation graph.
+                    ctx.dictionary(value, Source::default())?;
+                    annotations.push(id);
+                }
+                annotations
             }
         } else {
             Vec::new()
@@ -525,4 +540,152 @@ fn trailer(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Result<(
         walk(doc, ctx, roles, value, Usage { role, field: None }, 0)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::OpenOptions;
+    use pagura_core::Recovery;
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn literal_null_roles_keep_original_members_and_mark_ambiguity() {
+        let bytes = fixture("recovery_annotations", "middle.pdf");
+        let doc = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
+        let roles = read(
+            &doc,
+            &mut Context::new(&doc),
+            &super::super::history::Facts::default(),
+        )
+        .unwrap();
+        assert!(roles.ambiguous);
+        assert_eq!(
+            roles.page_annotations.get(&ObjectId::new(3, 0)).unwrap(),
+            &[ObjectId::new(4, 0), ObjectId::new(6, 0)]
+        );
+        assert_eq!(doc.original_bytes(), bytes.as_slice());
+        for (role, expected) in [
+            (
+                ObjectRole::Annotation,
+                super::super::ChangeDecision::Inconclusive,
+            ),
+            (
+                ObjectRole::PageContent,
+                super::super::ChangeDecision::Disallowed,
+            ),
+        ] {
+            let (decision, _) = super::super::classification::read(
+                ObjectId::new(8, 0),
+                (None, None),
+                (&roles, &Roles::default()),
+                &[role],
+                None,
+            );
+            assert_eq!(decision, expected);
+        }
+    }
+
+    #[test]
+    fn missing_annotation_roles_are_not_complete() {
+        for name in ["undefined-reference", "wrong-generation"] {
+            for recovery in [Recovery::Strict, Recovery::Repair] {
+                let doc = Document::open(
+                    fixture("recovery_annotations", &format!("{name}.pdf")),
+                    &OpenOptions {
+                        recovery,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                assert!(
+                    read(
+                        &doc,
+                        &mut Context::new(&doc),
+                        &super::super::history::Facts::default()
+                    )
+                    .is_err(),
+                    "{name}"
+                );
+                assert_eq!(doc.diagnostics(), []);
+            }
+        }
+    }
+
+    #[test]
+    fn defined_null_annotation_roles_are_repaired_as_ambiguous() {
+        let bytes = fixture("recovery_annotations", "indirect-null.pdf");
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let doc = Document::open(
+                bytes.clone(),
+                &OpenOptions {
+                    recovery,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let result = read(
+                &doc,
+                &mut Context::new(&doc),
+                &super::super::history::Facts::default(),
+            );
+            if recovery == Recovery::Strict {
+                let error = result.err().expect("Strict retains the original refusal");
+                assert_eq!(error.kind, ErrorKind::Syntax);
+                assert_eq!(error.repair, None);
+                assert_eq!(doc.diagnostics(), []);
+            } else {
+                let roles = result.unwrap();
+                assert!(roles.ambiguous);
+                assert_eq!(
+                    roles.page_annotations.get(&ObjectId::new(3, 0)).unwrap(),
+                    &[ObjectId::new(4, 0), ObjectId::new(6, 0)]
+                );
+                assert_eq!(doc.diagnostics().len(), 1);
+                assert_eq!(
+                    doc.diagnostics()[0].tag(),
+                    crate::repairs::ANNOTATION_NULL_REFERENCE.as_str()
+                );
+            }
+            assert_eq!(doc.original_bytes(), bytes.as_slice());
+        }
+    }
+
+    #[test]
+    fn current_annotation_dictionary_cannot_rescue_historical_null_target() {
+        let doc = Document::open(
+            fixture("recovery_annotations", "signature-historical-reference.pdf"),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let id = ObjectId::new(10, 0);
+        let mut shared = Context::new(&doc);
+        let historical = doc.revision_with_context(1, &mut shared).unwrap();
+        assert!(doc.object(id).unwrap().dictionary().is_some());
+        assert!(historical.object(id).unwrap().value().is_null());
+        assert!(read(&doc, &mut shared, &super::super::history::Facts::default()).is_ok());
+        assert_eq!(
+            read(
+                historical,
+                &mut shared,
+                &super::super::history::Facts::default()
+            )
+            .err()
+            .expect("historical null annotation target must fail")
+            .kind,
+            ErrorKind::Syntax
+        );
+        let signatures = doc.signatures().unwrap();
+        let signature = signatures
+            .fields
+            .iter()
+            .find(|field| field.qualified_name == "Approval")
+            .and_then(|field| field.signature.as_ref())
+            .unwrap();
+        assert_eq!(
+            signature.results.permitted_modifications,
+            super::super::PermittedModifications::Inconclusive
+        );
+        assert_eq!(doc.diagnostics(), []);
+    }
 }

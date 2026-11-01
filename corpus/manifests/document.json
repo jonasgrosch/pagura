@@ -1429,6 +1429,27 @@
       "height": 64
     },
     {
+      "id": "document/object-stray-delimiter",
+      "kind": "pdf",
+      "description": "An unmatched >> between endstream and endobj cannot begin a value and holds no content",
+      "expected": "render",
+      "requirements": [
+        "object-boundary-recovery"
+      ],
+      "path": "corpus/generated/document/object-stray-delimiter.pdf",
+      "sha256": "d7d6000a3f6de306c174fb473bda7265ae27e5ab783ae398fee289540170c3bf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.stray-delimiter"
+      ],
+      "oracle": "corpus/generated/document/object-stray-delimiter.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
       "id": "document/catalog-type-invalid",
       "kind": "pdf",
       "description": "An unknown Catalog Type can be inferred from its reference to a typed Pages root; known conflicting types remain errors",

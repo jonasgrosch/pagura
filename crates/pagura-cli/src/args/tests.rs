@@ -1,5 +1,5 @@
-use super::{Bench, Command, Conversion, Output, Source, Timings, parse};
-use pagura::{Accuracy, OverprintPreview, Recovery, RenderOptions};
+use super::{Bench, Command, Conversion, ImageFormat, Output, Source, Timings, parse};
+use pagura::{OverprintPreview, Recovery, RenderOptions};
 use std::ffi::OsString;
 use std::path::PathBuf;
 
@@ -20,6 +20,11 @@ fn help_wins_anywhere_and_version_stands_alone() {
     assert_eq!(run(&["--help"]), Ok(Command::Help));
     assert_eq!(run(&["render", "-h", "--bogus"]), Ok(Command::Help));
     assert_eq!(run(&["--version"]), Ok(Command::Version));
+    // A harness puts rendering options before every invocation.
+    assert_eq!(
+        run(&["--overprint", "never", "--version"]),
+        Ok(Command::Version)
+    );
     assert_eq!(
         run(&["--version", "--strict"]),
         Err("--strict does not apply to --version".into())
@@ -78,6 +83,67 @@ fn options_may_appear_anywhere_but_only_where_they_apply() {
 }
 
 #[test]
+fn document_services_share_source_options_and_require_explicit_output_selection() {
+    assert_eq!(
+        run(&["metadata", "a.pdf"]),
+        Ok(Command::Metadata(source("a.pdf", b"", Recovery::Repair)))
+    );
+    assert_eq!(
+        run(&["attachments", "--strict", "a.pdf", "--password", "pw"]),
+        Ok(Command::Attachments {
+            source: source("a.pdf", b"pw", Recovery::Strict),
+            page: None
+        })
+    );
+    assert_eq!(
+        run(&["extract-metadata", "a.pdf", "x.xmp"]),
+        Ok(Command::ExtractMetadata {
+            source: source("a.pdf", b"", Recovery::Repair),
+            output: PathBuf::from("x.xmp")
+        })
+    );
+    assert_eq!(
+        run(&["extract-attachment", "a.pdf", "2", "UF", "data.bin"]),
+        Ok(Command::ExtractAttachment {
+            source: source("a.pdf", b"", Recovery::Repair),
+            page: None,
+            index: 2,
+            key: "UF".into(),
+            output: PathBuf::from("data.bin")
+        })
+    );
+    assert_eq!(
+        run(&["check-attachment", "--strict", "a.pdf", "0", "F"]),
+        Ok(Command::CheckAttachment {
+            source: source("a.pdf", b"", Recovery::Strict),
+            page: None,
+            index: 0,
+            key: "F".into()
+        })
+    );
+    for name in [
+        "metadata",
+        "attachments",
+        "extract-metadata",
+        "extract-attachment",
+        "check-attachment",
+    ] {
+        assert_eq!(
+            run(&[name]),
+            Err(format!("wrong number of arguments for {name}"))
+        );
+        assert_eq!(
+            run(&[name, "--timings"]),
+            Err(format!("--timings does not apply to {name}"))
+        );
+    }
+    assert_eq!(
+        run(&["extract-attachment", "a.pdf", "-1", "F", "data.bin"]),
+        Err("INDEX must be a non-negative integer, not -1".into())
+    );
+}
+
+#[test]
 fn malformed_arguments_name_what_is_wrong() {
     for (args, message) in [
         (&[][..], "missing command"),
@@ -126,7 +192,7 @@ fn malformed_arguments_name_what_is_wrong() {
         ),
         (
             &["microbench", "a.pdf", "warm", "1"],
-            "OPERATION must be open-pages, render-cold or render-warm",
+            "OPERATION must be open-pages, render-cold, record-cold, record-warm or render-warm",
         ),
         (
             &["microbench", "a.pdf", "open-pages", "0"],
@@ -148,6 +214,7 @@ fn conversions_select_pages_dpi_and_timings() {
         Ok(Command::Convert(Conversion {
             source: source("a.pdf", b"", Recovery::Repair),
             output: Output::File(PathBuf::from("b.ppm")),
+            format: ImageFormat::Ppm,
             render: RenderOptions::from_dpi(144.0),
             pages: Some(3..=3),
             timings: Timings::Print,
@@ -158,6 +225,7 @@ fn conversions_select_pages_dpi_and_timings() {
         Ok(Command::Convert(Conversion {
             source: source("a.pdf", b"", Recovery::Repair),
             output: Output::Directory(PathBuf::from("out")),
+            format: ImageFormat::Ppm,
             render: RenderOptions::from_dpi(72.0),
             pages: None,
             timings: Timings::Off,
@@ -170,6 +238,31 @@ fn conversions_select_pages_dpi_and_timings() {
     assert_eq!(
         (conversion.render, conversion.pages),
         (RenderOptions::from_dpi(36.5), Some(1..=4))
+    );
+}
+
+#[test]
+fn png_format_and_transparency_are_explicit_and_command_scoped() {
+    for name in ["render", "convert"] {
+        let Ok(Command::Convert(conversion)) =
+            run(&[name, "--transparent", "a.pdf", "out", "--format", "png"])
+        else {
+            panic!("PNG conversion must parse");
+        };
+        assert_eq!(conversion.format, ImageFormat::Png);
+        assert_eq!(conversion.render.background, pagura::Rgba8::TRANSPARENT);
+        assert!(run(&[name, "--transparent", "a.pdf", "out"]).is_err());
+        assert!(run(&[name, "--format", "jpg", "a.pdf", "out"]).is_err());
+    }
+    assert!(run(&["inspect", "--format", "png", "a.pdf"]).is_err());
+    assert!(run(&["scan", "--transparent", "a.pdf"]).is_err());
+    let Ok(Command::Convert(conversion)) = run(&["render", "a.pdf", "out.png"]) else {
+        panic!("default conversion");
+    };
+    assert_eq!(
+        conversion.format,
+        ImageFormat::Ppm,
+        "extensions do not silently change output format"
     );
 }
 
@@ -205,6 +298,13 @@ fn the_other_commands_parse_their_operands() {
             output: PathBuf::from("b.pdf"),
         })
     );
+    let operation = |name| match run(&["microbench", "a.pdf", name, "1"]) {
+        Ok(Command::Microbench { operation, .. }) => operation,
+        other => panic!("{name}: {other:?}"),
+    };
+    assert_eq!(operation("render-cold"), Bench::RenderCold);
+    assert_eq!(operation("record-cold"), Bench::RecordCold);
+    assert_eq!(operation("record-warm"), Bench::RecordWarm);
     assert_eq!(
         run(&["microbench", "--strict", "a.pdf", "render-warm", "10", "96"]),
         Ok(Command::Microbench {
@@ -214,6 +314,27 @@ fn the_other_commands_parse_their_operands() {
             render: RenderOptions::from_dpi(96.0),
         })
     );
+}
+
+#[test]
+fn explicit_repair_is_a_scan_only_opt_in() {
+    assert_eq!(
+        run(&["scan", "--repair", "a.pdf", "144", "--max-pages", "2"]),
+        Ok(Command::Scan {
+            source: source("a.pdf", b"", Recovery::Repair),
+            render: RenderOptions::from_dpi(144.0),
+            max_pages: Some(2),
+        })
+    );
+    for args in [
+        vec!["scan", "--repair", "--repair", "a.pdf"],
+        vec!["scan", "--repair", "--strict", "a.pdf"],
+        vec!["inspect", "--repair", "a.pdf"],
+        vec!["render", "--repair", "a.pdf", "out.ppm"],
+        vec!["--repair", "--version"],
+    ] {
+        assert!(run(&args).is_err(), "{args:?}");
+    }
 }
 
 #[cfg(unix)]
@@ -267,34 +388,63 @@ fn overprint_selects_the_preview_of_every_rendering_command() {
 }
 
 #[test]
-fn accuracy_selects_the_path_of_every_rendering_command() {
-    let accuracy = |args: &[&str]| match run(args) {
-        Ok(Command::Convert(conversion)) => conversion.render.accuracy,
-        Ok(Command::Scan { render, .. } | Command::Microbench { render, .. }) => render.accuracy,
-        other => panic!("{args:?}: {other:?}"),
-    };
-    assert_eq!(accuracy(&["render", "a.pdf", "b.ppm"]), Accuracy::Exact);
-    for (mode, expected) in [
-        ("exact", Accuracy::Exact),
-        ("competitive", Accuracy::Competitive),
-    ] {
-        for args in [
-            &["render", "a.pdf", "b.ppm"][..],
-            &["convert", "a.pdf", "out"],
-            &["scan", "a.pdf"],
-            &["microbench", "a.pdf", "render-cold", "1"],
-        ] {
-            let mut args = args.to_vec();
-            args.extend(["--accuracy", mode]);
-            assert_eq!(accuracy(&args), expected, "{args:?}");
+fn attachment_page_selection_is_explicit_and_scoped_to_source_commands() {
+    assert_eq!(
+        run(&["attachments", "--page", "2", "a.pdf"]),
+        Ok(Command::Attachments {
+            source: source("a.pdf", b"", Recovery::Repair),
+            page: Some(2),
+        })
+    );
+    assert_eq!(
+        run(&[
+            "extract-attachment",
+            "a.pdf",
+            "3",
+            "UF",
+            "out.bin",
+            "--page",
+            "2"
+        ]),
+        Ok(Command::ExtractAttachment {
+            source: source("a.pdf", b"", Recovery::Repair),
+            page: Some(2),
+            index: 3,
+            key: "UF".into(),
+            output: PathBuf::from("out.bin"),
+        })
+    );
+    assert_eq!(
+        run(&[
+            "check-attachment",
+            "--strict",
+            "--page",
+            "0",
+            "a.pdf",
+            "1",
+            "F"
+        ]),
+        Ok(Command::CheckAttachment {
+            source: source("a.pdf", b"", Recovery::Strict),
+            page: Some(0),
+            index: 1,
+            key: "F".into(),
+        })
+    );
+    assert_eq!(
+        run(&["attachments", "--page"]),
+        Err("--page needs a value".into())
+    );
+    assert_eq!(
+        run(&["attachments", "--page", "-1", "a.pdf"]),
+        Err("--page must be a non-negative integer, not -1".into())
+    );
+    for command in ["inspect", "render", "text", "scan", "find"] {
+        let mut args = vec![command, "--page", "0", "a.pdf"];
+        if command == "find" {
+            args.push("query");
         }
+        let error = run(&args).unwrap_err();
+        assert_eq!(error, format!("--page does not apply to {command}"));
     }
-    assert_eq!(
-        run(&["render", "--accuracy", "fast", "a.pdf", "b.ppm"]),
-        Err("--accuracy must be exact or competitive".into())
-    );
-    assert_eq!(
-        run(&["inspect", "--accuracy", "exact", "a.pdf"]),
-        Err("--accuracy does not apply to inspect".into())
-    );
 }

@@ -3,7 +3,7 @@
 //! PDF page text: positioned text, geometric layout policy, search and the
 //! logical structure view (9.10, 14.7–14.9; ADR 0014, ADR 0025).
 //!
-//! Content interpretation belongs exclusively to `pagura-render`. These types
+//! Content interpretation belongs exclusively to `pagura-interpret`. These types
 //! consume its records, never content streams. Quads are selection cells, not
 //! exact ink outlines. Page layout is reader policy; logical structure is a
 //! separate assistive-technology view and never changes page search or selection.
@@ -23,7 +23,7 @@ mod search;
 mod tests;
 pub use search::{SearchOptions, TextMatch};
 
-// The interpreter in `pagura-render` builds the positioned-text records
+// The interpreter in `pagura-interpret` builds the positioned-text records
 // below with struct literals, so they are plain, exhaustive records.
 
 /// A selection quadrilateral in default user space, in cell-corner order.

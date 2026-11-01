@@ -1,7 +1,9 @@
 //! Command-line parsing: the arguments become a typed [`Command`], or a
 //! [`UsageError`] that exits with status 2 before any input is read.
 
-use pagura::{Accuracy, OverprintPreview, Recovery, RenderOptions};
+pub(crate) mod services;
+
+use pagura::{OverprintPreview, Recovery, RenderOptions, Rgba8};
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::ops::RangeInclusive;
@@ -11,36 +13,63 @@ use std::str::FromStr;
 /// The synopsis printed with every usage error.
 pub(crate) const USAGE: &str = "\
 usage: pagura inspect [--strict] [--password TEXT] INPUT
+       pagura metadata [--strict] [--password TEXT] INPUT
+       pagura attachments [--strict] [--password TEXT] [--page PAGE] INPUT
+       pagura extract-metadata [--strict] [--password TEXT] INPUT OUTPUT
+       pagura extract-attachment [--strict] [--password TEXT] [--page PAGE] INPUT INDEX KEY OUTPUT
+       pagura check-attachment [--strict] [--password TEXT] [--page PAGE] INPUT INDEX KEY
+       pagura collection [--strict] [--password TEXT] INPUT
+       pagura images [--strict] [--password TEXT] [--page PAGE | --object N:G] INPUT
+       pagura extract-image [--strict] [--password TEXT] [--stored] --object N:G INPUT OUTPUT
+       pagura extract-thumbnail [--strict] [--password TEXT] [--stored] [--page PAGE | --object N:G] INPUT OUTPUT
        pagura text [--strict] [--password TEXT] INPUT [PAGE]
        pagura find [--strict] [--password TEXT] INPUT QUERY
-       pagura render [--strict] [--password TEXT] [--overprint MODE] [--accuracy MODE]
-              [--timings] INPUT OUTPUT.ppm [DPI [PAGE]]
-       pagura convert [--strict] [--password TEXT] [--overprint MODE] [--accuracy MODE]
-              [--timings] INPUT OUTPUT_DIR [DPI [FIRST LAST]]
-       pagura scan [--password TEXT] [--overprint MODE] [--accuracy MODE]
-              [--max-pages N] INPUT [DPI]
+       pagura render [--strict] [--password TEXT] [--overprint MODE] [--timings]
+              [--format ppm|png] [--transparent] INPUT OUTPUT [DPI [PAGE]]
+       pagura convert [--strict] [--password TEXT] [--overprint MODE] [--timings]
+              [--format ppm|png] [--transparent] INPUT OUTPUT_DIR [DPI [FIRST LAST]]
+       pagura scan [--repair] [--password TEXT] [--overprint MODE] [--max-pages N] INPUT [DPI]
        pagura roundtrip [--password TEXT] INPUT OUTPUT
        pagura microbench [--strict] [--password TEXT] [--overprint MODE]
-              [--accuracy MODE] INPUT OPERATION COUNT [DPI]
+              INPUT OPERATION COUNT [DPI]
        pagura licenses
-       pagura --version
+       pagura [--overprint MODE] --version
        pagura --help";
 
 /// The rest of the help text, printed by `--help` after [`USAGE`].
 pub(crate) const HELP: &str = "\
 commands:
-  inspect     print one JSON line: page and object counts, size, diagnostics
+  inspect     print one JSON line: page/object counts, page geometry, size,
+              diagnostics
+  metadata    print Info fields, document language and metadata stream identity
+              as JSON; Info and XMP remain separate sources
+  attachments print catalog EmbeddedFiles entries and EF payload keys as JSON;
+              Unicode names and original path/key bytes are retained separately
+  extract-metadata
+              decode the catalog metadata stream to the explicit OUTPUT path
+  extract-attachment
+              decode EF payload KEY (F, UF, DOS, Mac or Unix) from catalog
+              EmbeddedFiles INDEX (starting at 0) to the explicit OUTPUT path
+  check-attachment
+              compare decoded EF payload size and MD5 with its declarations;
+              print JSON and exit 1 on mismatch, 0 on match or missing declarations
   text        print the text of every page, or of PAGE, separated by form feeds
   find        print one JSON line per match: page, character range and quads
               in default user space
-  render      render PAGE (default 0) to a binary PPM file over white
-  convert     render every page, or FIRST to LAST, to OUTPUT_DIR/page-NNNN.ppm
+  render      render PAGE (default 0) to PPM (default) or PNG over white
+  convert     render every page, or FIRST to LAST, to OUTPUT_DIR/page-NNNN.FORMAT
   scan        open and render every page without writing images, and print
               one JSON line describing what opened, rendered and failed; it
               opens strictly first and repairs only when that fails
   roundtrip   open strictly and save the original bytes unchanged
-  microbench  time COUNT (1 to 100000) repetitions of OPERATION: open-pages,
-              render-cold or render-warm; Pagura-only profiling, never a
+  microbench  time COUNT (1 to 100000) repetitions of OPERATION on page 0 of
+              a document opened once: open-pages opens it again;
+              render-cold records and renders with a new context, so no
+              font, image or scene is reused; record-cold records with a new
+              context and keeps no scene; record-warm records with one
+              context, which reuses fonts, glyphs and images but keeps no
+              scene; render-warm renders from one context, which records the
+              page once and keeps its scene. Pagura-only profiling, never a
               cross-engine comparison
   licenses    print the notices of the data linked into this build
 
@@ -51,22 +80,37 @@ PAGE, FIRST and LAST count from 0; convert names its images from 1
 options:
   --password TEXT  password for encrypted documents (default: empty)
   --strict         reject malformed input instead of repairing it
+  --repair         scan in Repair mode throughout, without a Strict audit
   --overprint MODE simulate overprinting (8.6.7): auto (the default) where
                    the document declares a PDF/X print intent, always, or
                    never
-  --accuracy MODE  exact (the default): every pixel within one level of its
-                   exact result; competitive: the approximate path of
-                   RenderOptions::accuracy
   --timings        print JSON stage timings to stdout: open (read and parse
-                   the file, build the page list), render (rasterize into
-                   memory) and emit (encode and write the image); the
+                   the file, build the page list), render (interpret and
+                   rasterize) and emit (encode and write the image); the
                    engine's contribution to a conversion is open + render
+  --format FORMAT  render/convert output: ppm (default) or png
+  --transparent    transparent PNG background; requires --format png
   --max-pages N    scan at most N pages per document
   --version        print the version
   --help, -h       print this help
 
-An option that a command does not take is a usage error. Exit status: 0 on
-success, 1 when the command fails, 2 for a usage error.
+--page PAGE selects file-attachment annotations on the zero-based page for
+attachments, extract-attachment and check-attachment. INDEX then identifies the
+original page Annots slot, including other annotation types. No catalog fallback.
+
+--associated selects catalog AF, or page AF with --page. --object N:G selects
+object AF for attachment commands, or an object metadata owner. --related PAIR
+selects an RF pair under the exact EF key for extraction/checks. Metadata packet
+commands also accept --page. See docs/CLI.md for source-image transfer semantics.
+collection reads inert portfolio declarations; images lists direct page resources
+or an explicit image object. Image extraction returns binary encoded asset bytes;
+--stored preserves original stream bytes, including ciphertext. Neither is a
+standalone appearance export.
+
+An option that a command does not take is a usage error; --version accepts
+the rendering option --overprint and ignores it, so a harness can put it
+before every invocation. Exit status: 0 on success, 1
+when the command fails, 2 for a usage error.
 ";
 
 /// Microbenchmark iterations accepted, inclusive.
@@ -75,6 +119,11 @@ const BENCH_COUNTS: RangeInclusive<u32> = 1..=100_000;
 /// What to do.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Command {
+    /// Scoped document read/extract services.
+    Service {
+        source: Source,
+        request: services::ServiceCommand,
+    },
     /// Print [`USAGE`] and [`HELP`].
     Help,
     /// Print the version.
@@ -83,11 +132,32 @@ pub(crate) enum Command {
     Licenses,
     /// Print a JSON summary of a document.
     Inspect(Source),
+    /// Print typed document metadata as JSON.
+    Metadata(Source),
+    /// Print catalog or selected-page attachment JSON without decoding payloads.
+    Attachments { source: Source, page: Option<usize> },
+    /// Decode the document metadata stream to a new, caller-named file.
+    ExtractMetadata { source: Source, output: PathBuf },
+    /// Decode a selected catalog/page attachment payload to a new, caller-named file.
+    ExtractAttachment {
+        source: Source,
+        page: Option<usize>,
+        index: usize,
+        key: String,
+        output: PathBuf,
+    },
+    /// Compare selected attachment size/checksum declarations with decoded bytes.
+    CheckAttachment {
+        source: Source,
+        page: Option<usize>,
+        index: usize,
+        key: String,
+    },
     /// Print the text of every page, or of one zero-based page.
     Text { source: Source, page: Option<usize> },
     /// Print the matches of a query as JSON lines.
     Find { source: Source, query: String },
-    /// Render pages to PPM images: `render` and `convert`.
+    /// Render pages to PPM or PNG images: `render` and `convert`.
     Convert(Conversion),
     /// Open and render without writing images; print a JSON report.
     Scan {
@@ -119,6 +189,7 @@ pub(crate) struct Source {
 pub(crate) struct Conversion {
     pub(crate) source: Source,
     pub(crate) output: Output,
+    pub(crate) format: ImageFormat,
     /// The resolution and overprint policy.
     pub(crate) render: RenderOptions,
     /// Zero-based and inclusive; all pages when absent.
@@ -126,12 +197,29 @@ pub(crate) struct Conversion {
     pub(crate) timings: Timings,
 }
 
+/// Image encodings exposed by render/convert; selection is explicit.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum ImageFormat {
+    #[default]
+    Ppm,
+    Png,
+}
+
+impl ImageFormat {
+    pub(crate) const fn extension(self) -> &'static str {
+        match self {
+            Self::Ppm => "ppm",
+            Self::Png => "png",
+        }
+    }
+}
+
 /// Where converted pages go.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Output {
     /// One page to one file.
     File(PathBuf),
-    /// Every page to `page-NNNN.ppm` in an existing directory.
+    /// Every page to `page-NNNN.FORMAT` in an existing directory.
     Directory(PathBuf),
 }
 
@@ -147,20 +235,32 @@ pub(crate) enum Timings {
 pub(crate) enum Bench {
     /// Open the document and build its page list.
     OpenPages,
-    /// Open, compile and render the first page.
+    /// Record and render the first page with a new render context.
     RenderCold,
-    /// Render the first page from one shared render context.
+    /// Record the first page with a new render context, keeping no scene.
+    RecordCold,
+    /// Record the first page with one render context, keeping no scene.
+    RecordWarm,
+    /// Render the first page from one render context, which keeps its scene.
     RenderWarm,
 }
 
 impl Bench {
-    const ALL: [Self; 3] = [Self::OpenPages, Self::RenderCold, Self::RenderWarm];
+    const ALL: [Self; 5] = [
+        Self::OpenPages,
+        Self::RenderCold,
+        Self::RecordCold,
+        Self::RecordWarm,
+        Self::RenderWarm,
+    ];
 
     /// The operation's command-line and JSON name.
     pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::OpenPages => "open-pages",
             Self::RenderCold => "render-cold",
+            Self::RecordCold => "record-cold",
+            Self::RecordWarm => "record-warm",
             Self::RenderWarm => "render-warm",
         }
     }
@@ -186,33 +286,54 @@ fn usage(message: impl Into<String>) -> UsageError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Flag {
     Strict,
+    Repair,
     Timings,
     Password,
     Overprint,
-    Accuracy,
     MaxPages,
+    Page,
+    Object,
+    Associated,
+    Related,
+    Stored,
+    Format,
+    Transparent,
     Version,
 }
 
 impl Flag {
-    const ALL: [Self; 7] = [
+    const ALL: [Self; 14] = [
         Self::Strict,
+        Self::Repair,
         Self::Timings,
         Self::Password,
         Self::Overprint,
-        Self::Accuracy,
         Self::MaxPages,
+        Self::Page,
+        Self::Object,
+        Self::Associated,
+        Self::Related,
+        Self::Stored,
+        Self::Format,
+        Self::Transparent,
         Self::Version,
     ];
 
     const fn name(self) -> &'static str {
         match self {
             Self::Strict => "--strict",
+            Self::Repair => "--repair",
             Self::Timings => "--timings",
             Self::Password => "--password",
             Self::Overprint => "--overprint",
-            Self::Accuracy => "--accuracy",
             Self::MaxPages => "--max-pages",
+            Self::Page => "--page",
+            Self::Object => "--object",
+            Self::Associated => "--associated",
+            Self::Related => "--related",
+            Self::Stored => "--stored",
+            Self::Format => "--format",
+            Self::Transparent => "--transparent",
             Self::Version => "--version",
         }
     }
@@ -224,8 +345,11 @@ struct Options {
     given: Vec<Flag>,
     password: Vec<u8>,
     overprint: OverprintPreview,
-    accuracy: Accuracy,
     max_pages: Option<usize>,
+    page: Option<usize>,
+    format: ImageFormat,
+    object: Option<pagura::ObjectId>,
+    related: Option<usize>,
 }
 
 impl Options {
@@ -238,6 +362,9 @@ impl Options {
         flag: Flag,
         args: &mut impl Iterator<Item = OsString>,
     ) -> Result<(), UsageError> {
+        if flag == Flag::Repair && self.has(flag) {
+            return Err(usage("--repair may appear only once"));
+        }
         let mut value = || {
             args.next()
                 .ok_or_else(|| usage(format!("{} needs a value", flag.name())))
@@ -258,15 +385,33 @@ impl Options {
                     _ => return Err(usage("--overprint must be auto, always or never")),
                 };
             }
-            Flag::Accuracy => {
-                self.accuracy = match value()?.to_str() {
-                    Some("exact") => Accuracy::Exact,
-                    Some("competitive") => Accuracy::Competitive,
-                    _ => return Err(usage("--accuracy must be exact or competitive")),
+            Flag::MaxPages => self.max_pages = Some(number(&value()?, "--max-pages")?),
+            Flag::Page => self.page = Some(number(&value()?, "--page")?),
+            Flag::Related => self.related = Some(number(&value()?, "--related")?),
+            Flag::Object => {
+                let value = value()?;
+                let (number, generation) = text(&value, "--object")?
+                    .split_once(':')
+                    .ok_or_else(|| usage("--object requires NUMBER:GENERATION"))?;
+                self.object = Some(pagura::ObjectId::new(
+                    super_number(number, "object number")?,
+                    super_number(generation, "object generation")?,
+                ));
+            }
+            Flag::Format => {
+                self.format = match value()?.to_str() {
+                    Some("ppm") => ImageFormat::Ppm,
+                    Some("png") => ImageFormat::Png,
+                    _ => return Err(usage("--format must be ppm or png")),
                 };
             }
-            Flag::MaxPages => self.max_pages = Some(number(&value()?, "--max-pages")?),
-            Flag::Strict | Flag::Timings | Flag::Version => {}
+            Flag::Strict
+            | Flag::Repair
+            | Flag::Timings
+            | Flag::Transparent
+            | Flag::Version
+            | Flag::Associated
+            | Flag::Stored => {}
         }
         self.given.push(flag);
         Ok(())
@@ -301,14 +446,24 @@ impl Options {
         self.source(path, recovery)
     }
 
-    /// Rendering at the optional DPI argument with the overprint policy and
-    /// accuracy.
+    /// Rendering at the optional DPI argument with the overprint policy.
     fn render(&self, dpi: Option<&OsString>) -> Result<RenderOptions, UsageError> {
         Ok(RenderOptions {
             overprint: self.overprint,
-            accuracy: self.accuracy,
+            background: if self.has(Flag::Transparent) {
+                Rgba8::TRANSPARENT
+            } else {
+                Rgba8::WHITE
+            },
             ..RenderOptions::from_dpi(self::dpi(dpi)?)
         })
+    }
+
+    fn image_format(&self) -> Result<ImageFormat, UsageError> {
+        if self.has(Flag::Transparent) && self.format != ImageFormat::Png {
+            return Err(usage("--transparent requires --format png"));
+        }
+        Ok(self.format)
     }
 
     fn timings(&self) -> Timings {
@@ -343,7 +498,10 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command,
     }
     let Some((name, operands)) = positional.split_first() else {
         if options.has(Flag::Version) {
-            options.allow("--version", &[Flag::Version])?;
+            // Rendering options are accepted and ignored, so a harness can
+            // put them before every invocation, its version check included.
+            let allowed = [Flag::Version, Flag::Overprint];
+            options.allow("--version", &allowed)?;
             return Ok(Command::Version);
         }
         return Err(usage("missing command"));
@@ -356,7 +514,16 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command,
 
 /// The command `name` with its `operands`, if it takes the given options.
 fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Command, UsageError> {
-    use Flag::{Accuracy, MaxPages, Overprint, Password, Strict, Timings as TimingsFlag};
+    use Flag::{MaxPages, Overprint, Password, Strict};
+    if let Some(command) = services::command(name, operands, options)? {
+        return Ok(command);
+    }
+    if let Some(command) = document_command(name, operands, options)? {
+        return Ok(command);
+    }
+    if let Some(command) = image_command(name, operands, options)? {
+        return Ok(command);
+    }
     let command = match (name, operands) {
         ("licenses", []) => {
             options.allow(name, &[])?;
@@ -380,35 +547,17 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
                 query: text(query, "QUERY")?.to_owned(),
             }
         }
-        ("render", [input, output, rest @ ..]) if rest.len() <= 2 => {
-            options.allow(name, &[Strict, Password, Overprint, Accuracy, TimingsFlag])?;
-            let page = rest.get(1).map_or(Ok(0), |page| number(page, "PAGE"))?;
-            Command::Convert(Conversion {
-                source: options.chosen_source(input),
-                output: Output::File(PathBuf::from(output)),
-                render: options.render(rest.first())?,
-                pages: Some(page..=page),
-                timings: options.timings(),
-            })
-        }
-        ("convert", [input, output, rest @ ..]) if matches!(rest.len(), 0 | 1 | 3) => {
-            options.allow(name, &[Strict, Password, Overprint, Accuracy, TimingsFlag])?;
-            let pages = match rest {
-                [_, first, last] => Some(number(first, "FIRST")?..=number(last, "LAST")?),
-                _ => None,
-            };
-            Command::Convert(Conversion {
-                source: options.chosen_source(input),
-                output: Output::Directory(PathBuf::from(output)),
-                render: options.render(rest.first())?,
-                pages,
-                timings: options.timings(),
-            })
-        }
         ("scan", [input, rest @ ..]) if rest.len() <= 1 => {
-            options.allow(name, &[Password, Overprint, Accuracy, MaxPages])?;
+            options.allow(name, &[Password, Overprint, MaxPages, Flag::Repair])?;
             Command::Scan {
-                source: options.source(input, Recovery::Strict),
+                source: options.source(
+                    input,
+                    if options.has(Flag::Repair) {
+                        Recovery::Repair
+                    } else {
+                        Recovery::Strict
+                    },
+                ),
                 render: options.render(rest.first())?,
                 max_pages: options.max_pages,
             }
@@ -421,11 +570,15 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
             }
         }
         ("microbench", [input, operation, count, rest @ ..]) if rest.len() <= 1 => {
-            options.allow(name, &[Strict, Password, Overprint, Accuracy])?;
+            options.allow(name, &[Strict, Password, Overprint])?;
             let operation = Bench::ALL
                 .into_iter()
                 .find(|bench| operation.to_str() == Some(bench.name()))
-                .ok_or_else(|| usage("OPERATION must be open-pages, render-cold or render-warm"))?;
+                .ok_or_else(|| {
+                    usage(
+                        "OPERATION must be open-pages, render-cold, record-cold, record-warm or render-warm",
+                    )
+                })?;
             let count: u32 = number(count, "COUNT")?;
             if !BENCH_COUNTS.contains(&count) {
                 return Err(usage("COUNT must be 1 to 100000"));
@@ -445,6 +598,98 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
         _ => return Err(usage(format!("unknown command {name}"))),
     };
     Ok(command)
+}
+
+/// Output format and background options apply only to image conversion commands.
+fn image_command(
+    name: &str,
+    operands: &[OsString],
+    options: &Options,
+) -> Result<Option<Command>, UsageError> {
+    use Flag::{Format, Overprint, Password, Strict, Timings, Transparent};
+    if !matches!(name, "render" | "convert") {
+        return Ok(None);
+    }
+    options.allow(
+        name,
+        &[Strict, Password, Overprint, Timings, Format, Transparent],
+    )?;
+    let command = match (name, operands) {
+        ("render", [input, output, rest @ ..]) if rest.len() <= 2 => {
+            let page = rest.get(1).map_or(Ok(0), |page| number(page, "PAGE"))?;
+            Command::Convert(Conversion {
+                source: options.chosen_source(input),
+                output: Output::File(PathBuf::from(output)),
+                format: options.image_format()?,
+                render: options.render(rest.first())?,
+                pages: Some(page..=page),
+                timings: options.timings(),
+            })
+        }
+        ("convert", [input, output, rest @ ..]) if matches!(rest.len(), 0 | 1 | 3) => {
+            let pages = match rest {
+                [_, first, last] => Some(number(first, "FIRST")?..=number(last, "LAST")?),
+                _ => None,
+            };
+            Command::Convert(Conversion {
+                source: options.chosen_source(input),
+                output: Output::Directory(PathBuf::from(output)),
+                format: options.image_format()?,
+                render: options.render(rest.first())?,
+                pages,
+                timings: options.timings(),
+            })
+        }
+        _ => return Err(usage(format!("wrong number of arguments for {name}"))),
+    };
+    Ok(Some(command))
+}
+
+fn document_command(
+    name: &str,
+    operands: &[OsString],
+    options: &Options,
+) -> Result<Option<Command>, UsageError> {
+    if !matches!(
+        name,
+        "metadata" | "attachments" | "extract-metadata" | "extract-attachment" | "check-attachment"
+    ) {
+        return Ok(None);
+    }
+    if matches!(
+        name,
+        "attachments" | "extract-attachment" | "check-attachment"
+    ) {
+        options.allow(name, &[Flag::Strict, Flag::Password, Flag::Page])?;
+    } else {
+        options.allow(name, &[Flag::Strict, Flag::Password])?;
+    }
+    let command = match (name, operands) {
+        ("metadata", [input]) => Command::Metadata(options.chosen_source(input)),
+        ("attachments", [input]) => Command::Attachments {
+            source: options.chosen_source(input),
+            page: options.page,
+        },
+        ("extract-metadata", [input, output]) => Command::ExtractMetadata {
+            source: options.chosen_source(input),
+            output: PathBuf::from(output),
+        },
+        ("check-attachment", [input, index, key]) => Command::CheckAttachment {
+            source: options.chosen_source(input),
+            page: options.page,
+            index: number(index, "INDEX")?,
+            key: text(key, "KEY")?.to_owned(),
+        },
+        ("extract-attachment", [input, index, key, output]) => Command::ExtractAttachment {
+            source: options.chosen_source(input),
+            page: options.page,
+            index: number(index, "INDEX")?,
+            key: text(key, "KEY")?.to_owned(),
+            output: PathBuf::from(output),
+        },
+        _ => return Err(usage(format!("wrong number of arguments for {name}"))),
+    };
+    Ok(Some(command))
 }
 
 fn text<'a>(value: &'a OsStr, what: &str) -> Result<&'a str, UsageError> {
@@ -482,3 +727,7 @@ fn dpi(value: Option<&OsString>) -> Result<f64, UsageError> {
 
 #[cfg(test)]
 mod tests;
+
+fn super_number<T: FromStr>(value: &str, label: &str) -> Result<T, UsageError> {
+    value.parse().map_err(|_| usage(format!("invalid {label}")))
+}

@@ -37,13 +37,7 @@ pub(super) fn read<'a>(
         merged,
         rectangle: rectangle(context, dictionary, source)?,
         on_states: on_states(context, dictionary, source)?,
-        appearance_state: context
-            .entry(dictionary, b"AS", source)?
-            .map(|v| {
-                v.as_name()
-                    .ok_or_else(|| source.error(Error::syntax("widget AS must be a name")))
-            })
-            .transpose()?,
+        appearance_state: state(context, dictionary, source)?,
         action: context
             .present(dictionary, b"A", source)?
             .map(|v| actions::read_with(context, v, source))
@@ -55,6 +49,22 @@ pub(super) fn read<'a>(
         },
         dictionary,
     })
+}
+
+pub(super) fn state<'a>(
+    context: &mut Context<'a>,
+    dictionary: &'a Dictionary,
+    source: Source,
+) -> Result<Option<&'a Name>> {
+    context
+        .present(dictionary, b"AS", source)?
+        .map(|value| {
+            let (value, source) = context.resolve(value, source)?;
+            value
+                .as_name()
+                .ok_or_else(|| source.error(Error::syntax("widget AS must be a name")))
+        })
+        .transpose()
 }
 
 fn rectangle<'a>(

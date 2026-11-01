@@ -34,7 +34,7 @@ fn loaded_kinds_include_owned_tables_and_programs() -> Result<()> {
         let font = PdfFont::load(&document, &dict)?;
         assert!(font.retained_bytes() > size_of::<PdfFont>(), "{name}");
         let before = font.retained_bytes();
-        font.decode(b"A").ok();
+        font.decode(b"A", None).ok();
         assert_eq!(font.retained_bytes(), before, "{name}");
         if let font::Source::Program { program, .. } = &font.source {
             assert!(before > program.data().len());
@@ -56,16 +56,16 @@ fn owned_unicode_and_type3_resources_increase_the_estimate() -> Result<()> {
     resources.insert(Name::new(b"Payload"), Value::String(vec![b'x'; 32768]));
     dict.insert(Name::new(b"Resources"), Value::Dictionary(resources));
     assert!(PdfFont::load(&document, &dict)?.retained_bytes() >= base + 32768);
-    let (document, dict) = load("tt-unicode-priority")?;
-    let mut font = PdfFont::load(&document, &dict)?;
-    let base = font.retained_bytes();
-    font.to_unicode = Some(Arc::new(cmap::CMap::parse(
+    let to_unicode = Arc::new(cmap::CMap::parse(
         b"1 begincodespacerange <00> <ff> endcodespacerange 1 beginbfchar <41> <0041> endbfchar",
         pagura_core::syntax::Origin::Buffer,
         &document.limits(),
         cmap::CMapRole::ToUnicode,
-    )?));
-    assert!(font.accounted().retained_bytes() > base);
+    )?);
+    assert!(
+        FontUnicode::new(Some(to_unicode), None).retained_bytes()
+            > FontUnicode::new(None, None).retained_bytes()
+    );
     Ok(())
 }
 

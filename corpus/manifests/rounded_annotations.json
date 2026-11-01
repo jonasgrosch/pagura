@@ -1,0 +1,924 @@
+{
+  "schema": 2,
+  "area": "rounded_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "rounded_annotations/Link-72",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/Link-72.pdf",
+      "sha256": "7f435b723b3f7fc2ffc6e82cde66bb4b988eff164f6887b59f87f39368d0c438",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/Link-72.ppm",
+      "oracle_sha256": "36de1b10f4873ae96fe146ef6c43391d75a486a73e569f42ed26a96f73c3d417",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/Square-72",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/Square-72.pdf",
+      "sha256": "0da0beb0a2f40dfdbaf8dd868099746061b690b5a77f97912b17aa306ee54099",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/Square-72.ppm",
+      "oracle_sha256": "36de1b10f4873ae96fe146ef6c43391d75a486a73e569f42ed26a96f73c3d417",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/Widget-72",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/Widget-72.pdf",
+      "sha256": "85c05d82a523f85f0a568aad0ff54ada453235d2068939ffa96e2ccbb652ea14",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/Widget-72.ppm",
+      "oracle_sha256": "36de1b10f4873ae96fe146ef6c43391d75a486a73e569f42ed26a96f73c3d417",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/FreeText-72",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/FreeText-72.pdf",
+      "sha256": "b62512959df3f2d24b85d8a787697807d9c2d9efc891cad78c194a94993e2fc2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/FreeText-72.ppm",
+      "oracle_sha256": "36de1b10f4873ae96fe146ef6c43391d75a486a73e569f42ed26a96f73c3d417",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/filled-72",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/filled-72.pdf",
+      "sha256": "9d6b0a6575d2e5c6358ea6dd2ae99ee2aaad97e9b8635748c440830ce5611d06",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/filled-72.ppm",
+      "oracle_sha256": "646390fc65d8033a21ddac5f78fcf402fff3ca498435811d723d7952ca395a2f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/stored-72",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/stored-72.pdf",
+      "sha256": "9091201d8f6c191ae4c59a274185ae7bb41b87951ee7c8277161c8a8879df198",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/stored-72.ppm",
+      "oracle_sha256": "646390fc65d8033a21ddac5f78fcf402fff3ca498435811d723d7952ca395a2f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-fill-72",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-fill-72.pdf",
+      "sha256": "62ca1cd6ab8ba5744345497193f989218c649118e0949f7dd624c133e400cd99",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-fill-72.ppm",
+      "oracle_sha256": "64eb30898905eb106048083f78859ef597bdbd1312d2efaa8adb2c2c0625df89",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/Link-144",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/Link-144.pdf",
+      "sha256": "7f435b723b3f7fc2ffc6e82cde66bb4b988eff164f6887b59f87f39368d0c438",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/Link-144.ppm",
+      "oracle_sha256": "3adfffa0d0a8529abbecf12fe35242b5eacc6087a5146ecd38541cf4bcea5406",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/Square-144",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/Square-144.pdf",
+      "sha256": "0da0beb0a2f40dfdbaf8dd868099746061b690b5a77f97912b17aa306ee54099",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/Square-144.ppm",
+      "oracle_sha256": "3adfffa0d0a8529abbecf12fe35242b5eacc6087a5146ecd38541cf4bcea5406",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/Widget-144",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/Widget-144.pdf",
+      "sha256": "85c05d82a523f85f0a568aad0ff54ada453235d2068939ffa96e2ccbb652ea14",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/Widget-144.ppm",
+      "oracle_sha256": "3adfffa0d0a8529abbecf12fe35242b5eacc6087a5146ecd38541cf4bcea5406",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/FreeText-144",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/FreeText-144.pdf",
+      "sha256": "b62512959df3f2d24b85d8a787697807d9c2d9efc891cad78c194a94993e2fc2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/FreeText-144.ppm",
+      "oracle_sha256": "3adfffa0d0a8529abbecf12fe35242b5eacc6087a5146ecd38541cf4bcea5406",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/filled-144",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/filled-144.pdf",
+      "sha256": "9d6b0a6575d2e5c6358ea6dd2ae99ee2aaad97e9b8635748c440830ce5611d06",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/filled-144.ppm",
+      "oracle_sha256": "f570b7f200c815bfc89c017ca1996b0a322bccc108ab1ef98c437dce37a48b01",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/stored-144",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/stored-144.pdf",
+      "sha256": "9091201d8f6c191ae4c59a274185ae7bb41b87951ee7c8277161c8a8879df198",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/stored-144.ppm",
+      "oracle_sha256": "f570b7f200c815bfc89c017ca1996b0a322bccc108ab1ef98c437dce37a48b01",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-fill-144",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-fill-144.pdf",
+      "sha256": "62ca1cd6ab8ba5744345497193f989218c649118e0949f7dd624c133e400cd99",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-fill-144.ppm",
+      "oracle_sha256": "cabd1ccfd00068b2125fbd6822cc654d9e8da52e0f9144c520441c8e94c5c0d4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/rotated",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/rotated.pdf",
+      "sha256": "1e5ed9bcf6551d2dfb863f162067e92faa734bc3076c7b1a593c75ee1fd57c62",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/rotated.ppm",
+      "oracle_sha256": "f570b7f200c815bfc89c017ca1996b0a322bccc108ab1ef98c437dce37a48b01",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/opacity",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/opacity.pdf",
+      "sha256": "28cf3073ff8efd14a9ff72d015954a9e84fcc5bb7112a68d751aee257c0f3adc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/opacity.ppm",
+      "oracle_sha256": "08bca963154b46fba88843708006a20313cb8c6837562e73b1e294ba0b294d29",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/clamped-radii",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/clamped-radii.pdf",
+      "sha256": "b4782b2c10cfa9c7756c815ec6903afaabac001e8979c17efb567d3b309927e8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/clamped-radii.ppm",
+      "oracle_sha256": "89bf39382c52be769a590b15f5053def1e6a26ef4a07808bf0d9c107804958a8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/zero-horizontal",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/zero-horizontal.pdf",
+      "sha256": "07c876771640885b11ac20e468b7702839c0a60e0f2c32f6c65e6a6de288ff37",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/zero-horizontal.ppm",
+      "oracle_sha256": "9ddf72eb4b59e1d98382f784269c72f5eeaf1cc46ebd95d2a0a5e25183ca5703",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/zero-vertical",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/zero-vertical.pdf",
+      "sha256": "5b58837b60086bd9f9e4ff6aa9a029d56a6e0b5de130f5b744e7b3babb0c8012",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/zero-vertical.ppm",
+      "oracle_sha256": "9ddf72eb4b59e1d98382f784269c72f5eeaf1cc46ebd95d2a0a5e25183ca5703",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/no-marks",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/no-marks.pdf",
+      "sha256": "478d211e417db33eccaafbdecadd9794b2c92578166494bef381002e91e28367",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/no-marks.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/rd",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/rd.pdf",
+      "sha256": "d67ef54c81890e3c8be89257e666832b1e1794568655560b99dd7087adeded0d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/rd.ppm",
+      "oracle_sha256": "130733a0f3b5ca8ab9d629696a5db9db6aa9a4960ed919875a293b5aa004b325",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/null-bs",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/null-bs.pdf",
+      "sha256": "c2f9510e43dbd3f671febe68075a352a25f6fddd3546c6487202d69ec0b0133d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/null-bs.ppm",
+      "oracle_sha256": "36de1b10f4873ae96fe146ef6c43391d75a486a73e569f42ed26a96f73c3d417",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/link-null-bs",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/link-null-bs.pdf",
+      "sha256": "82e5dd44ef3711de7bbd7c65c97797f8b045956a1bec465cbe854b161b2a713b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/link-null-bs.ppm",
+      "oracle_sha256": "36de1b10f4873ae96fe146ef6c43391d75a486a73e569f42ed26a96f73c3d417",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/stored-ignores-fields",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/stored-ignores-fields.pdf",
+      "sha256": "4d18c75e012240251ed6b402bc4394a061faa2cd5cdafbd75bfda836e0008b00",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/stored-ignores-fields.ppm",
+      "oracle_sha256": "646390fc65d8033a21ddac5f78fcf402fff3ca498435811d723d7952ca395a2f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/bs-precedence",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/bs-precedence.pdf",
+      "sha256": "870cb81b4b74eae3b007c64d05a38096e33e03ba47a1a19137dd01682df52482",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/bs-precedence.ppm",
+      "oracle_sha256": "9ddf72eb4b59e1d98382f784269c72f5eeaf1cc46ebd95d2a0a5e25183ca5703",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/indirect-radii",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/indirect-radii.pdf",
+      "sha256": "ef3637cdea1216938c3b1c7fea50bd76e86a0b9290183e0e03f31f7195a85804",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/indirect-radii.ppm",
+      "oracle_sha256": "36de1b10f4873ae96fe146ef6c43391d75a486a73e569f42ed26a96f73c3d417",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/hidden",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/hidden.pdf",
+      "sha256": "290bc4301f1743cf111f541c6bc4301bb6ac5a8e3b6478f9f8680395ae58b184",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/hidden.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/no-view",
+      "kind": "pdf",
+      "description": "Closed-form quarter-ellipse and rectangle areas independently establish corner pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/no-view.pdf",
+      "sha256": "c0e7b599e1203d40f9800a97970ea2d6cafaae9b1db3f30653bb805ad737e94a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/no-view.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/radius-type",
+      "kind": "pdf",
+      "description": "Invalid radii/width validate before transparent output",
+      "expected": "open",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/radius-type.pdf",
+      "sha256": "942600c85f20e83a88f4cf2ea62020a0162cfd11febab2c7dfd498dd0f4fc6ba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "rounded_annotations/negative-radius",
+      "kind": "pdf",
+      "description": "Invalid radii/width validate before transparent output",
+      "expected": "open",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/negative-radius.pdf",
+      "sha256": "acc393aad86ebdfddfa5f6a67707ea0ad67b280465201f0880521728600bd4bd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "rounded_annotations/width-type",
+      "kind": "pdf",
+      "description": "Invalid radii/width validate before transparent output",
+      "expected": "open",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/width-type.pdf",
+      "sha256": "baae95152a059e708e469fb9ce9429b071b3e63818c850331752faa50f07cfd3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "rounded_annotations/nonrectangular",
+      "kind": "pdf",
+      "description": "Legacy radii on non-rectangular path artwork remain explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/nonrectangular.pdf",
+      "sha256": "3649f12f54c9b3d52bea78fe4fa4b61808ab5d2687e8fce9e95469e6e283f4b6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-Square-72",
+      "kind": "pdf",
+      "description": "True ellipse normal offsets establish unequal-axis corner strokes",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-Square-72.pdf",
+      "sha256": "8f9de2783c4f20dceb0bc44a81aa68795e490d83c2abc25ab71a6a916d34b7e0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-Square-72.ppm",
+      "oracle_sha256": "3b4cba1a8b462225f6c708a213c8a0ee4893883f5525574e1473e49b49fac7e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-Widget-72",
+      "kind": "pdf",
+      "description": "True ellipse normal offsets establish unequal-axis corner strokes",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-Widget-72.pdf",
+      "sha256": "513918219f171876ebfc581fad889331563fd023807ec1df2a0ec44c4c6150a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-Widget-72.ppm",
+      "oracle_sha256": "3b4cba1a8b462225f6c708a213c8a0ee4893883f5525574e1473e49b49fac7e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-stored-72",
+      "kind": "pdf",
+      "description": "An independently authored finer cubic appearance meets the same conic-normal oracle",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-stored-72.pdf",
+      "sha256": "9ba2d11638b8db3a53adad81f55d24c9b8105ff13bc040af92ed054f59460b7f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-stored-72.ppm",
+      "oracle_sha256": "3b4cba1a8b462225f6c708a213c8a0ee4893883f5525574e1473e49b49fac7e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-3-72",
+      "kind": "pdf",
+      "description": "Exact straight and circular arclengths position dash cuts with true normals and butt caps; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/circular-dash-3-72.pdf",
+      "sha256": "8153d6ccaf0b1c65d0717c3ab8a3d55fafe057bb7905adec13cc967f2293fd09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-3-72-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/rounded_annotations/circular-dash-3-72-accuracy-bound.ppm",
+          "sha256": "493bd8d9f85444a999c7189fbf5627df518c3b1dee0c706ebe62e146bdaedd01"
+        }
+      },
+      "deferred_case": "circular-dash-3-72",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "rounded_annotations/circular-dash-7-72",
+      "kind": "pdf",
+      "description": "Exact straight and circular arclengths position dash cuts with true normals and butt caps; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/circular-dash-7-72.pdf",
+      "sha256": "ce21295d690d6ca1bca995dda4b1257ed4c9a181d7bae2a8735107f1862c15ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-7-72-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/rounded_annotations/circular-dash-7-72-accuracy-bound.ppm",
+          "sha256": "4d85bfd6cbe60f5413e39c4c63b9000591dd3c48a89af809cd38b573429233b7"
+        }
+      },
+      "deferred_case": "circular-dash-7-72",
+      "tolerance": 1,
+      "dpi": 72,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-Square-144",
+      "kind": "pdf",
+      "description": "True ellipse normal offsets establish unequal-axis corner strokes",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-Square-144.pdf",
+      "sha256": "8f9de2783c4f20dceb0bc44a81aa68795e490d83c2abc25ab71a6a916d34b7e0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-Square-144.ppm",
+      "oracle_sha256": "3c674ed575834e21fb6426fec0bc11a417759d45bad0bbcfb2e8319c585587b4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-Widget-144",
+      "kind": "pdf",
+      "description": "True ellipse normal offsets establish unequal-axis corner strokes",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-Widget-144.pdf",
+      "sha256": "513918219f171876ebfc581fad889331563fd023807ec1df2a0ec44c4c6150a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-Widget-144.ppm",
+      "oracle_sha256": "3c674ed575834e21fb6426fec0bc11a417759d45bad0bbcfb2e8319c585587b4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-stored-144",
+      "kind": "pdf",
+      "description": "An independently authored finer cubic appearance meets the same conic-normal oracle",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-stored-144.pdf",
+      "sha256": "9ba2d11638b8db3a53adad81f55d24c9b8105ff13bc040af92ed054f59460b7f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-stored-144.ppm",
+      "oracle_sha256": "3c674ed575834e21fb6426fec0bc11a417759d45bad0bbcfb2e8319c585587b4",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-3-144",
+      "kind": "pdf",
+      "description": "Exact straight and circular arclengths position dash cuts with true normals and butt caps; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/circular-dash-3-144.pdf",
+      "sha256": "8153d6ccaf0b1c65d0717c3ab8a3d55fafe057bb7905adec13cc967f2293fd09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-3-144-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/rounded_annotations/circular-dash-3-144-accuracy-bound.ppm",
+          "sha256": "586ec327e72e984d062843cc4bf2274728b44865e59b9ed907a88e317bc23ba5"
+        }
+      },
+      "deferred_case": "circular-dash-3-144",
+      "tolerance": 1,
+      "dpi": 144,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "rounded_annotations/circular-dash-7-144",
+      "kind": "pdf",
+      "description": "Exact straight and circular arclengths position dash cuts with true normals and butt caps; current focused extraction explicitly refuses this curved stroke",
+      "expected": "unsupported",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/circular-dash-7-144.pdf",
+      "sha256": "ce21295d690d6ca1bca995dda4b1257ed4c9a181d7bae2a8735107f1862c15ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/circular-dash-7-144-accuracy-bound",
+      "kind": "vector",
+      "description": "Unchanged independent accuracy bound for explicitly deferred curved-stroke support",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/rounded_annotations/circular-dash-7-144-accuracy-bound.ppm",
+          "sha256": "2665dfaa25bc8c38ff7b0bdd7a186535b7b53c488b0aec33f57d7f01d920853d"
+        }
+      },
+      "deferred_case": "circular-dash-7-144",
+      "tolerance": 1,
+      "dpi": 144,
+      "qualification": "accuracy follow-up; current rendering refuses"
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-opacity",
+      "kind": "pdf",
+      "description": "Conic-normal stroke coverage followed by opacity or page rotation establishes pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-opacity.pdf",
+      "sha256": "6091e049f0827dde8d910dc634492536db65d8f940984f3e32148742cac68d22",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-opacity.ppm",
+      "oracle_sha256": "04579d4f99f41273673049adf41d0b06f1fc0381de37a8ec96c42f033e054335",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "rounded_annotations/ellipse-stroke-rotated",
+      "kind": "pdf",
+      "description": "Conic-normal stroke coverage followed by opacity or page rotation establishes pixels",
+      "expected": "render",
+      "requirements": [
+        "content-rounded-borders"
+      ],
+      "path": "corpus/generated/rounded_annotations/ellipse-stroke-rotated.pdf",
+      "sha256": "98143a1e532a46781d63ad9c56967e69eb260701e1dcc54ee518d0993c4af987",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/rounded_annotations/ellipse-stroke-rotated.ppm",
+      "oracle_sha256": "6f700c5e0059c5f8d1ebc4d3f0b45f86fb3a78079df7fbae29007886a06e11db",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    }
+  ]
+}

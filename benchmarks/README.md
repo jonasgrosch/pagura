@@ -9,6 +9,36 @@ and verified outputs. A fast average cannot hide a slow or incorrect cell.
 Unbound workloads, missing engines, unattested runners and unimplemented
 cross-platform/resolution/concurrency aggregation still block release.
 
+## Capability inventory (G00)
+
+`capabilities.json` is the reviewed source-inspection ledger for the
+[competitive plan](../docs/COMPETITIVE_PARITY.md). Its generated
+[review view](../docs/CAPABILITIES.md) separates library, CLI, host and viewer
+support. All 90 literal tags have manual dispositions with hashed call-site evidence.
+The 43 capability families own all 332 registered requirements and include untagged APIs.
+Every baseline family cell is explicitly unprobed; schema 2 rejects runtime support
+or N/A claims. G01 fixture-level results and build identities are recorded separately.
+
+```sh
+uv run --locked --offline python tools/capabilities.py --check
+# After reviewing ledger edits, regenerate the checked view:
+uv run --locked --offline python tools/capabilities.py
+```
+
+The check validates IDs, owners, packages, fixture/requirement references,
+LF-normalized source hashes, tag dispositions/locators, requirement/API ownership
+and the generated view.
+Regeneration never refreshes source hashes or reclassifies a tag automatically.
+When source evidence changes, review the affected observations before updating
+their hashes. Tests/fixtures are references to existing evidence, not new run
+results. The scan is lexical; the manual review followed symbol uses, aliases
+and decoder dispatch. New dynamic tags or APIs reopen the inventory.
+No competitor download, engine invocation or product behavior change occurs.
+
+G01's first [document-service probes](probes/README.md) exercise the pinned
+PDFium/MuPDF APIs on independent synthetic controls in hosted CI. Results remain
+fixture-scoped; the remaining baseline adapters stay explicit and unprobed.
+
 ## Offline checks and explicit competitor setup
 
 ```sh
@@ -25,7 +55,10 @@ The Python engines are the `bench` dependency group in `pyproject.toml`; setup
 runs `uv sync --locked --only-group bench` into `venv/` there, so `uv.lock` pins
 every transitive wheel by hash and `.python-version` pins the interpreter.
 The hayro adapter and checked-in lock are copied there; its isolated `CARGO_HOME`
-and target directory are also there. It uses the workspace's pinned toolchain.
+and target directory are also there. It uses the workspace's pinned toolchain
+and the native target flags `.cargo/config.toml` gives the host, resolved as
+`round5.py` resolves Pagura's; `hayro-build.json` there records them, and hayro's
+engine identity reports them as `build`.
 Node resolves packages from this same external cache. Dependency locks remain in
 `benchmarks/`. Studying other engines is allowed; copying or translating their
 implementation remains forbidden (ADR 0006).
@@ -151,16 +184,20 @@ module instead, so V8's process ratio rises while its stage ratio falls. Compare
 cells only within one setting; `summary.md` repeats this note whenever V8 is timed. Wasmtime
 49.0.3 uses a locally generated, hash-recorded Cranelift AOT artifact (optimization
 level 2, parallel compilation disabled). Never load an untrusted AOT artifact.
-Both use explicit SIMD128 compiler flags; native uses compiler autovectorization
-at the Rust target baseline. The compiler's enabled target features are recorded:
-NEON on aarch64, and SSE2 (without AVX2 or AVX-512) on default x86_64 targets.
-Inherited Rust target flags are cleared. Other engines' ISA dispatch is not audited.
+The native and WASM builds use the repository's `.cargo/config.toml` flags for
+their target, as `cargo build` in the repository does: native code relies on
+compiler autovectorization, and WASM gets SIMD128. The harness resolves the
+flags itself and passes them through `CARGO_ENCODED_RUSTFLAGS`, so inherited
+`RUSTFLAGS` and user-level Cargo configuration never reach the build.
+`compiler.json` records the flags (`native_rustflags`, `wasm_rustflags`) and the
+compiler's enabled target features, such as NEON on aarch64 and SSE2/SSE4.1
+(without AVX2 or AVX-512) for x86-64-v2. Other engines' ISA dispatch is not audited.
 
 The optional `round5.py --pagura-x86-64-v3` track builds a separate
 `pagura-x86-64-v3` binary with `RUSTFLAGS="-C target-cpu=x86-64-v3"` in an
 isolated target directory. It appears under that name in its own comparison
-rows; portable `pagura` remains the headline and paired reference. The optional
-track must match the portable build's pixels exactly in every block, including
+rows; headline `pagura` remains the paired reference. The optional
+track must match the headline build's pixels exactly in every block, including
 warmups, before ratios can be reported. It is reported unavailable on other
 architectures or x86 hosts missing the required instructions. Compiler-enabled
 target features, host feature checks and flags are retained in `compiler.json`
@@ -169,15 +206,6 @@ not establish an equivalently tuned release comparison. The track is a Pagura
 build: with `--engines` it requires `pagura` and is timed alongside it, and with
 `--reference` it is re-timed against stored competitor medians but never counts
 as the best competitor.
-
-The optional `round5.py --pagura-competitive` row times the portable binary's
-competitive accuracy path (`--accuracy competitive`, `RenderOptions::accuracy`;
-ADR 0004's competitive accuracy gate) under the name `pagura-competitive`.
-Exact `pagura` remains the headline and paired reference. The row's pixels
-differ from exact Pagura by design, so it takes no part in runtime parity; its
-agreement records against `pagura` measure its accuracy. Like the x86-64-v3
-track, it requires `pagura` in `--engines` and never counts as the best
-competitor.
 
 Every warmup and measured WASI output must be byte-identical to its block's
 native Pagura pixels. A mismatch is retained as `runtime-parity-mismatch` and
@@ -340,8 +368,7 @@ Controls do not replace stored competitor medians.
 `medians.json` retains newly measured per-page render/emit and per-document
 stage/process/CPU/RSS medians. `comparison.json` and `summary.md` compare Pagura
 with every engine, the fastest applicable competitor per cell, and reference
-Pagura. Best excludes Pagura's V8/Wasmtime and x86-64-v3 builds and its competitive
-path. Each category/DPI
+Pagura. Best excludes Pagura's V8/Wasmtime and x86-64-v3 builds. Each category/DPI
 entry is the median of its cell ratios of medians; reference values are used
 only for engines absent from `--engines`. Render
 cells are pages; engine contribution (`open + render`) and process cells are

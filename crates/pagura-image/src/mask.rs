@@ -3,10 +3,13 @@ use crate::MaskKind;
 use pagura_core::{Dictionary, Error, Result, Value};
 use pagura_document::Document;
 
-pub(crate) fn read(
+/// [`read`] for an image of `components` colour components whose
+/// precisions `bits` gives, before its samples are decoded.
+pub(crate) fn read_for(
     document: &Document,
     dict: &Dictionary,
-    image: &crate::DecodedImage,
+    components: u8,
+    bits: &dyn Fn(usize) -> Option<u8>,
 ) -> Result<MaskKind> {
     if let Some(value) = dict.get(b"SMask").filter(|v| !v.is_null()) {
         let id = value
@@ -67,14 +70,12 @@ pub(crate) fn read(
             .resolve(value)?
             .as_array()
             .ok_or(Error::syntax("invalid image Mask"))?;
-        if ranges.len() != usize::from(image.components) * 2 {
+        if ranges.len() != usize::from(components) * 2 {
             return Err(Error::syntax("invalid colour key length"));
         }
-        let mut keys = Vec::with_capacity(usize::from(image.components));
+        let mut keys = Vec::with_capacity(usize::from(components));
         for (component, pair) in ranges.as_chunks::<2>().0.iter().enumerate() {
-            let bits = image
-                .component_bits(component)
-                .ok_or(Error::syntax("missing image component precision"))?;
+            let bits = bits(component).ok_or(Error::syntax("missing image component precision"))?;
             let max = u16::MAX >> (16 - bits);
             let sample = |v| {
                 u16::try_from(

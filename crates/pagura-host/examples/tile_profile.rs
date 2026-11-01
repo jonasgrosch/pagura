@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 //! Profiles tile serving through a session, as the viewer drives it: the
-//! same 64 tiles of 64x64 pixels with compiled-page retention disabled, so
-//! that every tile compiles its page, and with the default retention, so
-//! that one compilation is followed by painting and encoding only. Both
-//! timings include the document open. They are exploratory hypotheses, not
+//! same 64 tiles of 64x64 pixels with the render store disabled, so that
+//! every tile records its page and decodes its images, and with the default
+//! store, so that one recording is followed by painting and encoding only.
+//! Both timings include the document open. They are exploratory hypotheses, not
 //! measurements under the performance policy in docs/ARCHITECTURE.md.
 
 use pagura_host::protocol::{RequestKind, ResponseKind, Version};
@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         input.extend(frame(RequestKind::RenderTile.code(), index + 3, &tile));
     }
     let uncached = SessionConfig::default().with_session(SessionLimits {
-        list_cache_bytes: 0,
+        store_bytes: 0,
         ..SessionLimits::default()
     });
     let uncached_seconds = serve(Session::new(uncached), &input)?;

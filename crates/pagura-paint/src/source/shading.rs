@@ -1,0 +1,1086 @@
+//! Shading sources (8.7.4): axial, radial, function-based and mesh
+//! shadings evaluated per device pixel with prepared functions and a
+//! prepared converter.
+//!
+//! A pixel takes one sample at its centre, or with `AntiAlias` the box
+//! filter of a 2×2 grid at quarter offsets. Samples that miss the shading
+//! (outside its domain, `Extend` or mesh) do not count: the pixel's colour
+//! is the mean of the samples that hit, and its alpha (which is also its
+//! shape) the fraction that hit. A shading pattern's samples outside its
+//! `BBox` miss as well, and with a `Background` a missed sample takes the
+//! background colour (8.7.4.4). Sampling uses global device coordinates, so
+//! results do not depend on bands or regions.
+//!
+//! Spans avoid repeated work where the result is provably identical: a
+//! constant colour is converted once, and an axial shading whose axis is
+//! aligned with the device grid reuses one evaluation along a row, or one
+//! per column for every row.
+
+mod aligned;
+mod colors;
+mod geometry;
+mod mesh;
+#[cfg(test)]
+mod tests;
+
+use super::{PaintContext, Precision, SpanColors, copy_values};
+use colors::{Colors, Sample};
+use geometry::{Axial, FunctionDomain, Radial};
+use mesh::Mesh;
+use pagura_color::{MAX_COMPONENTS, Painted};
+use pagura_core::{Error, Meter, Rect, Result};
+use pagura_interpret::features;
+use pagura_interpret::{Shading, ShadingFunction, ShadingKind};
+use pagura_raster::{DeviceRect, Point, Transform};
+
+/// The function input of one sample: `t`, `(x, y)` or mesh values.
+type Input = [f64; MAX_COMPONENTS];
+
+/// Pixels whose colours [`ShadingSource::fill_batched`] converts together.
+const BATCH: usize = 32;
+
+/// Shading geometry: the function input at a point of shading space.
+trait Sampler {
+    /// Writes the input at `point` and returns true, or returns false for a
+    /// miss.
+    fn sample(&self, point: Point, input: &mut Input) -> bool;
+}
+
+/// How the executor applies a shading's `BBox`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BBoxUse {
+    /// The `BBox` does not limit the painted area.
+    None,
+    /// The mark is clipped to the `BBox` under the shading's transform (a
+    /// degenerate box clips to its outline).
+    Clip,
+    /// A shading pattern with a `Background` and a degenerate `BBox`: the
+    /// executor passes the box outline's coverage to
+    /// [`ShadingSource::span_with_boundary`], which mixes shading and
+    /// background colours by it.
+    Boundary,
+}
+
+/// A shading prepared for one render.
+#[derive(Debug)]
+pub(crate) struct ShadingSource {
+    /// Shading space to device space.
+    transform: Transform,
+    /// Device space to shading space.
+    inverse: Transform,
+    /// Samples per pixel along each axis: 1, or 2 with `AntiAlias`.
+    rate: u32,
+    geometry: Box<Geometry>,
+    colors: Box<Colors>,
+    pattern: Option<Box<Pattern>>,
+    bbox_use: BBoxUse,
+    painted: Painted,
+    channels: usize,
+    /// For a colour that does not depend on the sample: pixel colours by
+    /// the number of samples that hit, `rate²` blocks of `channels`.
+    constant: Option<Box<[f64]>>,
+    /// Whether every sample of every pixel hits.
+    covers: bool,
+    aligned: Option<Box<aligned::Aligned>>,
+}
+
+#[derive(Debug)]
+enum Geometry {
+    Axial(Axial),
+    Radial(Radial),
+    Function(FunctionDomain),
+    Mesh(Box<Mesh>),
+}
+
+/// What a shading pattern adds to `sh` (8.7.4.4).
+#[derive(Debug)]
+struct Pattern {
+    /// The `BBox` samples are tested against; `None` without one or when
+    /// it is degenerate (the executor clips to its outline instead).
+    bbox: Option<Rect>,
+    /// The converted `Background`.
+    background: Option<Box<[f64]>>,
+}
+
+impl ShadingSource {
+    /// Prepares `shading` painted with `sh` under `shading_to_device` (the
+    /// CTM composed with the device transform) and reserves the
+    /// `function_work` of filling `pixels` device pixels. `Background` is
+    /// ignored, as `sh` requires.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Unsupported` for a singular transform or colour the
+    /// conversion cannot perform, and a `Limit` error when the reservation
+    /// exceeds `functions`.
+    pub(crate) fn prepare(
+        shading: &Shading,
+        shading_to_device: Transform,
+        context: &PaintContext<'_>,
+        pixels: usize,
+        (functions, bytes): (&mut Meter, &Meter),
+    ) -> Result<Self> {
+        let mut bytes = Meter::new(bytes.remaining(), "render memory budget exceeded");
+        Self::new(
+            &Parts::from(shading),
+            shading_to_device,
+            context,
+            Use::Operator,
+            (&mut bytes, functions),
+        )?
+        .reserve((pixels, context.region), (&mut bytes, functions))
+    }
+
+    /// Prepares `shading` as a shading pattern's paint (8.7.4.4): samples
+    /// outside the `BBox` miss, and the `Background` fills missed samples.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::prepare`].
+    pub(crate) fn pattern(
+        shading: &Shading,
+        shading_to_device: Transform,
+        context: &PaintContext<'_>,
+        pixels: usize,
+        (functions, bytes): (&mut Meter, &Meter),
+    ) -> Result<Self> {
+        let mut bytes = Meter::new(bytes.remaining(), "render memory budget exceeded");
+        Self::new(
+            &Parts::from(shading),
+            shading_to_device,
+            context,
+            Use::Pattern,
+            (&mut bytes, functions),
+        )?
+        .reserve((pixels, context.region), (&mut bytes, functions))
+    }
+
+    fn new(
+        shading: &Parts<'_>,
+        transform: Transform,
+        context: &PaintContext<'_>,
+        usage: Use,
+        (bytes, functions): (&mut Meter, &mut Meter),
+    ) -> Result<Self> {
+        let inverse = transform.inverse().ok_or(Error::unsupported(
+            features::SHADING_TRANSFORM,
+            "singular shading transform",
+        ))?;
+        bytes.charge_items::<Colors>(1)?;
+        let colors = Box::new(Colors::new(shading, context, bytes)?);
+        bytes.charge_items::<Geometry>(1)?;
+        let geometry = Box::new(Geometry::new(shading, colors.values(), bytes)?);
+        // A box without area is certified once classified: the mark is
+        // clipped to its hairline outline, and no sample is tested.
+        let certified = shading.bbox.is_some_and(|b| b.is_empty());
+        let pattern = if usage == Use::Pattern {
+            bytes.charge_items::<Pattern>(1)?;
+            let background = match shading.background {
+                Some(background) => {
+                    bytes.charge_items::<f64>(colors.channels())?;
+                    functions.charge(colors.cost())?;
+                    Some(colors.convert_components(background))
+                }
+                None => None,
+            };
+            Some(Box::new(Pattern {
+                bbox: shading.bbox.filter(|_| !certified),
+                background,
+            }))
+        } else {
+            None
+        };
+        let bbox_use = match &pattern {
+            _ if shading.bbox.is_none() => BBoxUse::None,
+            None => BBoxUse::Clip,
+            Some(p) if p.background.is_none() => BBoxUse::Clip,
+            Some(_) if certified => BBoxUse::Boundary,
+            Some(_) => BBoxUse::None,
+        };
+        let channels = colors.channels();
+        let painted = if context.composite.overprint.enabled {
+            colors.painted()
+        } else {
+            Painted::all(channels)
+        };
+        let rate = if shading.antialias { 2 } else { 1 };
+        let mut source = Self {
+            transform,
+            inverse,
+            rate,
+            covers: false,
+            geometry,
+            colors,
+            pattern,
+            bbox_use,
+            painted,
+            channels,
+            constant: None,
+            aligned: None,
+        };
+        source.constant = source.constant_colors(bytes, functions)?;
+        source.covers = source.always_covers();
+        let columns = (context.region.x0, context.region.x1);
+        source.aligned = aligned::Aligned::new(&source, columns, bytes, functions)?.map(Box::new);
+        Ok(source)
+    }
+
+    /// Reserves execution work for the pixels of `region`, at most
+    /// `pixels`, that evaluation fills; preparation is charged before
+    /// evaluation. Aligned sources evaluate only what their columns'
+    /// table cannot serve. Batched colours are also certified ahead.
+    fn reserve(
+        mut self,
+        (pixels, region): (usize, DeviceRect),
+        (bytes, functions): (&mut Meter, &mut Meter),
+    ) -> Result<Self> {
+        let evaluated = match (&*self.geometry, &self.aligned) {
+            (Geometry::Axial(axial), Some(aligned)) => {
+                aligned.evaluated(&self, axial, region, pixels)
+            }
+            _ => pixels,
+        };
+        let samples = evaluated
+            .checked_mul(self.samples())
+            .ok_or(Error::limit("shading sample count overflow"))?;
+        functions.charge_product(samples, self.colors.cost())?;
+        let inputs = match &*self.geometry {
+            Geometry::Axial(g) if self.aligned.is_none() => Some(g.inputs()),
+            Geometry::Radial(g) => Some(g.inputs()),
+            _ => None,
+        };
+        if let Some(inputs) = inputs
+            && self.constant.is_none()
+            && self.single_sample()
+            && self.colors.batched()
+        {
+            self.colors.certify(inputs, samples, (bytes, functions));
+        }
+        Ok(self)
+    }
+
+    fn samples(&self) -> usize {
+        let rate = self.rate as usize;
+        rate * rate
+    }
+
+    /// Shading space to device space.
+    pub(crate) fn transform(&self) -> Transform {
+        self.transform
+    }
+
+    /// The channels every pixel paints.
+    pub(crate) fn painted(&self) -> Painted {
+        self.painted
+    }
+
+    /// The colour of every pixel, when the shading paints one opaque colour
+    /// everywhere (a constant function and geometry that every sample hits).
+    pub(crate) fn constant(&self) -> Option<&[f64]> {
+        let all = self.samples() - 1;
+        self.constant
+            .as_deref()
+            .filter(|_| self.covers)
+            .and_then(|c| c.get(all * self.channels..(all + 1) * self.channels))
+    }
+
+    /// Geometry work units filling the pixels of `region` costs at most,
+    /// which preparation reserves as render work: for each sample, the mesh
+    /// primitives its cell lists (one unit per triangle and per patch whose
+    /// bounds or control-point hull miss the sample, at most `MAX_WORK` per
+    /// patch whose bounds and hull hold it), at the sample's point as
+    /// execution places it; zero for analytic shadings. Counting stops once
+    /// it passes `limit`.
+    pub(crate) fn geometry_work(&self, region: DeviceRect, limit: usize) -> usize {
+        let Geometry::Mesh(mesh) = &*self.geometry else {
+            return 0;
+        };
+        let divisor = f64::from(self.rate);
+        let mut work = 0_usize;
+        for y in region.y0..region.y1 {
+            for x in region.x0..region.x1 {
+                for (sx, sy) in (0..self.rate).flat_map(|sy| (0..self.rate).map(move |sx| (sx, sy)))
+                {
+                    let point = Point::new(
+                        f64::from(x) + (f64::from(sx) + 0.5) / divisor,
+                        f64::from(y) + (f64::from(sy) + 0.5) / divisor,
+                    ) * self.inverse;
+                    work = work.saturating_add(mesh.work_at(point));
+                }
+                if work > limit {
+                    return work;
+                }
+            }
+        }
+        work
+    }
+
+    /// Bytes this source holds besides its function and colour data: mesh
+    /// geometry and aligned tables.
+    pub(crate) fn bytes(&self) -> usize {
+        let mesh = match &*self.geometry {
+            Geometry::Mesh(mesh) => size_of::<Mesh>() + mesh.bytes(),
+            _ => 0,
+        };
+        size_of::<Geometry>()
+            + size_of::<Colors>()
+            + self.colors.bytes()
+            + mesh
+            + self.aligned.as_ref().map_or(0, |a| a.bytes())
+            + self
+                .constant
+                .as_ref()
+                .map_or(0, |c| c.len() * size_of::<f64>())
+            + self.pattern.as_ref().map_or(0, |pattern| {
+                size_of::<Pattern>()
+                    + pattern
+                        .background
+                        .as_ref()
+                        .map_or(0, |c| c.len() * size_of::<f64>())
+            })
+    }
+
+    /// Fills `out` with the colours of device pixels `x .. x + len` of row
+    /// `y`, kept to `precision`. `out.alpha` holds each pixel's covered
+    /// fraction (its alpha and shape), or is empty when every pixel is fully
+    /// covered.
+    pub(crate) fn span(
+        &self,
+        x: u32,
+        y: u32,
+        len: usize,
+        precision: Precision,
+        out: &mut SpanColors,
+    ) {
+        self.fill((x, y, len), None, precision, out);
+    }
+
+    /// As [`Self::span`], for [`BBoxUse::Boundary`]: `boundary` holds the
+    /// coverage of the box outline at each pixel.
+    pub(crate) fn span_with_boundary(
+        &self,
+        x: u32,
+        y: u32,
+        boundary: &[u8],
+        precision: Precision,
+        out: &mut SpanColors,
+    ) {
+        self.fill((x, y, boundary.len()), Some(boundary), precision, out);
+    }
+
+    fn fill(
+        &self,
+        (x, y, len): (u32, u32, usize),
+        boundary: Option<&[u8]>,
+        precision: Precision,
+        out: &mut SpanColors,
+    ) {
+        out.channels = self.channels;
+        out.painted = self.painted;
+        let span = Span {
+            x,
+            y,
+            boundary: boundary.filter(|_| self.bbox_use == BBoxUse::Boundary),
+            precision,
+        };
+        let aligned = self.aligned.as_ref().filter(|_| span.boundary.is_none());
+        let rows = match &*self.geometry {
+            Geometry::Axial(g) if aligned.is_none() => self.row(g, span, len).map(|row| (g, row)),
+            _ => None,
+        };
+        if let Some((axial, row)) = rows {
+            self.fill_rows(axial, &row, (span, len), out);
+        } else {
+            out.colors.clear();
+            out.colors.resize(len * self.channels, 0.0);
+            out.alpha.clear();
+            out.alpha.resize(len, 1.0);
+            match &*self.geometry {
+                Geometry::Axial(g) => match aligned {
+                    Some(aligned) => aligned.fill(self, g, span, out),
+                    None => self.fill_with(g, span, out),
+                },
+                Geometry::Radial(g) => self.fill_with(g, span, out),
+                Geometry::Function(g) => self.fill_with(g, span, out),
+                Geometry::Mesh(g) => self.fill_with(&**g, span, out),
+            }
+        }
+        if out.alpha.iter().all(|&a| a == 1.0) {
+            out.alpha.clear();
+        }
+    }
+
+    /// The general span loop, monomorphized per geometry.
+    fn fill_with<S: Sampler>(&self, sampler: &S, span: Span<'_>, out: &mut SpanColors) {
+        if self.constant.is_none() && self.single_sample() && self.colors.batched() {
+            self.fill_batched(sampler, span, out);
+            return;
+        }
+        let SpanColors { colors, alpha, .. } = out;
+        // Averaged samples and a background mix need exact colours; a single
+        // sample's colour is the pixel's.
+        let precision = if self.single_sample() {
+            span.precision
+        } else {
+            Precision::Exact
+        };
+        let mut sample = Sample::new(precision);
+        for (i, (color, alpha)) in colors
+            .chunks_exact_mut(self.channels.max(1))
+            .zip(alpha.iter_mut())
+            .enumerate()
+        {
+            let x = span.x.saturating_add(u32::try_from(i).unwrap_or(u32::MAX));
+            let boundary = span
+                .boundary
+                .and_then(|b| b.get(i))
+                .map(|&c| f64::from(c) / 255.0);
+            *alpha = self.pixel(sampler, (x, span.y), boundary, (color, &mut sample));
+        }
+    }
+
+    /// [`Self::fill_with`] for one sample a pixel and no background, a batch
+    /// of pixels at a time: the inputs of the samples that hit are gathered,
+    /// a run of inputs equal bit for bit keeps one (equal inputs convert to
+    /// equal colours), and the colours of the rest convert together, which
+    /// takes the per-sample overhead of the colour stage out of the pixel
+    /// loop.
+    fn fill_batched<S: Sampler>(&self, sampler: &S, span: Span<'_>, out: &mut SpanColors) {
+        const MISS: usize = usize::MAX;
+        let SpanColors { colors, alpha, .. } = out;
+        let channels = self.channels.max(1);
+        let inputs = self.colors.inputs();
+        let mut input: Input = [0.0; MAX_COMPONENTS];
+        let mut keys = [0.0_f64; BATCH * colors::BATCH_VALUES];
+        // Each pixel's distinct input, or `MISS`.
+        let mut slots = [0_usize; BATCH];
+        for (batch, (colors, alpha)) in colors
+            .chunks_mut(BATCH * channels)
+            .zip(alpha.chunks_mut(BATCH))
+            .enumerate()
+        {
+            let first = span
+                .x
+                .saturating_add(u32::try_from(batch * BATCH).unwrap_or(u32::MAX));
+            let mut distinct = 0;
+            for (i, slot) in slots.iter_mut().enumerate().take(alpha.len()) {
+                let x = first.saturating_add(u32::try_from(i).unwrap_or(u32::MAX));
+                let point = Point::new(f64::from(x) + 0.5, f64::from(span.y) + 0.5) * self.inverse;
+                let inside = self.pattern.as_ref().is_none_or(|p| p.inside(point));
+                if !(inside && sampler.sample(point, &mut input)) {
+                    *slot = MISS;
+                    continue;
+                }
+                let key = &input[..inputs];
+                let repeat = distinct > 0
+                    && keys[(distinct - 1) * inputs..distinct * inputs]
+                        .iter()
+                        .zip(key)
+                        .all(|(a, b)| a.to_bits() == b.to_bits());
+                if !repeat {
+                    copy_values(&mut keys[distinct * inputs..(distinct + 1) * inputs], key);
+                    distinct += 1;
+                }
+                *slot = distinct - 1;
+            }
+            // The distinct colours go to the batch's first pixels; pixel `i`
+            // reads slot `slots[i] ≤ i`, so last to first reads each slot
+            // before it is written.
+            self.colors.convert_line(
+                &keys[..distinct * inputs],
+                &mut colors[..distinct * channels],
+                span.precision,
+            );
+            for (i, (&slot, alpha)) in slots.iter().zip(alpha.iter_mut()).enumerate().rev() {
+                let start = i * channels;
+                if slot == MISS {
+                    colors[start..start + channels].fill(0.0);
+                    *alpha = 0.0;
+                    continue;
+                }
+                // The sum of one sample is `0 + s` and its mean that over 1,
+                // as [`Self::single`] computes them.
+                for c in 0..channels {
+                    colors[start + c] = (0.0 + colors[slot * channels + c]) / 1.0;
+                }
+            }
+        }
+    }
+
+    /// The row of `len` pixels from `span` of an axial shading whose
+    /// colours are kept to F32 levels and certified ahead, with one sample
+    /// a pixel, no background and no `BBox` test, stepped along its
+    /// parameter ([`Row`]); `None` otherwise.
+    ///
+    /// Along a row the parameter is affine in the column, so it is stepped,
+    /// `t₀ + k·β`, instead of computed from each pixel's point. Both
+    /// parameters approximate the real one (`u` the unit roundoff): the
+    /// exact one rounds the point's two products and two sums, the two
+    /// differences, products and sum, and the quotient, so it is within
+    /// `8u·M` of it, where `M` is the parameter computed in magnitudes; the
+    /// stepped one has the first pixel's error, `β`'s rounding (`4u` of its
+    /// magnitudes) times `k`, and two more roundings. `M` grows along the
+    /// row, so its value at `far`, past the last pixel's column, bounds
+    /// every pixel's, and `32u·(M + |t₀| + far·|β|)` bounds the parameters'
+    /// distance with room to spare. Inside `0..1` neither parameter is
+    /// clamped, and the domain map `d₀ + t·w` rounds twice more for each, so
+    /// the inputs differ by at most `|w|` times that plus `4u·(|d₀| + |w|)`.
+    fn row(&self, axial: &Axial, span: Span<'_>, len: usize) -> Option<Row<'_>> {
+        let ramp = self.colors.ramp()?;
+        if span.precision != Precision::Level
+            || span.boundary.is_some()
+            || self.constant.is_some()
+            || !self.single_sample()
+            || self.pattern.as_ref().is_some_and(|p| p.bbox.is_some())
+            || axial.denominator == 0.0
+            || self.colors.inputs() != 1
+            || !self.colors.batched()
+        {
+            return None;
+        }
+        let i = self.inverse;
+        let (x0, y) = (f64::from(span.x) + 0.5, f64::from(span.y) + 0.5);
+        let start = axial.parameter(Point::new(x0, y) * i);
+        let step = (i.a * axial.delta.x + i.b * axial.delta.y) / axial.denominator;
+        let u = f64::EPSILON / 2.0;
+        let far = x0 + f64::from(u32::try_from(len).unwrap_or(u32::MAX));
+        let magnitude = ((i.a.abs() * far + i.c.abs() * y.abs() + i.e.abs() + axial.start.x.abs())
+            * axial.delta.x.abs()
+            + (i.b.abs() * far + i.d.abs() * y.abs() + i.f.abs() + axial.start.y.abs())
+                * axial.delta.y.abs())
+            / axial.denominator;
+        let error = 32.0 * u * (magnitude + start.abs() + far * step.abs());
+        let [d0, d1] = axial.domain;
+        let width = d1 - d0;
+        let input_error = (width.abs() * error + 4.0 * u * (d0.abs() + width.abs())) * (1.0 + 1e-6);
+        (error.is_finite() && input_error.is_finite() && error < 0.25).then_some(Row {
+            ramp,
+            start,
+            step,
+            error,
+            domain: (d0, width),
+            input_error,
+        })
+    }
+
+    /// [`Self::fill_with`] for a [`Self::row`]: each colour comes from the
+    /// ramp's polynomials ([`pagura_color::Ramp::piece`]) within
+    /// [`pagura_color::APPROXIMATE`] of the exact colour, with a certificate
+    /// of the same stored levels, or exactly ([`Self::each_pixel`]). Every colour
+    /// is written, and every opacity unless every sample hits, so the
+    /// buffers are sized without clearing. Out of line, so that the path of
+    /// other shadings stays as it was.
+    #[inline(never)]
+    fn fill_rows(
+        &self,
+        axial: &Axial,
+        row: &Row<'_>,
+        (span, len): (Span<'_>, usize),
+        out: &mut SpanColors,
+    ) {
+        let channels = self.channels.max(1);
+        let SpanColors { colors, alpha, .. } = out;
+        colors.truncate(len * self.channels);
+        colors.resize(len * self.channels, 0.0);
+        alpha.clear();
+        let hits = row.hits(len, axial.extend);
+        if !hits {
+            alpha.resize(len, 0.0);
+        }
+        self.each_pixel(
+            axial,
+            row,
+            (span.x, span.y),
+            (0..len, &mut 0),
+            |k, color, _| {
+                debug_assert!(color.is_some() || !hits, "every sample hits");
+                if let Some(out) = colors.get_mut(k * channels..(k + 1) * channels) {
+                    match color {
+                        Some(color) => out.copy_from_slice(color),
+                        None => out.fill(0.0),
+                    }
+                }
+                if let Some(alpha) = alpha.get_mut(k) {
+                    *alpha = if color.is_some() { 1.0 } else { 0.0 };
+                }
+            },
+        );
+    }
+
+    /// Writes into `out` the F32 levels a store at full opacity writes for
+    /// device pixels `x .. x + out.len()` of row `y` (each colour's
+    /// [`crate::kernel::levels`]), where a [`Self::row`] of three channels gives
+    /// the span's colours and every sample hits; false, with nothing
+    /// written, otherwise. A pixel the ramp's polynomials certify takes the
+    /// levels its certificate found; another rounds its exact colour. Out of
+    /// line, as [`Self::fill_rows`] is.
+    #[inline(never)]
+    pub(crate) fn levels(&self, x: u32, y: u32, out: &mut [[f32; 4]]) -> bool {
+        let (Geometry::Axial(axial), None, 3) = (&*self.geometry, &self.aligned, self.channels)
+        else {
+            return false;
+        };
+        let len = out.len();
+        let span = Span {
+            x,
+            y,
+            boundary: None,
+            precision: Precision::Level,
+        };
+        let Some(row) = self
+            .row(axial, span, len)
+            .filter(|row| row.hits(len, axial.extend))
+        else {
+            return false;
+        };
+        self.each_pixel(axial, &row, (x, y), (0..len, &mut 0), |k, color, levels| {
+            debug_assert!(color.is_some(), "every sample hits");
+            if let (Some(pixel), Some(color)) = (out.get_mut(k), color) {
+                *pixel = match levels {
+                    Some(&[r, g, b]) => [r, g, b, 255.0],
+                    _ => crate::kernel::levels(color),
+                };
+            }
+        });
+        true
+    }
+
+    /// Calls `put(k, colour, levels)` for each pixel `k` of `pixels` of a
+    /// [`Self::row`], with `hint` the piece to look from: its colour
+    /// as a store of its one sample keeps it (`0 + v`, which turns `−0`
+    /// into `+0`), or `None` where the sample misses.
+    ///
+    /// A colour from the ramp's polynomials comes with the F32 levels of
+    /// its channels, which every exact colour within the polynomials'
+    /// bounds has ([`certified_levels`]): the exact colour's levels. A pixel
+    /// whose levels are not certain, whose stepped parameter could fall on
+    /// the other side of `0` or `1` than the exact one, or whose input error
+    /// reaches a piece's end, takes the exact colour, as
+    /// [`Self::fill_batched`] converts it, a batch at a time, without levels.
+    fn each_pixel(
+        &self,
+        axial: &Axial,
+        row: &Row<'_>,
+        (x, y): (u32, u32),
+        (pixels, hint): (std::ops::Range<usize>, &mut usize),
+        mut put: impl FnMut(usize, Option<&[f64]>, Option<&[f32]>),
+    ) {
+        let channels = self.channels.max(1);
+        let (d0, width) = row.domain;
+        let mut piece: Option<pagura_color::Piece<'_>> = None;
+        let mut exact = Exact::default();
+        let mut color = [0.0; pagura_color::MAX_RAMP_CHANNELS];
+        let color = color.get_mut(..channels).unwrap_or_default();
+        let mut input: Input = [0.0; MAX_COMPONENTS];
+        for k in pixels {
+            let t = row.parameter(k);
+            if t > row.error && t < 1.0 - row.error {
+                let x = d0 + t * width;
+                if !piece.is_some_and(|p| p.holds(x)) {
+                    piece = row.ramp.piece(x, row.input_error, hint);
+                }
+                if let Some(piece) = piece {
+                    #[cfg(test)]
+                    PIECES.with(|count| count.set(count.get() + 1));
+                    piece.evaluate(x, color);
+                    if let Some(levels) = certified_levels(&piece, color) {
+                        #[cfg(test)]
+                        APPROXIMATED.with(|count| count.set(count.get() + 1));
+                        put(k, Some(color), levels.get(..channels));
+                        continue;
+                    }
+                }
+            }
+            let column = x.saturating_add(u32::try_from(k).unwrap_or(u32::MAX));
+            let point = Point::new(f64::from(column) + 0.5, f64::from(y) + 0.5) * self.inverse;
+            if !axial.sample(point, &mut input) {
+                put(k, None, None);
+            } else if exact.push(k, input[0]) {
+                exact.flush(&self.colors, channels, &mut |k, color| put(k, color, None));
+            }
+        }
+        exact.flush(&self.colors, channels, &mut |k, color| put(k, color, None));
+    }
+
+    /// One pixel's colour into `color`, returning its covered fraction.
+    fn pixel<S: Sampler>(
+        &self,
+        sampler: &S,
+        (x, y): (u32, u32),
+        boundary: Option<f64>,
+        (color, sample): (&mut [f64], &mut Sample),
+    ) -> f64 {
+        if let Some(constant) = &self.constant {
+            return self.constant_pixel(sampler, (x, y), constant, (color, &mut sample.input));
+        }
+        if self.single_sample() {
+            return self.single(sampler, (x, y), (color, sample));
+        }
+        let background = self.pattern.as_ref().and_then(|p| p.background.as_deref());
+        let divisor = f64::from(self.rate);
+        let mut covered = 0_u32;
+        let mixed = boundary.zip(background);
+        let mut value = [0.0; pagura_color::MAX_CHANNELS];
+        let value = value.get_mut(..self.channels).unwrap_or_default();
+        for sy in 0..self.rate {
+            for sx in 0..self.rate {
+                let point = Point::new(
+                    f64::from(x) + (f64::from(sx) + 0.5) / divisor,
+                    f64::from(y) + (f64::from(sy) + 0.5) / divisor,
+                ) * self.inverse;
+                let inside = self.pattern.as_ref().is_none_or(|p| p.inside(point));
+                if inside && sampler.sample(point, &mut sample.input) {
+                    self.colors.convert_sample(sample, value);
+                } else if let Some(background) = background {
+                    value.copy_from_slice(background);
+                } else {
+                    continue;
+                }
+                if let Some((coverage, background)) = mixed {
+                    for ((out, &s), &b) in color.iter_mut().zip(&*value).zip(background) {
+                        *out += coverage * s + (1.0 - coverage) * b;
+                    }
+                } else {
+                    for (out, &s) in color.iter_mut().zip(&*value) {
+                        *out += s;
+                    }
+                }
+                covered += 1;
+            }
+        }
+        if covered == 0 {
+            return 0.0;
+        }
+        let count = f64::from(covered);
+        for out in color.iter_mut() {
+            *out /= count;
+        }
+        count / (divisor * divisor)
+    }
+
+    /// Whether a pixel's colour is the colour of its one sample: one sample
+    /// a pixel and no background.
+    fn single_sample(&self) -> bool {
+        self.rate == 1 && self.pattern.as_ref().is_none_or(|p| p.background.is_none())
+    }
+
+    /// [`Self::pixel`] with one sample and no background: the sum of one
+    /// sample is `0 + s` (which turns -0.0 into +0.0) and its mean that
+    /// over 1.
+    fn single<S: Sampler>(
+        &self,
+        sampler: &S,
+        (x, y): (u32, u32),
+        (color, sample): (&mut [f64], &mut Sample),
+    ) -> f64 {
+        let point = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse;
+        let inside = self.pattern.as_ref().is_none_or(|p| p.inside(point));
+        if !(inside && sampler.sample(point, &mut sample.input)) {
+            return 0.0;
+        }
+        self.colors.convert_sample(sample, color);
+        for out in color.iter_mut() {
+            *out = (0.0 + *out) / 1.0;
+        }
+        1.0
+    }
+
+    /// [`Self::pixel`] for a constant colour: only which samples hit
+    /// matters, and the mean of that many equal samples is tabulated.
+    fn constant_pixel<S: Sampler>(
+        &self,
+        sampler: &S,
+        (x, y): (u32, u32),
+        constant: &[f64],
+        (color, input): (&mut [f64], &mut Input),
+    ) -> f64 {
+        let divisor = f64::from(self.rate);
+        let mut covered = 0_usize;
+        for sy in 0..self.rate {
+            for sx in 0..self.rate {
+                let point = Point::new(
+                    f64::from(x) + (f64::from(sx) + 0.5) / divisor,
+                    f64::from(y) + (f64::from(sy) + 0.5) / divisor,
+                ) * self.inverse;
+                let inside = self.pattern.as_ref().is_none_or(|p| p.inside(point));
+                covered += usize::from(inside && sampler.sample(point, input));
+            }
+        }
+        let Some(entry) = covered
+            .checked_sub(1)
+            .and_then(|k| constant.get(k * self.channels..(k + 1) * self.channels))
+        else {
+            return 0.0;
+        };
+        color.copy_from_slice(entry);
+        let covered = u32::try_from(covered).unwrap_or(0);
+        f64::from(covered) / (divisor * divisor)
+    }
+
+    /// Pixel colours by hit count when the shading's colour is constant and
+    /// no background mixes in.
+    fn constant_colors(
+        &self,
+        bytes: &mut Meter,
+        functions: &mut Meter,
+    ) -> Result<Option<Box<[f64]>>> {
+        if self
+            .pattern
+            .as_ref()
+            .is_some_and(|p| p.background.is_some())
+        {
+            return Ok(None);
+        }
+        bytes.charge_items::<f64>(self.channels)?;
+        let Some(color) = self.colors.constant(functions)? else {
+            bytes.refund(self.channels * size_of::<f64>());
+            return Ok(None);
+        };
+        let samples = self.samples();
+        let mut table = allocate(samples * self.channels, bytes)?;
+        for (k, entry) in table.chunks_exact_mut(self.channels.max(1)).enumerate() {
+            for (out, &c) in entry.iter_mut().zip(&*color) {
+                let mut sum = 0.0;
+                for _ in 0..=k {
+                    sum += c;
+                }
+                *out = sum / f64::from(u32::try_from(k + 1).unwrap_or(1));
+            }
+        }
+        drop(color);
+        bytes.refund(self.channels * size_of::<f64>());
+        Ok(Some(table.into()))
+    }
+
+    /// Whether every sample of every device pixel hits: an axial shading
+    /// extended both ways whose parameter stays finite for device
+    /// coordinates below 2³², with no `BBox` test.
+    fn always_covers(&self) -> bool {
+        let Geometry::Axial(axial) = &*self.geometry else {
+            return false;
+        };
+        self.pattern.as_ref().is_none_or(|p| p.bbox.is_none())
+            && axial.extend == [true; 2]
+            && self.moderate(axial)
+    }
+}
+
+/// Whether a shading is painted by `sh` or as a shading pattern.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Use {
+    Operator,
+    Pattern,
+}
+
+/// The parts of a shading that preparation reads.
+#[derive(Debug, Clone, Copy)]
+struct Parts<'a> {
+    space: &'a pagura_color::ColorSpace,
+    function: Option<&'a ShadingFunction>,
+    kind: &'a ShadingKind,
+    bbox: Option<Rect>,
+    antialias: bool,
+    background: Option<&'a [f64]>,
+}
+
+impl<'a> From<&'a Shading> for Parts<'a> {
+    fn from(shading: &'a Shading) -> Self {
+        Self {
+            space: &shading.space,
+            function: shading.function.as_ref(),
+            kind: &shading.kind,
+            bbox: shading.bbox,
+            antialias: shading.antialias,
+            background: shading.background.as_deref(),
+        }
+    }
+}
+
+/// The pixels of one span.
+#[derive(Debug, Clone, Copy)]
+struct Span<'a> {
+    x: u32,
+    y: u32,
+    boundary: Option<&'a [u8]>,
+    precision: Precision,
+}
+
+impl Pattern {
+    /// Whether a sample lies in the `BBox` (inclusive).
+    fn inside(&self, p: Point) -> bool {
+        self.bbox
+            .is_none_or(|b| p.x >= b.x0() && p.x <= b.x1() && p.y >= b.y0() && p.y <= b.y1())
+    }
+}
+
+impl Geometry {
+    fn new(shading: &Parts<'_>, values: usize, bytes: &mut Meter) -> Result<Self> {
+        Ok(match shading.kind {
+            ShadingKind::Axial {
+                start,
+                end,
+                domain,
+                extend,
+            } => Self::Axial(Axial::new(*start, *end, *domain, *extend)),
+            ShadingKind::Radial {
+                start,
+                start_radius,
+                end,
+                end_radius,
+                domain,
+                extend,
+            } => Self::Radial(Radial::new(
+                (*start, *start_radius),
+                (*end, *end_radius),
+                *domain,
+                *extend,
+            )),
+            ShadingKind::Function { domain, matrix } => Self::Function(FunctionDomain {
+                inverse: matrix.inverse().ok_or(Error::unsupported(
+                    features::SHADING_TRANSFORM,
+                    "singular shading Matrix",
+                ))?,
+                domain: *domain,
+            }),
+            ShadingKind::Triangles(triangles) => {
+                bytes.charge_items::<Mesh>(1)?;
+                Self::Mesh(Box::new(Mesh::triangles(triangles, values, bytes)?))
+            }
+            ShadingKind::Patches(patches) => {
+                bytes.charge_items::<Mesh>(1)?;
+                Self::Mesh(Box::new(Mesh::patches(patches, values, bytes)?))
+            }
+            _ => {
+                return Err(Error::invalid_argument("unknown shading geometry"));
+            }
+        })
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Pixels [`ShadingSource::each_pixel`] found a piece for on this
+    /// thread.
+    static PIECES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// Pixels [`ShadingSource::each_pixel`] approximated on this thread.
+    static APPROXIMATED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// A row of an axial shading stepped along its parameter
+/// ([`ShadingSource::row`]).
+struct Row<'a> {
+    ramp: &'a pagura_color::Ramp,
+    /// The first pixel's parameter and its step from one pixel to the next.
+    start: f64,
+    step: f64,
+    /// A bound of the distance between a pixel's stepped parameter and the
+    /// exact one.
+    error: f64,
+    /// The domain's start and width, and a bound of the distance between a
+    /// pixel's input from its stepped parameter and the exact input.
+    domain: (f64, f64),
+    input_error: f64,
+}
+
+impl Row<'_> {
+    /// The stepped parameter of pixel `k`.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "span lengths are far below 2^52"
+    )]
+    fn parameter(&self, k: usize) -> f64 {
+        self.start + k as f64 * self.step
+    }
+
+    /// Whether the samples of all `len` pixels hit, with `extend` the
+    /// shading's `Extend`: the stepped parameters are monotonic along the
+    /// row, so the ends' bound every one, and the exact ones lie within
+    /// `error` of them. `1 − p` is exact for `p` in `0.5..=2`, and further
+    /// from `error` for any other `p`.
+    fn hits(&self, len: usize, [before, after]: [bool; 2]) -> bool {
+        let [first, last] = [self.parameter(0), self.parameter(len.saturating_sub(1))];
+        (before || self.error <= first.min(last)) && (after || self.error <= 1.0 - first.max(last))
+    }
+}
+
+/// The F32 levels of `color`, evaluated on `piece`, that every exact colour
+/// within the piece's bounds ([`pagura_color::Piece::radius`]) has, where
+/// each channel's are certain ([`crate::kernel::certified_level`]); `None`
+/// otherwise. A constant channel is exact. Each value is kept as a store of
+/// it keeps it (`0 + v`, which turns `−0` into `+0`).
+#[inline]
+fn certified_levels(
+    piece: &pagura_color::Piece<'_>,
+    color: &mut [f64],
+) -> Option<[f32; pagura_color::MAX_RAMP_CHANNELS]> {
+    let mut levels = [0.0; pagura_color::MAX_RAMP_CHANNELS];
+    for (channel, (value, level)) in color.iter_mut().zip(&mut levels).enumerate() {
+        *value += 0.0;
+        let radius = piece.radius(channel);
+        *level = if radius == 0.0 {
+            crate::kernel::level(*value)
+        } else {
+            crate::kernel::certified_level(*value, radius)?
+        };
+    }
+    Some(levels)
+}
+
+/// Pixels of a row whose colours [`ShadingSource::each_pixel`] converts
+/// exactly, a batch at a time: the distinct inputs of a run of equal ones
+/// convert once, as in [`ShadingSource::fill_batched`].
+#[derive(Default)]
+struct Exact {
+    /// Distinct inputs.
+    inputs: [f64; BATCH],
+    distinct: usize,
+    /// Each pixel's column in the span and its input's slot.
+    slots: [(usize, usize); BATCH],
+    count: usize,
+}
+
+impl Exact {
+    /// Adds pixel `k` of input `x`; true where the batch is full.
+    fn push(&mut self, k: usize, x: f64) -> bool {
+        let repeat = self.distinct > 0 && self.inputs[self.distinct - 1].to_bits() == x.to_bits();
+        if !repeat {
+            self.inputs[self.distinct] = x;
+            self.distinct += 1;
+        }
+        self.slots[self.count] = (k, self.distinct - 1);
+        self.count += 1;
+        self.count == BATCH
+    }
+
+    /// Converts the batch at F32 levels, and puts each pixel's colour.
+    fn flush(
+        &mut self,
+        stage: &Colors,
+        channels: usize,
+        put: &mut impl FnMut(usize, Option<&[f64]>),
+    ) {
+        if self.count == 0 {
+            return;
+        }
+        // The row's stage has a ramp, so at most this many channels.
+        let mut converted = [0.0; BATCH * pagura_color::MAX_RAMP_CHANNELS];
+        let converted = &mut converted[..self.distinct * channels];
+        stage.convert_line(&self.inputs[..self.distinct], converted, Precision::Level);
+        for value in converted.iter_mut() {
+            // The sum of one sample is `0 + s` and its mean that over 1.
+            *value = (0.0 + *value) / 1.0;
+        }
+        for &(k, slot) in &self.slots[..self.count] {
+            put(k, converted.get(slot * channels..(slot + 1) * channels));
+        }
+        (self.distinct, self.count) = (0, 0);
+    }
+}
+
+/// Allocates initialized shading storage after its byte reservation.
+fn allocate<T: Default + Clone>(count: usize, bytes: &mut Meter) -> Result<Vec<T>> {
+    let mut values = Vec::new();
+    bytes.reserve(&mut values, count)?;
+    values.resize(count, T::default());
+    Ok(values)
+}

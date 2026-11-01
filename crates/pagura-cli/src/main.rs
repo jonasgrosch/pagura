@@ -11,6 +11,7 @@
 
 mod args;
 mod commands;
+mod document_services;
 mod failure;
 mod input;
 mod json;

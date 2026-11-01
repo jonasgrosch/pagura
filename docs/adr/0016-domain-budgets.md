@@ -1,8 +1,8 @@
 # ADR 0016: One meaning per `Limits` field; domain budgets
 
 Status: accepted, 2026-10-18. Amended 2026-10-19 (signature, function and
-traversal budgets). Refines invariant 3 of `docs/ARCHITECTURE.md` and ADR
-0012.
+traversal budgets) and 2026-10-21 (render budgets, ADR 0034). Refines
+invariant 3 of `docs/ARCHITECTURE.md` and ADR 0012.
 
 ## Context
 
@@ -42,7 +42,7 @@ with `Limit` although both are far below `pixels`.
    |---|---|---|
    | `traversal_work` | 1,000,000 nodes | `value_nodes` for page-tree, outline, name/number-tree, structure-tree, annotation and form-field walks |
    | `decode_work` | 32 × `pixels` (2 Gi units) | `operations` in DCT, JPEG 2000 and CCITT, `operations` and `raster_work` in JBIG2; ICC profile parsing |
-   | `decode_bytes` | 256 MiB | `decoded_bytes` as a decoder's working memory (JPEG 2000 allocations, JBIG2 "remaining", ICC tables) |
+   | `decode_bytes` | 256 MiB | `decoded_bytes` as a decoder's working memory (JPEG 2000 allocations, JBIG2 "remaining", ICC tables; since 2026-10-27 also the DCT decoder's coefficients, planes, 12-bit samples and conversion rows, whose output samples alone `decoded_bytes` caps) |
    | `font_work` | 50,000,000 units | `operations` in font-program, CMap and AFM parsing |
    | `font_entries` | 1,000,000 | `objects.min(value_nodes)` and `value_nodes` for glyph, charstring and CMap entry counts |
    | `text_items` | 1,000,000 | `value_nodes` for positioned glyphs, marked-content spans and text objects per page |
@@ -142,3 +142,101 @@ borrowed `operations` and `value_nodes`.
    between revisions (12.8), which run on the same bounded navigation
    context as outlines and name trees.
 
+## Amendment, 2026-10-21: render budgets (ADR 0034)
+
+The renderer never read `render_bytes` or `function_work`: functions charged
+`operations`, the compositor charged its cumulative work to `raster_work`,
+which is documented per fill, and its surfaces and caches each borrowed
+`decoded_bytes`. ADR 0034 makes preparation the only fallible step of a
+render, so every budget that execution consumes must be reserved before it.
+
+1. **Render budgets.**
+
+   | Field | Default | Bounds |
+   |---|---|---|
+   | `render_bytes` | 512 MiB | What one render holds besides the values it takes from the `Store`: prepared marks, coverage sources and paint, the band buffers of the page, groups and soft masks, coverage rows and scratch |
+   | `render_work` (new) | 2,000,000,000 units | The rasterization work of the marks that meet the region, plus one unit per pixel each of them composites |
+   | `function_work` | 50,000,000 units | Function evaluations of one render, in the units of the 2026-10-19 amendment, reserved through the prepared sources that evaluate them |
+   | `raster_work` | 2,000,000,000 units | The rasterization work of one fill, as before, and nothing cumulative |
+   | `path_segments` | 4,000,000 | The line segments of one flattened path, as before |
+
+   Retained values move to the `Store` under its own capacity (ADR 0012,
+   amendment of 2026-10-21), so `render_bytes` no longer covers decoded
+   content, images, colour transforms or fonts, only one render's working
+   storage. Functions no longer charge `operations`.
+2. **Preparation reserves; execution cannot fail.** In source order over the
+   marks that meet the region, preparation checks the per-fill budgets and
+   reserves `render_bytes`, `render_work` and `function_work` through a
+   `Meter` from prepared quantities: coverage cells and rows, covered area
+   times samples, evaluations per sample and buffer bytes. Each reservation
+   is an upper bound of what execution uses, which tests assert. The first
+   failure in source order, of a budget or of validation, is the render's
+   error. Execution charges nothing and stops only for cancellation between
+   bands, which is not an error.
+3. **Render charges do not depend on the `Store`.** A value taken from the
+   store costs the render's budgets the same whether it was found or built;
+   building it charges its own per-value budgets (`decode_work`,
+   `font_work` and the others) when it is built.
+4. **Budgets are per render of one region.** A whole page can reach a limit
+   that each of its tiles stays below. This is documented, not hidden: for
+   one region, charges and the reported error do not depend on band height
+   or the store's state, but they do depend on the region.
+5. **`Limits` is 256 bytes with `render_work`,** the threshold of decision 2
+   of the 2026-10-19 amendment. The next render budget joins a nested group
+   of `u32` fields, as the signature budgets did.
+
+Peak memory of one render is therefore bounded by `render_bytes`, plus the
+store's capacity, plus any value too large to retain, which its build budgets
+bound; this replaces the consequence above that `render_bytes` alone bounds a
+page's peak memory.
+
+
+## Amendment, 2026-10-29: function work of 2 Gi units
+
+`function_work` defaults to 2,147,483,648 units, matching `decode_work`:
+32 units per pixel of a 64 Mi-pixel reference. This raises its previous
+50,000,000-unit allowance. The value fits a 32-bit `usize`. The existing
+2,000,000,000-unit `render_work` allowance, 64 Mi pixel cap, byte caps and
+host frame cap remain unchanged. The fuzz driver explicitly retains its
+previous 50,000,000-unit function allowance.
+
+Function preparation reserves its evaluation cost per sample. A boundary
+regression checks the largest admitted sample count at the default and
+refusal of one more. Newly admitted renders must match the unchanged
+renderer with only `function_work` raised; a prior refusal is not a
+performance baseline. Rendering arithmetic and per-sample charging are
+unchanged.
+
+## Amendment, 2026-10-30: bounded budget rises that pay for themselves
+
+An optional acceleration is a route that produces the same bytes as the
+route it shortcuts and that preparation may skip, such as a stroke's spine
+of proven-covered cells. Until now such a route had to leave the smallest
+budget at which a render succeeds unchanged. That is not always achievable:
+an acceleration's savings depend on the data, so where it proves little its
+own work and storage come on top of the mandatory route's, and the mandatory
+remainder cannot always be bounded in advance.
+
+1. **Execution never exceeds its reservation.** Unchanged. An acceleration
+   charges every unit and byte it spends, and spent work is never refunded.
+2. **A bounded rise is allowed.** An acceleration may raise the smallest
+   budget at which a fill or render succeeds, in work (`raster_work`, and
+   the same units reserved in `render_work`) or in memory (`render_bytes`),
+   by at most its own optional work or storage. That bound is a formula over
+   quantities the acceleration knows before it runs, such as the capsules a
+   spine covers. It is written next to the acceleration's code, and debug
+   builds and tests assert it against what the acceleration actually charged.
+3. **The rise must be small next to the speed-up.** On the pages it
+   targets, the share of time the acceleration saves must be at least four
+   times the share by which it can raise the minimum of the budget it
+   affects. A 3x speed-up saves two thirds of the time, so it may raise that
+   minimum by up to a sixth; a 1.25x speed-up saves a fifth, so it may raise
+   it by up to a twentieth. The speed-up is measured on the runner under the
+   no-regression rule, which every other page must also pass.
+4. **Unbounded accelerations stay out.** A route whose extra work or storage
+   cannot be bounded before it runs, for example because it depends on
+   crossings not yet found, must still leave the minimum unchanged.
+5. **Evidence.** A change that uses this amendment states its bound, the
+   largest rise measured on its pages as a share of each page's minimum, its
+   speed-up there, and a probe that scans budgets. Success is not monotone
+   in a budget, so bisection can report a false minimum.

@@ -1,9 +1,8 @@
 """Check every generated PDF case against its independent expectation.
 
 Runs the release `pagura` binary over corpus/manifests/*.json:
-  render       pixels equal the oracle within the case's tolerance, and within
-               its competitive_tolerance (or tolerance) under
-               `--accuracy competitive`; repairs and strict validity match
+  render       pixels equal the oracle within the case's tolerance; repairs
+               and strict validity match
   unsupported  rendering fails with the case's Feature tag
   open         opens with the expected page count and repairs; with
                `render_error`, rendering then fails with that error kind
@@ -35,34 +34,89 @@ def password_args(case: dict) -> list[str]:
 
 
 def scan(case: dict) -> dict:
-    result = pagura("scan", *password_args(case), str(ROOT / case["path"]))
+    recovery = case.get("scan_recovery")
+    if recovery not in (None, "repair"):
+        raise AssertionError(f"unknown scan_recovery: {recovery!r}")
+    result = pagura("scan", *(["--repair"] if recovery else []),
+                    *password_args(case), str(ROOT / case["path"]),
+                    *([str(case.get("dpi", 72))] if recovery else []))
     if result.returncode != 0:
         raise AssertionError(f"scan crashed with exit {result.returncode}: {result.stderr.decode(errors='replace')[-500:]}")
-    return json.loads(result.stdout)
+    report = json.loads(result.stdout)
+    if recovery == "repair":
+        if report.get("schema") != 2 or report.get("recovery") != "repair" or report.get("strict", False) is not None:
+            raise AssertionError("explicit Repair scan requires schema 2, recovery=repair and strict=null")
+    elif report.get("schema") != 1 or type(report.get("strict")) is not bool or "recovery" in report:
+        raise AssertionError("default scan requires schema 1 and a boolean Strict audit")
+    return report
+
+
+def check_strict_render(case: dict) -> list[str]:
+    """Run an actual Strict render for an explicit-Repair scan fixture.
+
+    Scan JSON supports only kind/feature/repair/message. Full error positions
+    and object identity remain public-API/parity contracts.
+    """
+    contract = case.get("mode_errors", {}).get("strict")
+    succeeds = case.get("strict_valid", True) and case["expected"] == "render"
+    problems = []
+    with tempfile.TemporaryDirectory() as directory:
+        output = Path(directory) / "strict.ppm"
+        result = pagura("render", "--strict", *password_args(case),
+                        str(ROOT / case["path"]), str(output), str(case.get("dpi", 72)), str(case.get("page", 0)))
+        if succeeds:
+            if result.returncode != 0:
+                return [f"Strict render failed: {result.stderr.decode(errors='replace').strip()}"]
+            problem = compare_images(output.read_bytes(), (ROOT / case["oracle"]).read_bytes(), case.get("tolerance", 0))
+            return [f"Strict {problem}"] if problem else []
+        if result.returncode != 1 or output.exists():
+            problems.append("Strict refusal must exit 1 without an output file")
+    if contract:
+        message = result.stderr.decode(errors="replace")
+        if contract.get("message") and contract["message"] not in message:
+            problems.append(f"Strict error omitted declared message: {message.strip()}")
+        if contract.get("repair") is None:
+            # An untagged original rendering error cannot trigger default
+            # scan's tagged-repair retry. That report exposes these fields.
+            default = scan({key: value for key, value in case.items() if key != "scan_recovery"})
+            errors = [default["open"]] if default["open"] else [failure["error"] for failure in default.get("failures", [])
+                                                                          if failure["page"] in (None, case.get("page", 0))]
+            fields = {key: ({"MissingObject": "missing-object", "InvalidArgument": "invalid-argument"}.get(value, value.lower())
+                            if key == "kind" else value) for key, value in contract.items()
+                      if key in {"kind", "feature", "repair", "message"}}
+            if not any(all(error.get(key) == value for key, value in fields.items()) for error in errors):
+                problems.append(f"Strict structured error did not match {fields}: {errors}")
+        elif contract["repair"] not in message:
+            problems.append("Strict refusal omitted its declared repair tag")
+    elif not case.get("strict_valid", True):
+        problems.append("explicit Repair fixtures with invalid Strict rendering must declare mode_errors.strict")
+    return problems
 
 
 def check(case: dict) -> list[str]:
     """Problems with one case; empty when it meets its expectation."""
     problems = []
     report = scan(case)
+    if case.get("scan_recovery") == "repair":
+        problems.extend(check_strict_render(case))
     expected = case["expected"]
     if expected == "invalid":
         if report["open"] is None and report["pages"] is not None:
-            return ["opened, but the case is invalid"]
+            return [*problems, "opened, but the case is invalid"]
         wanted = case.get("error")
         actual = (report["open"] or {}).get("kind") or (report["failures"][0]["error"]["kind"] if report.get("failures") else None)
         if wanted and actual != wanted:
             problems.append(f"error kind {actual}, expected {wanted}")
         return problems
     if report["open"] is not None:
-        return [f"failed to open: {report['open']}"]
+        return [*problems, f"failed to open: {report['open']}"]
     if case.get("pages") is not None and report["pages"] != case["pages"]:
         problems.append(f"{report['pages']} pages, expected {case['pages']}")
     if sorted(report["repairs"]) != sorted(case.get("repairs", [])):
         problems.append(f"repairs {report['repairs']}, expected {case.get('repairs', [])}")
     if sorted(report.get("information", [])) != sorted(case.get("information", [])):
         problems.append(f"information {report.get('information', [])}, expected {case.get('information', [])}")
-    if report["strict"] != case.get("strict_valid", True):
+    if case.get("scan_recovery") != "repair" and report["strict"] != case.get("strict_valid", True):
         problems.append(f"strict open {'succeeded' if report['strict'] else 'failed'}, expected the opposite")
     if expected == "unsupported":
         features = [failure["error"]["feature"] for failure in report["failures"]]
@@ -71,20 +125,18 @@ def check(case: dict) -> list[str]:
     elif expected == "render":
         if report["failures"]:
             problems.append(f"render failures {report['failures']}")
-        modes = ((), case.get("tolerance", 0)), (("--accuracy", "competitive"),
-                                                    case.get("competitive_tolerance", case.get("tolerance", 0)))
-        for flags, tolerance in modes:
-            with tempfile.TemporaryDirectory() as directory:
-                output = Path(directory) / "page.ppm"
-                result = pagura("render", *flags, *password_args(case), str(ROOT / case["path"]), str(output),
-                                str(case.get("dpi", 72)))
-                label = " ".join(flags) or "exact"
-                if result.returncode != 0:
-                    problems.append(f"{label} render failed: {result.stderr.decode(errors='replace').strip()}")
-                else:
-                    problem = compare_images(output.read_bytes(), (ROOT / case["oracle"]).read_bytes(), tolerance)
-                    if problem:
-                        problems.append(f"{label}: {problem}")
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "page.ppm"
+            result = pagura("render", *password_args(case), str(ROOT / case["path"]), str(output),
+                            str(case.get("dpi", 72)),
+                            *([str(case.get("page", 0))] if case.get("scan_recovery") == "repair" else []))
+            if result.returncode != 0:
+                problems.append(f"render failed: {result.stderr.decode(errors='replace').strip()}")
+            else:
+                problem = compare_images(output.read_bytes(), (ROOT / case["oracle"]).read_bytes(),
+                                         case.get("tolerance", 0))
+                if problem:
+                    problems.append(problem)
     elif expected == "open":
         wanted = case.get("render_error")
         kinds = [failure["error"]["kind"] for failure in report["failures"]]

@@ -602,7 +602,10 @@ def refinement_pixels(encoder, rows, reference, template, dx=0, dy=0, typical=Fa
             implicit.append(values[0] if min(values)==max(values) else None)
         if typical:
             next_ltp=int(all(value is None or value==row[x] for x,value in enumerate(implicit)))
-            encoder.encode((namespace,0x10 if template==0 else 8),ltp^next_ltp)
+            # Figures 14–15 reuse the context whose reference centre alone
+            # is one. Reference pixels precede output pixels in this encoder's
+            # context labels, so the centre occupies bit 8 or bit 7.
+            encoder.encode((namespace,1 << (8 if template==0 else 7)),ltp^next_ltp)
             ltp=next_ltp
         for x,value in enumerate(row):
             if ltp and implicit[x] is not None: continue
@@ -620,6 +623,15 @@ def refinement_payload(rows, reference, template, dx=0, dy=0, typical=False, ada
 
 
 def refinement_cases():
+    # An isolated reference centre creates the exact state reused by SLTP.
+    # The last-row dot then exposes an incorrectly aliased probability state.
+    centre = [[int(x==2 and y==2) for x in range(5)] for y in range(5)]
+    dot = [[int(x==4 and y==4) for x in range(5)] for y in range(5)]
+    for template in (0,1):
+        page = _segment(1,48,1,_page_info(5,5))
+        prior = _segment(2,36,1,region(centre,arithmetic(centre,2)))
+        refinement = _segment(3,42,1,region(dot,refinement_payload(dot,centre,template,typical=True)),refs=(2,))
+        yield vector(f'refinement-prediction-centre-context-t{template}',page+prior+refinement,dot,requirement='jbig2-refinement')
     reference=[[int(2<=x<9 and 2<=y<7 or x==y) for x in range(13)] for y in range(9)]
     target=[[int(1<=x<10 and 2<=y<6 or x+y==9) for x in range(13)] for y in range(9)]
     for template in (0,1):

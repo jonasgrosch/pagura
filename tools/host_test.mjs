@@ -1,3 +1,11 @@
+import { testExtendedServicesView } from './document_services_extended_view_test.mjs';
+import { testExtendedServices } from './document_services_extended_test.mjs';
+import { testAttachmentChecks, testAttachmentCheckView } from './attachment_checks_test.mjs';
+import { testPageAttachments } from './page_attachments_test.mjs';
+import { testPageAttachmentView } from './page_attachments_view_test.mjs';
+import { testPngExport, testPngExportView } from './png_export_test.mjs';
+import { testDocumentServices } from './document_services_test.mjs';
+import { testDocumentServicesView } from './document_services_view_test.mjs';
 import { externalUrl, activateTarget, targetLabel } from '../web/link_actions.mjs';
 import { textLayer, selectedText } from '../web/text_layer.mjs';
 import { pagePoint } from '../web/page_geometry.mjs';
@@ -199,8 +207,10 @@ async function main() {
       const browserTile = await client.renderTile(opened.document, 0, 1, tile);
       bytesEqual(browserTile.rgba, frames[3].value.rgba, `${entry.id}: browser shim/native pixels`);
       const diagnostics = await client.diagnostics(opened.document);
-      assert.deepEqual(diagnostics, frames[4].value);
-      assert.deepEqual(diagnostics.map((item) => item.tag), entry.repairs);
+      // The raw requests use a protocol before 1.4, whose snapshots carry repairs only.
+      assert.deepEqual(diagnostics.filter((item) => item.kind === 'repair'), frames[4].value);
+      assert.deepEqual(diagnostics.filter((item) => item.kind === 'repair').map((item) => item.tag), entry.repairs);
+      assert.deepEqual(diagnostics.filter((item) => item.kind === 'information').map((item) => item.tag), entry.information ?? []);
       if (entry.id.startsWith('recovery/type3-empty-bounds-')) {
         assert.equal((await client.pageText(opened.document, 0)).text, 'AAB');
         assert.deepEqual(await client.diagnostics(opened.document), diagnostics);
@@ -222,6 +232,16 @@ async function main() {
       tested++;
     }
     await testReading(client, root, native, wasiRun);
+    await testDocumentServices(client, root, native, wasiRun);
+    await testExtendedServices(client, root, native, wasiRun);
+    await testDocumentServicesView();
+    await testExtendedServicesView();
+    await testAttachmentChecks(client, root, native, wasiRun);
+    await testPageAttachments(client, root, native, wasiRun, () => new SessionClient(new TestWorker()));
+    await testPageAttachmentView();
+    await testAttachmentCheckView();
+    await testPngExport(client, root, native, wasiRun);
+    await testPngExportView();
     await testTwoPages(client, root, native, wasiRun);
     await testGenerations(client, root, native, wasiRun);
     const emptyStats = { sourceBytes: 0, cacheBytes: 0, documents: 0, lists: 0 };
@@ -229,7 +249,10 @@ async function main() {
     const retainedPdf = new Uint8Array(await readFile(join(root, 'corpus/generated/classic/rectangle.pdf')));
     const retained = await client.open(retainedPdf);
     await client.renderTile(retained.document, 0, 1, { x: 0, y: 0, width: 64, height: 64 });
-    assert.deepEqual(await client.stats(), { sourceBytes: retainedPdf.length, cacheBytes: 4608, documents: 1, lists: 1 });
+    // The render store keeps the page's scene; its bytes are the engine's estimate.
+    const retainedStats = await client.stats();
+    assert.ok(retainedStats.cacheBytes > 0);
+    assert.deepEqual({ ...retainedStats, cacheBytes: 0 }, { sourceBytes: retainedPdf.length, cacheBytes: 0, documents: 1, lists: 1 });
     assert.ok(client.wasmBytes > 0);
     await client.close(retained.document); assert.deepEqual(await client.stats(), emptyStats);
     const statsInput = Buffer.concat([encodeRequest(1, 1, { version: VERSION_1_1 }), encodeRequest(9, 2)]);
@@ -446,6 +469,10 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     'password-dialog', 'password', 'password-feedback', 'password-form', 'password-cancel',
     'find-open', 'find-close', 'find-panel', 'find-query', 'find-case', 'find-word', 'find-next', 'find-previous', 'find-count',
     'outline-tree', 'page-label', 'reading-status', 'copy-page',
+    'png-export-dialog', 'png-export-open', 'png-export-form', 'png-export-page', 'png-export-dpi', 'png-export-transparent', 'png-export-submit', 'png-export-close', 'png-export-status',
+    'document-services-dialog', 'document-services-open', 'document-services-close', 'document-properties', 'document-attachments', 'document-services-status',
+    'document-page-attachments', 'document-page-attachments-title', 'document-attachment-page-form', 'document-attachment-page', 'document-attachment-page-submit',
+    'document-service-source-form', 'document-service-source', 'document-service-object', 'document-service-source-results',
     'edit-open', 'form-status', 'form-reset', 'form-download',
     'document-sidebar', 'thumbnails-panel', 'thumbnail-list', 'thumbnails-tab', 'outline-tab', 'outline-sidebar',
     'sidebar-toggle', 'rotate-view', 'empty-state', 'reading-dismiss', 'cache-summary', 'more-menu', 'diagnostics-dialog', 'diagnostics-open', 'diagnostics-close'];
@@ -628,9 +655,8 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     elements.get('viewport').dispatch('touchend');
     fakeWindow.dispatch('keydown', { key: '0' }); await waitFor(ready);
     assert.equal(view(0).style.width, '64px'); elements.get('viewport').clientHeight = 300;
-    // This pattern is unsupported only when its device lattice collapses at
-    // scale 1. At 25% zoom the bounded 4x backing density requests that scale;
-    // the normal 2x raster correctly makes this particular pattern renderable.
+    // A singular pattern matrix is unsupported at every scale, including the
+    // 25% zoom whose bounded 4x backing density requests scale 1.
     elements.get('zoom').value = '0.25';
     await pick(manifest.cases.find((entry) => entry.id === 'classic/pattern-unsupported'));
     await waitFor(() => !elements.get('error').hidden);
@@ -951,8 +977,9 @@ async function testReading(client, root, native, wasiRun) {
     assert.ifError(result.error); assert.equal(result.status, 0, result.stderr?.toString());
     const wasi = await wasiRun(input, `reading-${name}`); assert.equal(wasi.code, 0);
     // These small fixtures fit both targets' byte budgets. Capacity accounting
-    // uses target allocation sizes, so only its eight text-byte bytes may
-    // differ here; entry counts and every document result/layout stay exact.
+    // uses target allocation sizes, so only the eight bytes each of the
+    // store's and the text cache's retained sizes may differ here; entry
+    // counts and every document result/layout stay exact.
     const accounted = (bytes) => {
       const copy = Buffer.from(bytes); let offset=0;
       for(const frame of parse(bytes)) {
@@ -960,6 +987,7 @@ async function testReading(client, root, native, wasiRun) {
         if(frame.kind === 143) {
           assert.equal(frame.value.textBytes === 0, frame.value.textPages === 0);
           assert.ok(frame.value.textBytes <= 16*1024*1024);
+          copy.fill(0,offset+4+13,offset+4+21);
           copy.fill(0,offset+4+29,offset+4+37);
         }
         offset+=4+length;

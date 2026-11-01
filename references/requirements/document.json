@@ -23,7 +23,8 @@
       ],
       "status": "implemented",
       "tests": [
-        "classic/undefined-reference-is-null"
+        "classic/undefined-reference-is-null",
+        "classic/undefined-contents-is-null"
       ],
       "gaps": ""
     },
@@ -36,7 +37,7 @@
         "pagura-core diagnostic",
         "classic/trailing-bytes"
       ],
-      "gaps": "xref reconstruction and the ADR 0003 repair catalogue"
+      "gaps": "Reported reconstruction and the ADR 0003 repair catalogue exist; compatibility breadth and ambiguous/irrecoverable input remain bounded. See document-repairs and the specific recovery entries."
     },
     {
       "id": "xref-streams",
@@ -87,9 +88,12 @@
       "status": "partial",
       "tests": [
         "pagura-document reconstruction strict/repair tests",
-        "corpus/manifests/document.json"
+        "corpus/manifests/document.json",
+        "recovery_document/header-absent",
+        "recovery_document/header-absent-binary-comment"
       ],
-      "gaps": "bounded token scan plus ordered indexes; broad real-world corpus and fuzzing validation remain"
+      "gaps": "bounded token scan plus ordered indexes; broad real-world corpus and fuzzing validation remain",
+      "rule": "Header absence may be reported only before a complete explicitly typed leading Catalog with a Pages reference; no version is inferred. Explicit unknown headers and all normal structure and security checks remain errors."
     },
     {
       "id": "document-security",
@@ -102,7 +106,7 @@
         "pagura-document unit tests",
         "corpus/manifests/document.json"
       ],
-      "gaps": "non-ASCII R6 password preparation and public-key security handlers remain unsupported"
+      "gaps": "Public-key security handlers remain unsupported. Non-ASCII R6 SASLprep is implemented in pagura-crypto; its specific requirement entries own the preparation evidence."
     },
     {
       "id": "document-header-recovery",
@@ -165,7 +169,10 @@
         "document/stream-length-missing",
         "document/stream-length-negative",
         "document/stream-length-undefined",
-        "document/stream-length-outside"
+        "document/stream-length-outside",
+        "recovery_document/stream-length-crosses-next-object",
+        "recovery_document/stream-length-crosses-xref",
+        "recovery_document/stream-length-crosses-EOF"
       ],
       "gaps": "ambiguous or absent stream boundaries remain errors; missing page definitions cannot be invented"
     },
@@ -191,9 +198,10 @@
       ],
       "status": "implemented",
       "tests": [
-        "document/object-end-missing"
+        "document/object-end-missing",
+        "document/object-stray-delimiter"
       ],
-      "gaps": "requires a complete value and an immediately following object/xref/trailer boundary; EOF is insufficient"
+      "gaps": "requires a complete value and an immediately following object/xref/trailer boundary, or only unmatched closing delimiters before endobj; EOF is insufficient"
     },
     {
       "id": "page-type-recovery",
@@ -590,7 +598,7 @@
         "Unresolvable child references are omitted only below a usable root, with tree.structure or tree.cycle reported. Dangling or cyclic Limits references are treated as malformed bounds. Limit errors are always propagated.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "7.9.6; Table 36; 7.9.7; Table 37",
@@ -622,7 +630,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.3.2.2; Table 149; 12.3.2.4; J.3.3; J.3.4",
@@ -654,7 +662,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.3.3; Tables 150-152; 7.9.2.2; D.3",
@@ -690,7 +698,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.5.6.5; Table 176; 12.5.4; Table 168; 12.6.2; 12.6.4.2; 12.6.4.3; 12.6.4.6; 12.6.4.8; Tables 210-211; 12.6.4.12; 12.6.4.17",
@@ -720,7 +728,7 @@
         "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
         "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
       ],
-      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "gaps": "Library APIs are inert. Host reading requests and browser destinations, links, outlines and labels are integrated; external-file/launch/submission/media action execution and general navigation editing remain separate host contracts.",
       "review": [
         {
           "locator": "12.4.2; Table 161; 7.9.7",
@@ -754,7 +762,7 @@
         "document/forms-cycle",
         "document/forms-duplicate-conflict"
       ],
-      "gaps": "Read-only; no filling, appearance generation, signature validation or XFA interpretation."
+      "gaps": "This entry covers the read-only model. Filling, appearance generation and persistence are implemented in their respective layers and tracked in forms.json and write.json. XFA interpretation and complete signature validation remain incomplete."
     },
     {
       "id": "forms-actions",
@@ -771,6 +779,93 @@
         "document/forms-invalid-action-target"
       ],
       "gaps": "Actions are inert data; no JavaScript or calculation execution."
+    },
+    {
+      "id": "object-integer-separator",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.2.3",
+        "7.3.3",
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "integer_separator/joined",
+        "integer_separator/joined-flate",
+        "integer_separator/joined-chain",
+        "integer_separator/joined-comment",
+        "integer_separator/joined-generation",
+        "integer_separator/joined-leading-zero",
+        "integer_separator/clean",
+        "integer_separator/clean-flate",
+        "integer_separator/clean-chain",
+        "integer_separator/negative",
+        "integer_separator/positive-sign",
+        "integer_separator/real",
+        "integer_separator/exponent",
+        "integer_separator/reference",
+        "integer_separator/array",
+        "integer_separator/name",
+        "integer_separator/string",
+        "integer_separator/hex-string",
+        "integer_separator/comment",
+        "integer_separator/overflow",
+        "integer_separator/integer-max",
+        "integer_separator/trailing-token",
+        "integer_separator/generation-mismatch",
+        "integer_separator/incremental-current-joined",
+        "integer_separator/incremental-old-joined-current-clean",
+        "integer_separator/length-cycle",
+        "integer_separator/joined-zero",
+        "integer_separator/corrected-offset",
+        "integer_separator/overlapping-span",
+        "integer_separator/joined-source-like",
+        "integer_separator/unterminated-comment-boundary"
+      ],
+      "gaps": "Repair only a top-level unsigned integer joined to complete endobj within its exact current generation-aware xref/physical boundary span. The separately specified original-record-scalar-reconstruction policy is the sole reconstruction extension. No stream extent inference, signs, real/exponent syntax, references, nested values or ambiguous suffix tokens."
+    },
+    {
+      "id": "stream-length-budget-portability",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.3",
+        "7.3.8.1"
+      ],
+      "status": "implemented",
+      "tests": [
+        "integer_separator/declared-cap-minus1",
+        "integer_separator/declared-cap-exact",
+        "integer_separator/declared-cap-plus1",
+        "integer_separator/declared-u32-minus1",
+        "integer_separator/declared-u32-max",
+        "integer_separator/declared-u32-plus1",
+        "integer_separator/declared-i64-max",
+        "integer_separator/declared-negative",
+        "integer_separator/caller-cap-minus1",
+        "integer_separator/caller-cap-exact",
+        "integer_separator/caller-cap-plus1"
+      ],
+      "gaps": "ADR0016 reader resource policy: compare parsed nonnegative Length with unchanged Limits.stream_bytes before usize conversion on native/WASM. Negative/malformed/cyclic and in-cap extent handling remain unchanged. Runtime lower-caller-cap probes are separate from canonical default-limit full-page oracles; no default cap increases."
+    },
+    {
+      "id": "original-record-scalar-reconstruction",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.2.3",
+        "7.3.3",
+        "7.3.10",
+        "7.5.4",
+        "7.5.5"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document/tests/original_records.rs",
+        "pagura/tests/api/original_records.rs",
+        "corpus/manifests/original_records.json",
+        "pagura/examples/compatibility_gap_parity.rs",
+        "tools/compatibility_gap_parity.mjs"
+      ],
+      "gaps": "Reported ADR0003 policy, not normative validation: after an otherwise pristine unencrypted single classic section fails only positive Size coverage, retain exact original records under document_bytes. Only the existing scanner visit plus exact original identity/physical span can repair a complete unsigned integer/endobj token. No raw-offset traversal/index merge, corrected offsets, fake payload headers, extra header repairs, Prev/XRefStm/Encrypt, or all-free authority. Original Size/bytes, Strict errors, invalid rebuilt history and save guards remain; exact admitted Length values still hit existing caps. Full corpus/platform qualification is separate."
     }
   ]
 }

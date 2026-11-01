@@ -4,7 +4,9 @@
 //! budget is a `Limit` error; exceeding a ceiling that a font format defines
 //! (operand stacks, subroutine nesting, stem counts) is a `Syntax` error,
 //! because no budget can admit such a program.
-use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Meter, Position, Repair, Result};
+use pagura_core::{
+    Diagnostic, Diagnostics, Error, Limits, Meter, Position, Recovery, Repair, Result,
+};
 
 /// The `Limits` fields that bound one font program, each used only for its
 /// documented meaning.
@@ -74,6 +76,11 @@ impl<'a> Work<'a> {
             segments: Meter::new(budget.segments, "glyph outline segment budget exceeded"),
             diagnostics,
         }
+    }
+
+    /// The caller's recovery policy; probes must preserve strict errors.
+    pub(crate) const fn mode(&self) -> Recovery {
+        self.diagnostics.mode()
     }
 
     /// Charges `units` of work at buffer offset `at`.

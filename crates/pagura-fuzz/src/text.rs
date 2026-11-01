@@ -43,7 +43,8 @@ pub fn run(data: &[u8]) {
         && let Some(font) = super::checked(PdfFont::load(&document, dictionary))
     {
         let _ = (font.kind(), font.writing_mode(), font.type3_resources());
-        if let Some(glyphs) = super::checked(font.decode(string)) {
+        let unicode = super::checked(font.unicode(&document, dictionary, None));
+        if let Some(glyphs) = super::checked(font.decode(string, unicode.as_ref())) {
             let consumed: usize = glyphs.iter().map(|g| usize::from(g.byte_len)).sum();
             assert_eq!(
                 consumed,

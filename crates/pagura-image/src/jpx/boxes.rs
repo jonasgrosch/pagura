@@ -363,6 +363,7 @@ fn parse_palette(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Pal
                     fields.position(),
                 ));
             }
+            let position = fields.position();
             let raw = if bits <= 8 {
                 u16::from(fields.u8()?)
             } else {
@@ -370,10 +371,13 @@ fn parse_palette(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Pal
             };
             let mask = u16::MAX >> (16 - bits);
             if raw & !mask != 0 {
-                return Err(syntax(
-                    "nonzero JP2 palette sample padding",
-                    fields.position(),
-                ));
+                budget.diagnostics.repair_once(
+                    pagura_core::Diagnostic::new(
+                        crate::repairs::JPX_PALETTE_PADDING,
+                        "nonzero JP2 palette padding cleared above declared precision (T.800 I.5.3.4)",
+                    )
+                    .at(pagura_core::Position::Buffer(position)),
+                )?;
             }
             // Signed palette entries have the same unsigned-offset convention as components.
             *value = (raw & mask) ^ if depth & 128 == 0 { 0 } else { 1 << (bits - 1) };
@@ -467,6 +471,21 @@ impl Header {
         if self.palette.is_some() != self.mapping.is_some() {
             return Err(syntax("JP2 palette and mapping disagree", 0));
         }
+        if self.palette.is_none() {
+            // The raw index and opacity are already distinct channels.
+            // Keep cdef so apply_channels can validate and reorder them.
+            return Ok(());
+        }
+        if self
+            .channels
+            .as_ref()
+            .is_some_and(|channels| channels.iter().any(|&(_, kind, _)| matches!(kind, 1 | 2)))
+        {
+            return Err(Error::unsupported(
+                crate::features::JPX_SAMPLE_LAYOUT,
+                "Indexed JPX container-palette opacity requires channel mapping",
+            ));
+        }
         self.palette = None;
         self.mapping = None;
         self.channels = None;
@@ -510,7 +529,7 @@ impl Header {
                     signed: source.signed,
                     width: source.width,
                     height: source.height,
-                    samples: budget.filled(source.samples.len(), 0)?,
+                    samples: budget.samples(source.samples.len(), 0)?,
                 };
                 match kind {
                     0 if column == 0 => result.samples.copy_from_slice(&source.samples),

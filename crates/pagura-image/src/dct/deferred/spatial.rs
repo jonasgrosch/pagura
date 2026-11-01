@@ -1,4 +1,4 @@
-//! A scaled f32 inverse cosine transform over four independent lanes.
+//! A scaled f32 inverse cosine transform over eight independent lanes.
 //! Both passes use the same sum/difference network, and every lane keeps its
 //! multiplication and addition order. Its error against the reference is
 //! bounded by the caller's certificate, not by matching operation order.
@@ -6,33 +6,24 @@
     clippy::inline_always,
     reason = "fixed lane arithmetic is exposed to the optimizer"
 )]
+/// One value per lane: a block row or column.
 #[derive(Clone, Copy)]
-struct Four([f32; 4]);
-impl Four {
-    #[inline(always)]
-    fn load(input: &[f32]) -> Self {
-        Self(std::array::from_fn(|i| input[i]))
-    }
-    #[inline(always)]
-    fn store_slice(self, output: &mut [f32]) {
-        output[..4].copy_from_slice(&self.0);
-    }
-}
-impl std::ops::Add for Four {
+struct Lanes([f32; 8]);
+impl std::ops::Add for Lanes {
     type Output = Self;
     #[inline(always)]
     fn add(self, rhs: Self) -> Self {
         Self(std::array::from_fn(|i| self.0[i] + rhs.0[i]))
     }
 }
-impl std::ops::Sub for Four {
+impl std::ops::Sub for Lanes {
     type Output = Self;
     #[inline(always)]
     fn sub(self, rhs: Self) -> Self {
         Self(std::array::from_fn(|i| self.0[i] - rhs.0[i]))
     }
 }
-impl std::ops::Mul<f32> for Four {
+impl std::ops::Mul<f32> for Lanes {
     type Output = Self;
     #[inline(always)]
     fn mul(self, rhs: f32) -> Self {
@@ -40,7 +31,7 @@ impl std::ops::Mul<f32> for Four {
     }
 }
 #[inline(always)]
-fn inverse(a: [Four; 8]) -> [Four; 8] {
+fn inverse(a: [Lanes; 8]) -> [Lanes; 8] {
     let sum04 = a[0] + a[4];
     let diff04 = a[0] - a[4];
     let sum26 = a[2] + a[6];
@@ -67,55 +58,38 @@ fn inverse(a: [Four; 8]) -> [Four; 8] {
         even[0] - outer,
     ]
 }
+/// The scaled basis factors of the coefficients' frequencies.
+const SCALES: [f32; 8] = [
+    0.353_553_38,
+    0.490_392_63,
+    0.461_939_75,
+    0.415_734_8,
+    0.353_553_38,
+    0.277_785_12,
+    0.191_341_71,
+    0.097_545_16,
+];
+
+/// One pass: the transform of every lane over its eight frequencies.
 #[inline(always)]
-fn transpose(a: [Four; 4]) -> [Four; 4] {
-    std::array::from_fn(|i| Four(std::array::from_fn(|j| a[j].0[i])))
+fn pass(frequencies: [[f32; 8]; 8]) -> [[f32; 8]; 8] {
+    let mut scaled = frequencies.map(Lanes);
+    for (lanes, scale) in scaled.iter_mut().zip(SCALES) {
+        *lanes = *lanes * scale;
+    }
+    inverse(scaled).map(|lanes| lanes.0)
 }
-/// Unshifted spatial values of a dequantized block in natural order.
+
 #[inline(always)]
-pub(super) fn spatial(input: &[f32; 64]) -> [[f32; 8]; 8] {
-    let scales = [
-        0.353_553_38,
-        0.490_392_63,
-        0.461_939_75,
-        0.415_734_8,
-        0.353_553_38,
-        0.277_785_12,
-        0.191_341_71,
-        0.097_545_16,
-    ];
-    let mut horizontal = [[0.0; 8]; 8];
-    for group in [0, 4] {
-        let lo = transpose(std::array::from_fn(|i| {
-            Four::load(&input[(group + i) * 8..(group + i) * 8 + 4])
-        }));
-        let hi = transpose(std::array::from_fn(|i| {
-            Four::load(&input[(group + i) * 8 + 4..(group + i) * 8 + 8])
-        }));
-        let values = inverse(std::array::from_fn(|i| {
-            if i < 4 {
-                lo[i] * scales[i]
-            } else {
-                hi[i - 4] * scales[i]
-            }
-        }));
-        for start in [0, 4] {
-            for (i, row) in transpose(std::array::from_fn(|i| values[start + i]))
-                .into_iter()
-                .enumerate()
-            {
-                row.store_slice(&mut horizontal[group + i][start..start + 4]);
-            }
-        }
-    }
-    let mut output = [[0.0; 8]; 8];
-    for x in [0, 4] {
-        let values = inverse(std::array::from_fn(|v| {
-            Four::load(&horizontal[v][x..x + 4]) * scales[v]
-        }));
-        for (row, value) in output.iter_mut().zip(values) {
-            row[x..x + 4].copy_from_slice(&value.0);
-        }
-    }
-    output
+fn transpose(block: [[f32; 8]; 8]) -> [[f32; 8]; 8] {
+    std::array::from_fn(|x| block.map(|row| row[x]))
+}
+
+/// Unshifted spatial values, in natural order, of a dequantized block given
+/// column by column: `columns[u][v]` is the coefficient of vertical frequency
+/// `v` and horizontal frequency `u`. The first pass has a lane per row, the
+/// second a lane per column.
+#[inline(always)]
+pub(super) fn spatial(columns: &[[f32; 8]; 8]) -> [[f32; 8]; 8] {
+    pass(transpose(pass(*columns)))
 }

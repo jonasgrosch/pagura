@@ -78,11 +78,32 @@ wire_codes! {
     V1_6 = 0x0001_0006,
     /// Actual form text presentation metrics.
     V1_7 = 0x0001_0007,
+    /// Document metadata and explicit embedded-file reads.
+    V1_8 = 0x0001_0008,
+    /// Complete PNG page export.
+    V1_9 = 0x0001_0009,
+    /// Explicit attachment size and checksum comparisons.
+    V1_10 = 0x0001_000a,
+    /// Page attachment annotation discovery and explicit payload operations.
+    V1_11 = 0x0001_000b,
+    /// Scoped files, object metadata, collections, image transfer and reauthentication.
+    V1_12 = 0x0001_000c,
+}
+
+wire_codes! {
+    /// Observation from an explicit attachment parameter check (1.10).
+    pub enum AttachmentCheckStatus: u8, unknown = Error::syntax("unknown attachment check status");
+    /// No declaration is present.
+    NotDeclared = 0,
+    /// The declaration matches decoded bytes.
+    Matches = 1,
+    /// The declaration differs from decoded bytes.
+    Mismatch = 2,
 }
 
 impl Version {
     /// The newest version this host speaks.
-    pub const LATEST: Self = Self::V1_7;
+    pub const LATEST: Self = Self::V1_12;
 
     /// The error for a request that needs this version in an older session.
     pub(crate) const fn required(self) -> Error {
@@ -95,6 +116,11 @@ impl Version {
             Self::V1_5 => "form editing requires protocol 1.5",
             Self::V1_6 => "inline form editing requires protocol 1.6",
             Self::V1_7 => "form text styles require protocol 1.7",
+            Self::V1_8 => "document services require protocol 1.8",
+            Self::V1_9 => "PNG export requires protocol 1.9",
+            Self::V1_10 => "attachment checks require protocol 1.10",
+            Self::V1_11 => "page attachment operations require protocol 1.11",
+            Self::V1_12 => "extended document services require protocol 1.12",
         })
     }
 }
@@ -144,12 +170,60 @@ wire_codes! {
     FormWidgets = 20,
     /// Form text presentation (1.7).
     FormStyles = 21,
+    /// Info, language and metadata-stream identity (1.8).
+    Metadata = 22,
+    /// Catalog EmbeddedFiles entries, without reading payloads (1.8).
+    Attachments = 23,
+    /// Explicit inert metadata-stream bytes (1.8).
+    MetadataBytes = 24,
+    /// Explicit catalog attachment and EF key selection (1.8).
+    AttachmentBytes = 25,
+    /// Complete PNG page image (1.9).
+    PagePng = 26,
+    /// Check the selected attachment parameters against decoded bytes (1.10).
+    AttachmentCheck = 27,
+    /// FileAttachment annotations on one page, without reading payloads (1.11).
+    PageAttachments = 28,
+    /// Explicit page, Annots slot and EF key selection (1.11).
+    PageAttachmentBytes = 29,
+    /// Check the selected annotation attachment parameters (1.11).
+    PageAttachmentCheck = 30,
+    /// Exact file collection and complete EF/RF declarations. (1.12).
+    Files = 31,
+    /// Exact scoped EF or RF payload bytes. (1.12).
+    FileBytes = 32,
+    /// Exact scoped EF or RF parameter comparisons. (1.12).
+    FileCheck = 33,
+    /// Metadata packet identity of an explicit owner. (1.12).
+    ObjectMetadata = 34,
+    /// Metadata packet bytes of an explicit owner. (1.12).
+    ObjectMetadataBytes = 35,
+    /// Portable collection declarations. (1.12).
+    Collection = 36,
+    /// Direct page image resources or one explicit image. (1.12).
+    Images = 37,
+    /// Stored or encoded image asset bytes. (1.12).
+    ImageBytes = 38,
+    /// Authenticate a new immutable snapshot. (1.12).
+    Reauthenticate = 39,
+    /// Stored thumbnail declaration of an explicit owner. (1.12).
+    Thumbnail = 40,
 }
 
 impl RequestKind {
     /// The first version that accepts this request.
     pub const fn since(self) -> Version {
         match self {
+            Self::Files
+            | Self::FileBytes
+            | Self::FileCheck
+            | Self::ObjectMetadata
+            | Self::ObjectMetadataBytes
+            | Self::Collection
+            | Self::Images
+            | Self::ImageBytes
+            | Self::Reauthenticate
+            | Self::Thumbnail => Version::V1_12,
             Self::Hello
             | Self::Open
             | Self::PageInfo
@@ -168,12 +242,31 @@ impl RequestKind {
             Self::FormFields | Self::SaveForm => Version::V1_5,
             Self::FormWidgets => Version::V1_6,
             Self::FormStyles => Version::V1_7,
+            Self::PagePng => Version::V1_9,
+            Self::AttachmentCheck => Version::V1_10,
+            Self::PageAttachments | Self::PageAttachmentBytes | Self::PageAttachmentCheck => {
+                Version::V1_11
+            }
+            Self::Metadata | Self::Attachments | Self::MetadataBytes | Self::AttachmentBytes => {
+                Version::V1_8
+            }
         }
     }
 
     /// The kind of a successful response; failures are [`ResponseKind::Error`].
     pub const fn response(self) -> ResponseKind {
         match self {
+            Self::Files => ResponseKind::Files,
+            Self::FileBytes => ResponseKind::FileBytes,
+            Self::FileCheck => ResponseKind::FileCheck,
+            Self::ObjectMetadata => ResponseKind::ObjectMetadata,
+            Self::ObjectMetadataBytes => ResponseKind::ObjectMetadataBytes,
+            Self::Collection => ResponseKind::Collection,
+            Self::Images => ResponseKind::Images,
+            Self::ImageBytes => ResponseKind::ImageBytes,
+            Self::Reauthenticate => ResponseKind::Reauthenticate,
+            Self::Thumbnail => ResponseKind::Thumbnail,
+
             Self::Hello => ResponseKind::Hello,
             Self::Open => ResponseKind::Open,
             Self::PageInfo => ResponseKind::PageInfo,
@@ -195,6 +288,15 @@ impl RequestKind {
             Self::SaveForm => ResponseKind::SavedForm,
             Self::FormWidgets => ResponseKind::FormWidgets,
             Self::FormStyles => ResponseKind::FormStyles,
+            Self::Metadata => ResponseKind::Metadata,
+            Self::Attachments => ResponseKind::Attachments,
+            Self::MetadataBytes => ResponseKind::MetadataBytes,
+            Self::AttachmentBytes => ResponseKind::AttachmentBytes,
+            Self::PagePng => ResponseKind::PagePng,
+            Self::AttachmentCheck => ResponseKind::AttachmentCheck,
+            Self::PageAttachments => ResponseKind::PageAttachments,
+            Self::PageAttachmentBytes => ResponseKind::PageAttachmentBytes,
+            Self::PageAttachmentCheck => ResponseKind::PageAttachmentCheck,
         }
     }
 }
@@ -244,8 +346,74 @@ wire_codes! {
     FormWidgets = 148,
     /// Form text presentation.
     FormStyles = 149,
+    /// Info, language and metadata-stream identity.
+    Metadata = 150,
+    /// Catalog attachment declarations.
+    Attachments = 151,
+    /// Optional inert metadata-stream bytes.
+    MetadataBytes = 152,
+    /// Selected embedded-file bytes.
+    AttachmentBytes = 153,
+    /// Complete PNG page image (1.9).
+    PagePng = 154,
+    /// Completed size and checksum observations (1.10).
+    AttachmentCheck = 155,
+    /// FileAttachment annotation records for one page (1.11).
+    PageAttachments = 156,
+    /// Explicitly selected page attachment bytes (1.11).
+    PageAttachmentBytes = 157,
+    /// Page attachment parameter observations (1.11).
+    PageAttachmentCheck = 158,
+    /// Exact file collection and complete EF/RF declarations. (1.12).
+    Files = 159,
+    /// Exact scoped EF or RF payload bytes. (1.12).
+    FileBytes = 160,
+    /// Exact scoped EF or RF parameter comparisons. (1.12).
+    FileCheck = 161,
+    /// Metadata packet identity of an explicit owner. (1.12).
+    ObjectMetadata = 162,
+    /// Metadata packet bytes of an explicit owner. (1.12).
+    ObjectMetadataBytes = 163,
+    /// Portable collection declarations. (1.12).
+    Collection = 164,
+    /// Direct page image resources or one explicit image. (1.12).
+    Images = 165,
+    /// Stored or encoded image asset bytes. (1.12).
+    ImageBytes = 166,
+    /// Authenticate a new immutable snapshot. (1.12).
+    Reauthenticate = 167,
+    /// Stored thumbnail declaration of an explicit owner. (1.12).
+    Thumbnail = 168,
     /// A structured failure.
     Error = 255,
+}
+
+wire_codes! {
+    /// Explicit EF filename-key selection (Table 43); no platform inference.
+    pub enum AttachmentKey: u8, unknown = Error::syntax("unknown attachment filename key");
+    /// F filename.
+    File = 0,
+    /// UF Unicode filename.
+    Unicode = 1,
+    /// Legacy DOS filename.
+    Dos = 2,
+    /// Legacy Mac filename.
+    Mac = 3,
+    /// Legacy Unix filename.
+    Unix = 4,
+}
+
+impl AttachmentKey {
+    /// The corresponding PDF filename key, without a slash.
+    pub const fn pdf_name(self) -> &'static [u8] {
+        match self {
+            Self::File => b"F",
+            Self::Unicode => b"UF",
+            Self::Dos => b"DOS",
+            Self::Mac => b"Mac",
+            Self::Unix => b"Unix",
+        }
+    }
 }
 
 wire_codes! {
@@ -456,4 +624,66 @@ impl OpenFlags {
             Recovery::Strict
         }
     }
+}
+
+wire_codes! {
+    /// Background of an exported PNG page (1.9).
+    pub enum PngBackground: u8, unknown = Error::syntax("unknown PNG background");
+    /// Composite onto opaque white.
+    White = 0,
+    /// Retain straight alpha with transparent unpainted pixels.
+    Transparent = 1,
+}
+
+wire_codes! {
+    /// File collection selectors (1.12).
+    pub enum FileScopeCode: u8, unknown = Error::syntax("unknown FileScopeCode code");
+    /// Catalog selection.
+    Catalog = 0,
+    /// Associated selection.
+    Associated = 1,
+    /// PageAssociated selection.
+    PageAssociated = 2,
+    /// ObjectAssociated selection.
+    ObjectAssociated = 3,
+    /// PageAnnotations selection.
+    PageAnnotations = 4,
+}
+
+wire_codes! {
+    /// Metadata and thumbnail owners (1.12).
+    pub enum MetadataOwnerCode: u8, unknown = Error::syntax("unknown MetadataOwnerCode code");
+    /// Document selection.
+    Document = 0,
+    /// Page selection.
+    Page = 1,
+    /// Object selection.
+    Object = 2,
+}
+
+wire_codes! {
+    /// File payload selectors (1.12).
+    pub enum PayloadKind: u8, unknown = Error::syntax("unknown PayloadKind code");
+    /// Embedded selection.
+    Embedded = 0,
+    /// Related selection.
+    Related = 1,
+}
+
+wire_codes! {
+    /// Image transfer modes (1.12).
+    pub enum ImageTransferCode: u8, unknown = Error::syntax("unknown ImageTransferCode code");
+    /// Stored selection.
+    Stored = 0,
+    /// Encoded selection.
+    Encoded = 1,
+}
+
+wire_codes! {
+    /// Image object selection (1.12).
+    pub enum ImageAssetCode: u8, unknown = Error::syntax("unknown ImageAssetCode code");
+    /// Image selection.
+    Image = 0,
+    /// Thumbnail selection.
+    Thumbnail = 1,
 }

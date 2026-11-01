@@ -10,14 +10,46 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from round5 import (COMPETITIVE, CONTENT, V8_FLAGS, X86_V3, build_x86_v3, cpu_summary, failure_sink, idle_record, measurement,
-                    native_simd, parity, remaining_time, sha, subset_300, target_features, verify_runtime_parity,
-                    wasm_command)
+from round5 import (CONTENT, V8_FLAGS, X86_V3, build, build_x86_v3, cpu_summary, failure_sink, idle_record,
+                    measurement, native_simd, parity, remaining_time, sha, subset_300, target_features,
+                    verify_runtime_parity, wasm_command)
 from machine_record import probe, snapshot
 from benchkit.engines import identify
+from benchkit.rustflags import cfg_matches, config_rustflags
 
 
 class MatrixContracts(unittest.TestCase):
+    def test_explicit_wasm_build_flags_keep_overflow_checks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            host = "aarch64-apple-darwin"
+            commands = []
+
+            def checked(command, log, *, env=None):
+                commands.append((list(map(str, command)), env))
+                if "cargo" in command:
+                    target = command[command.index("--target") + 1]
+                    release = output / "build" / target / "release"
+                    (release / "deps").mkdir(parents=True)
+                    (release / "deps/libpagura-control.rlib").write_bytes(b"library")
+                    (release / "pagura-host.wasm").write_bytes(b"host")
+
+            with patch("round5.subprocess.check_output", return_value=f"host: {host}\n"), \
+                    patch("round5.target_features", return_value=[]), patch("round5.checked", side_effect=checked):
+                build(output, "wasmtime")
+            cargo = [(command, env) for command, env in commands if "cargo" in command]
+            self.assertEqual(len(cargo), 2)
+            native, wasm = cargo
+            self.assertEqual(native[1]["CARGO_ENCODED_RUSTFLAGS"], "")
+            self.assertEqual(wasm[1]["CARGO_ENCODED_RUSTFLAGS"].split("\x1f"),
+                             ["-C", "target-feature=+simd128", "-C", "overflow-checks=on"])
+            adapter = next(command for command, _ in commands
+                           if "rustc" in command and "wasm32-wasip1" in command)
+            self.assertIn("overflow-checks=on", adapter)
+            compiler = json.loads((output / "compiler.json").read_text())
+            self.assertEqual(compiler["wasm_rustflags"],
+                             ["-C", "target-feature=+simd128", "-C", "overflow-checks=on"])
+
     def test_v8_compiles_the_whole_module_before_stage_timers(self):
         page = {"path": "/input/a.pdf", "dpi": 72, "page": 0}
         command = wasm_command("v8-wasi", "node", "wasmtime", Path("/artifacts"), [page], Path("/output"))
@@ -35,6 +67,8 @@ class MatrixContracts(unittest.TestCase):
     def test_native_simd_uses_compiler_features(self):
         baseline = native_simd("x86_64-unknown-linux-gnu", ["sse", "sse2"])
         self.assertIn("SSE2 enabled", baseline)
+        self.assertIn("SSE4.1 disabled", baseline)
+        self.assertIn("SSE4.1 enabled", native_simd("x86_64-unknown-linux-gnu", ["sse2", "sse4.1", "sse4.2"]))
         self.assertIn("AVX2 disabled", baseline)
         self.assertIn("AVX-512 disabled", baseline)
         tuned = native_simd("x86_64-unknown-linux-gnu", ["sse2", "avx2", "avx512f"])
@@ -112,6 +146,57 @@ class MatrixContracts(unittest.TestCase):
         self.assertNotIn("CARGO_ENCODED_RUSTFLAGS", variant_env)
         self.assertEqual(env["CARGO_TARGET_DIR"], "portable")
 
+    def test_cfg_keys_evaluate_like_cargo(self):
+        x86 = ['target_arch="x86_64"', 'target_os="linux"', "unix"]
+        self.assertTrue(cfg_matches('cfg(target_arch = "x86_64")', x86))
+        self.assertFalse(cfg_matches('cfg(target_arch = "aarch64")', x86))
+        self.assertTrue(cfg_matches('cfg(all(unix, target_os = "linux"))', x86))
+        self.assertTrue(cfg_matches('cfg(any(windows, target_arch = "x86_64"))', x86))
+        self.assertFalse(cfg_matches("cfg(not(unix))", x86))
+        for unsupported in ("cfg(target_arch = )", "cfg(not(unix, windows))", 'cfg(unix) cfg(windows)', "cfg(all(unix"):
+            with self.subTest(key=unsupported), self.assertRaises(ValueError):
+                cfg_matches(unsupported, x86)
+
+    def test_repository_flags_follow_cargo_target_tables(self):
+        config = {"target": {"wasm32-wasip1": {"rustflags": ["-C", "target-feature=+simd128", "-C", "overflow-checks=on"]},
+                             'cfg(target_arch = "x86_64")': {"rustflags": ["-C", "target-cpu=x86-64-v2"]}},
+                  "build": {"rustflags": "-C debuginfo=1"}}
+        self.assertEqual(config_rustflags(config, "x86_64-unknown-linux-gnu", ['target_arch="x86_64"']),
+                         ["-C", "target-cpu=x86-64-v2"])
+        self.assertEqual(config_rustflags(config, "wasm32-wasip1", ['target_arch="wasm32"']),
+                         ["-C", "target-feature=+simd128", "-C", "overflow-checks=on"])
+        self.assertEqual(config_rustflags(config, "aarch64-apple-darwin", ['target_arch="aarch64"']), ["-C", "debuginfo=1"])
+        self.assertEqual(config_rustflags({"target": {}}, "aarch64-apple-darwin", []), [])
+
+    def test_build_passes_repository_flags_explicitly_and_records_them(self):
+        host = "x86_64-unknown-linux-gnu"
+        resolved = {host: ["-C", "target-cpu=x86-64-v2"], "wasm32-wasip1": ["-C", "target-feature=+simd128"]}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            for triple, library in ((host, "libpagura-1.rlib"), ("wasm32-wasip1", "libpagura-2.rlib")):
+                deps = output / "build" / triple / "release/deps"
+                deps.mkdir(parents=True)
+                (deps / library).write_bytes(b"")
+            (output / "build/wasm32-wasip1/release/pagura-host.wasm").write_bytes(b"\0asm")
+            with patch.dict("os.environ", {"RUSTFLAGS": "-C target-cpu=native"}), \
+                 patch("round5.subprocess.check_output", return_value=f"rustc 1.99.1\nhost: {host}\n"), \
+                 patch("round5.repository_rustflags", side_effect=lambda toolchain, triple, env: resolved[triple]), \
+                 patch("round5.target_features", return_value=["sse2", "sse4.1"]) as features, \
+                 patch("round5.checked") as checked, patch("round5.atomic_json") as record:
+                build(output, "wasmtime")
+        commands = [(call.args[0], call.kwargs.get("env") or {}) for call in checked.call_args_list]
+        cargo = [(command, env) for command, env in commands if "cargo" in command]
+        self.assertEqual([env["CARGO_ENCODED_RUSTFLAGS"] for _, env in cargo],
+                         ["-C\x1ftarget-cpu=x86-64-v2", "-C\x1ftarget-feature=+simd128"])
+        self.assertTrue(all("RUSTFLAGS" not in env for _, env in cargo))
+        adapters = [command for command, _ in commands if "--extern" in command]
+        self.assertEqual([command[-2:] for command in adapters],
+                         [["-C", "target-cpu=x86-64-v2"], ["-C", "target-feature=+simd128"]])
+        self.assertEqual(features.call_args_list[0].args[3:], ("-C", "target-cpu=x86-64-v2"))
+        compiler = record.call_args.args[1]
+        self.assertEqual(compiler["native_rustflags"], ["-C", "target-cpu=x86-64-v2"])
+        self.assertEqual(compiler["wasm_rustflags"], ["-C", "target-feature=+simd128"])
+
     def test_target_features_records_only_enabled_cfg_features(self):
         with patch("round5.subprocess.check_output", return_value='debug_assertions\ntarget_feature="sse2"\ntarget_arch="x86_64"\ntarget_feature="avx2"\n'):
             self.assertEqual(target_features([], "x86_64-unknown-linux-gnu", {}), ["avx2", "sse2"])
@@ -150,33 +235,6 @@ class MatrixContracts(unittest.TestCase):
                 self.assertEqual(sample["baseline"]["status"], "runtime-parity-mismatch" if mismatch else "unverified")
                 self.assertEqual(next(item for item in report["runtime_parity"] if item["engine"] == X86_V3)["exact"],
                                  not mismatch)
-
-    def test_competitive_row_passes_its_flags_and_takes_no_part_in_parity(self):
-        from types import SimpleNamespace
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            source = root / "input.pdf"
-            source.write_bytes(b"independent input")
-            case = {"id": "one", "path": str(source), "page": 0, "dpi": 72, "sha256": sha(source.read_bytes())}
-            report = {"cells": [], "document_cells": [], "runtime_parity": [], "agreement": []}
-            bases = {"pagura": ["portable"], COMPETITIVE: ["portable", "--accuracy", "competitive"]}
-            args = SimpleNamespace(seed=17, samples=1, warmups=0, smoke=True, deadline=float("inf"),
-                                   engines=("pagura",), main_jobs={("one", 72)}, control_jobs=set())
-            commands = []
-
-            def run(command, *unused, **kwargs):
-                commands.append(command)
-                return {"status": "unverified", "pages": [{"page": 0, "status": "unverified", "width": 1, "height": 1,
-                        "pixels_sha256": "approximate" if "competitive" in command else "exact"}]}
-
-            with patch("round5.idle_record"), patch("round5.expected_pages", return_value={0: None}), \
-                 patch("round5.measure_document", side_effect=run):
-                measurement(report, [[case]], bases, "node", "wasmtime", root, {"timeout_seconds": 10}, root, {}, args)
-            self.assertIn(["portable", "--accuracy", "competitive", "convert", "--timings", str(source),
-                           str(root / "temporary" / COMPETITIVE), "72", "0", "0"], commands)
-            cell = next(cell for cell in report["document_cells"] if cell["engine"] == COMPETITIVE)
-            self.assertEqual(cell["samples"][0]["baseline"]["status"], "unverified")
-            self.assertFalse(report["runtime_parity"])
 
     def candidates(self):
         cases, metadata, geometry = [], {}, {}

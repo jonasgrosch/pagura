@@ -67,7 +67,7 @@ fn payload<'a>(out: &mut Writer, response: &'a Response) -> Result<&'a [u8]> {
         Response::FormFields(payload)
         | Response::FormWidgets(payload)
         | Response::FormStyles(payload) => return Ok(payload),
-        Response::SavedForm(bytes) => {
+        Response::SavedForm(bytes) | Response::PagePng(bytes) => {
             out.count(bytes.len())?;
             return Ok(bytes);
         }

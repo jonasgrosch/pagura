@@ -10,6 +10,134 @@ use std::ops::Range;
 
 const ENDOBJ: &[u8] = b"endobj";
 const ENDSTREAM: &[u8] = b"endstream";
+
+/// A missing separator in a scalar indirect value (7.2.3, 7.3.3, 7.3.10).
+/// Only the file's exact cross-reference entry and the following physical
+/// boundary can establish that an unsigned integer ends before `endobj`.
+pub(super) fn integer_separator(
+    document: &Document,
+    id: ObjectId,
+    offset: usize,
+    value_start: usize,
+    parser: &mut Parser<'_>,
+    diagnostics: &mut Diagnostics,
+) -> Result<Option<Value>> {
+    let entry = document
+        .revisions()
+        .iter()
+        .find_map(|revision| revision.entries.get(&id.number));
+    let primary = entry.is_some_and(|entry| {
+        entry.generation == id.generation && entry.location == Location::Offset(offset)
+    });
+    let original = document.original.as_deref().and_then(|original| {
+        document
+            .slots
+            .get(&id)
+            .filter(|slot| slot.location == Location::Offset(offset))
+            .and_then(|_| original.boundary(id, offset))
+    });
+    if !primary && original.is_none() {
+        return Ok(None);
+    }
+    integer_in_span(
+        id,
+        value_start,
+        parser,
+        &document.limits(),
+        diagnostics,
+        || {
+            let boundaries = document.boundaries()?;
+            let current = boundaries
+                .get(boundaries.partition_point(|&at| at <= offset))
+                .copied();
+            Ok(match (current, original) {
+                (Some(current), Some(original)) => Some(current.min(original)),
+                (current, None) => current,
+                (None, original) => original,
+            })
+        },
+    )
+}
+
+/// Reconstruction may repair only a header it visited that has an exact original record.
+pub(crate) fn integer_separator_from_original(
+    original: &crate::xref::original::OriginalRecords,
+    id: ObjectId,
+    offset: usize,
+    value_start: usize,
+    parser: &mut Parser<'_>,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Option<Value>> {
+    let Some(boundary) = original.boundary(id, offset) else {
+        return Ok(None);
+    };
+    integer_in_span(id, value_start, parser, limits, diagnostics, || {
+        Ok(Some(boundary))
+    })
+}
+
+// Source authorization stays in the two typed entry points above. Keep the
+// boundary lookup after the candidate-word proof, preserving355's budget order.
+fn integer_in_span(
+    id: ObjectId,
+    value_start: usize,
+    parser: &mut Parser<'_>,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+    boundary: impl FnOnce() -> Result<Option<usize>>,
+) -> Result<Option<Value>> {
+    let bytes = parser.data();
+    let mut probe = Parser::with_offset(bytes, value_start, Origin::File, *limits)?;
+    if !probe.peek().is_some_and(|byte| byte.is_ascii_digit()) {
+        return Ok(None);
+    }
+    let start = probe.offset();
+    let word = probe.word()?;
+    let Some(digits) = word.strip_suffix(ENDOBJ) else {
+        return Ok(None);
+    };
+    if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
+        return Ok(None);
+    }
+    let Some(boundary) = boundary()? else {
+        return Ok(None);
+    };
+    if probe.offset() > boundary {
+        return Ok(None);
+    }
+    // Include the real first byte of the following physical structure. A
+    // comment must end before it, rather than at a synthetic end of input.
+    let Some(span) = bytes.get(..boundary.saturating_add(1)) else {
+        return Ok(None);
+    };
+    let mut suffix = Parser::with_offset(span, probe.offset(), Origin::File, *limits)?;
+    suffix.skip_whitespace();
+    if suffix.offset() != boundary {
+        return Ok(None);
+    }
+    let end = start
+        .checked_add(digits.len())
+        .ok_or_else(|| Error::limit("integer object offset overflow").in_object(id))?;
+    let Some(prefix) = bytes.get(..end) else {
+        return Ok(None);
+    };
+    let mut integer = Parser::with_offset(prefix, start, Origin::File, *limits)?;
+    let value = integer.parse().map_err(|error| error.in_object(id))?;
+    if !matches!(value, Value::Integer(_)) {
+        return Ok(None);
+    }
+    diagnostics.repair(
+        Diagnostic::new(
+            repairs::INTEGER_SEPARATOR,
+            "missing separator between unsigned integer indirect value and endobj",
+        )
+        .at(Position::File(end))
+        .in_object(id),
+    )?;
+    parser.seek(end)?;
+    Ok(Some(value))
+}
 /// How far past `start + Length` a terminator scan reads: a CRLF before
 /// `endstream`, then the keyword itself.
 pub(crate) const TERMINATOR_SLACK: usize = 2 + ENDSTREAM.len();
@@ -71,9 +199,38 @@ pub(crate) fn end(
             .in_object(id),
         );
     }
+    if let Some(after) = stray_delimiters(parser, limits)? {
+        diagnostics.repair(
+            Diagnostic::new(
+                repairs::OBJECT_STRAY_DELIMITER,
+                "unmatched closing delimiters between a complete value and endobj ignored",
+            )
+            .at(parser.position())
+            .in_object(id),
+        )?;
+        return parser.seek(after);
+    }
     Err(Error::syntax("missing endobj")
         .at(parser.position())
         .in_object(id))
+}
+
+/// The offset after `endobj` when only unmatched `>>` or `]` precede it: a
+/// closing delimiter cannot begin a value (7.3.7), so none of them can hold
+/// content. At most `limits.depth` delimiters are read.
+fn stray_delimiters(parser: &Parser<'_>, limits: &Limits) -> Result<Option<usize>> {
+    let mut probe = Parser::with_offset(parser.data(), parser.offset(), Origin::File, *limits)?;
+    let mut found = false;
+    for _ in 0..limits.depth {
+        let width = match probe.peek() {
+            Some(b']') => 1,
+            Some(b'>') if probe.data().get(probe.offset() + 1) == Some(&b'>') => 2,
+            _ => break,
+        };
+        probe.seek(probe.offset() + width)?;
+        found = true;
+    }
+    Ok((found && probe.keyword(ENDOBJ)).then(|| probe.offset()))
 }
 
 /// Recognize a positive indirect-object identity at a token boundary (7.3.10).
@@ -106,15 +263,10 @@ pub(super) fn stream_extent(
         if parser.keyword(ENDSTREAM) {
             return Ok(start..end);
         }
-        // A wrong length cannot swallow another complete physical object.
-        if bytes
-            .get(start..end)
-            .is_some_and(|data| data.windows(ENDOBJ.len()).any(|part| part == ENDOBJ))
-        {
-            return Err(Error::syntax("stream Length crosses an object boundary")
-                .at(parser.position())
-                .in_object(id));
-        }
+        // An overlong declaration can cross endobj. It is not the repaired
+        // extent: terminator() still requires one complete endstream/endobj
+        // before the next physical object or revision boundary. Never scan
+        // through that boundary to satisfy the declaration.
     }
     let (marker, actual) = terminator(document, id, start, context)?;
     repairs.repair(
@@ -188,13 +340,17 @@ fn stream_length(
             _ => return Ok(None),
         }
     };
-    let Ok(length) = usize::try_from(length) else {
+    let Ok(length) = u64::try_from(length) else {
         return Ok(None);
     };
-    if length > document.limits().stream_bytes {
+    // The caller's cap is usize-sized. Check it before narrowing the valid
+    // nonnegative PDF integer, so 32-bit targets retain the same Limit error.
+    if length > pagura_core::convert::usize_to_u64(document.limits().stream_bytes) {
         return Err(Error::limit("stream size budget exceeded").in_object(id));
     }
-    Ok(Some(length))
+    usize::try_from(length)
+        .map(Some)
+        .map_err(|_| Error::limit("stream size budget exceeded").in_object(id))
 }
 
 /// Finds the terminator before the next object or revision boundary.

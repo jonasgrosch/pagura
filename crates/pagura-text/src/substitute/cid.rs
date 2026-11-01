@@ -1,15 +1,18 @@
 //! Collection-to-Unicode substitution policy (9.7.4.2–9.7.5; ADR 0009).
+use super::{Standard14, standard_name};
+use crate::objects::optional;
 use crate::{
     CidToUnicode, FontKind, PdfFont, Provider, WritingMode,
     cid::Cid,
     features,
-    font::{Mapping, Source, cid_collection, to_unicode},
+    font::{Mapping, Source, UnicodeCoverage, cid_collection},
     metrics::Metrics,
     report::Report,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, Meter, ObjectId, Result};
+use pagura_core::{Diagnostic, Dictionary, Error, Meter, ObjectId, Result, Value};
 use pagura_document::Document;
 use pagura_font::{CmapSubtable, FontProgram, GlyphId};
+use std::sync::Arc;
 
 pub(crate) fn load(
     document: &Document,
@@ -22,26 +25,89 @@ pub(crate) fn load(
     let Mapping::Composite { map, .. } = &mapping else {
         return Err(unavailable());
     };
+    let collection = cid_collection(document, descendant)?;
+    if let Some((registry, ordering)) = collection {
+        if map.registry().is_some_and(|r| r != registry)
+            || map.ordering().is_some_and(|o| o != ordering)
+        {
+            return Err(Error::syntax(
+                "CIDFont and CMap character collections disagree (9.7.3)",
+            ));
+        }
+        if let Some(program) = provider.cid_font(registry, ordering)? {
+            let unicode = provider
+                .cid_to_unicode(registry, ordering)?
+                .ok_or_else(unavailable)?;
+            return collection_substitute(
+                document,
+                descendant,
+                id,
+                mapping,
+                program,
+                unicode,
+                (registry, ordering),
+            );
+        }
+    }
     if map.mode == WritingMode::Vertical {
         return Err(Error::unsupported(
             features::CID_SUBSTITUTE_VERTICAL,
             "vertical CID substitute glyph forms are unavailable",
         ));
     }
-    let (registry, ordering) = cid_collection(document, descendant)?.ok_or_else(unavailable)?;
-    if map.registry().is_some_and(|r| r != registry)
-        || map.ordering().is_some_and(|o| o != ordering)
+    // An Identity or unnamed collection shares no glyph identity with any
+    // substitute. A known Latin family draws through the font's own ToUnicode
+    // text with an explicitly selected bundled face (ADR 0009).
+    if collection.is_none_or(|(_, ordering)| ordering == b"Identity")
+        && let Some(face) = latin_face(document, descendant)?
     {
-        return Err(Error::syntax(
-            "CIDFont and CMap character collections disagree (9.7.3)",
-        ));
+        return latin(document, font, descendant, id, mapping, face, provider);
     }
-    let program = provider
-        .cid_font(registry, ordering)?
-        .ok_or_else(unavailable)?;
-    let unicode = provider
-        .cid_to_unicode(registry, ordering)?
-        .ok_or_else(unavailable)?;
+    Err(unavailable())
+}
+
+/// The collection route: CIDs select the collection's Unicode, which selects
+/// the substitute's glyph (9.7.4.2).
+fn collection_substitute(
+    document: &Document,
+    descendant: &Dictionary,
+    id: Option<ObjectId>,
+    mapping: Mapping,
+    program: Arc<FontProgram>,
+    unicode: Arc<CidToUnicode>,
+    collection: (&[u8], &[u8]),
+) -> Result<PdfFont> {
+    let Mapping::Composite { map, .. } = &mapping else {
+        return Err(unavailable());
+    };
+    let (registry, ordering) = collection;
+    let writing_mode = map.mode;
+    let vertical = if writing_mode == WritingMode::Vertical {
+        // Regional collection policy chooses the font's Han language system.
+        // This changes glyph forms only: PDF W/W2/DW/DW2 still own positioning.
+        let language =
+            (registry == b"Adobe")
+                .then_some(ordering)
+                .and_then(|ordering| match ordering {
+                    b"Japan1" => Some(*b"JAN "),
+                    b"GB1" => Some(*b"ZHS "),
+                    b"CNS1" => Some(*b"ZHT "),
+                    b"Korea1" => Some(*b"KOR "),
+                    _ => None,
+                });
+        Some(
+            program
+                .vertical_substitution(*b"hani", language)?
+                .ok_or_else(|| {
+                    Error::unsupported(
+                        features::CID_SUBSTITUTE_VERTICAL,
+                        "CID substitute lacks an applicable vertical glyph feature",
+                    )
+                })?,
+        )
+    } else {
+        None
+    };
     let metrics = Metrics::composite(document, descendant)?;
     // Inspect reachable CIDs, not the substitute's own CID charset. Stop at the
     // first hole; the diagnostic covers incomplete font coverage as a whole.
@@ -63,7 +129,6 @@ pub(crate) fn load(
             break;
         }
     }
-    let to_unicode = to_unicode(document, font, &mapping)?;
     report.diagnostic(
         Diagnostic::information(
             crate::information::SUBSTITUTED,
@@ -73,16 +138,102 @@ pub(crate) fn load(
     )?;
     Ok(PdfFont {
         kind: FontKind::Type0,
-        writing_mode: WritingMode::Horizontal,
-        source: Source::CidSubstitute { program },
+        writing_mode,
+        source: Source::CidSubstitute {
+            program,
+            unicode,
+            vertical,
+        },
         mapping,
         metrics,
-        to_unicode,
         limits: document.limits(),
-        cid_unicode: Some(unicode),
         retained: 0,
+        selection_policy: crate::font::SelectionPolicy::LegacyNotdef,
     }
     .accounted())
+}
+
+/// The Latin route: a known Latin family's bundled face, whose glyphs each
+/// code's ToUnicode text selects. The PDF's `W` and `DW` keep the advances.
+fn latin(
+    document: &Document,
+    font: &Dictionary,
+    descendant: &Dictionary,
+    id: Option<ObjectId>,
+    mapping: Mapping,
+    selection: LatinSelection,
+    provider: &dyn Provider,
+) -> Result<PdfFont> {
+    let program = provider
+        .standard_font(selection.face.name().as_bytes())?
+        .and_then(|data| data.program.clone())
+        .ok_or_else(unavailable)?;
+    let to_unicode = crate::font::to_unicode(document, font, &mapping)?;
+    if selection.coverage == UnicodeCoverage::Required && to_unicode.is_none() {
+        return Err(unavailable());
+    }
+    let metrics = Metrics::composite(document, descendant)?;
+    let report = Report::new(document);
+    // Codes without ToUnicode text, notdef among them, select no glyph.
+    if selection.coverage == UnicodeCoverage::Partial {
+        report.diagnostic(
+        Diagnostic::information(
+            crate::information::CID_GLYPH_MISSING,
+            "Identity CID substitute draws only codes with ToUnicode text; others paint nothing and retain PDF advances",
+        )
+        .in_object_opt(id),
+        )?;
+    }
+    report.diagnostic(
+        Diagnostic::information(
+            crate::information::SUBSTITUTED,
+            "non-embedded Identity CID font uses a Latin substitute through its ToUnicode map; PDF widths retained",
+        )
+        .in_object_opt(id),
+    )?;
+    Ok(PdfFont {
+        kind: FontKind::Type0,
+        writing_mode: WritingMode::Horizontal,
+        source: Source::UnicodeSubstitute {
+            program,
+            to_unicode,
+            coverage: selection.coverage,
+        },
+        mapping,
+        metrics,
+        limits: document.limits(),
+        retained: 0,
+        selection_policy: crate::font::SelectionPolicy::LegacyNotdef,
+    }
+    .accounted())
+}
+
+/// A reader-selected face and its required source-code coverage policy.
+#[derive(Debug, Clone, Copy)]
+struct LatinSelection {
+    face: Standard14,
+    coverage: UnicodeCoverage,
+}
+
+/// The bounded Latin face policy for this CIDFont's `/BaseFont`.
+fn latin_face(document: &Document, descendant: &Dictionary) -> Result<Option<LatinSelection>> {
+    Ok(optional(document, descendant, b"BaseFont")?
+        .and_then(Value::as_name)
+        .and_then(|name| {
+            let name = name.as_bytes();
+            standard_name(name)
+                .filter(|face| !face.is_symbolic())
+                .map(|face| LatinSelection {
+                    face,
+                    coverage: UnicodeCoverage::Partial,
+                })
+                .or_else(|| {
+                    super::family::checked_cid_face(name).map(|face| LatinSelection {
+                        face,
+                        coverage: UnicodeCoverage::Required,
+                    })
+                })
+        }))
 }
 
 pub(crate) fn glyph(
@@ -90,10 +241,16 @@ pub(crate) fn glyph(
     unicode: Option<&CidToUnicode>,
     cid: Cid,
 ) -> Option<GlyphId> {
-    let mut chars = unicode?.get(u32::from(cid))?.chars();
+    unicode_glyph(program, unicode?.get(u32::from(cid))?)
+}
+
+/// The glyph of a single Unicode scalar in `program`'s Unicode cmap.
+pub(crate) fn unicode_glyph(program: &FontProgram, text: &str) -> Option<GlyphId> {
+    let mut chars = text.chars();
     let scalar = chars.next()?;
     // Collection aliases have already been projected by the provider. A custom
-    // provider's multi-scalar sequence cannot identify one glyph without shaping.
+    // provider's multi-scalar sequence, or a ToUnicode ligature, cannot
+    // identify one glyph without shaping.
     if chars.next().is_some() {
         return None;
     }

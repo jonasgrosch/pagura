@@ -10,7 +10,7 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] >>
 endobj
 4 0 obj
-<< /Type /Font /Subtype /TrueType /BaseFont /Arial /FontDescriptor 5 0 R /Encoding /WinAnsiEncoding /FirstChar 65 /LastChar 65 /Widths [731] >>
+<< /Type /Font /Subtype /TrueType /BaseFont /Arial /FontDescriptor 5 0 R /FirstChar 65 /LastChar 65 /Widths [731] >>
 endobj
 5 0 obj
 << /Flags 4 >>
@@ -22,9 +22,9 @@ xref
 0000000064 00000 n 
 0000000121 00000 n 
 0000000190 00000 n 
-0000000349 00000 n 
+0000000322 00000 n 
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-379
+352
 %%EOF

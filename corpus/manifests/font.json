@@ -14,7 +14,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-cmap0.expect",
-          "sha256": "df2c8f70f6d0df3218017bc0e10eb94319e268550b3ce65090e4085d30e76554"
+          "sha256": "b11e1b39b049b6af8d15e135c0a679ada4c17567374c4adb5476851d01421280"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-cmap0.font",
@@ -33,7 +33,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-cmap4.expect",
-          "sha256": "3debcde1cb4435aa5693f817d0c1a2a2c36f5d59bacc91ddb983c804f0c98a01"
+          "sha256": "27a482819ddfc2e518a3928d25c96e2c777af6f578b9d57f0ae66eecc817f7ff"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-cmap4.font",
@@ -52,7 +52,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-cmap6.expect",
-          "sha256": "a2e64b48cd371b4cbb90a58c149bba99db7e87db14fc2a41a48d75d67ad14ce5"
+          "sha256": "b3081e60bfc9c0cdcae34060470bed20d3c4b683b4c14da2ab9d5da58e244a4f"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-cmap6.font",
@@ -71,7 +71,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-cmap12.expect",
-          "sha256": "150b66ed75ef2f6aba7f8210f3a90c5d40a8105b5c2ec3068f99ca2d00309119"
+          "sha256": "70ab354a7d4a38ad426fd9230c980d2924b9ac1510087761ce5d92dac7c44627"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-cmap12.font",
@@ -717,7 +717,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/truetype-implied-points.expect",
-          "sha256": "20e4445116b2e240783d6b90d9917f666cbc87253a91d8c1f2bbf4de77244c03"
+          "sha256": "72b5811655a0defb0eb9a372bca6b728b7f9f1a2eed71d86de4952674b0cd81c"
         },
         ".font": {
           "path": "corpus/generated/font/truetype-implied-points.font",
@@ -1648,7 +1648,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/cff2-font-dict-matrix.expect",
-          "sha256": "68f6bd918d9e2cb790eb3d77cfec0b0e5778578cc504a5b9137f8175eed07a01"
+          "sha256": "6cf43909883ad640cdc03e6a7d08a1b298bc64e0b06a0ae713d8dfa2701eb607"
         },
         ".font": {
           "path": "corpus/generated/font/cff2-font-dict-matrix.font",
@@ -4349,7 +4349,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/repair-glyph-truncated.expect",
-          "sha256": "8425913f3f0526d2c082338d20427e1926e87da70d930d8b231ffca32705d410"
+          "sha256": "be1714ce111947e6b8bafeeb030ba9aec641ce6c791ef542559c1f8f1b9634f2"
         },
         ".font": {
           "path": "corpus/generated/font/repair-glyph-truncated.font",
@@ -7046,7 +7046,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/glyph-names-post-alias.expect",
-          "sha256": "decd20abbfc48ec137bd1cca4014786d2ecf3c4a2753ee1ac9ed58c94ebe1e68"
+          "sha256": "48b5e06b42454c8d2080b63d1c903fee5b9e027f6a5db7d5e4f81f4cdbd827a8"
         },
         ".font": {
           "path": "corpus/generated/font/glyph-names-post-alias.font",
@@ -7065,11 +7065,11 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/glyph-names-post-standard.expect",
-          "sha256": "8bf705660777d1bfc896b8e68105a06827f27934a3d71b5caad44b9a53f0a048"
+          "sha256": "2143c4b9f542d310e5f1c64aaec269eef3ce2f798a91aa0264fa172627dba990"
         },
         ".font": {
           "path": "corpus/generated/font/glyph-names-post-standard.font",
-          "sha256": "42d43d8a4e69e4a9c47fba32364008013d69a523c83d5517738bc9f1e381ee36"
+          "sha256": "7e5bc06eea1f51f3f79b18f7d233c3761ded87554990a34610823c8cd0959dd2"
         }
       },
       "format": "truetype"
@@ -7151,6 +7151,461 @@
       "format": "cff"
     },
     {
+      "id": "font/repair-type1-sparse-tail-pfa",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-pfa.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-pfa.font",
+          "sha256": "a3ead93da16a2af52633d5add4ff8e7c1e4a6e0295faba0961e84e11c1ac5246"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-pfa.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-pfa.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-tail-pfb",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-pfb.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-pfb.font",
+          "sha256": "5340462c6b92f42ad74ff8328aa3e02326db61bfceaff945e5572814dc2e4eb3"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-pfb.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-pfb.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-tail-hex",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-hex.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-hex.font",
+          "sha256": "0f04e1c18763d6633f85dc80250fe359aeae5d1d63b39bcf0c16bbf28e6f2428"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-hex.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-tail-hex.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-interior-pfa",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-pfa.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-pfa.font",
+          "sha256": "de686bdfb7d5fcfd91ae5bcea1579a0786485dd90bacdcb6c3bf07d4e4f60445"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-pfa.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-pfa.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-interior-pfb",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-pfb.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-pfb.font",
+          "sha256": "34931d536579b94c40af97f931c3f17a3a199071b0ff836e3db4fa8eb0f5b78f"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-pfb.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-pfb.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-interior-hex",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-hex.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-hex.font",
+          "sha256": "5c72e2875640310c404298a05d09164dcfc4c965461f9042b144b9a0f781f439"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-hex.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-interior-hex.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-nested-pfa",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-pfa.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-pfa.font",
+          "sha256": "582b9a891218b1aedfa529ddf1b7cb965fe8a7dd0d1e4e00d4edcd713f2d6af1"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-pfa.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-pfa.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-nested-pfb",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-pfb.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-pfb.font",
+          "sha256": "d4acca9175c6229bd00f369691df56e505ca271eaf5713d48f352ce8b80fceb5"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-pfb.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-pfb.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-nested-hex",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-hex.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-hex.font",
+          "sha256": "aac33c9381791d63806dc60d9ff2ee9ad3884ba3937d8d84a3b2f4c0b494f388"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-hex.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-nested-hex.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-all-unused-pfa",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-pfa.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-pfa.font",
+          "sha256": "ed344157a55475ccc0081c03918c4e0a19402738116031c7d86c648858f1edca"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-pfa.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-pfa.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-all-unused-pfb",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-pfb.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-pfb.font",
+          "sha256": "bc29426499f74483522e018d545194c111c675ba6e2b0864805a841e58f3b34c"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-pfb.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-pfb.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/repair-type1-sparse-all-unused-hex",
+      "kind": "vector",
+      "description": "Reported font recovery with exact retained geometry",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-hex.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-hex.font",
+          "sha256": "d11889059448c2202da4f9c2e6ccc484e52f87eca0c3bec1f71662dc49e5084b"
+        },
+        ".repairs": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-hex.repairs",
+          "sha256": "d2728f2c62abb48c99c8b70c160f5a177a98936254204fa03cdd471334dc636e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/repair-type1-sparse-all-unused-hex.strict",
+          "sha256": "b43da264ee5f99ee7b9b53b0986cf8713ad8b2f97f2c013acebd7f122e97e0eb"
+        }
+      },
+      "format": "type1",
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ]
+    },
+    {
+      "id": "font/type1-sparse-called",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-sparse-called.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-sparse-called.font",
+          "sha256": "b8730e2516ce840edf241443050ea077f13cb1cd5354968d60f9d660f19dfaa5"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-sparse-dense-twin",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-sparse-dense-twin.expect",
+          "sha256": "881885a700bdfb7fc732f40f960c77e4ed6e049a9e458e0da1760c8f6b5b0de5"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-sparse-dense-twin.font",
+          "sha256": "d8df1825b3944368337b70d0555431528c86ea0a9eb958b2688b476c146e0a8a"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-sparse-invalid-duplicate",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-sparse-invalid-duplicate.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-sparse-invalid-duplicate.font",
+          "sha256": "98c336a841ce76a28281ec4ca9be423a109cadf2bf398f16be4cf8e20fb4efb4"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-sparse-invalid-index",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-sparse-invalid-index.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-sparse-invalid-index.font",
+          "sha256": "c4f1edbc13042c1810714b494e6125ca0abd9ce4ebe55cbf413e72d964489569"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-sparse-invalid-record",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-sparse-invalid-record.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-sparse-invalid-record.font",
+          "sha256": "615c6e03506fa0b694c512522857e4666b876804617bf22fbeb765714462dc74"
+        }
+      },
+      "format": "type1"
+    },
+    {
       "id": "font/cff-nonfinite",
       "kind": "vector",
       "description": "Independent font writer and analytic glyph-space expectations",
@@ -7168,6 +7623,291 @@
         }
       },
       "format": "cff"
+    },
+    {
+      "id": "font/type1-advance-horizontal",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-horizontal.expect",
+          "sha256": "5f8a06037a35dedff8dfa6140816d7a52e272f610c5c3fcae7ae8e13ce5cb527"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-horizontal.font",
+          "sha256": "bac214f0fb61ce46805f7cda16502ee20f97a19b483d672eeb302a03a0e257de"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-up",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-up.expect",
+          "sha256": "5f8a06037a35dedff8dfa6140816d7a52e272f610c5c3fcae7ae8e13ce5cb527"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-up.font",
+          "sha256": "8078c6d490fe9667a7cf6ee1defa10c60eabd041a412a985165e621bf6c76df7"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-down",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-down.expect",
+          "sha256": "5f8a06037a35dedff8dfa6140816d7a52e272f610c5c3fcae7ae8e13ce5cb527"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-down.font",
+          "sha256": "d7d92b79378d3fa75e00d441afd988b24dd036f904132750e04adb6edb5bb104"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-vertical",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-vertical.expect",
+          "sha256": "fa3a37d0e3b641e2e46842ddfbb9f6485522b7299afbbcf79c8a90ece4a0fd7a"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-vertical.font",
+          "sha256": "371984b5aa28822baf9730ef730a6d2ed38f1fa8e180afd14d5f7111ed954df4"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-negative",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-negative.expect",
+          "sha256": "f10eff45c9c87275bf8008f0774af27584994115e329d047183fd9b93bca2ced"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-negative.font",
+          "sha256": "dbfd236ce342106c1c3189eb3df4d08a49ccaeb685cc8222433f4a652473b2b5"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-duplicate",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-duplicate.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-duplicate.font",
+          "sha256": "fba4b14a6efd6acdcfc89f0bfed15aed2ac9b774d8417477df7606c6344e2dfd"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-arity",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-arity.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-arity.font",
+          "sha256": "1ab6f927420e97f14c203b5dd81269bc7a1c2f85c4953c2ba71780f2293d0f19"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-nonfinite",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-nonfinite.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-nonfinite.font",
+          "sha256": "5a33ae440eca406c421508ea72ba2ef68aff4fd1fe3a36fe08806052a4d03b2a"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-width-only",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-width-only.expect",
+          "sha256": "5e43dc4f477be3941ecb7c294d2ab49ca0290711fdfbdded6c021cb853d9db76"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-width-only.font",
+          "sha256": "feb7f99356c639af56774c62039104bb3695be6a37e39df25586703da4bb3fae"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-seac",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-seac.expect",
+          "sha256": "52b7799bf9e4f5121167f909e1f5d1a0498a681796cdd3bd531b8e3f7045cc32"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-seac.font",
+          "sha256": "464fcf6d22c1ec8628c51fe36a739d3d8aa5e9938e23d521ff2dd058a041c597"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/type1-advance-seac-y-mismatch",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/type1-advance-seac-y-mismatch.expect",
+          "sha256": "a271b66bae37b641ffb3ca21b7b5918148046e916e78cf60a1048a6c186b0039"
+        },
+        ".font": {
+          "path": "corpus/generated/font/type1-advance-seac-y-mismatch.font",
+          "sha256": "61beb0b14adab54e0db74adc1b25f8bc38e5281244958a9ae9acf7e22c8d37d5"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/cff2-dict-control",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/cff2-dict-control.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font/cff2-dict-control.font",
+          "sha256": "894c8f0415d0da4afb8e4b2e85c9c5646c7f96be9d9eeaadf1a790ccda7ce239"
+        }
+      },
+      "format": "opentype"
+    },
+    {
+      "id": "font/cff2-dict-top",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/cff2-dict-top.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font/cff2-dict-top.font",
+          "sha256": "3a745ff48d19548e922d63e0f76768408ba14d527c4a21ef126468c5641794e0"
+        }
+      },
+      "format": "opentype"
+    },
+    {
+      "id": "font/cff2-dict-font",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/cff2-dict-font.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font/cff2-dict-font.font",
+          "sha256": "5cc40288f5746cb6acc9e6e6daa8c11440abba79d2ea2e472bf06883df40c8bf"
+        }
+      },
+      "format": "opentype"
+    },
+    {
+      "id": "font/cff2-dict-private",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/cff2-dict-private.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font/cff2-dict-private.font",
+          "sha256": "9fa3ec75212092d445aaf2ae957996d43d1f91a07faf90a0ef7095260030c808"
+        }
+      },
+      "format": "opentype"
     }
   ]
 }

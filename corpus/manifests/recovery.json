@@ -5,6 +5,272 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "recovery/jbig2-page-capabilities-auxiliary",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities auxiliary",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-auxiliary.pdf",
+      "sha256": "05c5109b83e1e1f1b751c49b792d07643a906121901b4919c57cd4ba212921ae",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-auxiliary.ppm",
+      "oracle_sha256": "d776352b0c6a3c2da83b626833342849d2a9d69ef9cac67e018dbee861295d27",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jbig2-page-capabilities-refinement",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities refinement",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-refinement.pdf",
+      "sha256": "7f75e570f61fcb104337afc67be275c53d4717d9dcbb343eaead450d60b1daa2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-refinement.ppm",
+      "oracle_sha256": "d776352b0c6a3c2da83b626833342849d2a9d69ef9cac67e018dbee861295d27",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jbig2-page-capabilities-both",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities both",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-both.pdf",
+      "sha256": "8c103e2099fa4c4bb4f77a09f6cd5507e537aba5c3bcb050e8a41213771069e4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-both.ppm",
+      "oracle_sha256": "d776352b0c6a3c2da83b626833342849d2a9d69ef9cac67e018dbee861295d27",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jbig2-page-capabilities-prediction-centre-t0",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities prediction centre t0",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-prediction-centre-t0.pdf",
+      "sha256": "19954709b4ef18b9049cbf4f084a2e3ae5ed22b788a06b3efe0ec5070c7d0c41",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-prediction-centre-t0.ppm",
+      "oracle_sha256": "3d71580f5ed54cd8df06c1a6350a8fd5ab99bd047d156577360ab3f6b6e12151",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jbig2-page-capabilities-prediction-centre-t1",
+      "kind": "pdf",
+      "description": "jbig2 page capabilities prediction centre t1",
+      "expected": "render",
+      "requirements": [
+        "recovery-jbig2-page-capabilities"
+      ],
+      "path": "corpus/generated/recovery/jbig2-page-capabilities-prediction-centre-t1.pdf",
+      "sha256": "b691d9837dfe7551d5b5727b1944cbf8e225e040718319c667646ad4d2491905",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jbig2.page-capabilities"
+      ],
+      "oracle": "corpus/generated/recovery/jbig2-page-capabilities-prediction-centre-t1.ppm",
+      "oracle_sha256": "3d71580f5ed54cd8df06c1a6350a8fd5ab99bd047d156577360ab3f6b6e12151",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jpx-raw-gray",
+      "kind": "pdf",
+      "description": "jpx raw gray",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-gray.pdf",
+      "sha256": "e4e4b9d00499ab8661af965884127e3f6eab5c363a07ffc65801c29847b5b6d0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.raw-codestream"
+      ],
+      "oracle": "corpus/generated/recovery/jpx-raw-gray.ppm",
+      "oracle_sha256": "ca63e8c892f9c41f7d5b4bb10c464ed5bc9bbe7d3af7dcc3946334fc679c71dc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jpx-raw-gray-no-space",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-gray-no-space.pdf",
+      "sha256": "c9905d477b92ed2dcf439c817d27973ba704d70295222aa4341527f96e96c5c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-gray-opacity",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-gray-opacity.pdf",
+      "sha256": "70c56813d0bdc0ce4da21617df4c776ead2f3b754c828cb4bbea4b8511c7e0f3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-gray-truncated",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-gray-truncated.pdf",
+      "sha256": "323eac0d9600c5538dd40f9c657b8be393787ef0549758ea19592b4405ce37ac",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-rgb",
+      "kind": "pdf",
+      "description": "jpx raw rgb",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb.pdf",
+      "sha256": "7d2311b384d1aea377b9140fd790d5f03bfc8c5c3a4c2ffa9595fdc4cce7564f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.raw-codestream"
+      ],
+      "oracle": "corpus/generated/recovery/jpx-raw-rgb.ppm",
+      "oracle_sha256": "2cea5e9520d14052dbf1ffbb50ec9425c01b90e1f7a34f4e0ea4577c1750a98b",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jpx-raw-rgb-no-space",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb-no-space.pdf",
+      "sha256": "c994a0b024acf8aea2cf8d7b91b9dc40d97518746150ca8df22ebbb268b5d299",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-rgb-opacity",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb-opacity.pdf",
+      "sha256": "353c044157f36281e79ee3a98c4dae7a0b88b0c5d030693a5471a9caf46ded86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-rgb-truncated",
+      "kind": "pdf",
+      "description": "Raw JPX without sufficient metadata or complete data remains rejected",
+      "expected": "open",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb-truncated.pdf",
+      "sha256": "e1866fcba38601126baed89a39442f858afb45db0146d466288980231efdf77f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-raw-rgb-subsampled",
+      "kind": "pdf",
+      "description": "jpx raw rgb subsampled",
+      "expected": "render",
+      "requirements": [
+        "recovery-jpx-codestream"
+      ],
+      "path": "corpus/generated/recovery/jpx-raw-rgb-subsampled.pdf",
+      "sha256": "9ed158ca3447533b5d88dda145bdb66968e77e24fe2b8f90fc1e51d5cd6e8a78",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.raw-codestream"
+      ],
+      "oracle": "corpus/generated/recovery/jpx-raw-rgb-subsampled.ppm",
+      "oracle_sha256": "0a086379e71520a69daab6f18915bc34d79084dba6b1fef1064140285cf05340",
+      "dpi": 72,
+      "width": 4,
+      "height": 4,
+      "tolerance": 0
+    },
+    {
       "id": "recovery/pattern-coloured-base-no-operands",
       "kind": "pdf",
       "description": "pattern coloured base no operands",
@@ -565,8 +831,8 @@
     {
       "id": "recovery/widget-rotated-border",
       "kind": "pdf",
-      "description": "widget-rotated-border",
-      "expected": "unsupported",
+      "description": "Same original input: quarter-turn of the square border is black on its four literal one-pixel inside strips",
+      "expected": "render",
       "requirements": [
         "recovery-widgets"
       ],
@@ -575,7 +841,11 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance"
+      "oracle": "corpus/generated/recovery/widget-rotated-border.ppm",
+      "oracle_sha256": "a28eef58688363056abb52fbae0bd59c358299c21df20fc5fc2ac6d4419f0599",
+      "dpi": 72,
+      "width": 16,
+      "height": 16
     },
     {
       "id": "recovery/widget-invalid-rotation",
@@ -1289,6 +1559,174 @@
       "render_error": "syntax"
     },
     {
+      "id": "recovery/type1-sparse-tail",
+      "kind": "pdf",
+      "description": "type1 sparse tail",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-tail.pdf",
+      "sha256": "de70f8ba57ebb34e88d98eb98de4cb164db9b1342494561f5d4cf0b7c8c694bd",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ],
+      "oracle": "corpus/generated/recovery/type1-sparse-tail.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-tail-valid",
+      "kind": "pdf",
+      "description": "type1 sparse tail valid",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-tail-valid.pdf",
+      "sha256": "52b2768cf352557e7b08c3ddfb517482e311f502d81573a5afc41cfde053bfad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/type1-sparse-tail-valid.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-interior",
+      "kind": "pdf",
+      "description": "type1 sparse interior",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-interior.pdf",
+      "sha256": "36011644962eb50af5304895d333af88fed8ae1541428859f3e75b8733f11923",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ],
+      "oracle": "corpus/generated/recovery/type1-sparse-interior.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-interior-valid",
+      "kind": "pdf",
+      "description": "type1 sparse interior valid",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-interior-valid.pdf",
+      "sha256": "2c92d76e3445a2232beddce79792cb08fc11e21439392899943dc385fdc9ce93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/type1-sparse-interior-valid.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-nested",
+      "kind": "pdf",
+      "description": "type1 sparse nested",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-nested.pdf",
+      "sha256": "36f1f307324c5cb3c2de41e667b00d81e217030cde6b029c180944a45b6b0920",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ],
+      "oracle": "corpus/generated/recovery/type1-sparse-nested.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-nested-valid",
+      "kind": "pdf",
+      "description": "type1 sparse nested valid",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-nested-valid.pdf",
+      "sha256": "9c8b986f825d70b576f752343211bc0247355741ba22384263e9d89b9b2dadf3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/type1-sparse-nested-valid.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-all-unused",
+      "kind": "pdf",
+      "description": "type1 sparse all unused",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-all-unused.pdf",
+      "sha256": "72153bcaf28ca9800d11fe6797d2471e04509c095bd3b266350a6c77ebdc541c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type1-sparse-subrs"
+      ],
+      "oracle": "corpus/generated/recovery/type1-sparse-all-unused.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type1-sparse-all-unused-valid",
+      "kind": "pdf",
+      "description": "type1 sparse all unused valid",
+      "expected": "render",
+      "requirements": [
+        "font-type1-sparse-subrs"
+      ],
+      "path": "corpus/generated/recovery/type1-sparse-all-unused-valid.pdf",
+      "sha256": "4134964041fb6c1f00c92ec9b2a08f7bfdbc1865d8122f88bbb0da636abe7191",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/type1-sparse-all-unused-valid.ppm",
+      "oracle_sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
       "id": "recovery/unclosed-graphics",
       "kind": "pdf",
       "description": "unclosed graphics",
@@ -1304,6 +1742,50 @@
         "content.graphics-unclosed"
       ],
       "oracle": "corpus/generated/recovery/unclosed-graphics.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/unclosed-marked",
+      "kind": "pdf",
+      "description": "unclosed marked",
+      "expected": "render",
+      "requirements": [
+        "recovery-content"
+      ],
+      "path": "corpus/generated/recovery/unclosed-marked.pdf",
+      "sha256": "c2e431e533e1d600ee5c2bee8ae60728465bfee92d5c9d57f03941e11f1277e2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unclosed"
+      ],
+      "oracle": "corpus/generated/recovery/unclosed-marked.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/unclosed-marked-deep",
+      "kind": "pdf",
+      "description": "unclosed marked deep",
+      "expected": "render",
+      "requirements": [
+        "recovery-content"
+      ],
+      "path": "corpus/generated/recovery/unclosed-marked-deep.pdf",
+      "sha256": "22f3b331b2b019a186b05b78daf9131c3da1d4d8fade174c7ce36ca8901bdb60",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unclosed"
+      ],
+      "oracle": "corpus/generated/recovery/unclosed-marked-deep.ppm",
       "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
       "dpi": 72,
       "width": 16,

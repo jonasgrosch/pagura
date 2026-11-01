@@ -1,0 +1,42 @@
+name: null-annotation-parity
+on:
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'tools/null_annotation_parity.mjs'
+      - 'tools/fixturegen/recovery_annotations.py'
+      - 'tools/fixturegen/recovery_annotation_references.py'
+      - 'corpus/manifests/recovery_annotations.json'
+      - 'corpus/manifests/recovery_annotation_references.json'
+      - 'benchmarks/probes/null-annotation-fixtures.json'
+      - '.github/workflows/null-annotation-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: null-annotation-parity-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+jobs:
+  oracle:
+    runs-on: ubuntu-latest
+    env:
+      PAGURA_QUAL_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Install pinned toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --target wasm32-wasip1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 26.8.1
+      - name: Build native and SIMD controls
+        run: |
+          cargo build --release --locked -j2 -p pagura --features bundled-data,cjk-fonts --example null_annotation_parity
+          cargo build --release --locked -j2 -p pagura --features bundled-data,cjk-fonts --example null_annotation_parity --target wasm32-wasip1
+      - name: Build scalar controls with overflow checks
+        run: cargo build --release --locked -j2 -p pagura --features bundled-data,cjk-fonts --example null_annotation_parity --target wasm32-wasip1 --target-dir target/scalar
+        env:
+          RUSTFLAGS: '-C target-feature=-simd128 -C overflow-checks=on'
+      - name: Verify pixels, identity, strict refusals and structural policy
+        run: node tools/null_annotation_parity.mjs

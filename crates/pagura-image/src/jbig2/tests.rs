@@ -4,6 +4,97 @@ use pagura_core::{ErrorKind, Limits, Position};
 use pagura_testkit::{fixture, fixture_path};
 
 #[test]
+fn contradictory_page_capabilities_are_reported_without_changing_samples() {
+    use pagura_core::{Diagnostics, Recovery};
+
+    // The independent encoders write an eleven-byte first-segment header,
+    // then four u32 page fields before the flag byte (T.88 7.4.8).
+    const PAGE_FLAGS: usize = 11 + 16;
+    for (name, missing) in [
+        ("intermediate-default-black", 32),
+        ("refinement-t1-prediction-0", 34),
+        ("refinement-page-t1-prediction-0", 2),
+    ] {
+        let mut data = fixture("jbig2", &format!("{name}.jb2"));
+        *data.get_mut(PAGE_FLAGS).unwrap() &= !missing;
+        let limits = Limits::default();
+        let error = decode(&data, None, &limits).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax, "{name}");
+        assert_eq!(error.repair, Some(super::repairs::PAGE_CAPABILITIES));
+        let mut diagnostics = Diagnostics::new(Recovery::Repair);
+        let bitmap = super::decode_with_diagnostics(&data, None, &limits, &mut diagnostics)
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(bitmap.data, fixture("jbig2", &format!("{name}.out")));
+        assert_eq!(diagnostics.as_slice().len(), 1, "{name}");
+        assert_eq!(
+            diagnostics.as_slice()[0].repair(),
+            Some(super::repairs::PAGE_CAPABILITIES)
+        );
+        assert!(matches!(
+            diagnostics.as_slice()[0].position,
+            Position::Buffer(_)
+        ));
+        for capped in [
+            Limits {
+                pixels: 0,
+                ..limits
+            },
+            Limits {
+                decoded_bytes: 0,
+                ..limits
+            },
+            Limits {
+                decode_work: 0,
+                ..limits
+            },
+            Limits {
+                objects: 0,
+                ..limits
+            },
+        ] {
+            let error = super::decode_with_diagnostics(
+                &data,
+                None,
+                &capped,
+                &mut Diagnostics::new(Recovery::Repair),
+            )
+            .unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit, "{name}");
+        }
+        data.pop();
+        assert_eq!(
+            super::decode_with_diagnostics(&data, None, &limits, &mut diagnostics)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax,
+            "truncation remains an error: {name}"
+        );
+    }
+}
+
+#[test]
+fn reported_page_capability_repair_does_not_waive_live_bitmap_limit() {
+    use pagura_core::{Diagnostics, Recovery};
+
+    let mut data = fixture("jbig2", "intermediate-default-black.jb2");
+    // T.88 7.4.8 page fields: the contradiction is in the flags byte.
+    *data.get_mut(11 + 16).unwrap() &= !32;
+    let limits = Limits {
+        // Enough for the page; an auxiliary bitmap must still be charged.
+        decoded_bytes: fixture("jbig2", "intermediate-default-black.out").len(),
+        ..Limits::default()
+    };
+    let mut diagnostics = Diagnostics::new(Recovery::Repair);
+    let error = super::decode_with_diagnostics(&data, None, &limits, &mut diagnostics).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(diagnostics.as_slice().len(), 1);
+    assert_eq!(
+        diagnostics.as_slice()[0].repair(),
+        Some(super::repairs::PAGE_CAPABILITIES)
+    );
+}
+
+#[test]
 fn independent_bitmaps_and_hostile_vectors() {
     let mut count = 0;
     let mut failures = Vec::new();
@@ -89,9 +180,8 @@ fn exact_generic_budgets_are_enforced_before_work() {
     let limits = Limits {
         pixels: 19 * 9,
         decoded_bytes: bytes,
-        raster_work: work,
+        decode_work: work + 2,
         objects: 2,
-        operations: 2,
         stream_bytes: data.len(),
         file_bytes: data.len(),
         ..Limits::default()
@@ -107,15 +197,11 @@ fn exact_generic_budgets_are_enforced_before_work() {
             ..limits
         },
         Limits {
-            raster_work: work - 1,
+            decode_work: work + 1,
             ..limits
         },
         Limits {
             objects: 1,
-            ..limits
-        },
-        Limits {
-            operations: 1,
             ..limits
         },
         Limits {
@@ -141,8 +227,7 @@ fn truncations_and_mutations_remain_bounded() {
         decoded_bytes: 160_000,
         objects: 64,
         value_nodes: 64,
-        operations: 4096,
-        raster_work: 200_000,
+        decode_work: 204_096,
         stream_bytes: 4096,
         file_bytes: 8192,
         ..Limits::default()
@@ -248,7 +333,7 @@ fn huffman_table_setup_is_charged_before_construction() {
     let data = fixture("jbig2", "huffman-symbols-raw-4-2.jb2");
     let globals = fixture("jbig2", "huffman-symbols-raw-4-2.globals");
     let limits = Limits {
-        operations: super::huffman::STANDARD_ROWS,
+        decode_work: super::huffman::STANDARD_ROWS,
         ..Limits::default()
     };
     let error = decode(&data, Some(&globals), &limits).unwrap_err();
@@ -274,8 +359,7 @@ fn unknown_length_allocates_actual_rows_and_keeps_following_segment() {
     let limits = Limits {
         pixels: 25,
         decoded_bytes: bytes,
-        raster_work: work,
-        operations: 3,
+        decode_work: work + 3,
         objects: 3,
         stream_bytes: data.len(),
         file_bytes: data.len(),
@@ -288,15 +372,11 @@ fn unknown_length_allocates_actual_rows_and_keeps_following_segment() {
             ..limits
         },
         Limits {
-            raster_work: work - 1,
+            decode_work: work + 2,
             ..limits
         },
         Limits {
             stream_bytes: data.len() - 1,
-            ..limits
-        },
-        Limits {
-            operations: 2,
             ..limits
         },
     ] {

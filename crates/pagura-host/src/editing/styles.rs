@@ -29,9 +29,11 @@ pub(crate) fn encode(document: &Document, page: &Page) -> Result<Vec<u8>> {
         let (mut font, mut size) = field
             .default_appearance
             .and_then(|bytes| {
-                pagura::form_appearance::default_text_style(bytes, document.limits()).ok()
+                pagura::form_appearance::default_text_style(bytes, &document.limits()).ok()
             })
-            .unwrap_or((Name::new(b"Helvetica"), 12.0));
+            .map_or((Name::new(b"Helvetica"), 12.0), |style| {
+                (style.font().clone(), style.size())
+            });
         if size <= 0.0 {
             size = 12.0;
         }

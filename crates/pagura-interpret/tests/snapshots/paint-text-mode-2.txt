@@ -1,0 +1,12 @@
+page crop [0.0 0.0 32.0 32.0] rotate 0 unit 1.0 print-intent false
+group #0 page Document isolated false knockout false space None bbox - view - state #0 clip - at Unknown
+  group #1 transparency TextKnockout isolated false knockout true space None bbox - view - state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 22 }
+    group #2 transparency FillStroke isolated false knockout true space None bbox - view - state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 58 }
+      fill nonzero paint #0 state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 58 } [M 4.0 4.0 L 12.0 4.0 L 12.0 16.0 L 4.0 16.0 Z]
+      stroke pen #0 paint #1 state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 58 } [M 4.0 4.0 L 12.0 4.0 L 12.0 16.0 L 4.0 16.0 Z]
+  fill nonzero paint #2 state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 86 } [M 8.0 0.0 L 32.0 0.0 L 32.0 32.0 L 8.0 32.0 Z]
+paint #0 solid DeviceRGB [1.0 0.0 0.0]
+paint #1 solid DeviceRGB [0.0 0.0 1.0]
+paint #2 solid DeviceRGB [0.0 1.0 0.0]
+state #0 alpha 1.0 blend Normal mask - ais false overprint false nonzero false transfer no intent Relative bg no ucr no
+pen #0 width 2.0 cap Butt join Miter miter 10.0 dash [] phase 0.0 ctm [1.0 0.0 0.0 1.0 0.0 0.0] None

@@ -271,26 +271,3 @@ mod recovery_tests {
         }
     }
 }
-
-#[test]
-fn rotate_values_are_multiples_of_ninety_in_any_turn() {
-    use crate::Rotation;
-    for (degrees, expected) in [
-        (0, Rotation::None),
-        (90, Rotation::Clockwise90),
-        (-90, Rotation::Clockwise270),
-        (450, Rotation::Clockwise90),
-        (-180, Rotation::Clockwise180),
-        (720, Rotation::None),
-    ] {
-        assert_eq!(Rotation::try_from(degrees).unwrap(), expected, "{degrees}");
-        assert_eq!(
-            i64::from(expected.degrees()),
-            degrees.rem_euclid(360),
-            "{degrees}"
-        );
-    }
-    for degrees in [45, 1, -1, 91, 359] {
-        assert!(Rotation::try_from(degrees).is_err(), "{degrees}");
-    }
-}

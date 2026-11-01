@@ -13,9 +13,11 @@ use pagura_font::FontProgram;
 use pagura_raster::Transform;
 use std::{collections::BTreeMap, sync::Arc};
 
+mod descriptor_key;
 mod load;
 mod shape;
 mod unicode;
+pub use unicode::FontUnicode;
 pub(crate) use unicode::{cid_collection, to_unicode};
 
 /// The font dictionary's `/Subtype`. ISO 32000-2 Table 110 closes this set,
@@ -81,6 +83,19 @@ pub(crate) enum Source {
     MetricsOnly,
     CidSubstitute {
         program: Arc<FontProgram>,
+        /// The collection's Unicode, which selects the glyphs.
+        unicode: Arc<CidToUnicode>,
+        /// Precompiled vertical forms; PDF metrics remain independent.
+        vertical: Option<pagura_font::VerticalSubstitution>,
+    },
+    /// A Latin standard face drawing a non-embedded Identity CIDFont with a
+    /// Latin family name: each code's ToUnicode text selects the glyph
+    /// (ADR 0009). Coverage policy distinguishes the original aliases from
+    /// additional families that must identify every used glyph.
+    UnicodeSubstitute {
+        program: Arc<FontProgram>,
+        to_unicode: Option<Arc<CMap>>,
+        coverage: UnicodeCoverage,
     },
     Type3 {
         procedures: BTreeMap<Name, ObjectId>,
@@ -93,6 +108,15 @@ pub(crate) enum Source {
         ownership: Ownership,
         cid_map: Option<CidToGidMap>,
     },
+}
+
+/// Whether a Unicode-directed substitute may leave a code without a glyph.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum UnicodeCoverage {
+    /// Existing standard aliases retain their reported incomplete coverage.
+    Partial,
+    /// Additional named families require complete coverage of every used code.
+    Required,
 }
 
 /// Who owns an outline program, for storage estimates (ADR 0012).
@@ -110,6 +134,13 @@ pub(crate) enum Mapping {
     Composite { map: Arc<CMap>, shared: bool },
 }
 
+/// Immutable before the first code-selection cache entry is populated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SelectionPolicy {
+    LegacyNotdef,
+    RequiredNamed,
+}
+
 /// A loaded PDF font. Load each font dictionary once per document and share it.
 #[derive(Debug)]
 pub struct PdfFont {
@@ -118,17 +149,16 @@ pub struct PdfFont {
     pub(crate) source: Source,
     pub(crate) mapping: Mapping,
     pub(crate) metrics: metrics::Metrics,
-    pub(crate) to_unicode: Option<Arc<CMap>>,
     pub(crate) limits: Limits,
-    pub(crate) cid_unicode: Option<Arc<CidToUnicode>>,
     pub(crate) retained: usize,
+    pub(crate) selection_policy: SelectionPolicy,
 }
 
 impl PdfFont {
     /// Estimates retained storage, including this font and its owned allocations
     /// (ADR 0012). Computed once at load; this accessor is constant time.
     ///
-    /// Counts encoding payloads, width/vertical tables, owned CMaps, ToUnicode,
+    /// Counts encoding payloads, width/vertical tables, owned CMaps,
     /// CIDToGIDMap and Type 3 procedures/resources. Tree entries include a
     /// 64-byte bookkeeping allowance; names include a payload allowance even
     /// when inline. Embedded program storage uses `FontProgram::retained_bytes()` plus
@@ -149,15 +179,13 @@ impl PdfFont {
         self.retained = memory::estimate(&self);
         self
     }
-    /// Loads the font dictionary `font` (already resolved) of `document`.
-    ///
-    /// Strict mode rejects malformed ToUnicode data (9.10.3; ADR 0003).
-    /// Repair mode reports repairs and retains unambiguous values, or discards
-    /// an unusable map without affecting glyph selection.
+    /// Loads the font dictionary `font` (already resolved) of `document`:
+    /// what drawing and positioning its glyphs read. The Unicode of its
+    /// codes is loaded separately, by [`Self::unicode`].
     ///
     /// # Errors
     ///
-    /// Returns an error for malformed dictionaries or ToUnicode data in Strict mode, `Unsupported`
+    /// Returns an error for malformed dictionaries in Strict mode, `Unsupported`
     /// (for example [`features::NON_EMBEDDED`]) for fonts that cannot be
     /// drawn yet, and errors from loading the font program.
     pub fn load(document: &Document, font: &Dictionary) -> Result<Self> {
@@ -225,6 +253,17 @@ impl PdfFont {
         self.kind
     }
 
+    /// The descriptor key bound by the font's recovery policy, if any.
+    ///
+    /// This only identifies the descriptor selected while loading the font;
+    /// it does not certify coverage of every code subsequently decoded.
+    pub fn recovered_descriptor_key(&self) -> Option<&'static [u8]> {
+        match self.selection_policy {
+            SelectionPolicy::LegacyNotdef => None,
+            SelectionPolicy::RequiredNamed => Some(b"GontDescriptor"),
+        }
+    }
+
     /// The writing mode.
     pub fn writing_mode(&self) -> WritingMode {
         self.writing_mode
@@ -235,7 +274,9 @@ impl PdfFont {
     /// provider supplies metrics only.
     pub fn program(&self) -> Option<&Arc<FontProgram>> {
         match &self.source {
-            Source::Program { program, .. } | Source::CidSubstitute { program } => Some(program),
+            Source::Program { program, .. }
+            | Source::CidSubstitute { program, .. }
+            | Source::UnicodeSubstitute { program, .. } => Some(program),
             Source::Type3 { .. } | Source::MetricsOnly => None,
         }
     }
@@ -244,38 +285,75 @@ impl PdfFont {
     pub fn type3_resources(&self) -> Option<&Dictionary> {
         match &self.source {
             Source::Type3 { resources, .. } => resources.as_ref(),
-            Source::Program { .. } | Source::MetricsOnly | Source::CidSubstitute { .. } => None,
+            Source::Program { .. }
+            | Source::MetricsOnly
+            | Source::CidSubstitute { .. }
+            | Source::UnicodeSubstitute { .. } => None,
         }
     }
 
-    /// Splits a string operand into glyphs (clauses 9.4.3 and 9.7.6).
+    /// Loads the Unicode of this font's codes for text extraction (9.10):
+    /// the `ToUnicode` CMap of `font`, the dictionary this font was loaded
+    /// from, and for a composite font of a character collection the
+    /// provider's Unicode for it. Glyph selection never reads it.
+    ///
+    /// Strict mode rejects malformed ToUnicode data (9.10.3; ADR 0003).
+    /// Repair mode reports repairs and retains unambiguous values, or
+    /// discards an unusable map.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for malformed ToUnicode data in Strict mode and
+    /// errors from the provider.
+    pub fn unicode(
+        &self,
+        document: &Document,
+        font: &Dictionary,
+        provider: Option<&dyn Provider>,
+    ) -> Result<FontUnicode> {
+        unicode::load(self, document, font, provider)
+    }
+
+    /// Splits a string operand into glyphs (clauses 9.4.3 and 9.7.6). With
+    /// `unicode`, each glyph carries its Unicode text.
     ///
     /// # Errors
     ///
     /// Returns syntax errors for codes outside the font's code space that
-    /// recovery cannot map, and errors from loading glyph data.
-    pub fn decode(&self, string: &[u8]) -> Result<Vec<Glyph>> {
+    /// recovery cannot map, errors from loading glyph data, and with
+    /// `unicode` a `Limit` error when the string's text exceeds the string
+    /// budget.
+    pub fn decode(&self, string: &[u8], unicode: Option<&FontUnicode>) -> Result<Vec<Glyph>> {
         let mut glyphs = Vec::new();
-        self.decode_into(string, true, &mut glyphs)?;
+        self.decode_into(string, unicode, &mut glyphs)?;
         Ok(glyphs)
     }
 
     /// Decodes `string` into `glyphs`, replacing their contents, as
     /// [`Self::decode`] does. Without `unicode`, each glyph's
-    /// [`Glyph::unicode`] is `None`; its text is still charged to the
-    /// decoded-byte budget, so results and errors are otherwise those of
-    /// `decode`. Rendering reuses one vector this way and copies no text.
+    /// [`Glyph::unicode`] is `None` and no text is looked up: rendering
+    /// reuses one vector this way.
     ///
     /// # Errors
     ///
     /// As [`Self::decode`]; `glyphs` then holds an unspecified prefix.
-    pub fn decode_into(&self, string: &[u8], unicode: bool, glyphs: &mut Vec<Glyph>) -> Result<()> {
+    pub fn decode_into(
+        &self,
+        string: &[u8],
+        unicode: Option<&FontUnicode>,
+        glyphs: &mut Vec<Glyph>,
+    ) -> Result<()> {
         glyphs.clear();
         self.decode_inner(string, unicode, glyphs)
             .map_err(|error| error.at(Position::Buffer(0)))
     }
 
-    fn decode_inner(&self, string: &[u8], unicode: bool, glyphs: &mut Vec<Glyph>) -> Result<()> {
+    fn decode_inner(
+        &self,
+        string: &[u8],
+        unicode: Option<&FontUnicode>,
+        glyphs: &mut Vec<Glyph>,
+    ) -> Result<()> {
         if !string.is_empty() && matches!(self.source, Source::MetricsOnly) {
             return Err(Error::unsupported(
                 features::NON_EMBEDDED,
@@ -284,6 +362,9 @@ impl PdfFont {
         }
         if string.len() > self.limits.string_bytes {
             return Err(Error::limit("text string byte budget exceeded"));
+        }
+        if let Mapping::Simple(simple) = &self.mapping {
+            return self.decode_simple(simple, string, unicode, glyphs);
         }
         let mut offset = 0;
         let mut work = Meter::new(self.limits.font_work, "text decoding work budget exceeded");
@@ -309,13 +390,64 @@ impl PdfFont {
         Ok(())
     }
 
-    /// One glyph and the byte length of its Unicode text, which the glyph
-    /// carries only with `unicode`.
+    /// [`Self::decode_inner`] for a simple font, one glyph per byte: the
+    /// same glyphs, budgets and error positions, without the per-code
+    /// dispatch.
+    fn decode_simple(
+        &self,
+        simple: &SimpleMapping,
+        string: &[u8],
+        unicode: Option<&FontUnicode>,
+        glyphs: &mut Vec<Glyph>,
+    ) -> Result<()> {
+        let mut work = Meter::new(self.limits.font_work, "text decoding work budget exceeded");
+        let mut text_bytes = Meter::new(
+            self.limits.string_bytes,
+            "decoded glyph text byte budget exceeded",
+        );
+        glyphs.reserve(string.len().min(self.limits.text_items));
+        for (offset, &byte) in string.iter().enumerate() {
+            let at = Position::Buffer(offset);
+            work.charge(1).map_err(|e| e.at(at))?;
+            if glyphs.len() >= self.limits.text_items {
+                return Err(Error::limit("decoded glyph budget exceeded").at(at));
+            }
+            let code = cmap::Code {
+                value: u32::from(byte),
+                len: 1,
+            };
+            let name = simple.names[usize::from(byte)].as_ref();
+            let text = unicode
+                .and_then(|unicode| unicode.text(code).or_else(|| simple.unicode(byte).cloned()));
+            let shape = self
+                .decode_shape(code, code.value, name, || {
+                    simple.unicode(byte).map(GlyphText::as_str)
+                })
+                .map_err(|e| e.at(at))?;
+            text_bytes
+                .charge(text.as_deref().map_or(0, str::len))
+                .map_err(|e| e.at(at))?;
+            glyphs.push(Glyph {
+                code: code.value,
+                byte_len: 1,
+                advance: self.metrics.width(code.value),
+                vertical: (self.writing_mode == WritingMode::Vertical)
+                    .then(|| self.metrics.vertical(code.value)),
+                word_space: byte == 32,
+                unicode: text,
+                shape,
+            });
+        }
+        Ok(())
+    }
+
+    /// One glyph and the byte length of its Unicode text, which it carries
+    /// with `unicode`.
     fn decode_glyph(
         &self,
         input: &[u8],
         work: &mut Meter,
-        unicode: bool,
+        unicode: Option<&FontUnicode>,
     ) -> Result<(Glyph, usize)> {
         let (code, selector, name, fallback) = match &self.mapping {
             Mapping::Simple(encoding) => {
@@ -329,7 +461,7 @@ impl PdfFont {
                     },
                     u32::from(byte),
                     encoding.names[usize::from(byte)].as_ref(),
-                    encoding.unicode[usize::from(byte)].as_ref(),
+                    encoding.unicode(byte),
                 )
             }
             Mapping::Composite { map, .. } => {
@@ -339,20 +471,30 @@ impl PdfFont {
                 } else {
                     None
                 };
+                if self.requires_unicode_coverage()
+                    && mapped.is_none_or(|cid| cid == crate::cid::Cid::NOTDEF)
+                {
+                    return Err(Error::unsupported(
+                        features::NON_EMBEDDED,
+                        "checked CID substitute requires a non-notdef Encoding mapping for every used code",
+                    ));
+                }
                 // Collection Unicode belongs to the CID the code maps to, not
                 // to a notdef substitute (9.10.2).
-                let unicode = mapped.and_then(|cid| self.cid_unicode.as_ref()?.text(cid));
+                let collection = mapped.and_then(|cid| unicode?.collection(cid));
                 let cid = self.select_cid(map, code, mapped, work)?;
-                (code, u32::from(cid), None, unicode)
+                (code, u32::from(cid), None, collection)
             }
         };
-        let text = self
-            .to_unicode
-            .as_ref()
-            .and_then(|map| map.text(code))
-            .or_else(|| fallback.cloned());
+        let text = unicode.and_then(|unicode| unicode.text(code).or_else(|| fallback.cloned()));
         let length = text.as_deref().map_or(0, str::len);
-        let unicode = text.filter(|_| unicode);
+        let shape = self.decode_shape(code, selector, name, || fallback.map(GlyphText::as_str))?;
+        if self.requires_unicode_coverage() && matches!(shape, crate::GlyphShape::Blank) {
+            return Err(Error::unsupported(
+                features::NON_EMBEDDED,
+                "checked CID substitute requires single-scalar Unicode and an available glyph for every used code",
+            ));
+        }
         let glyph = Glyph {
             code: code.value,
             byte_len: code.len,
@@ -360,10 +502,20 @@ impl PdfFont {
             vertical: (self.writing_mode == WritingMode::Vertical)
                 .then(|| self.metrics.vertical(selector)),
             word_space: code.len == 1 && code.value == 32,
-            unicode,
-            shape: self.shape(code, selector, name, fallback.map(GlyphText::as_str)),
+            unicode: text,
+            shape,
         };
         Ok((glyph, length))
+    }
+
+    fn requires_unicode_coverage(&self) -> bool {
+        matches!(
+            self.source,
+            Source::UnicodeSubstitute {
+                coverage: UnicodeCoverage::Required,
+                ..
+            }
+        )
     }
 }
 
@@ -377,27 +529,31 @@ mod tests {
     fn decode_limits_and_positions() -> Result<()> {
         let document = document("type3-differences")?;
         let mut font = PdfFont::load(&document, dictionary(&document)?)?;
+        let unicode = font.unicode(&document, dictionary(&document)?, None)?;
+        let text = Some(&unicode);
         font.limits.string_bytes = 1;
         assert_eq!(
-            font.decode(b"AA").err().map(|e| e.kind),
+            font.decode(b"AA", text).err().map(|e| e.kind),
             Some(ErrorKind::Limit)
         );
         font.limits.string_bytes = 100;
         font.limits.text_items = 1;
         assert_eq!(
-            font.decode(b"AA").err().map(|e| e.position),
+            font.decode(b"AA", text).err().map(|e| e.position),
             Some(Position::Buffer(1))
         );
-        // The glyph text of one string is bounded like a decoded string.
+        // The glyph text of one string is bounded like a decoded string;
+        // without Unicode no text is looked up.
         font.limits.text_items = 100;
         font.limits.string_bytes = 1;
         assert_eq!(
-            font.decode(b"C").err().map(|e| e.kind),
+            font.decode(b"C", text).err().map(|e| e.kind),
             Some(ErrorKind::Limit)
         );
+        assert!(font.decode(b"C", None).is_ok());
         font.limits.font_work = 0;
         assert_eq!(
-            font.decode(b"A").err().map(|e| e.kind),
+            font.decode(b"A", text).err().map(|e| e.kind),
             Some(ErrorKind::Limit)
         );
         Ok(())

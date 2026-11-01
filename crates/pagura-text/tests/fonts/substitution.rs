@@ -1,13 +1,13 @@
 //! Locked-data substitutes: exact glyphs, strict tags and repaired
 //! descriptor results for non-embedded fonts.
-use crate::support::{dictionary, lines, open, rejected, values};
+use crate::support::{dictionary, lines, load_text, open, rejected, values};
 use pagura_core::{Error, Limits, Name, ObjectId, Recovery, Result, Value};
 use pagura_document::{Document, OpenOptions};
 use pagura_font::{FontFormat, FontProgram};
 use pagura_testkit::fixture;
 use pagura_text::{
-    CidToUnicode, FontKind, GlyphShape, PdfFont, PredefinedCMap, Provider, StandardFont,
-    StandardMetrics, features, information, repairs,
+    CidToUnicode, FontKind, FontUnicode, GlyphShape, PdfFont, PredefinedCMap, Provider,
+    StandardFont, StandardMetrics, features, information, repairs,
 };
 use std::sync::Arc;
 
@@ -119,7 +119,7 @@ fn invalid_optional_weights_have_exact_repaired_glyphs_and_strict_tags() -> Resu
                 .object(ObjectId::new(4, 0))?
                 .dictionary()
                 .ok_or_else(|| Error::syntax("missing font"))?;
-            let result = PdfFont::load_with_provider(&document, dict, Some(&Outlines));
+            let result = load_text(&document, dict, Some(&Outlines));
             if recovery == Recovery::Strict && !tag.is_empty() {
                 let error = result.unwrap_err();
                 assert_eq!(
@@ -151,8 +151,8 @@ fn invalid_optional_weights_have_exact_repaired_glyphs_and_strict_tags() -> Resu
     Ok(())
 }
 
-fn check_substituted(name: &str, font: &PdfFont) -> Result<()> {
-    let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
+fn check_substituted(name: &str, (font, unicode): &(PdfFont, FontUnicode)) -> Result<()> {
+    let glyphs = font.decode(&fixture("text", &format!("{name}.input")), Some(unicode))?;
     let expected = values(name, "out")?;
     assert_eq!(glyphs.len(), expected.len());
     let matrices = values(name, "matrix")?;
@@ -224,9 +224,11 @@ fn descriptor_styles_and_symbol_aliases_preserve_pdf_positions_in_both_modes() -
                 .object(ObjectId::new(4, 0))?
                 .dictionary()
                 .ok_or_else(|| Error::syntax("missing font"))?;
-            let font = PdfFont::load_with_provider(&document, dictionary, Some(&Outlines))?;
+            let font = load_text(&document, dictionary, Some(&Outlines))?;
             check_substituted(name, &font)?;
-            let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
+            let glyphs = font
+                .0
+                .decode(&fixture("text", &format!("{name}.input")), None)?;
             let mut position = 0.0;
             for (glyph, expected) in glyphs.iter().zip(values(name, "positions")?) {
                 assert!((position - expected.as_number().unwrap()).abs() < 1e-12);
@@ -263,7 +265,7 @@ fn substituted_fonts_reject_malformed_unicode_in_strict_mode() -> Result<()> {
                 .object(ObjectId::new(4, 0))?
                 .dictionary()
                 .ok_or_else(|| Error::syntax("missing font"))?;
-            let result = PdfFont::load_with_provider(&document, dictionary, Some(&Outlines));
+            let result = load_text(&document, dictionary, Some(&Outlines));
             if recovery == Recovery::Strict {
                 let error = result.unwrap_err();
                 let tag = fixture("text", &format!("{name}.strict.error"));
@@ -275,11 +277,21 @@ fn substituted_fonts_reject_malformed_unicode_in_strict_mode() -> Result<()> {
                             .trim()
                     )
                 );
-                assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
+                // The substitute loads before its Unicode is rejected.
+                assert_eq!(
+                    document
+                        .diagnostics()
+                        .iter()
+                        .map(|item| item.kind)
+                        .collect::<Vec<_>>(),
+                    [pagura_core::DiagnosticKind::Information(
+                        information::SUBSTITUTED
+                    )]
+                );
                 continue;
             }
-            let font = result?;
-            let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
+            let (font, unicode) = result?;
+            let glyphs = font.decode(&fixture("text", &format!("{name}.input")), Some(&unicode))?;
             let expected = values(name, "out")?;
             assert_eq!(glyphs.len(), expected.len());
             for (glyph, row) in glyphs.iter().zip(expected) {
@@ -297,9 +309,10 @@ fn substituted_fonts_reject_malformed_unicode_in_strict_mode() -> Result<()> {
             let diagnostics = document.diagnostics();
             assert_eq!(
                 diagnostics.iter().map(|item| item.kind).collect::<Vec<_>>(),
+                // The font loads before its Unicode.
                 [
-                    pagura_core::DiagnosticKind::Repair(repairs::TOUNICODE_UTF16),
-                    pagura_core::DiagnosticKind::Information(information::SUBSTITUTED)
+                    pagura_core::DiagnosticKind::Information(information::SUBSTITUTED),
+                    pagura_core::DiagnosticKind::Repair(repairs::TOUNICODE_UTF16)
                 ]
             );
         }
@@ -329,7 +342,7 @@ fn null_or_dangling_font_files_still_use_the_provider() -> Result<()> {
         descriptor.insert(Name::new(b"FontFile2"), value);
         let mut font = original.clone();
         font.insert(Name::new(b"FontDescriptor"), Value::Dictionary(descriptor));
-        let substituted = PdfFont::load_with_provider(&document, &font, Some(&Outlines))?;
+        let substituted = load_text(&document, &font, Some(&Outlines))?;
         check_substituted(name, &substituted)?;
         let error = PdfFont::load(&document, &font)
             .err()

@@ -131,6 +131,20 @@ impl<'a> Context<'a> {
             .map_err(|error| source.error(error))
     }
 
+    /// Grows caller-owned storage through the same result-memory meter.
+    pub(crate) fn reserve<T>(
+        &mut self,
+        values: &mut Vec<T>,
+        additional: usize,
+        source: Source,
+    ) -> Result<()> {
+        self.work
+            .borrow_mut()
+            .bytes
+            .reserve_capacity(values, additional)
+            .map_err(|error| source.error(error))
+    }
+
     /// Charges one entry of a visited set or index (ADR 0012's estimate).
     pub(crate) fn index_entry(&mut self, source: Source) -> Result<()> {
         self.allocate::<u8>(INDEX_ENTRY_OVERHEAD, source)

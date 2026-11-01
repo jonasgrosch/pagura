@@ -3,6 +3,9 @@ use pagura_core::Repair;
 
 /// Infer the sfnt flavor from intact required tables when its version is unknown.
 pub const SFNT_VERSION: Repair = Repair::new("font.sfnt-version");
+/// Recover an exact one-record excess proven by the first table's header and
+/// the complete, bounded directory prefix; no table offset or payload changes.
+pub const SFNT_DIRECTORY_COUNT: Repair = Repair::new("font.sfnt-directory-count");
 /// Read an sfnt table at its declared byte offset despite missing alignment.
 pub const TABLE_ALIGNMENT: Repair = Repair::new("font.table-alignment");
 /// Clamp an sfnt table to available bytes; required metadata must remain usable.
@@ -38,9 +41,14 @@ pub const TYPE1_DUPLICATE_GLYPH: Repair = Repair::new("font.type1-duplicate-glyp
 /// (TN 5176 section 12, Tables 14/15).
 pub const CFF_ENCODING_SUPPLEMENT: Repair = Repair::new("font.cff-encoding-supplement");
 
+/// Retain unassigned Type 1 Subrs slots as unavailable; calls remain malformed.
+/// No subroutine is synthesized and declared indexes remain unchanged.
+pub const TYPE1_SPARSE_SUBRS: Repair = Repair::new("font.type1-sparse-subrs");
+
 /// Every repair tag of this crate.
 pub const ALL: &[Repair] = &[
     SFNT_VERSION,
+    SFNT_DIRECTORY_COUNT,
     TABLE_ALIGNMENT,
     TABLE_BOUNDS,
     CMAP_TRUNCATED,
@@ -53,5 +61,6 @@ pub const ALL: &[Repair] = &[
     CFF_DICT_OPERATOR,
     CFF_DICT_OPERANDS,
     TYPE1_DUPLICATE_GLYPH,
+    TYPE1_SPARSE_SUBRS,
     CFF_ENCODING_SUPPLEMENT,
 ];

@@ -31,8 +31,9 @@ why the drivers were linted only as a module of that test.
 ## Decision
 
 1. **`crates/pagura-cli`** builds the `pagura` binary and depends on the
-   `pagura` facade alone. Its `bundled-data` (default) and `cjk-fonts`
-   features forward to the facade's. Arguments are parsed into a typed
+   `pagura` facade alone. Its `bundled-data` and `cjk-fonts` features
+   forward to the facade's; both are defaults (amended 2026-10-27, ADR 0009),
+   while the facade's own default stays `bundled-data`. Arguments are parsed into a typed
    command before any input is read; usage errors exit with status 2 and
    run-time failures with 1; commands write to any `io::Write`.
 2. **The facade is complete and deliberate.** The root holds documents,

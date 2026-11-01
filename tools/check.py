@@ -24,9 +24,17 @@ FEATURE_MATRIX = [
     for crate in ("pagura", "pagura-cli", "pagura-data")
     for features in ("--no-default-features", "--all-features")
     for step, tail in (("clippy", ["--", "-D", "warnings"]), ("test", []))
+] + [
+    # The CLI enables cjk-fonts by default, so the workspace runs unify it
+    # onto the facade; the facade's own defaults (no CJK data) run here.
+    (CARGO + ["test", *OFFLINE, "-p", "pagura", "--all-targets"], {}),
 ] if sys.platform.startswith("linux") else []
 COMMANDS = [
     ([sys.executable, "tools/policy.py"], {}),
+    ([sys.executable, "tools/capabilities.py", "--check"], {}),
+    ([sys.executable, "tools/capability_probes.py", "check"], {}),
+    ([sys.executable, "tools/capability_render.py", "check"], {}),
+    (["node", "tools/capability_pdfjs_test.mjs"], {}),
     # Cached CAVP, ACVP and Wycheproof suites for pagura-crypto; a no-op without the cache.
     ([sys.executable, "tools/signature_vectors.py"], {}),
     ([sys.executable, "tools/fixtures.py", "--check"], {}),
@@ -36,6 +44,12 @@ COMMANDS = [
     (CARGO + ["fmt", "--all", "--", "--check"], {}),
     (CARGO + ["clippy", *OFFLINE, "--workspace", "--all-targets", "--", "-D", "warnings"], {}),
     (CARGO + ["test", *OFFLINE, "--workspace", "--all-targets"], {}),
+    # The cross-path differential test (ADR 0034): the renderer against the
+    # reference over every conformance render case, and its invariance across
+    # band heights, partitions and cached store values. The workspace run
+    # skips it, as it is slow unoptimized.
+    (CARGO + ["test", *OFFLINE, "--release", "-p", "pagura-reference", "--test", "harness",
+              "--", "--ignored"], {}),
     # The host as shipped (no bundled data, ADR 0005) and with every opt-in
     # feature, each on its own: a workspace build unifies bundled-data on.
     (CARGO + ["clippy", *OFFLINE, "-p", "pagura-host", "--all-targets", "--no-default-features", "--", "-D", "warnings"], {}),

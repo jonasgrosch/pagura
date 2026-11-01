@@ -1,4 +1,4 @@
-//! CFF DICT evaluation (TN 5176 section 4); CFF2 extensions await primary review.
+//! CFF DICT evaluation (TN 5176 section 4), with current OpenType CFF2 namespaces.
 use crate::budget::Work;
 use crate::charstring::{Operands, integer, shared_number};
 use crate::read::syntax;
@@ -40,11 +40,52 @@ const MAX_REAL_CHARS: usize = 64;
 pub(super) enum Kind<'a> {
     /// A CFF DICT: reserved operators are reported repairs.
     Cff,
-    /// A CFF2 Top or Font DICT.
-    Cff2,
+    /// A CFF2 Top DICT.
+    Cff2Top,
+    /// A current CFF2 Font DICT: only the Private DICT offset is recognized.
+    Cff2Font,
     /// A CFF2 Private DICT, whose `vsindex` and `blend` operators use the
     /// variation store's region scalars.
     Cff2Private(&'a [Vec<f64>]),
+}
+
+impl Kind<'_> {
+    /// CFF2's operator namespaces are specific to each DICT type. An operator
+    /// defined only in another namespace is still unknown here (OpenType CFF2,
+    /// Stack-based decoding and the three DICT operator summary tables).
+    const fn recognizes(self, op: Operator) -> bool {
+        match self {
+            Self::Cff => true,
+            Self::Cff2Top => matches!(
+                op,
+                Operator::CHAR_STRINGS
+                    | Operator::VSTORE
+                    | Operator::FD_ARRAY
+                    | Operator::FD_SELECT
+                    | Operator::FONT_MATRIX
+            ),
+            Self::Cff2Font => matches!(op, Operator::PRIVATE),
+            Self::Cff2Private(_) => matches!(
+                op,
+                Operator::SUBRS
+                    | Operator::VSINDEX
+                    | Operator::BLEND
+                    | Operator::BLUE_VALUES
+                    | Operator::OTHER_BLUES
+                    | Operator::FAMILY_BLUES
+                    | Operator::FAMILY_OTHER_BLUES
+                    | Operator::BLUE_SCALE
+                    | Operator::BLUE_SHIFT
+                    | Operator::BLUE_FUZZ
+                    | Operator::STD_HW
+                    | Operator::STD_VW
+                    | Operator::STEM_SNAP_H
+                    | Operator::STEM_SNAP_V
+                    | Operator::LANGUAGE_GROUP
+                    | Operator::EXPANSION_FACTOR
+            ),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -64,7 +105,7 @@ impl Dict {
     pub(super) fn parse(r: Cursor<'_>, kind: Kind<'_>, work: &mut Work<'_>) -> Result<Self> {
         match kind {
             Kind::Cff => Self::parse_with::<MAX_OPERANDS>(r, kind, work),
-            Kind::Cff2 | Kind::Cff2Private(_) => {
+            Kind::Cff2Top | Kind::Cff2Font | Kind::Cff2Private(_) => {
                 Self::parse_with::<MAX_CFF2_OPERANDS>(r, kind, work)
             }
         }
@@ -93,6 +134,12 @@ impl Dict {
             } else {
                 Operator::one_byte(byte)
             };
+            // Ignore unknown CFF2 operators before retaining entries or
+            // validating arity. Numbers and the stack were already bounded.
+            if !kind.recognizes(op) {
+                stack.clear();
+                continue;
+            }
             if let Kind::Cff2Private(variations) = kind {
                 if op == Operator::VSINDEX {
                     let [value] = stack.as_slice() else {
@@ -234,82 +281,4 @@ fn real(r: &mut Cursor<'_>) -> Result<f64> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{Dict, Kind, Operator};
-    use crate::budget::{FontBudget, Work};
-    use crate::read::cursor;
-    use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
-
-    fn parse(data: &[u8], kind: Kind<'_>, limits: &Limits) -> pagura_core::Result<Dict> {
-        let mut diagnostics = Diagnostics::new(Recovery::Strict);
-        Dict::parse(
-            cursor(data).with_base(100),
-            kind,
-            &mut Work::new(FontBudget::new(limits), &mut diagnostics),
-        )
-    }
-
-    #[test]
-    fn blends_preserve_preceding_operands_and_feed_dict_operators() {
-        // The first coefficient is zero at default, the second one is one.
-        let data = [144, 149, 159, 169, 140, 23, 6]; // 5,10,20,30,1 blend BlueValues
-        let regions = [vec![0.0, 1.0]];
-        let dict = parse(&data, Kind::Cff2Private(&regions), &Limits::default()).unwrap();
-        assert_eq!(
-            dict.values(Operator::BLUE_VALUES),
-            Some([5.0, 40.0].as_slice())
-        );
-        let small = Limits {
-            font_entries: 1,
-            ..Limits::default()
-        };
-        let one = [vec![1.0]];
-        let error = parse(&[139, 19, 139, 22], Kind::Cff2Private(&one), &small).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Limit);
-        for malformed in [&[140, 23][..], &[140, 22][..], &[139, 23][..]] {
-            let e = parse(malformed, Kind::Cff2Private(&one), &Limits::default()).unwrap_err();
-            assert_eq!(e.kind, ErrorKind::Syntax);
-            assert!(matches!(e.position, Position::Buffer(_)));
-        }
-    }
-
-    #[test]
-    fn reals_numbers_and_stack_ceilings() {
-        // BlueScale (12 9) of -2.25: nibbles e 2 a 2 5 f.
-        let dict = parse(
-            &[30, 0xe2, 0xa2, 0x5f, 12, 9],
-            Kind::Cff,
-            &Limits::default(),
-        )
-        .unwrap();
-        assert_eq!(dict.number(Operator::BLUE_SCALE, 0.0).unwrap(), -2.25);
-        let dict = parse(&[30, 0x1c, 0x3f, 12, 9], Kind::Cff, &Limits::default()).unwrap();
-        assert_eq!(dict.number(Operator::BLUE_SCALE, 0.0).unwrap(), 1e-3);
-        for malformed in [
-            &[30, 0xf1][..],        // the high nibble ends but the low one is not padding
-            &[30, 0xd0, 12, 9][..], // reserved nibble
-            &[31, 6][..],           // reserved number byte
-            &[139, 6, 139, 6][..],  // duplicate operator
-            &[139][..],             // operands without an operator
-        ] {
-            let error = parse(malformed, Kind::Cff, &Limits::default()).unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Syntax, "{malformed:?}");
-        }
-        let mut long = vec![30];
-        long.extend([0x11; 40]);
-        long.push(0xff);
-        assert_eq!(
-            parse(&long, Kind::Cff, &Limits::default())
-                .unwrap_err()
-                .kind,
-            ErrorKind::Syntax
-        );
-        let mut stack = vec![139; 49];
-        stack.push(6);
-        let error = parse(&stack, Kind::Cff, &Limits::default()).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Syntax);
-        stack.truncate(48);
-        stack.push(6);
-        parse(&stack, Kind::Cff, &Limits::default()).unwrap();
-    }
-}
+mod tests;

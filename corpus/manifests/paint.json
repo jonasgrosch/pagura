@@ -642,8 +642,7 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 0,
-      "competitive_tolerance": 1
+      "tolerance": 0
     },
     {
       "id": "paint/text-extgstate-font",
@@ -738,17 +737,24 @@
     {
       "id": "paint/text-end-without-begin",
       "kind": "pdf",
-      "description": "text end without begin",
-      "expected": "open",
+      "description": "An unmatched ET is a reported viewing no-op; Strict rejects it",
+      "expected": "render",
       "requirements": [
-        "paint-text-errors"
+        "paint-text-errors",
+        "recovery-content-state"
       ],
       "path": "corpus/generated/paint/text-end-without-begin.pdf",
       "sha256": "bcb3ab026c4b1c2bada611c4f7b60516e7db80fefc11b2e729fff5669a43471b",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.text-unmatched"
+      ],
+      "oracle": "corpus/generated/paint/text-end-without-begin.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
     },
     {
       "id": "paint/text-unfinished",
@@ -1988,16 +1994,21 @@
       "id": "paint/image-jpx-icc-explicit",
       "kind": "pdf",
       "description": "image jpx icc explicit",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "paint-images"
+        "paint-jpx-icc"
       ],
       "path": "corpus/generated/paint/image-jpx-icc-explicit.pdf",
-      "sha256": "d212845b9fc424b2385c5611135484f65203dade9f27cae5bd0a89d272911215",
+      "sha256": "888d6872364b0daa85dfeaf06c3789d911114b6e034e9fe5192e3ed4e58891e3",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "xobject.jpx-color"
+      "oracle": "corpus/generated/paint/image-jpx-icc-explicit.ppm",
+      "oracle_sha256": "62471ca8edad777a8931c6fa2e2786e6204ebfdb3b339e6d21603a72bbb0ff37",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
     },
     {
       "id": "paint/image-stencil-pattern-explicit",
@@ -2292,8 +2303,7 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1,
-      "competitive_tolerance": 25
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-symbol-differences",
@@ -2326,8 +2336,7 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1,
-      "competitive_tolerance": 27
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-zapfdingbats",
@@ -2360,8 +2369,7 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1,
-      "competitive_tolerance": 14
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-zapfdingbats-differences",
@@ -2394,8 +2402,7 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1,
-      "competitive_tolerance": 19
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-cjk-cmap",
@@ -3443,8 +3450,7 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 0,
-      "competitive_tolerance": 1
+      "tolerance": 0
     },
     {
       "id": "paint/image-direct-bilinear",

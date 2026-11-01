@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! The command-line tool, run as a subprocess.
 
-use pagura_testkit::{Manifest, assert_bytes_eq, fixture, fixture_path};
+use pagura_testkit::{Json, Manifest, assert_bytes_eq, fixture, fixture_path};
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -46,6 +46,272 @@ fn unsupported_case() -> (PathBuf, String) {
 
 fn pagura() -> Command {
     Command::new(env!("CARGO_BIN_EXE_pagura"))
+}
+
+fn service_report(
+    command: &str,
+    area: &str,
+    file: &str,
+) -> Result<Json, Box<dyn std::error::Error>> {
+    let output = pagura()
+        .arg(command)
+        .arg(fixture_path(area, file))
+        .output()?;
+    if !output.status.success() {
+        return Err(
+            std::io::Error::other(String::from_utf8_lossy(&output.stderr).into_owned()).into(),
+        );
+    }
+    Ok(Json::parse(&String::from_utf8(output.stdout)?)?)
+}
+
+#[test]
+fn inspect_reports_inherited_boxes_and_rotation_without_rounding() {
+    for (name, rotation) in [("inherited-box.pdf", 0), ("rotate-90-blank.pdf", 90)] {
+        let report = service_report("inspect", "classic", name).unwrap();
+        let geometry = report
+            .get("page_geometry")
+            .and_then(Json::as_array)
+            .unwrap();
+        assert_eq!(geometry.len(), 1);
+        let page = &geometry[0];
+        let bounds = Json::parse("[0,0,64,64]").unwrap();
+        assert_eq!(page.get("media_box"), Some(&bounds));
+        assert_eq!(page.get("crop_box"), Some(&bounds));
+        assert_eq!(page.get("rotation").and_then(Json::as_u64), Some(rotation));
+        assert_eq!(page.get("user_unit").and_then(Json::as_u64), Some(1));
+    }
+}
+
+#[test]
+fn metadata_json_keeps_unicode_fields_and_stream_identity_separate() {
+    let report = service_report("metadata", "metadata", "populated-flate.pdf").unwrap();
+    assert_eq!(report.get("schema").and_then(Json::as_u64), Some(1));
+    assert_eq!(report.get("language").and_then(Json::as_str), Some("de-DE"));
+    let info = report.get("info").unwrap();
+    for (key, value) in [
+        ("Title", "Grüße Ω"),
+        ("Author", "Euro €"),
+        ("Subject", "測試"),
+        ("Trapped", "True"),
+        ("CreationDate", "D:20261026030000+01'00"),
+    ] {
+        assert_eq!(info.get(key).and_then(Json::as_str), Some(value), "{key}");
+    }
+    assert_eq!(
+        info.get("object")
+            .unwrap()
+            .get("number")
+            .and_then(Json::as_u64),
+        Some(5)
+    );
+    assert_eq!(
+        report
+            .get("metadata_object")
+            .unwrap()
+            .get("number")
+            .and_then(Json::as_u64),
+        Some(6)
+    );
+    let absent = service_report("metadata", "metadata", "absent.pdf").unwrap();
+    for key in ["info", "language", "metadata_object"] {
+        assert!(absent.get(key).unwrap().is_null(), "{key}");
+    }
+    let empty = service_report("metadata", "metadata", "empty.pdf").unwrap();
+    assert!(empty.get("info").unwrap().get("Title").unwrap().is_null());
+    assert_eq!(
+        empty
+            .get("info")
+            .unwrap()
+            .get("Trapped")
+            .and_then(Json::as_str),
+        Some("Unknown")
+    );
+}
+
+#[test]
+fn attachment_listing_preserves_filename_bytes_unicode_and_payload_choices() {
+    let report = service_report("attachments", "files", "populated.pdf").unwrap();
+    assert_eq!(report.get("schema").and_then(Json::as_u64), Some(1));
+    let files = report.get("files").and_then(Json::as_array).unwrap();
+    assert_eq!(files.len(), 1);
+    let file = &files[0];
+    assert_eq!(file.get("index").and_then(Json::as_u64), Some(0));
+    assert_eq!(
+        file.get("key_hex").and_then(Json::as_str),
+        Some("6c6f6f6b75702d6b6579")
+    );
+    let names = file.get("names").unwrap();
+    assert_eq!(names.get("UF").and_then(Json::as_str), Some("Grüße Ω.txt"));
+    assert_eq!(
+        names.get("F_hex").and_then(Json::as_str),
+        Some("6c65676163792e747874")
+    );
+    assert!(names.get("DOS_hex").unwrap().is_null());
+    assert_eq!(
+        file.get("description").and_then(Json::as_str),
+        Some("Attachment €")
+    );
+    assert_eq!(
+        file.get("relationship").and_then(Json::as_str),
+        Some("Data")
+    );
+    assert_eq!(file.get("volatile").and_then(Json::as_bool), Some(true));
+    let payloads = file.get("payloads").and_then(Json::as_array).unwrap();
+    assert_eq!(payloads.len(), 2);
+    for (payload, key) in payloads.iter().zip(["F", "UF"]) {
+        assert_eq!(payload.get("key").and_then(Json::as_str), Some(key));
+        assert_eq!(
+            payload.get("declared_size").and_then(Json::as_u64),
+            Some(18)
+        );
+        assert_eq!(
+            payload
+                .get("object")
+                .unwrap()
+                .get("number")
+                .and_then(Json::as_u64),
+            Some(6)
+        );
+    }
+    let raw = service_report("attachments", "files", "simple-string.pdf").unwrap();
+    let file = &raw.get("files").and_then(Json::as_array).unwrap()[0];
+    assert_eq!(
+        file.get("names")
+            .unwrap()
+            .get("F_hex")
+            .and_then(Json::as_str),
+        Some("2f726177ff2f66696c65")
+    );
+    assert_eq!(
+        file.get("payloads").and_then(Json::as_array).unwrap(),
+        [] as [Json; 0]
+    );
+    for name in ["absent.pdf", "null-tree.pdf", "empty-tree.pdf"] {
+        let report = service_report("attachments", "files", name).unwrap();
+        assert_eq!(
+            report.get("files").and_then(Json::as_array).unwrap(),
+            [] as [Json; 0]
+        );
+    }
+}
+
+#[test]
+fn service_reports_reject_bad_types_and_preserve_strict_repairs() {
+    for (command, area, file) in [
+        ("metadata", "metadata", "info-field-wrong-type.pdf"),
+        ("metadata", "metadata", "metadata-cycle.pdf"),
+        ("attachments", "files", "embedded-nonstream.pdf"),
+        ("attachments", "files", "spec-cycle.pdf"),
+    ] {
+        let output = pagura()
+            .arg(command)
+            .arg(fixture_path(area, file))
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{file}");
+        assert!(output.stdout.is_empty(), "{file}");
+    }
+    for (command, area, file) in [
+        ("metadata", "metadata", "invalid-text.pdf"),
+        ("attachments", "files", "invalid-unicode.pdf"),
+    ] {
+        let repaired = service_report(command, area, file).unwrap();
+        assert_ne!(
+            repaired.get("repairs").and_then(Json::as_array).unwrap(),
+            [] as [Json; 0]
+        );
+        let output = pagura()
+            .args([command, "--strict"])
+            .arg(fixture_path(area, file))
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{file}");
+        assert!(output.stdout.is_empty(), "{file}");
+    }
+}
+
+#[test]
+fn extraction_writes_decoded_bytes_only_to_the_requested_new_file() {
+    let scratch = Scratch::new().unwrap();
+    for (command, area, name, args, expected) in [
+        ("extract-metadata", "metadata", "populated-flate.pdf", &[][..], b"<?xpacket begin=\"\"?><x:xmpmeta xmlns:x=\"adobe:ns:meta/\"><title>XMP title</title></x:xmpmeta><?xpacket end=\"w\"?>".as_slice()),
+        ("extract-metadata", "metadata", "empty.pdf", &[], b""),
+        ("extract-metadata", "metadata", "metadata-inert-xml.pdf", &[], b"<!DOCTYPE x [<!ENTITY e SYSTEM \"https://example.invalid/metadata\">]><x>&e;</x>"),
+        ("extract-attachment", "files", "flate.pdf", &["0", "UF"], b"attachment\0bytes\xff\n"),
+        ("extract-attachment", "files", "empty-payload.pdf", &["0", "F"], b""),
+    ] {
+        let target = scratch.0.join(name);
+        let output = pagura().arg(command).arg(fixture_path(area, name)).args(args).arg(&target).output().unwrap();
+        assert!(output.status.success(), "{name}: {:?}", output.stderr);
+        assert_eq!(output.stdout, [] as [u8; 0]);
+        assert_eq!(std::fs::read(&target).unwrap(), expected);
+        let repeated = pagura().arg(command).arg(fixture_path(area, name)).args(args).arg(&target).output().unwrap();
+        assert_eq!(repeated.status.code(), Some(1));
+        assert_eq!(std::fs::read(&target).unwrap(), expected);
+    }
+    assert_eq!(std::fs::read_dir(&scratch.0).unwrap().count(), 5);
+}
+
+#[test]
+fn failed_extraction_leaves_no_output_and_passwords_authorize_payload_reads() {
+    let scratch = Scratch::new().unwrap();
+    let target = scratch.0.join("output");
+    for (command, area, file, args) in [
+        ("extract-metadata", "metadata", "absent.pdf", &[][..]),
+        ("extract-attachment", "files", "populated.pdf", &["1", "F"]),
+        (
+            "extract-attachment",
+            "files",
+            "populated.pdf",
+            &["0", "Unix"],
+        ),
+        (
+            "extract-attachment",
+            "files",
+            "populated.pdf",
+            &["0", "invalid-key"],
+        ),
+        (
+            "extract-attachment",
+            "files",
+            "simple-string.pdf",
+            &["0", "F"],
+        ),
+        (
+            "extract-attachment",
+            "files",
+            "external-stream.pdf",
+            &["0", "F"],
+        ),
+    ] {
+        let output = pagura()
+            .arg(command)
+            .arg(fixture_path(area, file))
+            .args(args)
+            .arg(&target)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{file}: {args:?}");
+        assert!(!target.exists());
+    }
+    for password in ["", "wrong", "attachment", "owner"] {
+        let output = pagura()
+            .args(["extract-attachment", "--password", password])
+            .arg(fixture_path("files", "encrypted-no-type.pdf"))
+            .args(["0", "F"])
+            .arg(&target)
+            .output()
+            .unwrap();
+        if matches!(password, "attachment" | "owner") {
+            assert!(output.status.success(), "{password}: {:?}", output.stderr);
+            assert_eq!(std::fs::read(&target).unwrap(), b"attached file bytes");
+            std::fs::remove_file(&target).unwrap();
+        } else {
+            assert_eq!(output.status.code(), Some(1));
+            assert!(!target.exists());
+        }
+    }
 }
 
 #[test]
@@ -122,6 +388,73 @@ fn does_not_overwrite_files_or_emit_partial_unsupported_images() {
     assert!(!result.status.success());
     assert!(String::from_utf8_lossy(&result.stderr).contains(&format!("unsupported [{feature}]")));
     assert!(!missing.exists());
+    let strict = scratch.0.join("strict.ppm");
+    let result = pagura()
+        .args(["render", "--strict"])
+        .arg(fixture_path("paint", "image-fax-grid-crop.pdf"))
+        .arg(&strict)
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("image.ccitt-columns"));
+    assert!(
+        !strict.exists(),
+        "preparation repair created a file under strict recovery"
+    );
+}
+
+#[test]
+fn streamed_cli_ppms_equal_collected_public_api_output() {
+    let scratch = Scratch::new().unwrap();
+    for (area, name) in [
+        ("classic", "rectangle"),
+        ("classic", "many-rectangles"),
+        ("paint", "image-page-rgb"),
+        ("transparency", "gray-blend-Normal"),
+        ("transparency", "gray-blend-Multiply"),
+        ("overprint", "preview-pdfx-intent"),
+    ] {
+        let input = fixture_path(area, &format!("{name}.pdf"));
+        let image = scratch.0.join(format!("{area}-{name}.ppm"));
+        let result = pagura()
+            .arg("render")
+            .arg(&input)
+            .arg(&image)
+            .arg("150")
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{area}/{name}: {:?}",
+            result.stderr
+        );
+        let document = pagura::Document::open(
+            std::fs::read(input).unwrap(),
+            &pagura::OpenOptions::default(),
+        )
+        .unwrap();
+        let context = pagura::render_context(std::sync::Arc::new(document));
+        let pixmap = context
+            .render_page(
+                context.document().page(0).unwrap(),
+                &pagura::RenderOptions::from_dpi(150.0),
+            )
+            .unwrap();
+        assert!(
+            pixmap
+                .data()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|pixel| pixel[3] == 255)
+        );
+        let expected = pagura_testkit::ppm(
+            pixmap.width(),
+            pixmap.height(),
+            &pixmap.to_rgb_over(pagura::Rgba8::WHITE),
+        );
+        assert_bytes_eq(&std::fs::read(image).unwrap(), &expected, name);
+    }
 }
 
 #[test]
@@ -348,6 +681,20 @@ fn help_succeeds_and_usage_errors_exit_with_status_two() {
     assert_eq!(missing.status.code(), Some(1));
 }
 
+/// A harness puts rendering options before every invocation, `--version`
+/// included.
+#[test]
+fn version_accepts_rendering_options_before_it() {
+    for args in [&["--version"][..], &["--overprint", "never", "--version"]] {
+        let output = pagura().args(args).output().unwrap();
+        assert_eq!(output.status.code(), Some(0), "{args:?}");
+        let text = String::from_utf8(output.stdout).unwrap();
+        assert!(text.starts_with("pagura "), "{args:?}: {text}");
+    }
+    let strict = pagura().args(["--strict", "--version"]).output().unwrap();
+    assert_eq!(strict.status.code(), Some(2));
+}
+
 #[test]
 fn scan_labels_unreadable_input_as_io() {
     let output = pagura()
@@ -361,4 +708,286 @@ fn scan_labels_unreadable_input_as_io() {
         text.starts_with("{\"schema\":1,\"strict\":false,\"open\":{\"kind\":\"io\""),
         "{text}"
     );
+}
+
+#[test]
+fn page_attachment_json_keeps_annotation_geometry_names_and_original_indexes() {
+    let output = pagura()
+        .args(["attachments", "--strict", "--page", "0"])
+        .arg(fixture_path("file_annotations", "populated.pdf"))
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{:?}", output.stderr);
+    let report = Json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+    assert_eq!(report.get("schema").and_then(Json::as_u64), Some(1));
+    assert_eq!(report.get("page").and_then(Json::as_u64), Some(0));
+    let annotations = report.get("annotations").and_then(Json::as_array).unwrap();
+    assert_eq!(annotations.len(), 1);
+    let annotation = &annotations[0];
+    assert_eq!(annotation.get("index").and_then(Json::as_u64), Some(0));
+    assert_eq!(
+        annotation
+            .get("object")
+            .unwrap()
+            .get("number")
+            .and_then(Json::as_u64),
+        Some(8)
+    );
+    assert_eq!(
+        annotation.get("rectangle"),
+        Some(&Json::parse("[1,2,9,12]").unwrap())
+    );
+    assert_eq!(
+        annotation.get("contents").and_then(Json::as_str),
+        Some("Annotation Ω")
+    );
+    assert_eq!(
+        annotation.get("icon_hex").and_then(Json::as_str),
+        Some("5061706572636c6970")
+    );
+    assert_eq!(
+        annotation.get("declared_icon_hex"),
+        annotation.get("icon_hex")
+    );
+    let file = annotation.get("file").unwrap();
+    assert_eq!(
+        file.get("object")
+            .unwrap()
+            .get("number")
+            .and_then(Json::as_u64),
+        Some(5)
+    );
+    assert_eq!(
+        file.get("description").and_then(Json::as_str),
+        Some("Attachment €")
+    );
+    assert_eq!(
+        file.get("names").unwrap().get("UF").and_then(Json::as_str),
+        Some("Grüße Ω.txt")
+    );
+    let output = pagura()
+        .args(["attachments", "--page", "0"])
+        .arg(fixture_path("file_annotations", "mixed.pdf"))
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let report = Json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+    let annotations = report.get("annotations").and_then(Json::as_array).unwrap();
+    assert_eq!(
+        annotations
+            .iter()
+            .map(|annotation| annotation.get("index").and_then(Json::as_u64))
+            .collect::<Vec<_>>(),
+        [Some(1), Some(2)]
+    );
+    for name in ["page-only.pdf", "encrypted-no-type.pdf"] {
+        let output = pagura()
+            .args(["attachments", "--page", "0"])
+            .arg(fixture_path("file_annotations", name))
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{name}: listing needs no payload authorization"
+        );
+        let report = Json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+        let annotations = report.get("annotations").and_then(Json::as_array).unwrap();
+        assert_eq!(annotations.len(), 1);
+        assert_eq!(annotations[0].get("contents"), Some(&Json::Null));
+        assert_eq!(
+            annotations[0].get("icon_hex").and_then(Json::as_str),
+            Some("5075736850696e")
+        );
+        assert_eq!(annotations[0].get("declared_icon_hex"), Some(&Json::Null));
+    }
+}
+
+#[test]
+fn annotation_extraction_selects_annots_indexes_without_catalog_fallback() {
+    let scratch = Scratch::new().unwrap();
+    let input = fixture_path("file_annotations", "mixed.pdf");
+    let target = scratch.0.join("selected.bin");
+    for success in [true, false] {
+        let output = pagura()
+            .args(["extract-attachment", "--page", "0"])
+            .arg(&input)
+            .args(["1", "UF"])
+            .arg(&target)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.success(), success, "new output only");
+        assert!(
+            output.stdout.is_empty(),
+            "extraction never emits payload bytes on stdout"
+        );
+        assert_eq!(std::fs::read(&target).unwrap(), b"attachment\0bytes\xff\n");
+    }
+    assert_eq!(
+        std::fs::read(&input).unwrap(),
+        fixture("file_annotations", "mixed.pdf")
+    );
+    let target = scratch.0.join("refused.bin");
+    for (name, page, index, key) in [
+        ("mixed.pdf", "0", "0", "UF"),
+        ("mixed.pdf", "0", "3", "UF"),
+        ("mixed.pdf", "99", "1", "UF"),
+        ("mixed.pdf", "0", "1", "Unix"),
+        ("late-failure.pdf", "0", "0", "UF"),
+        ("external.pdf", "0", "0", "F"),
+        ("encrypted-no-type.pdf", "0", "0", "F"),
+    ] {
+        let output = pagura()
+            .args(["extract-attachment", "--page", page])
+            .arg(fixture_path("file_annotations", name))
+            .args([index, key])
+            .arg(&target)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{name} {page} {index} {key}");
+        assert!(
+            !target.exists(),
+            "failed selection/decoding must not create output"
+        );
+        assert!(
+            output.stdout.is_empty(),
+            "failed extraction has no success bytes"
+        );
+    }
+    let output = pagura()
+        .args([
+            "extract-attachment",
+            "--page",
+            "0",
+            "--password",
+            "attachment",
+        ])
+        .arg(fixture_path("file_annotations", "encrypted-no-type.pdf"))
+        .args(["0", "F"])
+        .arg(&target)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{:?}", output.stderr);
+    assert_eq!(std::fs::read(&target).unwrap(), b"attached file bytes");
+    assert_eq!(
+        std::fs::read_dir(&scratch.0).unwrap().count(),
+        2,
+        "only caller-selected files exist"
+    );
+}
+
+#[test]
+fn annotation_checks_record_scope_and_failures_have_no_completed_json() {
+    let output = pagura()
+        .args(["check-attachment", "--page", "0"])
+        .arg(fixture_path("file_annotations", "mixed.pdf"))
+        .args(["1", "UF"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let report = Json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+    for (key, expected) in [
+        ("schema", 1),
+        ("page", 0),
+        ("index", 1),
+        ("decoded_size", 18),
+    ] {
+        assert_eq!(report.get(key).and_then(Json::as_u64), Some(expected));
+    }
+    for key in ["size", "checksum"] {
+        assert_eq!(report.get(key).and_then(Json::as_str), Some("match"));
+    }
+    for name in ["late-failure.pdf", "encrypted-no-type.pdf"] {
+        let output = pagura()
+            .args(["check-attachment", "--page", "0"])
+            .arg(fixture_path("file_annotations", name))
+            .args(["0", "F"])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{name}");
+        assert!(
+            output.stdout.is_empty(),
+            "failed check has no completed JSON"
+        );
+    }
+    for (name, page) in [("late-failure.pdf", "0"), ("mixed.pdf", "99")] {
+        let output = pagura()
+            .args(["attachments", "--page", page])
+            .arg(fixture_path("file_annotations", name))
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(
+            output.stdout.is_empty(),
+            "malformed annotation views never produce partial JSON"
+        );
+    }
+}
+
+#[test]
+fn scan_modes_keep_their_distinct_audit_schemas() {
+    let input = fixture_path("classic", "rectangle.pdf");
+    let legacy = pagura().arg("scan").arg(&input).output().unwrap();
+    assert!(legacy.status.success());
+    assert_eq!(
+        legacy.stdout,
+        b"{\"schema\":1,\"strict\":true,\"open\":null,\"pages\":1,\"rendered\":1,\"repairs\":[],\"information\":[],\"failures\":[]}\n"
+    );
+    let repair = pagura()
+        .args(["scan", "--repair"])
+        .arg(&input)
+        .output()
+        .unwrap();
+    assert!(repair.status.success());
+    assert_eq!(
+        repair.stdout,
+        b"{\"schema\":2,\"recovery\":\"repair\",\"strict\":null,\"open\":null,\"pages\":1,\"rendered\":1,\"repairs\":[],\"information\":[],\"suppressed_diagnostics\":0,\"failures\":[]}\n"
+    );
+    let empty = pagura()
+        .args(["scan", "--repair", "--max-pages", "0"])
+        .arg(input)
+        .output()
+        .unwrap();
+    assert!(empty.status.success());
+    assert!(
+        String::from_utf8(empty.stdout)
+            .unwrap()
+            .contains("\"pages\":1,\"rendered\":0")
+    );
+}
+
+#[test]
+fn explicit_repair_scan_reports_repairs_and_refusals_without_strict_claims() {
+    let (unsupported, feature) = unsupported_case();
+    for (input, expected) in [
+        (
+            fixture_path("paint", "text-late-font-repair.pdf"),
+            "font.stream-lengths".to_owned(),
+        ),
+        (
+            fixture_path("paint", "type3-recursion.pdf"),
+            "\"kind\":\"cycle\"".to_owned(),
+        ),
+        (
+            fixture_path("content", "icc-mft2-grid-budget.pdf"),
+            "\"kind\":\"limit\"".to_owned(),
+        ),
+        (unsupported, feature),
+        (
+            fixture_path("classic", "no-such-file.pdf"),
+            "\"kind\":\"io\"".to_owned(),
+        ),
+    ] {
+        let output = pagura()
+            .args(["scan", "--repair"])
+            .arg(input)
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let report = String::from_utf8(output.stdout).unwrap();
+        assert!(
+            report.starts_with("{\"schema\":2,\"recovery\":\"repair\",\"strict\":null,"),
+            "{report}"
+        );
+        assert!(report.contains(&expected), "{report}");
+    }
 }

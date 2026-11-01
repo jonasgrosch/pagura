@@ -1,6 +1,6 @@
 [package]
 name = "pagura-render"
-description = "PDF content interpretation into a display list and pixels"
+description = "Page rendering and text extraction through one context: scenes recorded once and rendered by region"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,14 +12,15 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
-pagura-font.workspace = true
 pagura-core.workspace = true
-pagura-color.workspace = true
 pagura-document.workspace = true
 pagura-extract.workspace = true
+pagura-interpret.workspace = true
+pagura-paint.workspace = true
 pagura-raster.workspace = true
 pagura-text.workspace = true
-pagura-image.workspace = true
 
 [dev-dependencies]
+pagura-color.workspace = true
 pagura-testkit.workspace = true
+pagura-write.workspace = true

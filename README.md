@@ -9,6 +9,13 @@ Pagura does not fork, wrap, or depend on hayro, PDFium, MuPDF, or another PDF
 engine. Those are external competitors. Product crates currently use only the
 Rust standard library and enforce `#![forbid(unsafe_code)]`.
 
+Rendering is one interpreter recording each page into a scene and one
+renderer that prepares it for a region and executes it in bands
+([ADR 0034](docs/adr/0034-one-interpreter-one-renderer.md)). Every pixel is
+within one level of its exact result
+([ADR 0004](docs/adr/0004-rendering-pipeline.md)), whatever the tiles, band
+height or platform.
+
 ## Browser preview
 
 [Open the browser viewer](https://jonasgrosch.github.io/pagura/) ·
@@ -26,6 +33,7 @@ python3 tools/check.py
 mkdir -p work
 cargo run --release -p pagura-cli -- inspect corpus/generated/classic/rectangle.pdf
 cargo run --release -p pagura-cli -- render corpus/generated/classic/rectangle.pdf work/rectangle.ppm
+cargo run --release -p pagura-cli -- render --format png --transparent corpus/generated/classic/rectangle.pdf work/rectangle.png
 cargo wasm   # pagura-host for wasm32-wasip1
 python3 tools/bench.py run --engines pagura,poppler --suite smoke
 python3 tools/bench.py gate benchmarks/results/local/latest.json
@@ -36,8 +44,10 @@ engines, workloads, correctness evidence, and performance comparisons exist.
 Passing bootstrap tests does not mean PDF conformance or 20% superiority.
 
 - [Contributing](CONTRIBUTING.md)
+- [CLI image and document-service commands](docs/CLI.md)
 - [Architecture and boundaries](docs/ARCHITECTURE.md)
 - [Roadmap and milestones](docs/ROADMAP.md)
+- [Competitive feature parity plan](docs/COMPETITIVE_PARITY.md)
 - [Decision records](docs/adr/)
 - [Testing and conformance](docs/TESTING.md)
 - [Performance contract](benchmarks/README.md)

@@ -19,8 +19,10 @@ pub struct SessionLimits {
     pub max_documents: usize,
     /// Original source bytes retained across all open documents.
     pub total_source_bytes: usize,
-    /// Accounting budget of the compiled-page cache; zero disables retention.
-    pub list_cache_bytes: usize,
+    /// Capacity of each open document's render store (ADR 0012): the
+    /// recorded scenes, decoded images, fonts and glyph setups rendering
+    /// retains between tiles and zoom levels. Zero disables retention.
+    pub store_bytes: usize,
     /// Accounting budget of the extracted-text cache; zero disables retention.
     pub text_cache_bytes: usize,
     /// Payload bytes of one reading response (protocol 1.2 and later).
@@ -36,8 +38,8 @@ impl SessionLimits {
     /// Default [`SessionLimits::total_source_bytes`]: one maximum-size file
     /// under `Limits::default()`.
     pub const DEFAULT_TOTAL_SOURCE_BYTES: usize = 512 * MIB;
-    /// Default [`SessionLimits::list_cache_bytes`].
-    pub const DEFAULT_LIST_CACHE_BYTES: usize = 64 * MIB;
+    /// Default [`SessionLimits::store_bytes`].
+    pub const DEFAULT_STORE_BYTES: usize = 64 * MIB;
     /// Default [`SessionLimits::text_cache_bytes`].
     pub const DEFAULT_TEXT_CACHE_BYTES: usize = 16 * MIB;
     /// Default [`SessionLimits::reading_response_bytes`].
@@ -54,7 +56,7 @@ impl SessionLimits {
         let mut limits = Self {
             max_documents: Self::DEFAULT_MAX_DOCUMENTS,
             total_source_bytes: Self::DEFAULT_TOTAL_SOURCE_BYTES,
-            list_cache_bytes: Self::DEFAULT_LIST_CACHE_BYTES,
+            store_bytes: Self::DEFAULT_STORE_BYTES,
             text_cache_bytes: Self::DEFAULT_TEXT_CACHE_BYTES,
             reading_response_bytes: Self::DEFAULT_READING_RESPONSE_BYTES,
             max_frame_bytes: 0,

@@ -1,0 +1,185 @@
+{
+  "schema": 2,
+  "area": "calibrated_blackpoint_pages",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "calibrated_blackpoint_pages/CalGray",
+      "kind": "pdf",
+      "description": "Three independently distinct pages: zero, chromatic and above-white diffuse-black metadata with compensation OFF",
+      "expected": "render",
+      "requirements": [
+        "content-cie"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint_pages/CalGray.pdf",
+      "sha256": "c25773ba2f1aa56a5243ce4e966c19ae86fdb76a16bf449e402f078905c5c4f5",
+      "pages": 3,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint_pages/CalGray.ppm",
+      "oracle_sha256": "17d47e0d59d852f6bfdad88958b2dfb6c07ef57438b697de970878ba4a47a3fd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1,
+      "qualification_pages": [
+        {
+          "page": 1,
+          "oracle": "corpus/generated/calibrated_blackpoint_pages/CalGray-oracles.page-1.ppm",
+          "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+          "width": 8,
+          "height": 8,
+          "dpi": 72,
+          "tolerance": 1
+        },
+        {
+          "page": 2,
+          "oracle": "corpus/generated/calibrated_blackpoint_pages/CalGray-oracles.page-2.ppm",
+          "oracle_sha256": "c0c88afde8b57f2532c9596676787314a4a24c902214daaa33c70f8017a5adf1",
+          "width": 8,
+          "height": 8,
+          "dpi": 72,
+          "tolerance": 1
+        }
+      ]
+    },
+    {
+      "id": "calibrated_blackpoint_pages/CalGray-oracles",
+      "kind": "vector",
+      "description": "Independent later-page gamma/matrix/Bradford/sRGB pixels; these are page-index accuracy oracles, not renderer goldens",
+      "requirements": [
+        "content-cie"
+      ],
+      "files": {
+        ".page-1.ppm": {
+          "path": "corpus/generated/calibrated_blackpoint_pages/CalGray-oracles.page-1.ppm",
+          "sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1"
+        },
+        ".page-2.ppm": {
+          "path": "corpus/generated/calibrated_blackpoint_pages/CalGray-oracles.page-2.ppm",
+          "sha256": "c0c88afde8b57f2532c9596676787314a4a24c902214daaa33c70f8017a5adf1"
+        }
+      }
+    },
+    {
+      "id": "calibrated_blackpoint_pages/CalRGB",
+      "kind": "pdf",
+      "description": "Three independently distinct pages: zero, chromatic and above-white diffuse-black metadata with compensation OFF",
+      "expected": "render",
+      "requirements": [
+        "content-cie"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint_pages/CalRGB.pdf",
+      "sha256": "88f7c0b2cc36c92b38cdb76c382f1a9598c809cc8f9589d9457226856a232549",
+      "pages": 3,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint_pages/CalRGB.ppm",
+      "oracle_sha256": "2b0dac4b749e222ff806cc2da8038879bdfa5e2d60f4b86d9cbbda3f64a44e6d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1,
+      "qualification_pages": [
+        {
+          "page": 1,
+          "oracle": "corpus/generated/calibrated_blackpoint_pages/CalRGB-oracles.page-1.ppm",
+          "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+          "width": 8,
+          "height": 8,
+          "dpi": 72,
+          "tolerance": 1
+        },
+        {
+          "page": 2,
+          "oracle": "corpus/generated/calibrated_blackpoint_pages/CalRGB-oracles.page-2.ppm",
+          "oracle_sha256": "a3ab9feb3cc0fba06ec45945541e0d8d4ffb9106fb23859e7c2f30534cebce4d",
+          "width": 8,
+          "height": 8,
+          "dpi": 72,
+          "tolerance": 1
+        }
+      ]
+    },
+    {
+      "id": "calibrated_blackpoint_pages/CalRGB-oracles",
+      "kind": "vector",
+      "description": "Independent later-page gamma/matrix/Bradford/sRGB pixels; these are page-index accuracy oracles, not renderer goldens",
+      "requirements": [
+        "content-cie"
+      ],
+      "files": {
+        ".page-1.ppm": {
+          "path": "corpus/generated/calibrated_blackpoint_pages/CalRGB-oracles.page-1.ppm",
+          "sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac"
+        },
+        ".page-2.ppm": {
+          "path": "corpus/generated/calibrated_blackpoint_pages/CalRGB-oracles.page-2.ppm",
+          "sha256": "a3ab9feb3cc0fba06ec45945541e0d8d4ffb9106fb23859e7c2f30534cebce4d"
+        }
+      }
+    },
+    {
+      "id": "calibrated_blackpoint_pages/Lab",
+      "kind": "pdf",
+      "description": "Three independently distinct pages: zero, chromatic and above-white diffuse-black metadata with compensation OFF",
+      "expected": "render",
+      "requirements": [
+        "content-cie"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint_pages/Lab.pdf",
+      "sha256": "74d3228b08463e8a6ac34cdaef534d11f0dbd04ff621aa1976fa7253b6b1ccbc",
+      "pages": 3,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint_pages/Lab.ppm",
+      "oracle_sha256": "e12a44be1add072d3ac6ac64e8acda8a4576b0829424baa31f6a04bf4886c072",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1,
+      "qualification_pages": [
+        {
+          "page": 1,
+          "oracle": "corpus/generated/calibrated_blackpoint_pages/Lab-oracles.page-1.ppm",
+          "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+          "width": 8,
+          "height": 8,
+          "dpi": 72,
+          "tolerance": 1
+        },
+        {
+          "page": 2,
+          "oracle": "corpus/generated/calibrated_blackpoint_pages/Lab-oracles.page-2.ppm",
+          "oracle_sha256": "c4682e9582d860e4f56f60c0434b5d7965a6e137e42f672176abbb356a578a2a",
+          "width": 8,
+          "height": 8,
+          "dpi": 72,
+          "tolerance": 1
+        }
+      ]
+    },
+    {
+      "id": "calibrated_blackpoint_pages/Lab-oracles",
+      "kind": "vector",
+      "description": "Independent later-page gamma/matrix/Bradford/sRGB pixels; these are page-index accuracy oracles, not renderer goldens",
+      "requirements": [
+        "content-cie"
+      ],
+      "files": {
+        ".page-1.ppm": {
+          "path": "corpus/generated/calibrated_blackpoint_pages/Lab-oracles.page-1.ppm",
+          "sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe"
+        },
+        ".page-2.ppm": {
+          "path": "corpus/generated/calibrated_blackpoint_pages/Lab-oracles.page-2.ppm",
+          "sha256": "c4682e9582d860e4f56f60c0434b5d7965a6e137e42f672176abbb356a578a2a"
+        }
+      }
+    }
+  ]
+}

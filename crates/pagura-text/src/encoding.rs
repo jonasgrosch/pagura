@@ -8,30 +8,47 @@ pub(crate) type Encoding = [Option<Name>; 256];
 #[derive(Debug)]
 pub(crate) struct SimpleMapping {
     pub(crate) names: Encoding,
-    pub(crate) unicode: [Option<GlyphText>; 256],
+    /// Whether names are read as ZapfDingbats names first.
+    dingbats: bool,
+    /// Each code's Unicode from its glyph name, found on first use.
+    unicode: [std::sync::OnceLock<Option<GlyphText>>; 256],
     /// Each code's program glyph, selected on first use: a function of the
     /// code, its name and its Unicode alone (9.6.5).
     pub(crate) selected: [std::sync::OnceLock<Option<pagura_font::GlyphId>>; 256],
 }
 
+/// The bytes of the Unicode text a glyph name of `length` bytes can map
+/// to at most: four per name byte (a component of one byte maps to one
+/// scalar, `uniXXXX` and `uXXXX` forms need more bytes than they produce).
+pub(crate) const UNICODE_BYTES_PER_NAME_BYTE: usize = 4;
+
 impl SimpleMapping {
     pub(crate) fn new(names: Encoding, limits: &Limits, base_font: &[u8]) -> Result<Self> {
-        let dingbats = is_dingbats(base_font);
         // A name's text is at most a few bytes per name byte, so charging the
         // names bounds both the work and the text.
         let mut work = Meter::new(limits.font_work, "simple encoding work budget exceeded");
-        let mut texts = std::array::from_fn(|_| None);
-        for (slot, name) in texts.iter_mut().zip(&names) {
-            if let Some(name) = name {
-                work.charge(name.len())?;
-                *slot = unicode_with(name.as_bytes(), dingbats).map(GlyphText::from);
-            }
+        for name in names.iter().flatten() {
+            work.charge(name.len())?;
         }
         Ok(Self {
             names,
-            unicode: texts,
+            dingbats: is_dingbats(base_font),
+            unicode: std::array::from_fn(|_| std::sync::OnceLock::new()),
             selected: std::array::from_fn(|_| std::sync::OnceLock::new()),
         })
+    }
+
+    /// The Unicode text of `code` from its glyph name (9.10.2), found when
+    /// first asked for: decoding needs it for the codes a string uses only.
+    pub(crate) fn unicode(&self, code: u8) -> Option<&GlyphText> {
+        let index = usize::from(code);
+        self.unicode
+            .get(index)?
+            .get_or_init(|| {
+                let name = self.names.get(index)?.as_ref()?;
+                unicode_with(name.as_bytes(), self.dingbats).map(GlyphText::from)
+            })
+            .as_ref()
     }
 }
 
@@ -39,6 +56,18 @@ pub(crate) fn font_name<'a>(document: &'a Document, font: &'a Dictionary) -> Res
     Ok(crate::objects::optional(document, font, b"BaseFont")?
         .and_then(Value::as_name)
         .map_or(b"", Name::as_bytes))
+}
+
+/// A PDF subset tag is exactly six uppercase ASCII letters and `+` (9.9.2).
+pub(crate) fn without_subset_tag(name: &[u8]) -> &[u8] {
+    match name.split_first_chunk::<7>() {
+        Some((prefix, rest))
+            if prefix[6] == b'+' && prefix[..6].iter().all(u8::is_ascii_uppercase) =>
+        {
+            rest
+        }
+        _ => name,
+    }
 }
 
 /// The predefined simple-font encodings of Annex D (Tables D.2, D.4–D.6).

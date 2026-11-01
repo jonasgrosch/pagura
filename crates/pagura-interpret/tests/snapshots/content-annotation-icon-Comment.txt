@@ -1,0 +1,11 @@
+page crop [0.0 0.0 8.0 8.0] rotate 0 unit 1.0 print-intent false
+group #0 page Document isolated false knockout false space None bbox - view - state #0 clip - at Unknown
+  group #1 transparency Annotation isolated false knockout false space None bbox [M 0.0 0.0 L 8.0 0.0 L 8.0 8.0 L 0.0 8.0 Z] view anchor 0.0 8.0 zoom false rotate false state #0 clip - at Unknown
+    group #2 transparency Annotation isolated false knockout false space None bbox [M 0.0 0.0 L 8.0 0.0 L 8.0 8.0 L 0.0 8.0 Z] view - state #0 clip - at Unknown
+      fill nonzero paint #0 state #0 clip #0 at Buffer(41) [M 0.5 0.5 L 7.5 0.5 L 7.5 7.5 L 0.5 7.5 Z]
+      stroke pen #0 paint #1 state #0 clip #0 at Buffer(123) [M 0.5 0.5 L 7.5 0.5 L 7.5 7.5 L 0.5 7.5 Z M 2.0 5.5 L 6.0 5.5 M 2.0 4.0 L 6.0 4.0 M 2.0 2.5 L 4.5 2.5 M 2.0 0.5 L 1.0 0.0]
+paint #0 solid DeviceRGB [1.0 1.0 0.0]
+paint #1 solid DeviceGray [0.0]
+state #0 alpha 1.0 blend Normal mask - ais false overprint false nonzero false transfer no intent Relative bg no ucr no
+pen #0 width 1.0 cap Butt join Miter miter 10.0 dash [] phase 0.0 ctm [0.5 0.0 0.0 0.5 0.0 0.0] None
+clip #0 parent - nonzero [M 0.0 0.0 L 8.0 0.0 L 8.0 8.0 L 0.0 8.0 Z]

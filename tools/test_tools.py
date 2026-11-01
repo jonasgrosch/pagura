@@ -1,7 +1,10 @@
 """Unit tests for the corpus, scoreboard and conformance tooling."""
 import io
+import json
+import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 from pathlib import Path
 
@@ -21,6 +24,44 @@ def mismatch(*arguments):
 
 
 class ConformanceTests(unittest.TestCase):
+    def test_explicit_scan_requires_its_own_mode_and_unavailable_audit(self):
+        case = {"path": "fixture.pdf", "scan_recovery": "repair", "dpi": 144}
+        good = {"schema": 2, "recovery": "repair", "strict": None}
+        for report in [good, {**good, "schema": 1}, {**good, "strict": False},
+                       {**good, "strict": True}, {"schema": 2, "recovery": "repair"},
+                       {**good, "recovery": "strict"}]:
+            with patch.object(conformance, "pagura", return_value=subprocess.CompletedProcess([], 0, json.dumps(report).encode(), b"")) as run:
+                if report == good:
+                    self.assertEqual(conformance.scan(case), good)
+                    self.assertEqual(run.call_args.args, ("scan", "--repair", str(conformance.ROOT / "fixture.pdf"), "144"))
+                else:
+                    with self.assertRaises(AssertionError):
+                        conformance.scan(case)
+
+    def test_default_scan_keeps_legacy_arguments_and_schema(self):
+        report = {"schema": 1, "strict": True}
+        with patch.object(conformance, "pagura", return_value=subprocess.CompletedProcess([], 0, json.dumps(report).encode(), b"")) as run:
+            self.assertEqual(conformance.scan({"path": "fixture.pdf", "dpi": 144}), report)
+            self.assertEqual(run.call_args.args, ("scan", str(conformance.ROOT / "fixture.pdf")))
+        with self.assertRaises(AssertionError):
+            conformance.scan({"path": "fixture.pdf", "scan_recovery": "unknown"})
+
+    def test_explicit_scan_does_not_replace_an_actual_strict_refusal(self):
+        case = {"path": "fixture.pdf", "expected": "render", "strict_valid": False,
+                "scan_recovery": "repair", "dpi": 144, "page": 1,
+                "mode_errors": {"strict": {"kind": "Unsupported", "feature": "font.substitute",
+                                             "repair": None, "message": "original unavailable"}}}
+        report = {"schema": 1, "strict": True, "open": None,
+                  "failures": [{"page": 1, "error": {"kind": "unsupported", "feature": "font.substitute",
+                                                         "repair": None, "message": "original unavailable"}}]}
+        refused = subprocess.CompletedProcess([], 1, b"", b"original unavailable")
+        with patch.object(conformance, "pagura", return_value=refused) as render, patch.object(conformance, "scan", return_value=report):
+            self.assertEqual(conformance.check_strict_render(case), [])
+            self.assertEqual(render.call_args.args[:2], ("render", "--strict"))
+            self.assertEqual(render.call_args.args[-2:], ("144", "1"))
+        with patch.object(conformance, "pagura", return_value=subprocess.CompletedProcess([], 0, b"", b"")), patch.object(conformance, "scan", return_value=report):
+            self.assertTrue(conformance.check_strict_render(case))
+
     def test_images_compare_exactly_or_within_tolerance(self):
         base = ppm(1, 1, [10, 20, 30])
         self.assertIsNone(conformance.compare_images(base, base, 0))

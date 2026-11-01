@@ -137,6 +137,46 @@ pub(crate) fn standard_name(name: &[u8]) -> Option<Standard14> {
     None
 }
 
+/// CID-only visual fallback. This does not declare a simple-font alias or
+/// metric compatibility with Minion; source W/DW remain authoritative.
+pub(super) fn checked_cid_face(name: &[u8]) -> Option<Standard14> {
+    let name = if name.get(6) == Some(&b'+') && name.get(..6)?.iter().all(u8::is_ascii_uppercase) {
+        name.get(7..)?
+    } else {
+        name
+    };
+    let style = match name {
+        b"MinionPro" | b"MinionPro-Regular" => Style::Regular,
+        b"MinionPro-Bold" => Style::Bold,
+        b"MinionPro-Italic" => Style::Italic,
+        b"MinionPro-BoldItalic" => Style::BoldItalic,
+        _ => return None,
+    };
+    Some(Family::Times.face(style))
+}
+
+/// Latin text families beyond the standard aliases whose name rules out a
+/// symbol font: the metric-compatible Liberation and croscore faces and DejaVu.
+/// Only a Symbolic font with an explicit Latin encoding consults this list;
+/// its face then comes from the descriptor, as for an unknown nonsymbolic font.
+pub(crate) fn latin_text_family(name: &[u8]) -> bool {
+    let mut buffer = [0; MAX_NAME];
+    normalized(name, &mut buffer).is_some_and(|name| {
+        [
+            b"liberationsans".as_slice(),
+            b"liberationserif",
+            b"liberationmono",
+            b"arimo",
+            b"tinos",
+            b"cousine",
+            b"dejavusans",
+            b"dejavuserif",
+        ]
+        .iter()
+        .any(|family| name.starts_with(family))
+    })
+}
+
 fn style(suffix: &[u8]) -> Option<Style> {
     Some(match suffix {
         b"" | b"roman" | b"regular" => Style::Regular,
@@ -149,11 +189,7 @@ fn style(suffix: &[u8]) -> Option<Style> {
 
 /// Lowercases `name` without its subset tag, hyphens, commas and spaces.
 fn normalized<'a>(name: &[u8], buffer: &'a mut [u8; MAX_NAME]) -> Option<&'a [u8]> {
-    let name = if name.get(6) == Some(&b'+') && name.get(..6)?.iter().all(u8::is_ascii_uppercase) {
-        name.get(7..)?
-    } else {
-        name
-    };
+    let name = crate::encoding::without_subset_tag(name);
     if name.len() > MAX_NAME {
         return None;
     }
@@ -180,6 +216,10 @@ mod tests {
             Some(Standard14::TimesRoman)
         );
         assert_eq!(standard_name(b"Symbol,Italic"), Some(Standard14::Symbol));
+        assert!(latin_text_family(b"ABCDEF+LiberationSans-Bold"));
+        assert!(latin_text_family(b"DejaVuSansMono"));
+        assert!(!latin_text_family(b"Wingdings"));
+        assert!(!latin_text_family(b"Liberation"));
         assert_eq!(standard_name(b"Unknown"), None);
         assert_eq!(standard_name(&[b'A'; MAX_NAME + 1]), None);
         assert_eq!(

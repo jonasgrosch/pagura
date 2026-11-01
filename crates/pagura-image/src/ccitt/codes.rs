@@ -277,8 +277,21 @@ const fn prefix_mode(prefix: usize) -> Option<(usize, Mode)> {
     })
 }
 
+/// [`prefix_mode`] of every seven-bit prefix.
+static MODES: [Option<(usize, Mode)>; 128] = {
+    let mut table = [None; 128];
+    let mut prefix = 0;
+    while prefix < 128 {
+        table[prefix] = prefix_mode(prefix);
+        prefix += 1;
+    }
+    table
+};
+
 pub(super) fn mode(bits: &mut Bits<'_>) -> Result<Mode> {
-    if let Some((length, mode)) = bits.peek(7).and_then(prefix_mode)
+    if let Some((length, mode)) = bits
+        .peek(7)
+        .and_then(|prefix| MODES.get(prefix).copied().flatten())
         && bits.advance(length)
     {
         return Ok(mode);

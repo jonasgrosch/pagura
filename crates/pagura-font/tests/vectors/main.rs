@@ -8,6 +8,8 @@
 use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
 use pagura_font::{CmapSubtable, FontFormat, FontProgram, GlyphId};
 
+mod collections;
+mod directory_count;
 mod recovery;
 mod static_fonts;
 use pagura_raster::{PathBuilder, Point, Segment};
@@ -123,6 +125,11 @@ fn check_vector(
                         Point::new(n(3), n(4)),
                         Point::new(n(5), n(6)),
                     )
+                    .unwrap();
+            }
+            "q" => {
+                builder
+                    .quad_to(Point::new(n(1), n(2)), Point::new(n(3), n(4)))
                     .unwrap();
             }
             "h" => {
@@ -386,6 +393,10 @@ fn compare_segment(a: Segment, b: Segment, name: &str) {
             point(b, e);
             point(c, f);
         }
+        (Segment::QuadTo { control: a, end: b }, Segment::QuadTo { control: c, end: d }) => {
+            point(a, c);
+            point(b, d);
+        }
         (Segment::Close, Segment::Close) => {}
         _ => panic!("{name}: segment kinds differ"),
     }
@@ -505,6 +516,10 @@ fn extended_font_formats_from_independent_vectors() {
         "cff2-private-blend",
         "cff2-private-blend-override",
         "cff2-font-dict-matrix",
+        "cff2-dict-control",
+        "cff2-dict-top",
+        "cff2-dict-font",
+        "cff2-dict-private",
         "cff2-fd-index",
         "cff2-fd-sentinel",
         "cff2-fd-order",
@@ -771,6 +786,25 @@ fn primary_text_type1_vectors_0() {
         "review-type1-length-65536",
     ] {
         vector(name, FontFormat::Type1);
+    }
+}
+
+#[test]
+fn type1_advance_vectors_preserve_bearings_and_complete_composite_metrics() {
+    for name in [
+        "horizontal",
+        "up",
+        "down",
+        "vertical",
+        "negative",
+        "duplicate",
+        "arity",
+        "nonfinite",
+        "width-only",
+        "seac",
+        "seac-y-mismatch",
+    ] {
+        vector(&format!("type1-advance-{name}"), FontFormat::Type1);
     }
 }
 

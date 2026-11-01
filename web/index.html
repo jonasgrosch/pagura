@@ -38,6 +38,8 @@
         <div class="menu-panel">
           <button id="edit-open" aria-pressed="true" disabled>Fill forms</button>
           <button id="copy-page" disabled>Copy page text</button>
+          <button id="document-services-open" disabled>Properties and attachments…</button>
+          <button id="png-export-open" disabled>Export page PNG</button>
           <button id="form-reset" disabled>Discard form changes</button>
           <hr><button id="diagnostics-open">Document diagnostics…</button>
         </div>
@@ -77,6 +79,52 @@
     <label><input id="strict" type="checkbox"><span>Use strict rendering for the next PDF opened</span></label>
     <p id="cache-summary">Page tiles: 0 MiB / 64 MiB</p>
     <details id="diagnostics"><summary id="diagnostic-count">Repairs: 0 · Information: 0</summary><ul id="repair-list"></ul></details>
+  </dialog>
+  <dialog id="document-services-dialog" aria-labelledby="document-services-title">
+    <div class="dialog-heading"><h2 id="document-services-title">Properties and attachments</h2><button id="document-services-close">Done</button></div>
+    <h3>Properties</h3><div id="document-properties"></div>
+    <h3>Document attachments</h3><div id="document-attachments"></div>
+    <h3 id="document-page-attachments-title">Page attachments</h3>
+    <form id="document-attachment-page-form">
+      <label for="document-attachment-page">Page</label>
+      <input id="document-attachment-page" type="number" min="1" step="1" required aria-describedby="document-page-attachments-title">
+      <button id="document-attachment-page-submit" type="submit">Show page attachments</button>
+    </form>
+    <div id="document-page-attachments"></div>
+    <h3>Other document sources</h3>
+    <form id="document-service-source-form">
+      <label for="document-service-source">Source</label>
+      <select id="document-service-source">
+        <option value="catalog">Catalog files, including related files</option>
+        <option value="associated">Document associated files</option>
+        <option value="page-associated">Selected page associated files</option>
+        <option value="page-annotations">Selected page files, including related files</option>
+        <option value="object-associated">Object associated files</option>
+        <option value="metadata">Object metadata packet</option>
+        <option value="page-metadata">Selected page metadata packet</option>
+        <option value="images">Selected page image resources and thumbnail</option>
+        <option value="image-object">Image object</option>
+        <option value="thumbnail-object">Object thumbnail</option>
+        <option value="collection">Collection properties</option>
+      </select>
+      <label for="document-service-object">Object number:generation</label>
+      <input id="document-service-object" type="text" inputmode="text" placeholder="10:0" aria-describedby="document-service-object-help">
+      <small id="document-service-object-help">Used only for object sources. Page sources use the page selected above.</small>
+      <button type="submit">Read selected source</button>
+    </form>
+    <div id="document-service-source-results"></div>
+    <p id="document-services-status" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="png-export-dialog" aria-labelledby="png-export-title">
+    <form id="png-export-form">
+      <div class="dialog-heading"><h2 id="png-export-title">Export page PNG</h2><button id="png-export-close" type="button">Done</button></div>
+      <p>Uses the PDF page orientation and current form values.</p>
+      <label for="png-export-page">Page</label><input id="png-export-page" type="number" min="1" step="1" required>
+      <label for="png-export-dpi">Resolution (DPI)</label><input id="png-export-dpi" type="number" min="1" max="2400" step="1" value="144" required>
+      <label><input id="png-export-transparent" type="checkbox"> Transparent background</label>
+      <button id="png-export-submit" type="submit">Download PNG</button>
+      <p id="png-export-status" role="status" aria-live="polite"></p>
+    </form>
   </dialog>
   <dialog id="password-dialog" aria-labelledby="password-title" aria-describedby="password-feedback">
     <form id="password-form">

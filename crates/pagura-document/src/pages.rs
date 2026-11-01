@@ -8,7 +8,8 @@ use crate::view::ValueIdentity;
 use crate::{Document, repairs};
 use pagura_core::syntax::PathComponent;
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, Meter, Name, ObjectId, Rect, Result, Value,
+    Diagnostic, Diagnostics, Dictionary, Error, Meter, Name, ObjectId, Rect, Result, Rotation,
+    Value,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Weak};
@@ -32,51 +33,6 @@ pub(crate) fn branch(document: &Document, dictionary: &Dictionary) -> Result<boo
         .resolve(kids)?
         .as_array()
         .is_some_and(|kids| kids.iter().all(|kid| matches!(kid, Value::Reference(_)))))
-}
-
-/// Clockwise page rotation for display (`/Rotate`, Table 31).
-///
-/// The set is closed: `/Rotate` is a multiple of 90, so these four values are
-/// every rotation a page can have.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum Rotation {
-    /// Upright.
-    #[default]
-    None,
-    /// 90° clockwise.
-    Clockwise90,
-    /// 180°.
-    Clockwise180,
-    /// 270° clockwise.
-    Clockwise270,
-}
-
-impl Rotation {
-    /// The rotation in degrees, 0–270.
-    pub fn degrees(self) -> u16 {
-        match self {
-            Self::None => 0,
-            Self::Clockwise90 => 90,
-            Self::Clockwise180 => 180,
-            Self::Clockwise270 => 270,
-        }
-    }
-}
-
-impl TryFrom<i64> for Rotation {
-    type Error = Error;
-
-    /// Interprets a `/Rotate` value, which must be a multiple of 90 and
-    /// may be negative or exceed 360.
-    fn try_from(degrees: i64) -> Result<Self> {
-        match degrees.rem_euclid(360) {
-            0 => Ok(Self::None),
-            90 => Ok(Self::Clockwise90),
-            180 => Ok(Self::Clockwise180),
-            270 => Ok(Self::Clockwise270),
-            _ => Err(Error::syntax("Rotate must be a multiple of 90")),
-        }
-    }
 }
 
 /// A page with inherited attributes applied and boxes validated.

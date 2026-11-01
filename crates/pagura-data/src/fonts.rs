@@ -2,35 +2,40 @@
 //! metric-compatible substitute outlines (ADR 0009).
 use crate::{
     afm,
-    cache::Cache,
     entry::{File, Program},
 };
 use pagura_core::{Limits, Result};
 #[cfg(feature = "standard-outlines")]
 use pagura_font::FontFormat;
 use pagura_text::StandardFont;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 /// The standard font `name` (a canonical base name): its metrics and, if
 /// linked, its substitute outlines. `None` if no metrics are linked for it.
-pub(crate) fn standard_font(
-    name: &[u8],
-    cache: &Cache<StandardFont>,
-    limits: &Limits,
-) -> Result<Option<Arc<StandardFont>>> {
-    let Some(metrics) = METRICS.iter().find(|file| file.key == name) else {
+///
+/// The pinned files are trusted data that no PDF supplies, so each is
+/// parsed once per process, at its first use, under the fixed default
+/// limits rather than a provider's, and every provider shares the result.
+/// A parsed font keeps about 0.2 MB of tables and metrics (its file is
+/// static data, not copied); all 14 keep about 2.6 MB.
+pub(crate) fn standard_font(name: &[u8]) -> Result<Option<Arc<StandardFont>>> {
+    static PARSED: [OnceLock<Result<Arc<StandardFont>>>; METRICS.len()] =
+        [const { OnceLock::new() }; METRICS.len()];
+    let Some(index) = METRICS.iter().position(|file| file.key == name) else {
         return Ok(None);
     };
-    let outline = OUTLINES.iter().find(|program| program.key == name);
-    cache
-        .get_or_try_insert(metrics.key, || {
-            Ok(StandardFont::new(
-                Arc::new(afm::parse(metrics.data, limits)?),
+    PARSED[index]
+        .get_or_init(|| {
+            let (metrics, limits) = (&METRICS[index], Limits::default());
+            let outline = OUTLINES.iter().find(|program| program.key == name);
+            Ok(Arc::new(StandardFont::new(
+                Arc::new(afm::parse(metrics.data, &limits)?),
                 outline
-                    .map(|program| program.parse(limits).map(Arc::new))
+                    .map(|program| program.parse(&limits).map(Arc::new))
                     .transpose()?,
-            ))
+            )))
         })
+        .clone()
         .map(Some)
 }
 
@@ -195,6 +200,25 @@ mod tests {
     fn near(actual: f64, expected: &Value) -> Result<()> {
         let expected = number(expected)?;
         assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
+        Ok(())
+    }
+
+    /// The fixed limits admit every pinned file, whatever a provider's own
+    /// limits, and each file is parsed once for the process.
+    #[test]
+    fn every_pinned_font_fits_the_fixed_limits_and_is_parsed_once() -> Result<()> {
+        let tight = Bundled::new(pagura_core::Limits {
+            font_work: 0,
+            font_entries: 0,
+            decoded_bytes: 0,
+            ..pagura_core::Limits::default()
+        });
+        for file in super::METRICS {
+            let font = super::standard_font(file.key)?;
+            let font = font.ok_or_else(|| Error::syntax("missing standard font"))?;
+            let shared = tight.standard_font(file.key)?;
+            assert!(shared.is_some_and(|shared| Arc::ptr_eq(&font, &shared)));
+        }
         Ok(())
     }
 

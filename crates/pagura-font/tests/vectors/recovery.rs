@@ -58,6 +58,7 @@ fn repair_vector(name: &str, format: FontFormat) {
             .outline_with_diagnostics(GlyphId(words[1].parse().unwrap()), &mut diagnostics)
             .unwrap_err()
     };
+    let strict_position = error.position;
     assert_eq!(error.repair.unwrap().as_str(), tag, "{name}: {error}");
     assert!(matches!(error.position, Position::Buffer(_)), "{name}");
     assert_eq!(diagnostics.as_slice(), []);
@@ -82,6 +83,14 @@ fn repair_vector(name: &str, format: FontFormat) {
         .map(pagura_core::Diagnostic::tag)
         .collect();
     assert_eq!(actual_tags, expected_tags, "{name}");
+    if tag == "font.type1-sparse-subrs" {
+        assert_eq!(
+            diagnostics.as_slice()[0].position,
+            strict_position,
+            "{name}"
+        );
+        assert!(matches!(strict_position, Position::Buffer(offset) if offset < bytes.len()));
+    }
     assert!(
         diagnostics
             .as_slice()
@@ -351,6 +360,20 @@ fn finite(path: &pagura_raster::Path) -> bool {
     path.segments().iter().all(|segment| match *segment {
         Segment::MoveTo(p) | Segment::LineTo(p) => p.is_finite(),
         Segment::CubicTo { c1, c2, end } => c1.is_finite() && c2.is_finite() && end.is_finite(),
+        Segment::QuadTo { control, end } => control.is_finite() && end.is_finite(),
         Segment::Close => true,
     })
+}
+
+#[test]
+fn sparse_type1_subroutines_retain_exact_geometry_and_indexes() {
+    for name in ["tail", "interior", "nested", "all-unused"] {
+        for framing in ["pfa", "pfb", "hex"] {
+            repair_vector(
+                &format!("repair-type1-sparse-{name}-{framing}"),
+                FontFormat::Type1,
+            );
+        }
+    }
+    vector("type1-sparse-dense-twin", FontFormat::Type1);
 }

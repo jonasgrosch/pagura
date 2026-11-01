@@ -1,7 +1,8 @@
 # ADR 0032: Host session budgets and generated wire tables
 
-Status: accepted, 2026-10-18. Refines ADR 0005 and applies ADR 0016 to the
-host session.
+Status: accepted, 2026-10-18. Amended 2026-10-22 (the page-list cache
+became the document's render store, ADR 0034). Refines ADR 0005 and applies
+ADR 0016 to the host session.
 
 ## Context
 
@@ -73,3 +74,23 @@ agreed.
 - `Session::new` takes a `SessionConfig` (`From<Limits>` keeps the old call
   shape), and `with_cache_bytes`/`with_text_cache_bytes` are replaced by
   the corresponding `SessionLimits` fields.
+
+## Amendment, 2026-10-22: the store replaces the page-list cache (ADR 0034)
+
+The host cached each document's compiled pages (display lists) under
+`list_cache_bytes`. With one interpreter and one renderer, a page is recorded
+once into a scene that does not depend on zoom or tile, and rendering keeps
+its reusable values (scenes, decoded images, fonts and glyph setups) in one
+`Store` per document (ADR 0012, amendment of 2026-10-21).
+
+1. **`SessionLimits::store_bytes` replaces `list_cache_bytes`:** the
+   capacity of each open document's render store, 64 MiB by default
+   (`DEFAULT_STORE_BYTES`); zero disables retention. The store evicts the
+   least recently used values no render still uses, and a value larger than
+   the capacity is used without being retained (`PROTOCOL.md`, recorded page
+   retention).
+2. **The registry of decision 3 owns the store:** closing a handle releases
+   the document's store with its source, viewport generations and text
+   cache.
+3. **The wire is unchanged:** the budget is session configuration, not a
+   protocol field, so no code or generated table moves.

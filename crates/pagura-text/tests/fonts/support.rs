@@ -5,7 +5,7 @@ use pagura_core::{
 };
 use pagura_document::{Document, OpenOptions};
 use pagura_testkit::fixture;
-use pagura_text::{GlyphShape, PdfFont};
+use pagura_text::{FontUnicode, GlyphShape, PdfFont, Provider};
 
 /// Opens `text/<name>.pdf` under `recovery`.
 pub(crate) fn open(name: &str, recovery: Recovery) -> Result<Document> {
@@ -24,6 +24,17 @@ pub(crate) fn dictionary(document: &Document) -> Result<&Dictionary> {
         .object(ObjectId::new(4, 0))?
         .dictionary()
         .ok_or_else(|| Error::syntax("missing fixture font"))
+}
+
+/// Loads `font` with `provider`, and its Unicode, as text extraction does.
+pub(crate) fn load_text(
+    document: &Document,
+    font: &Dictionary,
+    provider: Option<&dyn Provider>,
+) -> Result<(PdfFont, FontUnicode)> {
+    let loaded = PdfFont::load_with_provider(document, font, provider)?;
+    let unicode = loaded.unicode(document, font, provider)?;
+    Ok((loaded, unicode))
 }
 
 /// The array oracle `text/<name>.<suffix>`, in PDF syntax.
@@ -82,8 +93,12 @@ pub(crate) fn rejected<T>(result: Result<T>) -> Result<Error> {
 /// Decodes `text/<name>.input` and checks each glyph against the oracle
 /// rows `[code length advance word-space unicode glyph]`, with outline
 /// glyphs drawn through the matrix of `text/<name>.matrix`.
-pub(crate) fn check_glyphs(font: &PdfFont, name: &str, suffix: &str) -> Result<()> {
-    let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
+pub(crate) fn check_glyphs(
+    (font, unicode): &(PdfFont, FontUnicode),
+    name: &str,
+    suffix: &str,
+) -> Result<()> {
+    let glyphs = font.decode(&fixture("text", &format!("{name}.input")), Some(unicode))?;
     let expected = values(name, suffix)?;
     assert_eq!(glyphs.len(), expected.len(), "{name}");
     for (glyph, expected) in glyphs.iter().zip(&expected) {

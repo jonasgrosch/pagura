@@ -1,0 +1,32 @@
+[package]
+name = "pagura-interpret"
+description = "PDF content interpretation into devices: scene recording and text extraction"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pagura-appearance.workspace = true
+pagura-color.workspace = true
+pagura-content.workspace = true
+pagura-core.workspace = true
+pagura-document.workspace = true
+pagura-extract.workspace = true
+pagura-font.workspace = true
+pagura-image.workspace = true
+pagura-raster.workspace = true
+pagura-text.workspace = true
+
+[features]
+# A text dump of recorded scenes, for snapshot tests and debugging.
+dump = []
+
+[dev-dependencies]
+pagura-interpret = { workspace = true, features = ["dump"] }
+pagura-testkit.workspace = true

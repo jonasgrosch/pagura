@@ -1,8 +1,45 @@
-//! Owned pixel surfaces.
+//! Owned pixel surfaces and their colours.
 
-use crate::Rgba8;
 use crate::quantize::multiply;
 use pagura_core::{Error, Limits, Result};
+
+/// A straight (non-premultiplied) 8-bit RGBA colour in the output space.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Rgba8 {
+    /// Red.
+    pub r: u8,
+    /// Green.
+    pub g: u8,
+    /// Blue.
+    pub b: u8,
+    /// Alpha; 255 is opaque.
+    pub a: u8,
+}
+
+impl Rgba8 {
+    /// Opaque white, the default page background.
+    pub const WHITE: Self = Self::opaque(255, 255, 255);
+    /// Opaque black.
+    pub const BLACK: Self = Self::opaque(0, 0, 0);
+    /// Fully transparent.
+    pub const TRANSPARENT: Self = Self::new(0, 0, 0, 0);
+
+    /// Creates a colour.
+    pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self { r, g, b, a }
+    }
+
+    /// Creates an opaque colour.
+    pub const fn opaque(r: u8, g: u8, b: u8) -> Self {
+        Self::new(r, g, b, 255)
+    }
+
+    /// The premultiplied RGBA8 bytes used by pixel surfaces.
+    pub fn premultiplied(self) -> [u8; 4] {
+        let scale = |channel| multiply(channel, self.a);
+        [scale(self.r), scale(self.g), scale(self.b), self.a]
+    }
+}
 
 /// A row-major, top-left-origin surface of premultiplied RGBA8 pixels.
 #[derive(Clone)]
@@ -10,7 +47,6 @@ pub struct Pixmap {
     width: u32,
     height: u32,
     data: Vec<u8>,
-    limits: Limits,
 }
 
 /// Summarizes instead of dumping pixel data.
@@ -31,39 +67,6 @@ impl Pixmap {
     /// Returns `InvalidArgument` for a zero dimension and a limit error if
     /// the surface would exceed `max_pixels`.
     pub fn new(width: u32, height: u32, background: Rgba8, max_pixels: usize) -> Result<Self> {
-        Self::filled(width, height, background, max_pixels, Vec::new())
-    }
-
-    /// As [`Self::new_with_limits`], storing the surface in `storage`, an
-    /// earlier surface's bytes ([`Self::into_storage`]), whose allocation is
-    /// reused when it is large enough. The surface is the same.
-    ///
-    /// # Errors
-    /// As [`Self::new_with_limits`].
-    pub fn with_storage(
-        width: u32,
-        height: u32,
-        background: Rgba8,
-        limits: Limits,
-        storage: Vec<u8>,
-    ) -> Result<Self> {
-        let mut surface = Self::filled(width, height, background, limits.pixels, storage)?;
-        surface.limits = limits;
-        Ok(surface)
-    }
-
-    /// The surface's bytes, for reuse by [`Self::with_storage`].
-    pub fn into_storage(self) -> Vec<u8> {
-        self.data
-    }
-
-    fn filled(
-        width: u32,
-        height: u32,
-        background: Rgba8,
-        max_pixels: usize,
-        mut data: Vec<u8>,
-    ) -> Result<Self> {
         if width == 0 || height == 0 {
             return Err(Error::invalid_argument(
                 "surface dimensions must be positive",
@@ -76,10 +79,10 @@ impl Pixmap {
         let bytes = pixels
             .checked_mul(4)
             .ok_or(Error::limit("surface byte size overflows"))?;
-        data.clear();
+        let mut data = Vec::new();
         data.try_reserve_exact(bytes)
             .map_err(|_| Error::limit("surface allocation failed"))?;
-        let pixel = premultiply(background);
+        let pixel = background.premultiplied();
         // A gray or transparent background is one repeated byte; any other
         // is written a whole pixel at a time rather than byte by byte.
         if pixel.iter().all(|&byte| byte == pixel[0]) {
@@ -94,26 +97,7 @@ impl Pixmap {
             width,
             height,
             data,
-            limits: Limits {
-                pixels: max_pixels,
-                ..Limits::default()
-            },
         })
-    }
-
-    /// Allocates a surface with explicit raster, geometry and pixel budgets.
-    ///
-    /// # Errors
-    /// As [`Self::new`], using `limits.pixels` as the surface bound.
-    pub fn new_with_limits(
-        width: u32,
-        height: u32,
-        background: Rgba8,
-        limits: Limits,
-    ) -> Result<Self> {
-        let mut surface = Self::new(width, height, background, limits.pixels)?;
-        surface.limits = limits;
-        Ok(surface)
     }
 
     /// Takes an existing, tightly packed premultiplied RGBA8 allocation.
@@ -157,12 +141,7 @@ impl Pixmap {
             width,
             height,
             data,
-            limits,
         })
-    }
-
-    pub(crate) fn limits(&self) -> &Limits {
-        &self.limits
     }
 
     /// Width in pixels.
@@ -202,12 +181,23 @@ impl Pixmap {
             .collect()
     }
 
+    /// Consumes the surface and converts its existing allocation to straight
+    /// RGBA8 in place. Fully transparent pixels become zero RGBA; no pixel
+    /// allocation is made. The conversion matches [`Self::to_straight_rgba`].
+    pub fn into_straight_rgba(mut self) -> Vec<u8> {
+        for pixel in self.data.as_chunks_mut::<4>().0 {
+            *pixel = unpremultiply(*pixel);
+        }
+        self.data
+    }
+
     /// Composites onto `background` and drops alpha, giving packed RGB8.
     pub fn to_rgb_over(&self, background: Rgba8) -> Vec<u8> {
-        let under = premultiply(Rgba8 {
+        let under = Rgba8 {
             a: 255,
             ..background
-        });
+        }
+        .premultiplied();
         let (pixels, _) = self.data.as_chunks::<4>();
         pixels
             .iter()
@@ -225,11 +215,6 @@ impl PartialEq for Pixmap {
     }
 }
 impl Eq for Pixmap {}
-
-fn premultiply(color: Rgba8) -> [u8; 4] {
-    let scale = |channel| multiply(channel, color.a);
-    [scale(color.r), scale(color.g), scale(color.b), color.a]
-}
 
 fn unpremultiply(pixel: [u8; 4]) -> [u8; 4] {
     let alpha = u32::from(pixel[3]);
@@ -308,6 +293,17 @@ mod tests {
         assert_eq!(&pixmap.data()[..4], &[128, 0, 0, 128]);
         assert_eq!(&pixmap.to_straight_rgba()[..4], &[255, 0, 0, 128]);
         assert_eq!(&pixmap.to_rgb_over(Rgba8::WHITE)[..3], &[255, 127, 127]);
+    }
+
+    #[test]
+    fn consuming_straight_conversion_reuses_storage_and_normalizes_alpha() {
+        let data = vec![64, 32, 0, 128, 9, 10, 11, 0, 17, 23, 42, 255];
+        let pointer = data.as_ptr();
+        let surface =
+            Pixmap::from_premultiplied(3, 1, data, pagura_core::Limits::default()).unwrap();
+        let straight = surface.into_straight_rgba();
+        assert_eq!(straight.as_ptr(), pointer);
+        assert_eq!(straight, [128, 64, 0, 128, 0, 0, 0, 0, 17, 23, 42, 255]);
     }
 
     #[test]

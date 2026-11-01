@@ -1,0 +1,1480 @@
+{
+  "schema": 2,
+  "area": "form_borders",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "form_borders/Tx-rounded-72",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Tx-rounded-72.pdf",
+          "sha256": "d5dec9a93efa33bfca4da9f0178eb8fd0ae8283632a05ff2cc03f395baf03d5c"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Tx-rounded-72.ppm",
+          "sha256": "4750baf039ddcd5621e38f5b3f613a82cb6e570a4a77cb3ad149398db63d0844"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Ch-rounded-72",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Ch-rounded-72.pdf",
+          "sha256": "3cce9db9c4c2591804e4778ddffc20f91759ba5f8b4d5a34aa588213f25904de"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Ch-rounded-72.ppm",
+          "sha256": "4750baf039ddcd5621e38f5b3f613a82cb6e570a4a77cb3ad149398db63d0844"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Btn-rounded-72",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Btn-rounded-72.pdf",
+          "sha256": "898f8a4ee82eee040e4ea9a1d1adf801a499aa15d2b7801618d6b2e88ec4647f"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Btn-rounded-72.ppm",
+          "sha256": "36de1b10f4873ae96fe146ef6c43391d75a486a73e569f42ed26a96f73c3d417"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Tx-rounded-144",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Tx-rounded-144.pdf",
+          "sha256": "d5dec9a93efa33bfca4da9f0178eb8fd0ae8283632a05ff2cc03f395baf03d5c"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Tx-rounded-144.ppm",
+          "sha256": "2c9bb5b09e09294e3c42e4a58b3138b5d760f6b5261ee8eb661e07ca5d49b7ff"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Ch-rounded-144",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Ch-rounded-144.pdf",
+          "sha256": "3cce9db9c4c2591804e4778ddffc20f91759ba5f8b4d5a34aa588213f25904de"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Ch-rounded-144.ppm",
+          "sha256": "2c9bb5b09e09294e3c42e4a58b3138b5d760f6b5261ee8eb661e07ca5d49b7ff"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Ch",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Btn-rounded-144",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Btn-rounded-144.pdf",
+          "sha256": "898f8a4ee82eee040e4ea9a1d1adf801a499aa15d2b7801618d6b2e88ec4647f"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Btn-rounded-144.ppm",
+          "sha256": "3adfffa0d0a8529abbecf12fe35242b5eacc6087a5146ecd38541cf4bcea5406"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Btn",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/background-rounded",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/background-rounded.pdf",
+          "sha256": "9411b850630de078aa23204dc818e776df6949537518b8dd0a7793c4c736a300"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/background-rounded.ppm",
+          "sha256": "8395ae5e454043514f4fa247914639dd22e5a1f1dc458e8273bec65657e8a0e0"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotated-rounded",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotated-rounded.pdf",
+          "sha256": "74cd7ef18c78da99cbcf288895b7f27edc863660757747d2135200daee1c1dbe"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotated-rounded.ppm",
+          "sha256": "e7177f591879fb8521c5f19eabe2ebe6ef4d4af6b3b0533dfa6517c8df023673"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/stored-rounded",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/stored-rounded.pdf",
+          "sha256": "c3c6b589df7812500d76edeba764d914bbfb736fbdd1c3dc4ab02bb20cabdc6d"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/stored-rounded.ppm",
+          "sha256": "ce6fad7c755482e2dea6028e21ab9f3a5a2284ffe4401de29ecf0c2f4ccae0e6"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Tx-B-72",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Tx-B-72.pdf",
+          "sha256": "0370b61321c8cec5a757efe0cc202d615460a5de57cbf309367cb350373c9e88"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Tx-B-72.ppm",
+          "sha256": "1fdf122d89575eec8c62b2cd1db022482818729410e89186639fb3126023cd1d"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Ch-B-72",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Ch-B-72.pdf",
+          "sha256": "c8d07dcc093900f0b7b5d585a77da89dfbf0b98c904568e046a97ee376c095fa"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Ch-B-72.ppm",
+          "sha256": "1fdf122d89575eec8c62b2cd1db022482818729410e89186639fb3126023cd1d"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Btn-B-72",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Btn-B-72.pdf",
+          "sha256": "7dde71b041df4ccb035eff2605d54031c66963c551e6a2d7d48433b5b0cf2d2f"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Btn-B-72.ppm",
+          "sha256": "122b7845551a3758a7bafabbf813dd821069b61fef1c5c01fb3ee7fa4ab1b9bd"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Tx-B-144",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Tx-B-144.pdf",
+          "sha256": "0370b61321c8cec5a757efe0cc202d615460a5de57cbf309367cb350373c9e88"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Tx-B-144.ppm",
+          "sha256": "772a22946f3bfabe97f5534e825f99a36c115f9ac04aaba2c85df727c4c01584"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Ch-B-144",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Ch-B-144.pdf",
+          "sha256": "c8d07dcc093900f0b7b5d585a77da89dfbf0b98c904568e046a97ee376c095fa"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Ch-B-144.ppm",
+          "sha256": "772a22946f3bfabe97f5534e825f99a36c115f9ac04aaba2c85df727c4c01584"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Ch",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Btn-B-144",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Btn-B-144.pdf",
+          "sha256": "7dde71b041df4ccb035eff2605d54031c66963c551e6a2d7d48433b5b0cf2d2f"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Btn-B-144.ppm",
+          "sha256": "562fa7fd0f3a060281a93f77c2dd44882f4c71f9f33c80fec35eff06f689a8c6"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Btn",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/background-B",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/background-B.pdf",
+          "sha256": "45619c7d9c3c9166cb23f8bb5deff44669ed0fd1b462f909038753dbf3a4fde2"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/background-B.ppm",
+          "sha256": "2ce321bb3fbee1d01fe8be63f8514f45e1a6c37176fbfc696a65e728c6c5a761"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotated-B",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotated-B.pdf",
+          "sha256": "e39e78a05e9aa654a8241f059e3213625cf659271d0694a1e5509d083682a359"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotated-B.ppm",
+          "sha256": "68cc6bbda1d43c5cedee058361c69a39a54b3edbe35b2eeb7666f7f143c7e480"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/stored-B",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/stored-B.pdf",
+          "sha256": "c267a5b1e65f1bc4102fef64f218138e0df41900af340415836e7763073bdf2b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/stored-B.ppm",
+          "sha256": "ce6fad7c755482e2dea6028e21ab9f3a5a2284ffe4401de29ecf0c2f4ccae0e6"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Tx-I-72",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Tx-I-72.pdf",
+          "sha256": "8e1461a7cd6bd6d082f38411ba45d90652389529d994fbc9d2b66b9f965f25a1"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Tx-I-72.ppm",
+          "sha256": "7b6795af724b8627001a1655b86eb3ce550d857b88641407e399168b5a80d40b"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Ch-I-72",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Ch-I-72.pdf",
+          "sha256": "1a878148fb0499ffd9259f621d807780c69360bdbe4a6f926ae047b33da79ab0"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Ch-I-72.ppm",
+          "sha256": "7b6795af724b8627001a1655b86eb3ce550d857b88641407e399168b5a80d40b"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Btn-I-72",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Btn-I-72.pdf",
+          "sha256": "289177351dda288df7ae58643ed8ed798d13edc1e7feea0b5f84c15b529c8598"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Btn-I-72.ppm",
+          "sha256": "ac363d83c6ad50e8b8983575627f27946e10fb1690e9c2cb9798254966096631"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Tx-I-144",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Tx-I-144.pdf",
+          "sha256": "8e1461a7cd6bd6d082f38411ba45d90652389529d994fbc9d2b66b9f965f25a1"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Tx-I-144.ppm",
+          "sha256": "5da0fd9dc46ab46d2034f85eb799496b5dd7cbc549922676c9925a17987dc95e"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Ch-I-144",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Ch-I-144.pdf",
+          "sha256": "1a878148fb0499ffd9259f621d807780c69360bdbe4a6f926ae047b33da79ab0"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Ch-I-144.ppm",
+          "sha256": "5da0fd9dc46ab46d2034f85eb799496b5dd7cbc549922676c9925a17987dc95e"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Ch",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/Btn-I-144",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/Btn-I-144.pdf",
+          "sha256": "289177351dda288df7ae58643ed8ed798d13edc1e7feea0b5f84c15b529c8598"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/Btn-I-144.ppm",
+          "sha256": "f0c7751017b4b80a8d931ac5060c5a450be53c82536c15e4e314cedf061c7e96"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Btn",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/background-I",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/background-I.pdf",
+          "sha256": "f380941b27c9ff2b5870452064a7e168a59aaa105170169c409ba7342a80a3bd"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/background-I.ppm",
+          "sha256": "92dcd6fcf049e3f87d2eadcd377a1588f02639f712a039ddd41cc6eca821a1ac"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotated-I",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotated-I.pdf",
+          "sha256": "82fe479a6684da10687f687ec5b4a33fd39a90edeb617d62149ce105522c9e2d"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotated-I.ppm",
+          "sha256": "459e187ad6a7c03e8373d0fe7af114790810a6e3c2ad043a73b677b301ebf63f"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/stored-I",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/stored-I.pdf",
+          "sha256": "8889a16b0a2b7cc97258d72d75a8ff4b14ee60de6905b7b384f1c4aee653a2c7"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/stored-I.ppm",
+          "sha256": "ce6fad7c755482e2dea6028e21ab9f3a5a2284ffe4401de29ecf0c2f4ccae0e6"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/unknown-style",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/unknown-style.pdf",
+          "sha256": "ddf36f17f89a27f26984c3884ec9c243b0f453ac32c0e9bd36443271fb6529dd"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/unknown-style.ppm",
+          "sha256": "bc5feadf3ee654c378de232afe6f1e10159dc6e71c221a24de83c753bcf83428"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/null-bs",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/null-bs.pdf",
+          "sha256": "cf00d3c1b8779b3445f5a3bb6a333874430e39aa07693c7304e12459f62cc56a"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/null-bs.ppm",
+          "sha256": "4750baf039ddcd5621e38f5b3f613a82cb6e570a4a77cb3ad149398db63d0844"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/bs-precedence",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/bs-precedence.pdf",
+          "sha256": "e042caafad2fca9953dfebff27e80b54c5684753eb1043cddb4c233d6405ac06"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/bs-precedence.ppm",
+          "sha256": "1fdf122d89575eec8c62b2cd1db022482818729410e89186639fb3126023cd1d"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/zero-width",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/zero-width.pdf",
+          "sha256": "5f95a7c58d5ed408de6d5cc77982c3682ff212954dac0bea9d60717d10a9b114"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/zero-width.ppm",
+          "sha256": "ecddca7422c50b1b2cc17930086e8a4ece4cc7864760e49d4df405ffde2d5a3f"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/no-border-color",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/no-border-color.pdf",
+          "sha256": "44913fd7ec1386918de226780b4c216deb20a77a49f04a4919f5402b6958a1eb"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/no-border-color.ppm",
+          "sha256": "ecddca7422c50b1b2cc17930086e8a4ece4cc7864760e49d4df405ffde2d5a3f"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/wide-off",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/wide-off.pdf",
+          "sha256": "93862d8a6434edfc3aaaf370c829652413e83350d5d03d848dc2885ea211eb99"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/wide-off.ppm",
+          "sha256": "497a936193c4e1140652427dc63bd9ae4645450a5d9213b324ba913001e5b15a"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/hidden",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/hidden.pdf",
+          "sha256": "e29cc00db3f72ca001287e5a5dae47c0be9bfbaef18ea04548ba0b44053c30c7"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/hidden.ppm",
+          "sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/no-view",
+      "kind": "vector",
+      "description": "Independent conic/trapezoid area and literal glyph rectangles verify filled, saved and reopened form borders",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/no-view.pdf",
+          "sha256": "21fc6fc47d87a3ab4d1db0e3e54ec3ee16940c6e4d6ca6242ae0b8b3e5eefad2"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/no-view.ppm",
+          "sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "AB",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-0-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-0-72.pdf",
+          "sha256": "a23cc33556703181797dfaf9805ce507a66e32e0aaea2331a95bd9ccc65d6c7b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-0-72.ppm",
+          "sha256": "fe648b30ec14f5b7a3531f7c61f4b937c8d241fea5eff283654bf0522aaafe11"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-0-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-0-72.pdf",
+          "sha256": "bc8bedc6dc743f7d896896afed66d68b9e9479377bb5c22edb8667b2a152f054"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-0-72.ppm",
+          "sha256": "fe648b30ec14f5b7a3531f7c61f4b937c8d241fea5eff283654bf0522aaafe11"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-0-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-0-72.pdf",
+          "sha256": "81b0323537bd14906957d7154a1db9cddec8097442e184dbbbb6acaef982ec80"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-0-72.ppm",
+          "sha256": "176566abe65f603ab327d80f7c0d8dcbb2b4b52dff0de63d2dbb79913d290dbe"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-0-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-0-144.pdf",
+          "sha256": "a23cc33556703181797dfaf9805ce507a66e32e0aaea2331a95bd9ccc65d6c7b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-0-144.ppm",
+          "sha256": "698743421a2f014779a7676a00c2fc85875661285de9c08ced8633f38c4a1108"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-90-72.pdf",
+          "sha256": "7f694bc537ff3ed6e16ac9a2c88c57d469e79b908b6821c6365d3131dbec305b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-90-72.ppm",
+          "sha256": "1d5a5111c3325235fafd8a61d49a864aa6ff91accd48edcf49407b3aca438d52"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-90-72.pdf",
+          "sha256": "5482690a892f85cc92ab1d5edeca304f93f388c404881a89d82817d1c6d19751"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-90-72.ppm",
+          "sha256": "1d5a5111c3325235fafd8a61d49a864aa6ff91accd48edcf49407b3aca438d52"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-90-72.pdf",
+          "sha256": "88d1d477c77b433cdc9533a432d2fda99c0913b7f3f95bca562e18642e62d2db"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-90-72.ppm",
+          "sha256": "4ccfb3a5c1e537b0146c3232a60d72777bdd7a875c877356eb67d00069cc1bbb"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-90-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-90-144.pdf",
+          "sha256": "7f694bc537ff3ed6e16ac9a2c88c57d469e79b908b6821c6365d3131dbec305b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-90-144.ppm",
+          "sha256": "284fe1a256c6b3b06139d46882e9d334576e90ed31891d9c5498627029234068"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-180-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-180-72.pdf",
+          "sha256": "3976daafab71ce87484caa74e95d1321bc2224b7c26ee1c39da2d0a97b1e1b63"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-180-72.ppm",
+          "sha256": "9a98496ef3d5dcc5547490356fce7aa414680d5ddecf77be05da2653865da89a"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-180-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-180-72.pdf",
+          "sha256": "f219d3418b3428a751429ceef2f423c0334604f4389e0154ab6363b16c59f359"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-180-72.ppm",
+          "sha256": "9a98496ef3d5dcc5547490356fce7aa414680d5ddecf77be05da2653865da89a"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-180-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-180-72.pdf",
+          "sha256": "df754794ccf0fcafbd0493477f8eb8c64f51624692221cea2573ce95ae587b09"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-180-72.ppm",
+          "sha256": "78debcfb53cba110ccb54806627e0824afd625999415c2773d19ba9444886d09"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-180-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-180-144.pdf",
+          "sha256": "3976daafab71ce87484caa74e95d1321bc2224b7c26ee1c39da2d0a97b1e1b63"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-180-144.ppm",
+          "sha256": "6fe49959d083e3599cbc65ffa35c9bd68b15a0353800d5f470c1c3b200639d80"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-270-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-270-72.pdf",
+          "sha256": "6f6b8cee5179e7b978fac15f65fd0f8f61d9af8a49689348654013ee1f693046"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-270-72.ppm",
+          "sha256": "e9e9a4f5bb12877de748ca50aa8bdfbda6c39e0fb1aa4cf068a8449080816dfa"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-270-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-270-72.pdf",
+          "sha256": "1504ef49b2bc4f9c23719e65f081dd1d7899c5c28b23e268619d99353f9a071c"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-270-72.ppm",
+          "sha256": "e9e9a4f5bb12877de748ca50aa8bdfbda6c39e0fb1aa4cf068a8449080816dfa"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-270-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-270-72.pdf",
+          "sha256": "a7fe4f685ad4fa8c4b7be034fd506a884eac04a1141d71cbe80f8afe830c0f52"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-270-72.ppm",
+          "sha256": "e30e97debe71184453ffba857271990009d1c5ef456c2453457e0f649c0d0530"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-270-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-270-144.pdf",
+          "sha256": "6f6b8cee5179e7b978fac15f65fd0f8f61d9af8a49689348654013ee1f693046"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-270-144.ppm",
+          "sha256": "d8bdec22e17424db94ea1b770d885fb34739e42657183f8a6684255ec2ba8721"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx--90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx--90-72.pdf",
+          "sha256": "9ea6346d15f3e2780784a3c87c050667f6ef8a129190d28e321324b2f5600dc1"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx--90-72.ppm",
+          "sha256": "e9e9a4f5bb12877de748ca50aa8bdfbda6c39e0fb1aa4cf068a8449080816dfa"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch--90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch--90-72.pdf",
+          "sha256": "823afc79757896cb561d3b2b1ade0abf0e45c3f4ed8fadd4d1d0680900c7eca9"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch--90-72.ppm",
+          "sha256": "e9e9a4f5bb12877de748ca50aa8bdfbda6c39e0fb1aa4cf068a8449080816dfa"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn--90-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn--90-72.pdf",
+          "sha256": "06ad1aecabe0bf9bfb6b3ffc99ca5a5026d27a5ac53456c0855dec49aabdc666"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn--90-72.ppm",
+          "sha256": "e30e97debe71184453ffba857271990009d1c5ef456c2453457e0f649c0d0530"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx--90-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx--90-144.pdf",
+          "sha256": "9ea6346d15f3e2780784a3c87c050667f6ef8a129190d28e321324b2f5600dc1"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx--90-144.ppm",
+          "sha256": "d8bdec22e17424db94ea1b770d885fb34739e42657183f8a6684255ec2ba8721"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-450-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-450-72.pdf",
+          "sha256": "5364de4736c4fb68f5baad842ab34d60b9b96af83c17e53a7397f04b7569531d"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-450-72.ppm",
+          "sha256": "1a32210345036a1586b251684bbefeaa99297354b403f9f51fd0b505548653bf"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Ch-450-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Ch-450-72.pdf",
+          "sha256": "e81a0201026494dc86d954e9c3b32d36da0f1158b9a62097bb741da2facf3e0e"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Ch-450-72.ppm",
+          "sha256": "1a32210345036a1586b251684bbefeaa99297354b403f9f51fd0b505548653bf"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Ch",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Btn-450-72",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Btn-450-72.pdf",
+          "sha256": "7a654870bc35b8ed68aa1b609ec1d1cc39a0f0caa56efdbfa897010d41754368"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Btn-450-72.ppm",
+          "sha256": "8a01ddbbedd8bfda61a87671b4d196cafe7a9993019fb4081b41ba6d6675bb2d"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Btn",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-Tx-450-144",
+      "kind": "vector",
+      "description": "Non-square widgets rotate their underline and literal glyph ink before page rotation",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-Tx-450-144.pdf",
+          "sha256": "5364de4736c4fb68f5baad842ab34d60b9b96af83c17e53a7397f04b7569531d"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-Tx-450-144.ppm",
+          "sha256": "eff490d977474c4c881db8b16fe1248649c9a0754c87d662c6cd80f05d2bc88b"
+        }
+      },
+      "dpi": 144,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-stored-90",
+      "kind": "vector",
+      "description": "Existing appearance coordinates survive Tx replacement without applying MK R again",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-stored-90.pdf",
+          "sha256": "2b07dc73f21a9a18a10ecb13c0905da374a5278bb3a9e47efed93c9e06f2b21b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-stored-90.ppm",
+          "sha256": "8723f61bfc9aa9efb6800423175bcb4c389a50880c313e5ddf392be07fd6bcc9"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-stored-180",
+      "kind": "vector",
+      "description": "Existing appearance coordinates survive Tx replacement without applying MK R again",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-stored-180.pdf",
+          "sha256": "953062f54fe39ba92b825aeef010e44520c07596ff720e408edd84772a4a73c1"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-stored-180.ppm",
+          "sha256": "8723f61bfc9aa9efb6800423175bcb4c389a50880c313e5ddf392be07fd6bcc9"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-stored-270",
+      "kind": "vector",
+      "description": "Existing appearance coordinates survive Tx replacement without applying MK R again",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-stored-270.pdf",
+          "sha256": "293cefeb12354d124cbfc49f2d144427f4a3918e2bbf10de6018dbefef48938b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-stored-270.ppm",
+          "sha256": "8723f61bfc9aa9efb6800423175bcb4c389a50880c313e5ddf392be07fd6bcc9"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-null",
+      "kind": "vector",
+      "description": "Null and indirect widget rotations follow the same declared physical geometry",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-null.pdf",
+          "sha256": "d36e3563aef614cb51a663bef93d6fea200b648b0bbbd1a7496d5845f63505fe"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-null.ppm",
+          "sha256": "fe648b30ec14f5b7a3531f7c61f4b937c8d241fea5eff283654bf0522aaafe11"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    },
+    {
+      "id": "form_borders/rotation-indirect",
+      "kind": "vector",
+      "description": "Null and indirect widget rotations follow the same declared physical geometry",
+      "requirements": [
+        "forms-appearance-style",
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/form_borders/rotation-indirect.pdf",
+          "sha256": "a1483b8494be7dc86b1d11fe74b647c85acf581766bf9c1745c7d5bc4ee1066f"
+        },
+        ".ppm": {
+          "path": "corpus/generated/form_borders/rotation-indirect.ppm",
+          "sha256": "1d5a5111c3325235fafd8a61d49a864aa6ff91accd48edcf49407b3aca438d52"
+        }
+      },
+      "dpi": 72,
+      "field_kind": "Tx",
+      "text": "A",
+      "tolerance": 1
+    }
+  ]
+}

@@ -180,3 +180,58 @@ mod length_dependencies {
         }
     }
 }
+
+#[test]
+fn unmatched_closing_delimiters_before_endobj_are_reported_and_skipped() {
+    let limits = Limits::default();
+    for bytes in [
+        b"null\n>>\nendobj".as_slice(),
+        b"null ] >> ]endobj",
+        b"<< >>\r>>\rendobj\n2 0 obj",
+    ] {
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let mut parser = Parser::new(bytes, Origin::File, limits);
+            parser.parse().unwrap();
+            let mut diagnostics = Diagnostics::new(recovery);
+            let result = end(&mut parser, &limits, ObjectId::new(1, 0), &mut diagnostics);
+            if recovery == Recovery::Strict {
+                let error = result.unwrap_err();
+                assert_eq!(error.repair, Some(repairs::OBJECT_STRAY_DELIMITER));
+                assert_eq!(error.object, Some(ObjectId::new(1, 0)));
+            } else {
+                result.unwrap();
+                let end = bytes.windows(6).position(|w| w == b"endobj").unwrap() + 6;
+                assert_eq!(parser.offset(), end);
+                assert_eq!(
+                    diagnostics.as_slice()[0].repair(),
+                    Some(repairs::OBJECT_STRAY_DELIMITER)
+                );
+            }
+        }
+    }
+    let deep = [
+        b"null ".as_slice(),
+        &b"] ".repeat(limits.depth + 1),
+        b"endobj",
+    ]
+    .concat();
+    for bytes in [
+        b"null\n>>".as_slice(),
+        b"null\n>>\n2 0 obj",
+        b"null\n> endobj",
+        b"null\n>> /Extra endobj",
+        b"null\n>>endobject",
+        &deep,
+    ] {
+        let mut parser = Parser::new(bytes, Origin::File, limits);
+        parser.parse().unwrap();
+        let mut diagnostics = Diagnostics::new(Recovery::Repair);
+        assert_eq!(
+            end(&mut parser, &limits, ObjectId::new(1, 0), &mut diagnostics)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax
+        );
+        assert!(diagnostics.is_empty());
+    }
+}

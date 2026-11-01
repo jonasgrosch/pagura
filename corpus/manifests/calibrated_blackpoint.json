@@ -1,0 +1,1859 @@
+{
+  "schema": 2,
+  "area": "calibrated_blackpoint",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "calibrated_blackpoint/CalGray-zero-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-zero-implicit.pdf",
+      "sha256": "b4973aa3a38a4c4b95157f9b86075e2deb0ce6183fb07f1de4d99a38abb94c14",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-zero-implicit.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-neutral-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-neutral-implicit.pdf",
+      "sha256": "010dcfd2d4201c6b2bf804f2fbb3576cffa2fb202442855d67776952e53c01f8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-neutral-implicit.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-chromatic-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-chromatic-implicit.pdf",
+      "sha256": "76de26a17931502dbd3c60fd327aa74615368bcde80a95419689f462a66614b6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-chromatic-implicit.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-at-white-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-at-white-implicit.pdf",
+      "sha256": "b512486f5d56e1c5508829d8510a5d1873aee1735ae0c4eda036526a980d2fc3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-at-white-implicit.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-above-white-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-above-white-implicit.pdf",
+      "sha256": "10faaaa2188a6b710a9ef3b6af6a6b695efab0824ce0b4aad4339733ed0ff38b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-above-white-implicit.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-at-range-limit-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-implicit.pdf",
+      "sha256": "c034e5ba1500e998435c9c4dda1944cf681a853631356eb8cccaee0d680686c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-implicit.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-large-finite-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-large-finite-implicit.pdf",
+      "sha256": "66cc029c86f9bfe54364f5b3c62282ac0f5029d89a673495e918ee5fbe019fd0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-above-range-limit-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-above-range-limit-implicit.pdf",
+      "sha256": "149cc102a11f0301575e047ba8f5f64f5af701bb4fabc6c17fad812add7ab24e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-zero-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-zero-off.pdf",
+      "sha256": "224b3c5f05e21a87f6224322dab2708f18912a2ef9f8c1ff81fdf9804b9df6fa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-zero-off.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-neutral-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-neutral-off.pdf",
+      "sha256": "94923f2e0161dd052958c1add62c3b512006b637d08eba6cb2181d8bc9a9246f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-neutral-off.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-chromatic-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-chromatic-off.pdf",
+      "sha256": "06e1933e2c3b99716c35338764a86ee1a7b59256dad91579fe99b2db45f6c342",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-chromatic-off.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-at-white-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-at-white-off.pdf",
+      "sha256": "90b33f391a1b035ccaeb8af29f123b73d944da6adc6a93e043e6395be55c59ae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-at-white-off.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-above-white-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-above-white-off.pdf",
+      "sha256": "99f8085e9258947a4293c2580ec0a1e88caedf4163ca4ddc6e683204140b57c2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-above-white-off.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-at-range-limit-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-off.pdf",
+      "sha256": "af2f2afefd8a5092b9c2194045dc6c56ccc81594c54068a9c3d8d1fdb90873a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-off.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-large-finite-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-large-finite-off.pdf",
+      "sha256": "3f5df8f2fd3f1d87fd67d4ed76f61ae41281f80beec6b341e80830e4bb73322b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-above-range-limit-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-above-range-limit-off.pdf",
+      "sha256": "10efbcc7f2df5262c7ddf3d19319ca3f9fcbab8e04bfc014415c0917618f32c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-zero-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-zero-default.pdf",
+      "sha256": "6db328d4ba26deb0922a1ecb406efbabeeae445f05c542c20f42463008fc3f64",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-zero-default.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-neutral-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-neutral-default.pdf",
+      "sha256": "a51ee84635201fe2920c1d051f6fab19e0fd01f0c5eb7575e3774f2b9fc5f95f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-neutral-default.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-chromatic-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-chromatic-default.pdf",
+      "sha256": "d58f0689880ee6e876c4da7b862f921f784d43253870c8a9d2e575a284647471",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-chromatic-default.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-at-white-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-at-white-default.pdf",
+      "sha256": "5effe42a15f3b50021302a82c7d9ef618c06251daccd5fa25370557ec7044b3f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-at-white-default.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-above-white-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-above-white-default.pdf",
+      "sha256": "a48a5240dd42918655bb2af3cbaea1f236547f6be315ccaff1817ab8b3ca470b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-above-white-default.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-at-range-limit-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-default.pdf",
+      "sha256": "79c581f1f500ede8289e857ec745d05218f82b2455e1dead690a3ef3b4df2a48",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalGray-at-range-limit-default.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-large-finite-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-large-finite-default.pdf",
+      "sha256": "bbcef47e48c430d01992098ded156864c9ae021f4f253caf989449b40c2c0c6c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-above-range-limit-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-above-range-limit-default.pdf",
+      "sha256": "cbb0cd2c954e5d9e6a9db38d9fdcd3289371356f05ae0af4aeb7c99daf46b4ec",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-on",
+      "kind": "pdf",
+      "description": "Explicit compensation remains unsupported",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-on.pdf",
+      "sha256": "355a5e759991d311b1ecbbb6b5f9ddfef68ace939a5dfc847f77dc5fff1779bd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "extgstate.UseBlackPtComp",
+      "api": "compile_page"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-negative",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-negative.pdf",
+      "sha256": "4141dd32a09822747796af6f54082fd998626d32791e08481788950edd49779d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-short",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-short.pdf",
+      "sha256": "93a1c2a32080827a5f75f5bfcb2db0d334169d966fca90a5e01804198b157c29",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-long",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-long.pdf",
+      "sha256": "fab038409a936b16e9fd02d7a6b940eaafd79f4802f068fde9c4f36cfa3b5bc5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-name",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-name.pdf",
+      "sha256": "a3cf4b4feb2a00543828bd7377ad8267b56bbb4b5362f3a918742816bfc54bb9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-null",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-null.pdf",
+      "sha256": "7680674b7354530b87a5923132aa3f648fe3f5c7525ad357e9a029d7ca585ed0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalGray-nonnumeric",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalGray-nonnumeric.pdf",
+      "sha256": "e9493c8b3a594ba87a07d403ef3fa6fe30da697638b61eef7313e0a1133a528c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-zero-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-zero-implicit.pdf",
+      "sha256": "4647b932aa92645ddd28125c169ce9a9cad2fed9dd4de66d878378456ba3f0de",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-zero-implicit.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-neutral-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-neutral-implicit.pdf",
+      "sha256": "cc1509b2266720e61d7fcbb1490b8121cf9bebc1fd69f20639260d443530288a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-neutral-implicit.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-chromatic-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-chromatic-implicit.pdf",
+      "sha256": "02abf9fab816f4a076f90849a743d69f66a8239089bad76721a5f1069b73668c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-chromatic-implicit.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-at-white-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-at-white-implicit.pdf",
+      "sha256": "13816a15fd7e30a68a9b60eaba2553b8a46106d6e86bce8a8ee718d7fb8303b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-at-white-implicit.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-above-white-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-above-white-implicit.pdf",
+      "sha256": "d05337fad776ec120e2f164fdf72f9a8f1e216b735d67a97f3d0d8a2f67ada28",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-above-white-implicit.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-at-range-limit-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-implicit.pdf",
+      "sha256": "5f2df8d935644236fc3edb0eaaeb921e04f149ab70fec15cbb625d5ec610d66b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-implicit.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-large-finite-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-large-finite-implicit.pdf",
+      "sha256": "6c071f70f6bed60bf9343654145ca362d9d37e08dcfa4f48267b33f0a0c76dca",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-above-range-limit-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-above-range-limit-implicit.pdf",
+      "sha256": "b345a2bdf5f19a4740f094b43175586304d63daa565654e3c2b038285bf7710c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-zero-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-zero-off.pdf",
+      "sha256": "895dfeed6a370bf43946eb33d592d5467d0fe1a8276699d2ac51bb00c9caa6ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-zero-off.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-neutral-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-neutral-off.pdf",
+      "sha256": "b099e71b0bdab95da0db48d7346129724ebcc3d3620fe4edf9af42fcf0d4f852",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-neutral-off.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-chromatic-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-chromatic-off.pdf",
+      "sha256": "b735d1d08a28ceeee98f5cb7cfda5089e2f45e42bf2add1d82d179c0c4af0d9d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-chromatic-off.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-at-white-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-at-white-off.pdf",
+      "sha256": "6fa5dacedc2ed1dfa0418d1d89111d3735688e8afc5eaa7804fa7a5c5cb1c71d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-at-white-off.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-above-white-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-above-white-off.pdf",
+      "sha256": "10b0727ffafa023daa58925a4a2e25972ea1d920c04698bdd29cff2266426e56",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-above-white-off.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-at-range-limit-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-off.pdf",
+      "sha256": "bd7f8b0eb5fc5b11f240a9d9fa4894d20a6db083bae10bdb1b017d2a2dcd2a86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-off.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-large-finite-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-large-finite-off.pdf",
+      "sha256": "eaea40278fc526bb1a53de733494887ab96c0ccf290e9e9a827d30396125f0f2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-above-range-limit-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-above-range-limit-off.pdf",
+      "sha256": "13e2d979f3d044192a86d8302c4aebe65275c1aa8544797969726381ea974b1f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-zero-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-zero-default.pdf",
+      "sha256": "1f1954c53a62fb7ac2dadc7a8bdd0ae2a7e59356d204260dfa8f6d72a2e74781",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-zero-default.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-neutral-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-neutral-default.pdf",
+      "sha256": "333975fcd678f69438f94fc0a2ee9a4658a1e9968b8f34a0cb82b93b42bbb191",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-neutral-default.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-chromatic-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-chromatic-default.pdf",
+      "sha256": "dc2a24e0c7680c39adda40d6ac739eeb8be4b74790659f250db235edb491f4bd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-chromatic-default.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-at-white-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-at-white-default.pdf",
+      "sha256": "58d7abf7601494ecc11635a3626a9cf70e266d58ada1bc8441678bb9ba964b7d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-at-white-default.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-above-white-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-above-white-default.pdf",
+      "sha256": "e5a8587418022646f0b2a467e6de1efc9060736433cb44fa7b5a7684270ca6dd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-above-white-default.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-at-range-limit-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-default.pdf",
+      "sha256": "51a45083a88e13c6a123aa2fcc3449f6aaf0fd54562aaecdcda7728b64ffda1e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/CalRGB-at-range-limit-default.ppm",
+      "oracle_sha256": "692f51bd4619c11f92a1f2760c2a2758cd90529a76f9c890a2edb5dcd72d05ac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-large-finite-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-large-finite-default.pdf",
+      "sha256": "63f949128d070fab8d97327793c7fdec4e1b3f93c5a650174819bddcb6a05c20",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-above-range-limit-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-above-range-limit-default.pdf",
+      "sha256": "0e816ef29860a9bb7f049a34f87198b925d2e7886ed231421e339c067f93ff5d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-on",
+      "kind": "pdf",
+      "description": "Explicit compensation remains unsupported",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-on.pdf",
+      "sha256": "62d6a28372498ab40d2f2c69f3a30ee03c059828c27392edc760924e333c79a0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "extgstate.UseBlackPtComp",
+      "api": "compile_page"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-negative",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-negative.pdf",
+      "sha256": "7fcaef91e26bdd99c30925664f991fce17d81599551733d07b75df196f83cbe9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-short",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-short.pdf",
+      "sha256": "a5d38068b6dbb2ef78cd7b770ed3fe23ba519e8b56fc8c3e716c883be957843f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-long",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-long.pdf",
+      "sha256": "51fdd1e0ab8e5036203695b947606fd599dab61005387d67d170361642a175ec",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-name",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-name.pdf",
+      "sha256": "877d271f8b51a4270bac4f3f3ea60337a7faf22de9a076965101b8e00b1c6e4a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-null",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-null.pdf",
+      "sha256": "a89fc058c1e7094d8f15febf49f0009b561dbdca0a63d591d0b1e05a35f6a3b3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/CalRGB-nonnumeric",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/CalRGB-nonnumeric.pdf",
+      "sha256": "24acf76e446e9084fc1a38d5d739453376b819c79472de147967ac6bf5fd3124",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-zero-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-zero-implicit.pdf",
+      "sha256": "6df193a9cd2c508aa5e938efb397e2403c34ace6262f77ca322dcaf37bec6ae7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-zero-implicit.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-neutral-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-neutral-implicit.pdf",
+      "sha256": "6fc752879249361a55456a6bbe9acd72632f4500f0e35d8f276bec2a6191f728",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-neutral-implicit.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-chromatic-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-chromatic-implicit.pdf",
+      "sha256": "a5fd56f13396e80a19a79b1ad1f1a7043efa1a799e4208d9fb2bcf13baa8a15b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-chromatic-implicit.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-at-white-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-at-white-implicit.pdf",
+      "sha256": "2317ede64e1b7789be147f23681944ce76f258bb01cdd9686278a6875e9630ea",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-at-white-implicit.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-above-white-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-above-white-implicit.pdf",
+      "sha256": "154ab9d0b22ea77bc295b76db862d77ff8635556f366e856171b0a15fb60adb7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-above-white-implicit.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-at-range-limit-implicit",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-implicit.pdf",
+      "sha256": "82124e4c266eb46a91c891cf85ccdc06fe5d59e0bf255a697948d2f3ef21cd07",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-implicit.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-large-finite-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-large-finite-implicit.pdf",
+      "sha256": "8b2b53b0ce89e9d6b2a9f7fd44ddcdd80c5233844b921d7ca41dc3f276153133",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-above-range-limit-implicit",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-above-range-limit-implicit.pdf",
+      "sha256": "4a03393111b6c934952d0c22982a3834d7e78ac2750711c1a8e53f29247a9cf4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-zero-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-zero-off.pdf",
+      "sha256": "4adf583acc5ea276a1545165c53d715266e51b191db5d2c3f4abaeee42bcb7ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-zero-off.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-neutral-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-neutral-off.pdf",
+      "sha256": "e9f6127ddf3737468762738108de26f185d272bd5a1df9c0f4c7799a14c2051e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-neutral-off.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-chromatic-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-chromatic-off.pdf",
+      "sha256": "3d297589fafa4e2a962465add322de94c739d71a6bef18abd8eb648c266dfbb2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-chromatic-off.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-at-white-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-at-white-off.pdf",
+      "sha256": "0f01c039b8a8498d1c8976f74d5bf0f33a242623be3f21e1b7bec0db0b24f04e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-at-white-off.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-above-white-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-above-white-off.pdf",
+      "sha256": "b5d0624ba0d0f76abb5ba01dc2b890405d91def921ce47ad6e534f9b04e1acb7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-above-white-off.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-at-range-limit-off",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-off.pdf",
+      "sha256": "4bdbe85d90dfff0cade20063132a9e9f0d957d45d867cc5383306650bbc5b98b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-off.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-large-finite-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-large-finite-off.pdf",
+      "sha256": "c665e173518b4da2e0173074b194a6772e07b0e6f11bb32e195e75f1c0e85375",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-above-range-limit-off",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-above-range-limit-off.pdf",
+      "sha256": "d64b271871603385753e897c6e94019bff7a6408ca1fdd5fb269d374266ba7f0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-zero-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-zero-default.pdf",
+      "sha256": "e4205715c912fd61646521afc4ff2bff750d9241ac46bfc844362e39f2708e0d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-zero-default.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-neutral-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-neutral-default.pdf",
+      "sha256": "5392fbc0f8f62c654fbab4379b8728709ab65166db2a9a7f7f6ab4a1451f9fbf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-neutral-default.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-chromatic-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-chromatic-default.pdf",
+      "sha256": "71dec07e70e78c8ef5db6c957cca234c364e412a974924afab2022222b171d30",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-chromatic-default.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-at-white-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-at-white-default.pdf",
+      "sha256": "7db9fe9dd03a5c98b53c4f40b9d880be5a108cc9547a0016bfb9bf1b63f2297f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-at-white-default.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-above-white-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-above-white-default.pdf",
+      "sha256": "adc353f68e04832b451621005ecb42f64ac96ddb188b338e1e4ac09bdd831ee1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-above-white-default.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-at-range-limit-default",
+      "kind": "pdf",
+      "description": "Validated diffuse-black metadata with disabled BPC; independent gamma/matrix-to-XYZ, Bradford and sRGB equations",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-default.pdf",
+      "sha256": "7ef0c771df6e635da59b8e37052905d251370a36de1b36e46031dfdf26c92a43",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/calibrated_blackpoint/Lab-at-range-limit-default.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-large-finite-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-large-finite-default.pdf",
+      "sha256": "ef7b1d45afc7647170edfcb77684d62d6e04b0f65b4c5b6d8897a7f481e198c2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-above-range-limit-default",
+      "kind": "pdf",
+      "description": "Existing PDF CIE numeric-array working range retained; no rescale or cap increase",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-above-range-limit-default.pdf",
+      "sha256": "01cfb01f9d8a14059276320d3ca117e7f10e244a4d4e31a706d250d587c953e5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Limit"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-on",
+      "kind": "pdf",
+      "description": "Explicit compensation remains unsupported",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-on.pdf",
+      "sha256": "f6196b0dc15f56867c67c8c8df897011935299d68aa0d685e399431f8efb5fce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "extgstate.UseBlackPtComp",
+      "api": "compile_page"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-negative",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-negative.pdf",
+      "sha256": "fc9c7684fec859e2df69d7f314f37f8501dce2ea0583a84fe6737190a0b88fbd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-short",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-short.pdf",
+      "sha256": "9ee612b4b0770adb4d0efa7bd026161f9afbfb9279a1ce2c416c4c70f901139f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-long",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-long.pdf",
+      "sha256": "425c22e3a81a1c7ef37ba56673a4c78cdf01e3120343b92f7562c24de49c19ba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-name",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-name.pdf",
+      "sha256": "572020b87ea84c61d4da86b5e2c9e5a2e141d348618993b013c07eec74aa7169",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-null",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-null.pdf",
+      "sha256": "a5edfd7aa48bc8b88fb45cb45b33d7479473ea4048a0fdbc076f4a3e245efb86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "calibrated_blackpoint/Lab-nonnumeric",
+      "kind": "pdf",
+      "description": "Malformed BlackPoint remains syntax error",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/calibrated_blackpoint/Lab-nonnumeric.pdf",
+      "sha256": "37c9723a144564abd24aa5eb29ca26aa3bf3e206d23a41a3ac0ef0e402f7ec06",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    }
+  ]
+}

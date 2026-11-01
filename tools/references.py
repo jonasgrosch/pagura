@@ -61,6 +61,8 @@ STANDARDS = [
      "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.88-200002-S!!PDF-E&type=items", None, "jbig2"),
     ("itu-t800-2019", "ITU-T T.800 (06/2019): JPEG 2000 core coding system",
      "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.800-201906-S!!PDF-E&type=items", None, "jpx"),
+    ("iec-sycc-amendment-preview", "IEC 61966-2-1:1999/AMD1:2003 publisher preview, Annex F sYCC",
+     "https://preview.sist.si/sist-preview/10795/ae461684569b40bbbb2d9a22b1047f05/IEC-61966-2-1-1999-AMD1-2003.pdf", None, "color, paint_jpx"),
     ("itu-t81-1992", "ITU-T T.81 (09/1992): JPEG digital compression of still images",
      "https://www.w3.org/Graphics/JPEG/itu-t81.pdf", None, "image"),
     ("itu-t4-2003", "ITU-T T.4 (07/2003): Group 3 facsimile coding",

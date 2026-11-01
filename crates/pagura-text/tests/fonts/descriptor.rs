@@ -70,7 +70,9 @@ fn contradictory_or_missing_flags_are_repaired_and_valid_pairs_kept() -> Result<
         assert!(strict.diagnostics().is_empty(), "{name}");
         let document = vector.open(Recovery::Repair)?;
         let font = document.object(ObjectId::new(5, 0))?.dictionary().unwrap();
-        let glyph = PdfFont::load(&document, font)?.decode(&[65])?.remove(0);
+        let loaded = PdfFont::load(&document, font)?;
+        let unicode = loaded.unicode(&document, font, None)?;
+        let glyph = loaded.decode(&[65], Some(&unicode))?.remove(0);
         assert_eq!(glyph.advance, 0.6, "{name}");
         let text = vector.line("text").unwrap();
         let decoded = vector.line("decoded-text").unwrap_or(text);

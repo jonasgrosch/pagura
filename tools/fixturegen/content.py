@@ -80,6 +80,13 @@ def recovery_cases():
     full = [((0, 0, 8, 8), RED)]
     def page(command, resources=b'<< >>'):
         return single_page([command], media_box=b'[0 0 8 8]', resources=resources)
+    def strict_error(message, offset):
+        # Literal original envelope: page() puts content in object 4. The
+        # source byte position and legacy error come from the authored token.
+        object_id = 'ObjectId { number: 4, generation: 0 }'
+        return ('Error: Error { kind: Syntax, message: "' + message
+                + '", position: Stream { object: ' + object_id + ', offset: '
+                + str(offset) + ' }, object: Some(' + object_id + '), repair: None }')
     for operator, label in [('S', 'stroke'), ('s', 'closed-stroke'), ('f', 'fill'), ('F', 'alias'),
                             ('f*', 'parity'), ('B', 'both'), ('B*', 'both-parity'),
                             ('b', 'closed-both'), ('b*', 'closed-both-parity'), ('n', 'end')]:
@@ -131,6 +138,47 @@ def recovery_cases():
             name = 'repair-optional-' + label + '-' + policy.decode()
             geometry = [] if label == 'unregistered' and policy == b'AnyOff' else full
             yield repaired(name, pdf, tag, geometry, requirements=('content-optional',))
+    unused = red + b' 1 2 /Name'
+    yield Case('repair-operands-unused', page(unused), RENDER,
+               ('content-reported-recovery',), 'Reported recovery: content.operands-unused',
+               repairs=('content.operands-unused',), strict_valid=False,
+               oracle=opaque_rectangles(8, 8, full),
+               extra={'api': 'compile_page', 'scan_recovery': 'repair',
+                      'mode_errors': {'strict': {'kind': 'Syntax', 'feature': None, 'repair': None,
+                                                'message': 'content sequence ends with unfinished state'}},
+                      'strict_error_text': strict_error(
+                          'content sequence ends with unfinished state', len(unused))})
+    for label, command in [('compatibility', b'BX 1 2'), ('text', b'BT 1 2'),
+                           ('path', b'0 0 m 1 2'), ('clip', b'0 0 8 8 re W 1 2')]:
+        yield Case('unused-operands-open-' + label, page(command), OPEN,
+                   ('content-reported-recovery',), 'Unused operands cannot close unfinished state',
+                   extra={'api': 'compile_page', 'render_error': 'Syntax'})
+    # Malformed operands get the object parser's repairs, as document objects
+    # do, read in place or through the parser; its reference repairs stay
+    # errors, since content operands are direct (7.8.2).
+    for label, command in [('number-sign', b'1 0 0 rg - 0 8 8 re f'),
+                           ('number-sign-array', b'[2 -] 0 d ' + red),
+                           ('hex-digit', b'/Span << /Alt <4!1> >> BDC ' + red + b' EMC'),
+                           ('name-escape', b'/Span#zz BMC ' + red + b' EMC')]:
+        tag = 'syntax.' + label.removesuffix('-array')
+        message = ('invalid name escape retained as a literal hash' if label == 'name-escape'
+                   else 'invalid hexadecimal string' if label == 'hex-digit' else 'invalid number')
+        extra = {'api': 'compile_page', 'scan_recovery': 'repair',
+                 'mode_errors': {'strict': {'kind': 'Syntax', 'feature': None, 'message': message,
+                                           'repair': tag if label == 'name-escape' else None}}}
+        if label.startswith('number-sign'):
+            extra['strict_error_text'] = strict_error('invalid number', command.index(b'-'))
+        elif label == 'hex-digit':
+            extra['strict_error_text'] = strict_error(
+                'invalid hexadecimal string', command.index(b'!') + 1)
+        yield Case('repair-operand-' + label, page(command), RENDER, ('content-reported-recovery',),
+                   'Reported recovery: ' + tag, repairs=(tag,), strict_valid=False,
+                   oracle=opaque_rectangles(8, 8, full),
+                   extra=extra)
+    # The error is the parser's strict rejection of its repair, in both modes.
+    yield Case('repair-operand-reference-zero', page(b'/Span << /A 0 0 R >> BDC ' + red + b' EMC'), OPEN,
+               ('content-reported-recovery',), 'Reference repairs stay errors in content',
+               strict_valid=False, extra={'api': 'compile_page', 'render_error': 'Syntax'})
 
 
 def cases():
@@ -209,6 +257,12 @@ def cases():
     yield from icc_cases()
     yield from invalid_compositing_cases()
     for name, command in [("syntax-unknown", b"future"), ("syntax-arity", b"1 q"), ("syntax-type", b"(bad) w"), ("syntax-Q", b"Q"), ("syntax-q-unclosed", b"q"), ("syntax-l", b"1 1 l"), ("syntax-TJ", b"[/Bad] TJ"), ("syntax-pending-clip", b"W"), ("syntax-reference", b"4 0 R"), ("syntax-zero-dash", b"[0 0] 0 d"), ("transfer", b"/GS gs")]:
+        if name == "syntax-Q":
+            yield Case(name, single_page([command], media_box=b"[0 0 64 64]"), RENDER,
+                       ("content-explicit-operators", "recovery-content-state"),
+                       "An unmatched Q is a reported viewing no-op; Strict rejects it",
+                       oracle=opaque_rectangles(64,64,[]), repairs=("content.graphics-unmatched",), strict_valid=False)
+            continue
         if name == "syntax-q-unclosed":
             yield Case(name, single_page([command], media_box=b"[0 0 64 64]"), RENDER,
                        ("content-explicit-operators",), "Unmatched saved graphics state is reported at sequence end",
@@ -306,7 +360,7 @@ def cie_cases():
         yield Case(name,single_page([command],media_box=b'[0 0 8 8]',resources=b'<< /ColorSpace << /C [/'+family.encode()+b' << /WhitePoint [.96422 1 .82521] '+params+b' >>] >> >>'),RENDER,('content-cie',), 'Defining CIE formulas with Bradford adaptation to D65 and sRGB',oracle=opaque_rectangles(8,8,[((x,0,1,8),c) for x,c in enumerate(colours)]),extra={'tolerance':1})
     colour=cie_rgb('Lab',(128/255*100,-100+128/255*200,-100+128/255*200))
     yield render('cie-indexed-Lab',b'/C cs 0 sc 0 0 8 8 re f',[((0,0,8,8),colour)],resources=b'<< /ColorSpace << /C [/Indexed [/Lab << /WhitePoint [.96422 1 .82521] >>] 0 <808080>] >> >>',requirements=('content-cie',))
-    yield unsupported('cie-blackpoint',b'/C cs','colorspace.BlackPoint',resources=b'<< /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] /BlackPoint [.1 .1 .1] >>] >> >>')
+    yield Case('cie-blackpoint',single_page([b'/C cs'],media_box=b'[0 0 8 8]',resources=b'<< /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] /BlackPoint [.1 .1 .1] >>] >> >>'),RENDER,('content-cie',),'Validated diffuse-black metadata; no paint and black-point compensation disabled',oracle=opaque_rectangles(8,8,[]),extra={'api':'compile_page'})
 
 
 def function_cases():
@@ -380,7 +434,29 @@ def usage_cases():
         yield Case(name,optional_pdf(b'/OC /On BDC 0 0 8 8 re f EMC',configuration=configuration,usage_on=usage),RENDER,('content-usage',),'Initial View usage recommendation with AND aggregation',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)] if visible else []))
 
 
+def appearance_selection_cases():
+    for name,appearance,color in [
+        ('streams',b'/AP << /N 5 0 R /R 6 0 R /D 7 0 R >>',RED),
+        ('states',b'/AP << /N << /Off 5 0 R /On 6 0 R >> /R << /Off 6 0 R /On 7 0 R >> /D << /Off 7 0 R /On 5 0 R >> >> /AS /On',(0,255,0)),
+        ('null',b'/AP null',None),
+        ('null-state',b'/AP << /N << /On 8 0 R >> >> /AS /On',None),
+    ]:
+        annotation=b'<< /Subtype /Link /Rect [2 1 6 7] /Border [0 0 0] '+appearance+b' >>'
+        objects=[b'<< /Type /Catalog /Pages 2 0 R >>',
+                 b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                 b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << >> /Contents 4 0 R /Annots ['+annotation+b'] >>',
+                 stream(b'')]
+        for components in (b'1 0 0',b'0 1 0',b'0 0 1'):
+            objects.append(stream(components+b' rg 0 0 2 4 re f',
+                                  b'/Type /XObject /Subtype /Form /BBox [0 0 2 4] /Resources << >>'))
+        objects.append(b'null')
+        yield Case('annotation-appearance-'+name,document(objects),RENDER,('content-annotations',),
+                   'Table 170 selects independent red/green/blue streams; null entries are absent',
+                   oracle=opaque_rectangles(8,8,[((2,1,4,6),color)] if color else []))
+
+
 def annotation_cases():
+    yield from appearance_selection_cases()
     def pdf(extra=b'',form=b'1 0 0 rg 0 0 2 4 re f',box=b'[0 0 2 4]',matrix=b'[1 0 0 1 0 0]',page=b'0 0 1 rg 0 0 8 8 re f',normal=b'5 0 R',rect=b'[2 1 6 7]'):
         return document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << >> /Contents 4 0 R /Annots [<< /Subtype /Stamp /Rect '+rect+b' /AP << /N '+normal+b' >> '+extra+b' >>] >>',stream(page),stream(form,b'/Type /XObject /Subtype /Form /BBox '+box+b' /Matrix '+matrix+b' /Resources << >>')])
     for name,options,visible in [
@@ -764,7 +840,10 @@ def icc_cases():
     yield Case('icc-rgb-columns',pdf(profile,command=command),RENDER,('content-icc-matrix',),'Independent unequal per-channel TRCs and PCS matrix columns',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
     yield Case('icc-initial-zero',pdf(icc_profile(4,version=5),4,b'/C cs 0 0 8 8 re f',b'/DeviceCMYK'),RENDER,('content-icc-matrix',),'Later-version fallback retains ICCBased all-zero initialization, rather than DeviceCMYK black',oracle=opaque_rectangles(8,8,[]))
     yield repaired('icc-simple-operator',pdf(icc_profile(),command=b'/C cs .5 .5 .5 sc'),'color-operator',requirements=('content-icc-matrix',))
-    yield Case('icc-invalid-data',pdf(b'not a profile'),OPEN,('content-icc-matrix',),'Non-profile data cannot establish ICC fallback',extra={'render_error':'Syntax'})
+    # 8.6.5.5: data that is no profile is unusable; the Alternate draws, reported.
+    yield Case('icc-invalid-data',pdf(b'not a profile',command=b'/C cs 1 0 0 scn 0 0 8 8 re f'),RENDER,('content-icc-matrix',),'Unusable ICC data falls back to the Alternate space as a reported repair',oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
+    no_alternate=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/ICCBased 5 0 R] >> >> /Contents 4 0 R >>',stream(b'/C cs 0 1 1 0 scn 0 0 8 8 re f'),stream(b'not a profile',b'/N 4')])
+    yield Case('icc-invalid-data-default',no_alternate,RENDER,('content-icc-matrix',),'Unusable ICC data without an Alternate falls back to the N default',oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
     yield from icc_validation_cases()
     yield from icc_lut_cases()
 
@@ -842,6 +921,8 @@ def standard_semantics_cases():
     for name,config in [('base-off',b'/BaseState /OFF'),('intent-empty',b'/Intent []')]:
         yield Case('configuration-invalid-'+name,optional_pdf(b'',configuration=config),OPEN,('content-optional',),'Default configuration constraints from Table 99',extra={'render_error':'Syntax'})
     yield render('marked-OC-other',b'/OC << /Other 1 >> BDC 0 0 8 8 re f EMC',[((0,0,8,8),BLACK)],requirements=('content-optional',))
+    # Open marked content closed at the end keeps its visibility until then.
+    yield repaired('marked-unclosed-hidden',optional_pdf(b'0 0 4 4 re f /OC /Off BDC 1 0 0 rg 0 0 8 8 re f'),'marked-unclosed',[((0,0,4,4),BLACK)],requirements=('content-optional',))
     hidden=document([b'<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [6 0 R] /D << /BaseState /ON /OFF [6 0 R] >> >> >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /F 5 0 R >> >> /Contents 4 0 R >>',stream(b'/F Do'),stream(b'BT ET',b'/Type /XObject /Subtype /Form /BBox [0 0 8 8] /Resources << >> /OC 6 0 R'),b'<< /Type /OCG /Name (hidden) >>'])
     yield Case('form-hidden-body',hidden,RENDER,('content-forms',),'An invisible form skips its entire body, including unsupported text operators',oracle=opaque_rectangles(8,8,[]))
 
@@ -920,6 +1001,14 @@ def tiling_cases():
         ('tiling-negative-step',{'step':b'-2 -2'},motif),
         ('tiling-type-two',{'kind':2},motif),
         ('tiling-type-three',{'kind':3},motif),
+        # 8.7.3.1: constant spacing rounds a 1.6-unit lattice to 2 device
+        # pixels, scaling the 0.8-unit square to exactly one pixel.
+        ('tiling-constant-spacing',{'step':b'1.6 1.6','bbox':b'[0 0 1.6 1.6]','cell':b'1 0 0 rg 0 0 .8 .8 re f'},motif),
+        ('tiling-constant-spacing-faster',{'step':b'1.6 1.6','bbox':b'[0 0 1.6 1.6]','cell':b'1 0 0 rg 0 0 .8 .8 re f','kind':3},motif),
+        # A 1.5-unit step becomes 2 pixels, moving the far corner of a
+        # 6-unit BBox by 2 pixels: TilingType 3 permits it, TilingType 1
+        # refuses it (below).
+        ('tiling-faster-distortion',{'step':b'1.5 2','bbox':b'[0 0 6 2]','cell':b'1 0 0 rg 0 0 .75 1 re f','kind':3},motif),
         ('tiling-underlying',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 1 re f'},motif),
         ('tiling-ignored-colour',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 rg /DeviceGray cs 0 sc /S sh 0 0 1 1 re f'},motif),
         ('tiling-ignored-inline',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'BI /W 1 /H 1 /CS /RGB /BPC 8 ID \0\0\xff EI 0 0 1 1 re f'},motif),
@@ -931,6 +1020,67 @@ def tiling_cases():
         ('tiling-underlying-reuse',{'paint':2,'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn 0 0 4 8 re f 0 0 1 /P scn 4 0 4 8 re f','cell':b'0 0 1 1 re f'},[((x,y,1,1),RED if x<4 else BLUE) for y in range(0,8,2) for x in range(0,8,2)]),
     ]:
         yield Case(name,pdf(**options),RENDER,('content-tiling',),'8.6.6.2, 8.7.2–8.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite',oracle=opaque_rectangles(8,8,geometry))
+    # TilingType 2 keeps the exact lattice: 0.8-unit squares every 1.6
+    # units cover each pixel by the product of their exact overlaps.
+    def overlap(i):
+        return sum(max(F(0),min(F(i+1),F(8*k,5)+F(4,5))-max(F(i),F(8*k,5))) for k in range(6))
+    exact=bytearray()
+    for row in range(8):
+        for x in range(8):
+            covered=overlap(x)*overlap(7-row)
+            exact.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
+    yield Case('tiling-type-two-fractional',pdf(step=b'1.6 1.6',bbox=b'[0 0 1.6 1.6]',cell=b'1 0 0 rg 0 0 .8 .8 re f',kind=2),RENDER,('content-tiling',),'8.7.3.1, Table 74: no distortion keeps a fractional lattice; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(exact),extra={'tolerance':1})
+    # Constant spacing rounds the device lattice vectors (2.5, 0) and
+    # (0, -2.5) half away from zero, to (3, 0) and (0, -3): the 1.25-unit
+    # squares become 1.5 pixels on a 3-pixel lattice.
+    def halves(i):
+        return sum(max(F(0),min(F(i+1),F(3*k)+F(3,2))-max(F(i),F(3*k))) for k in range(3))
+    rounded=bytearray()
+    for row in range(8):
+        for x in range(8):
+            covered=halves(x)*halves(7-row)
+            rounded.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
+    yield Case('tiling-constant-spacing-half',pdf(step=b'2.5 2.5',bbox=b'[0 0 2.5 2.5]',cell=b'1 0 0 rg 0 0 1.25 1.25 re f'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: constant spacing rounds lattice vectors at a half away from zero; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(rounded),extra={'tolerance':1})
+    # Constant spacing would move the far BBox corner by 2 pixels, so the
+    # exact TilingType 2 lattice places the cells (ADR 0004): 0.75-unit
+    # squares every 1.5 units, 1 unit tall every 2, exact rational coverage.
+    def spaced(i, step, width, count):
+        return sum(max(F(0),min(F(i+1),step*k+width)-max(F(i),step*k)) for k in range(count))
+    distorted=bytearray()
+    for row in range(8):
+        for x in range(8):
+            covered=spaced(x,F(3,2),F(3,4),6)*spaced(7-row,F(2),F(1),4)
+            distorted.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
+    yield Case('tiling-constant-spacing-distortion',pdf(step=b'1.5 2',bbox=b'[0 0 6 2]',cell=b'1 0 0 rg 0 0 .75 1 re f'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: beyond a pixel of distortion constant spacing uses the exact lattice; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(distorted),extra={'tolerance':1})
+    # The device lattice vectors (0.6, -0.6) and (0.6, -0.8) both round to
+    # (1, -1): no whole-pixel lattice, so the exact lattice places the cells
+    # (ADR 0004). Each red cell is the parallelogram the matrix makes of the
+    # unit square at (2i, 2j), a mark of its own: a pixel keeps the product of
+    # one minus each cell's exact area (11.3, source-over).
+    from .raster import clipped_area
+    a,b,c,d=F(3,10),F(3,10),F(3,10),F(4,10)
+    remaining={}
+    # x = 0.6(i + j) and y = 0.6i + 0.8j, inverted at the page corners, bound
+    # the cells that can meet the page.
+    corners_ij=[((F(8,10)*px-F(6,10)*py)/F(12,100),(F(6,10)*py-F(6,10)*px)/F(12,100)) for px in (0,8) for py in (0,8)]
+    for i in range(int(min(k[0] for k in corners_ij))-2,int(max(k[0] for k in corners_ij))+2):
+        for j in range(int(min(k[1] for k in corners_ij))-2,int(max(k[1] for k in corners_ij))+2):
+            corners=[(a*x+c*y,b*x+d*y) for x,y in ((2*i,2*j),(2*i+1,2*j),(2*i+1,2*j+1),(2*i,2*j+1))]
+            xs,ys=[p[0] for p in corners],[p[1] for p in corners]
+            if max(xs)<=0 or min(xs)>=8 or max(ys)<=0 or min(ys)>=8: continue
+            for x in range(max(0,int(min(xs))),min(8,int(max(xs))+1)):
+                for y in range(max(0,int(min(ys))),min(8,int(max(ys))+1)):
+                    remaining[x,y]=remaining.get((x,y),F(1))*(1-clipped_area(corners,x,y))
+    oblique=bytearray()
+    for row in range(8):
+        for x in range(8):
+            level=int(255*remaining.get((x,7-row),F(1))+F(1,2))
+            oblique.extend((255,level,level))
+    yield Case('tiling-oblique-lattice',pdf(matrix=b'[.3 .3 .3 .4 0 0]',bbox=b'[0 0 1 1]'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: an oblique lattice with no whole-pixel lattice uses the exact lattice; exact cell areas',oracle=b'P6\n8 8\n255\n'+bytes(oblique),extra={'tolerance':1})
+    for name,refused,reason in [
+        ('tiling-singular-matrix',pdf(matrix=b'[0 0 0 1 0 0]'),'a singular pattern matrix has no lattice'),
+    ]:
+        yield Case(name,refused,UNSUPPORTED,('content-tiling','unsupported-is-explicit'),'8.7.3.1, Table 74 and ADR 0004: '+reason+'; unsupported explicitly',feature='pattern.tiling',oracle=None)
     for name,options in [('tiling-zero-step',{'step':b'0 2'}),('tiling-missing-underlying',{'paint':2}),('tiling-coloured-underlying',{'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn'})]:
         if name == 'tiling-coloured-underlying':
             yield Case(name,pdf(**options),OPEN,('content-tiling',),'Coloured pattern ignores unused underlying colour with a repair',strict_valid=False,repairs=('content.pattern-underlying',))
@@ -1249,8 +1399,16 @@ def icc_validation_cases():
     for name,alternate in [('alternate-wrong-n',b'/DeviceGray'),('alternate-pattern',b'/Pattern')]:bad.append((name,icc_profile(),{'alternate':alternate}))
     bad.append(('range-rgb-mismatch',icc_profile(),{'extra':b'/Range [0 2 0 1 0 1]'}))
     for name,raw,options in bad:
-        yield Case('icc-'+name,icc_pdf(raw,**options),OPEN,('content-icc-admission',),
-            'ICC.1:2010 7.2–7.4, 8.2–8.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field',extra={'render_error':'Syntax'})
+        if options:
+            # PDF-level faults (Alternate, Range) stay errors.
+            yield Case('icc-'+name,icc_pdf(raw,**options),OPEN,('content-icc-admission',),
+                'ISO 8.6.5.5 Table 65: reject the independently malformed PDF entry',extra={'render_error':'Syntax'})
+            continue
+        # The malformed profile is unusable: strict mode rejects it, and repair
+        # mode draws the Alternate space instead (8.6.5.5, content.icc-unusable).
+        yield Case('icc-'+name,icc_pdf(raw,command=b'/C cs 1 0 0 scn 0 0 8 8 re f'),RENDER,('content-icc-admission',),
+            'ICC.1:2010 7.2–7.4, 8.2–8.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws',
+            oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
 
 
 def icc_pcs_rgb(values, pcs, legacy=False):
@@ -1387,6 +1545,18 @@ def icc_lut_cases():
         inputs=[(0,-128,-128),(100,127,127),(50,0,0),(60,25,-20),(-1,-200,200),(200,200,-200),(25,-40,30),(75,10,20)]
         normal=lambda v:(min(100,max(0,v[0]))/100,(min(127,max(-128,v[1]))+128)/255,(min(127,max(-128,v[2]))+128)/255)
         yield icc_samples(f'icc-{kind.decode()}-Lab-input',icc_pack(tags,3,space=b'Lab ',pcs=b'Lab '),inputs,[icc_pcs_rgb(ref(normal(v)),b'Lab ',precision==2) for v in inputs],3,'content-icc-lut',extra=b'/Range [0 100 -128 127 -128 127]')
+        # Without Range, a Lab-input profile's components keep CIELAB units
+        # (Table 65: Range matches the profile), as other readers take them.
+        yield icc_samples(f'icc-{kind.decode()}-Lab-input-default-range',icc_pack(tags,3,space=b'Lab ',pcs=b'Lab '),inputs,[icc_pcs_rgb(ref(normal(v)),b'Lab ',precision==2) for v in inputs],3,'content-icc-lut')
+        # A spot colour whose tint transform yields L*a*b* for such a
+        # profile, as page layout applications write named inks.
+        if kind==b'mft1':
+            tints=(0,.5,1);c0,c1=(100,0,0),(62.3529,4,11)
+            lab=lambda t:tuple(a+t*(b-a) for a,b in zip(c0,c1))
+            command=b'/C cs '+b' '.join(f'{t} scn {i*3} 0 3 8 re f'.encode() for i,t in enumerate(tints))
+            pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/Separation /Ink [/ICCBased 5 0 R] << /FunctionType 2 /Domain [0 1] /C0 [100 0 0] /C1 [62.3529 4 11] /N 1 /Range [0 100 -128 127 -128 127] >>] >> >> /Contents 4 0 R >>',stream(command),stream(icc_pack(tags,3,space=b'Lab ',pcs=b'Lab '),b'/N 3 /Alternate /DeviceRGB')])
+            colours=[icc_pcs_rgb(ref(normal(lab(t))),b'Lab ') for t in tints]
+            yield Case('icc-separation-Lab-default-range',pdf,RENDER,('content-icc-lut',),'Separation through an ICCBased Lab-input alternate without Range: tints keep CIELAB units; independent quantized formula oracle',oracle=opaque_rectangles(8,8,[((i*3,0,min(3,8-i*3),8),colour) for i,colour in enumerate(colours)]),extra={'tolerance':1})
     # Near black, legacy-vs-modern Lab decoding differs by multiple byte levels.
     for version in (2,4):
         tags=icc_tags(4,version=version);tags[b'A2B0']=icc_legacy(4,constant=(3264/65535,32768/65535,32768/65535))[0]
@@ -1425,7 +1595,9 @@ def icc_lut_cases():
         raw=bytearray(base);raw[offset:offset+len(value)]=value;bad.append((name,bytes(raw)))
     for name,raw in bad:
         tags=icc_tags(4);tags[b'A2B0']=raw
-        yield Case('icc-'+name,icc_pdf(icc_pack(tags,4),4),OPEN,('content-icc-admission',),'ICC 10.8/10.10 invalid processing-element structure',extra={'render_error':'Syntax'})
+        yield Case('icc-'+name,icc_pdf(icc_pack(tags,4),4,command=b'/C cs 0 1 1 0 scn 0 0 8 8 re f'),RENDER,('content-icc-admission',),
+            'ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws',
+            oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
 
     for kind in ('mft2','mAB'):
         raw=bytearray(icc_legacy(4)[0] if kind=='mft2' else icc_mab(4))

@@ -65,20 +65,28 @@ def cases():
     yield render("undefined-reference-is-null", "Resources refers to an object that does not exist",
                  [b"0 g 0 0 64 8 re f\n"], [((0, 0, 64, 8), BLACK)], resources=b"99 0 R",
                  requirements=("undefined-reference-null",))
+    yield Case("undefined-contents-is-null", document([
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 64] /Resources << >> /Contents 99 0 R >>",
+    ]), RENDER, BASE + ("undefined-reference-null",),
+        "Contents refers to an object that does not exist: null, so the page has no content (Table 31)",
+        oracle=opaque_rectangles(64, 64, []), information=("pages.contents-undefined",))
     trailing = render("trailing-bytes", "data after the final %%EOF is a reported repair",
                       [b"0 g 0 0 8 8 re f\n"], [((0, 0, 8, 8), BLACK)], tail=b"garbage\n",
                       requirements=("recovery-reported",))
     yield Case(**{**trailing.__dict__, "repairs": ("file.trailing-bytes",), "strict_valid": False})
 
-    tiling = document([
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 64] /Resources << /Pattern << /P 5 0 R >> >> /Contents 4 0 R >>",
-        stream(b"/Pattern cs /P scn 0 0 64 64 re f\n"),
-        stream(b"0 0 1 1 re f", b"/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /Matrix [.3 .3 .3 .4 0 0] /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>"),
-    ])
-    yield Case("pattern-unsupported", tiling, UNSUPPORTED, BASE + ("unsupported-is-explicit",),
-               "Table 74 constant-spacing fitting collapses this oblique device lattice; unsupported explicitly", feature="pattern.tiling", oracle=None)
+    def tiling(size, matrix):
+        return document([
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %d %d] /Resources << /Pattern << /P 5 0 R >> >> /Contents 4 0 R >>" % (size, size),
+            stream(b"/Pattern cs /P scn 0 0 %d %d re f\n" % (size, size)),
+            stream(b"0 0 1 1 re f", b"/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /Matrix " + matrix + b" /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>"),
+        ])
+    yield Case("pattern-unsupported", tiling(64, b"[0 0 0 1 0 0]"), UNSUPPORTED, BASE + ("unsupported-is-explicit",),
+               "A singular pattern matrix has no lattice (ADR 0004 section 2); unsupported explicitly", feature="pattern.tiling", oracle=None)
     yield Case("text-undefined-font", single_page([b"BT /F1 12 Tf (hello) Tj ET\n"]), OPEN, BASE,
                "a font name that is not a page resource is malformed content (7.8.3)",
                extra={"render_error": "Syntax"})

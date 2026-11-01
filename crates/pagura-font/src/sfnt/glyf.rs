@@ -418,7 +418,7 @@ mod tests {
         assert_eq!(segments.len(), 4);
         assert_eq!(segments[0], Segment::MoveTo(p(0.0, 0.0)));
         // The trailing off-curve point closes the contour with a quadratic.
-        assert!(matches!(segments[2], Segment::CubicTo { end, .. } if end == p(0.0, 0.0)));
+        assert!(matches!(segments[2], Segment::QuadTo { end, .. } if end == p(0.0, 0.0)));
         assert_eq!(segments[3], Segment::Close);
     }
 

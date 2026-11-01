@@ -4,7 +4,7 @@ use crate::{
     descriptor::{Descriptor, FontFlags},
     encoding::{self, SimpleMapping},
     features,
-    font::{Mapping, Ownership, Source, to_unicode},
+    font::{Mapping, Ownership, Source},
     metrics::{GLYPH_SPACE_UNITS, Metrics},
     objects::{number, optional, required},
     report::Report,
@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 pub(crate) mod cid;
 mod family;
+use family::latin_text_family;
 use family::{Family, Style};
 pub(crate) use family::{Standard14, standard_name};
 
@@ -36,8 +37,20 @@ pub(crate) fn load(
     provider: &dyn Provider,
     position: Position,
 ) -> Result<PdfFont> {
+    try_load(document, font, descriptor, kind, provider, position)?.ok_or_else(unavailable)
+}
+
+/// Only an unavailable built-in selection is None; provider and validation errors propagate.
+pub(crate) fn try_load(
+    document: &Document,
+    font: &Dictionary,
+    descriptor: Option<Descriptor<'_>>,
+    kind: FontKind,
+    provider: &dyn Provider,
+    position: Position,
+) -> Result<Option<PdfFont>> {
     if !matches!(kind, FontKind::Type1 | FontKind::TrueType) {
-        return Err(unavailable());
+        return Ok(None);
     }
     let base = required(document, font, b"BaseFont")?
         .as_name()
@@ -46,20 +59,25 @@ pub(crate) fn load(
     let flags = descriptor
         .map(|descriptor| descriptor.normalized_flags(document, position))
         .transpose()?;
-    let symbolic = flags.is_some_and(|flags| flags.contains(FontFlags::SYMBOLIC));
+    let flagged = flags.is_some_and(|flags| flags.contains(FontFlags::SYMBOLIC));
+    let latin = flagged && latin_route(document, font, base.as_bytes(), standard, position)?;
+    let symbolic = flagged && !latin;
     if symbolic && !standard.is_some_and(Standard14::is_symbolic) {
-        return Err(unavailable());
+        return Ok(None);
     }
     let selected = match standard {
         Some(face) => face,
         None => match (descriptor, flags) {
-            (Some(descriptor), Some(flags)) => closest(document, descriptor, flags)?,
-            _ => return Err(unavailable()),
+            (Some(descriptor), Some(flags)) => {
+                let flags = if latin { flags.nonsymbolic() } else { flags };
+                closest(document, descriptor, flags)?
+            }
+            _ => return Ok(None),
         },
     };
-    let data = provider
-        .standard_font(selected.name().as_bytes())?
-        .ok_or_else(unavailable)?;
+    let Some(data) = provider.standard_font(selected.name().as_bytes())? else {
+        return Ok(None);
+    };
     let encoding = if kind == FontKind::TrueType && symbolic {
         None
     } else {
@@ -99,7 +117,6 @@ pub(crate) fn load(
         &document.limits(),
         base.as_bytes(),
     )?));
-    let to_unicode = to_unicode(document, font, &mapping)?;
     let source = data
         .program
         .as_ref()
@@ -120,21 +137,66 @@ pub(crate) fn load(
             .in_object_opt(descriptor.and_then(|d| d.id)),
         )?;
     }
-    Ok(PdfFont {
-        kind,
-        writing_mode: WritingMode::Horizontal,
-        source,
-        mapping,
-        metrics,
-        to_unicode,
-        limits: document.limits(),
-        cid_unicode: None,
-        retained: 0,
-    }
-    .accounted())
+    Ok(Some(
+        PdfFont {
+            kind,
+            writing_mode: WritingMode::Horizontal,
+            source,
+            mapping,
+            metrics,
+            limits: document.limits(),
+            retained: 0,
+            selection_policy: crate::font::SelectionPolicy::LegacyNotdef,
+        }
+        .accounted(),
+    ))
 }
 
-fn unavailable() -> Error {
+/// Whether a font flagged Symbolic takes its explicit Latin encoding: a known
+/// Latin family whose Encoding names a Latin base encoding contradicts the
+/// flag, and the encoding is followed as a reported repair (ADR 0009). Symbol,
+/// dingbat and unknown families still get no guess.
+fn latin_route(
+    document: &Document,
+    font: &Dictionary,
+    base: &[u8],
+    standard: Option<Standard14>,
+    position: Position,
+) -> Result<bool> {
+    let family = standard.is_some_and(|face| !face.is_symbolic()) || latin_text_family(base);
+    if !family || !latin_encoding(document, font)? {
+        return Ok(false);
+    }
+    Report::new(document).repair(
+        crate::repairs::SYMBOLIC_LATIN_ENCODING,
+        "Symbolic flag ignored: the font names a Latin family and base encoding",
+        position,
+    )?;
+    Ok(true)
+}
+
+/// Whether `/Encoding` names, or has a `/BaseEncoding` naming, one of the
+/// Latin text encodings (Table 112). MacExpert and absent encodings do not
+/// count: only an explicit Latin encoding identifies the glyph names.
+fn latin_encoding(document: &Document, font: &Dictionary) -> Result<bool> {
+    let Some(encoding) = optional(document, font, b"Encoding")? else {
+        return Ok(false);
+    };
+    let name = match encoding {
+        pagura_core::Value::Dictionary(dictionary) => {
+            optional(document, dictionary, b"BaseEncoding")?.and_then(pagura_core::Value::as_name)
+        }
+        value => value.as_name(),
+    };
+    Ok(name.is_some_and(|name| {
+        matches!(
+            name.as_bytes(),
+            b"StandardEncoding" | b"WinAnsiEncoding" | b"MacRomanEncoding"
+        )
+    }))
+}
+
+pub(crate) fn unavailable() -> Error {
     Error::unsupported(
         features::NON_EMBEDDED,
         "font has no safe available substitute",

@@ -1,29 +1,48 @@
 //! Glyph selection: from a code, name or CID to a drawable shape (9.6.5, 9.7.6).
-use super::{FontKind, Mapping, Ownership, PdfFont, Source};
+use super::{FontKind, Mapping, Ownership, PdfFont, SelectionPolicy, Source};
 use crate::{
     GlyphShape,
     cid::{Cid, CidToGidMap},
     cmap::{CMap, Code},
 };
-use pagura_core::{Meter, Name, Result};
+use pagura_core::{Error, Meter, Name, Result};
 use pagura_font::{FontProgram, GlyphId};
 use std::sync::Arc;
 
 impl PdfFont {
-    pub(crate) fn shape(
+    /// The shape of the glyph `code` selects; `unicode` gives the code's
+    /// Unicode text, which TrueType selection reads the first time a code
+    /// is selected.
+    pub(crate) fn shape<'u>(
         &self,
         code: Code,
         selector: u32,
         name: Option<&Name>,
-        unicode: Option<&str>,
+        unicode: impl FnOnce() -> Option<&'u str>,
     ) -> GlyphShape {
         match &self.source {
             Source::MetricsOnly => GlyphShape::Blank,
-            Source::CidSubstitute { program } => Cid::try_from(selector)
+            Source::CidSubstitute {
+                program,
+                unicode,
+                vertical,
+            } => Cid::try_from(selector)
                 .ok()
-                .and_then(|cid| {
-                    crate::substitute::cid::glyph(program, self.cid_unicode.as_deref(), cid)
-                })
+                .and_then(|cid| crate::substitute::cid::glyph(program, Some(unicode), cid))
+                .map(|glyph| vertical.as_ref().map_or(glyph, |map| map.apply(glyph)))
+                .map_or(GlyphShape::Blank, |glyph| GlyphShape::Outline {
+                    program: Arc::clone(program),
+                    glyph,
+                    matrix: program.font_matrix(),
+                }),
+            Source::UnicodeSubstitute {
+                program,
+                to_unicode,
+                ..
+            } => to_unicode
+                .as_ref()
+                .and_then(|map| map.text(code))
+                .and_then(|text| crate::substitute::cid::unicode_glyph(program, text.as_str()))
                 .map_or(GlyphShape::Blank, |glyph| GlyphShape::Outline {
                     program: Arc::clone(program),
                     glyph,
@@ -47,7 +66,7 @@ impl PdfFont {
                     if (self.kind == FontKind::TrueType || *ownership == Ownership::Provider)
                         && program.format() != pagura_font::FontFormat::Cff
                     {
-                        crate::selection::truetype(program, code.value, name, unicode, *route)
+                        crate::selection::truetype(program, code.value, name, unicode(), *route)
                     } else {
                         name.and_then(|name| program.glyph_for_name(name.as_bytes()))
                     }
@@ -73,6 +92,64 @@ impl PdfFont {
                 }
             }
         }
+    }
+
+    /// Legacy selection stays infallible. A recovered descriptor validates its
+    /// actual selected glyph even when the consumer will not request outlines.
+    pub(super) fn decode_shape<'u>(
+        &self,
+        code: Code,
+        selector: u32,
+        name: Option<&Name>,
+        unicode: impl FnOnce() -> Option<&'u str>,
+    ) -> Result<GlyphShape> {
+        if self.selection_policy == SelectionPolicy::LegacyNotdef {
+            return Ok(self.shape(code, selector, name, unicode));
+        }
+        let missing = || {
+            Error::unsupported(
+                crate::features::DESCRIPTOR_GLYPH,
+                "recovered font has no proven source-named glyph",
+            )
+        };
+        let Source::Program {
+            program,
+            route: crate::selection::Route::Named,
+            ownership: Ownership::Embedded,
+            ..
+        } = &self.source
+        else {
+            return Err(missing());
+        };
+        let Mapping::Simple(simple) = &self.mapping else {
+            return Err(missing());
+        };
+        if self.kind != FontKind::TrueType || code.len != 1 {
+            return Err(missing());
+        }
+        let slot = usize::try_from(code.value)
+            .ok()
+            .and_then(|code| simple.selected.get(code))
+            .ok_or_else(missing)?;
+        let glyph = if let Some(selected) = slot.get() {
+            *selected
+        } else {
+            let selected = crate::selection::truetype_required_named(program, name);
+            if let Some(glyph) = selected {
+                // The original program carries the caller-derived per-outline
+                // budgets (ADR0016/0023). Failure is never cached as success or
+                // reduced to None. Concurrent misses/failed retries may repeat.
+                let _ = program.outline(glyph)?;
+            }
+            let _ = slot.set(selected);
+            selected
+        }
+        .ok_or_else(missing)?;
+        Ok(GlyphShape::Outline {
+            program: Arc::clone(program),
+            glyph,
+            matrix: program.font_matrix(),
+        })
     }
 
     /// The CID a code selects (9.7.6.3), given the CID its CMap maps it to.
@@ -115,7 +192,7 @@ impl PdfFont {
             Source::Program {
                 program, cid_map, ..
             } => cid_glyph(program, cid_map.as_ref(), cid).is_some(),
-            Source::CidSubstitute { .. } => true,
+            Source::CidSubstitute { .. } | Source::UnicodeSubstitute { .. } => true,
             Source::Type3 { .. } | Source::MetricsOnly => false,
         }
     }

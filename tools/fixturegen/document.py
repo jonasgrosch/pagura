@@ -550,6 +550,11 @@ def structural_recovery_cases():
                "A complete object followed immediately by another object header has an unambiguous missing terminator",
                oracle=RED, strict_valid=False, repairs=("object.end-missing",))
     objects = list(OBJECTS)
+    objects[3] = OBJECTS[3] + b"\r>>"
+    yield Case("object-stray-delimiter", document(objects), RENDER, ("object-boundary-recovery",),
+               "An unmatched >> between endstream and endobj cannot begin a value and holds no content",
+               oracle=RED, strict_valid=False, repairs=("object.stray-delimiter",))
+    objects = list(OBJECTS)
     objects[0] = b"<< /Type /Unrecognized /Pages 2 0 R >>"
     yield Case("catalog-type-invalid", document(objects), RENDER, ("catalog-type-recovery",),
                "An unknown Catalog Type can be inferred from its reference to a typed Pages root; known conflicting types remain errors",

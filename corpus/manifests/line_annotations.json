@@ -1,0 +1,785 @@
+{
+  "schema": 2,
+  "area": "line_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "line_annotations/horizontal-72",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/horizontal-72.pdf",
+      "sha256": "4d02f6f31da9bed43132ce75d7ef982a10ee44c4604cb42c7b2053a0de82d922",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/horizontal-72.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/stored-72",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/stored-72.pdf",
+      "sha256": "f35c79129b08e49842a67c2097d921f5e1e71518ded2e96195ecb1c70aade9ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/stored-72.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/vertical-72",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/vertical-72.pdf",
+      "sha256": "ea37607285debb070b2f6cdc4fa988082d04f1af03b313fef039ab7b3414bc5c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/vertical-72.ppm",
+      "oracle_sha256": "cf6e2cdd64b1a178c9b937d8b75803b5457ca98340a692ebd94c602350396c54",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/diagonal-72",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/diagonal-72.pdf",
+      "sha256": "b4f364da4ee4abf9db9b56e57ec1a103f7789726e12933f2b2c5820043ba15fc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/diagonal-72.ppm",
+      "oracle_sha256": "2d94e0f1fd17f510871675ad569aca2204cee201975dadf89819d530275899e6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/dash-72",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/dash-72.pdf",
+      "sha256": "72f5ef603aa2bb183e3403d65446cd739e0c7d021cec51c59cd9be8b154b6eab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/dash-72.ppm",
+      "oracle_sha256": "8e9992af735a5fcf78b08a69b237b17f2d752f55b24c2db9f356322ee2f02e01",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/horizontal-144",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/horizontal-144.pdf",
+      "sha256": "4d02f6f31da9bed43132ce75d7ef982a10ee44c4604cb42c7b2053a0de82d922",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/horizontal-144.ppm",
+      "oracle_sha256": "9ed78f1f4652ea5150d50371e97d4884422191a79907d62ef24cce7c38fe9bc2",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/stored-144",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/stored-144.pdf",
+      "sha256": "f35c79129b08e49842a67c2097d921f5e1e71518ded2e96195ecb1c70aade9ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/stored-144.ppm",
+      "oracle_sha256": "9ed78f1f4652ea5150d50371e97d4884422191a79907d62ef24cce7c38fe9bc2",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/vertical-144",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/vertical-144.pdf",
+      "sha256": "ea37607285debb070b2f6cdc4fa988082d04f1af03b313fef039ab7b3414bc5c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/vertical-144.ppm",
+      "oracle_sha256": "5b73fdbe0fa736f38e5d5d25d6dc86c53db444ea4efb73b53b172f7916d096b1",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/diagonal-144",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/diagonal-144.pdf",
+      "sha256": "b4f364da4ee4abf9db9b56e57ec1a103f7789726e12933f2b2c5820043ba15fc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/diagonal-144.ppm",
+      "oracle_sha256": "7d255700978054772af2f6634e260d23c818cfb330ba2dca6e6aea03cbd53505",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/dash-144",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/dash-144.pdf",
+      "sha256": "72f5ef603aa2bb183e3403d65446cd739e0c7d021cec51c59cd9be8b154b6eab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/dash-144.ppm",
+      "oracle_sha256": "30173d0ab542dadaad118e45db623aba68445fb599e8b1cad2511daca944bc46",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/reversed",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/reversed.pdf",
+      "sha256": "38bad840ef5e169f78a4ec666f724000120f627f753f92ad3c7c996632a950d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/reversed.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/rotated",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/rotated.pdf",
+      "sha256": "81f55a04c223e6744506addaf03445a6a8aac42e7aafdcdb2c20eb853a36d8bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/rotated.ppm",
+      "oracle_sha256": "f845b35e7e41299a3c929af75217679edc822205d045865619986be842d78c81",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/opacity",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/opacity.pdf",
+      "sha256": "6efc3fe4f9ef03e5390178732dfbdd91b4555677f119a406ebc0c88b7cf67996",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/opacity.ppm",
+      "oracle_sha256": "64e351103035bec87fe1751bab9994ace0cb1c0b42ef307cffe057aaf40b5d17",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/clipped",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/clipped.pdf",
+      "sha256": "6f4e74daa6f19add4f2f1c4fdd8d5e695e065dca19a816ba6cd34de00342b8c6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/clipped.ppm",
+      "oracle_sha256": "85e1b7f5a07e91257da33faffa2b4a66ae79c270aed6032d3157c284ea3bd66a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/zero-width",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/zero-width.pdf",
+      "sha256": "02857d8627cccbdf4d6587e9daf21351cf69fcf81f552a4e9406cc6d9e156d45",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/zero-width.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/no-color",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/no-color.pdf",
+      "sha256": "65dd8524d124b7bb10b4170d0d09f6c6696dc55f16e8df71e2b1569737e67687",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/no-color.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/point",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/point.pdf",
+      "sha256": "9fbc3964aed043b8526ba3c7b9542d26c7b22eb82946fe5479900926ee5806a4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/point.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/none-endings",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/none-endings.pdf",
+      "sha256": "94f59b5b4c40185ba9fa29609315dc04f8832dcca3c54ad7dfe2c828545da0ae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/none-endings.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/null-optionals",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/null-optionals.pdf",
+      "sha256": "02163153b2585394bb7f07e83a1438706ebcb5dd5c8ebf79b58b9c4df7375179",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/null-optionals.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/zero-leaders",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/zero-leaders.pdf",
+      "sha256": "29bae994f4e935cc0c8be6f30e1fd325cfcf4a8a6af7ed7f696ec986f24756e4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/zero-leaders.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/indirect",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/indirect.pdf",
+      "sha256": "1d959a0fc398ee283e7ab1761f303f3bbfa08c5c2057b9b986c805e8aa8bf52e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/indirect.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/stored-ignores-geometry",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/stored-ignores-geometry.pdf",
+      "sha256": "c8da987fe4e7e99cf004df73bea104063da5bfcd3989acfd675525954059e008",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/stored-ignores-geometry.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/l-missing",
+      "kind": "pdf",
+      "description": "Line geometry requires exactly four finite numbers",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/l-missing.pdf",
+      "sha256": "c7c272c0b13ef99af2ed8c79ccaabd6fe1422274a204d0b8914ee1a18f8730c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/l-null",
+      "kind": "pdf",
+      "description": "Line geometry requires exactly four finite numbers",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/l-null.pdf",
+      "sha256": "9e05eae3dad1bb0cb5139c2f9965fda258b6f5db1bcebe4423bdaab43e9468a0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/l-type",
+      "kind": "pdf",
+      "description": "Line geometry requires exactly four finite numbers",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/l-type.pdf",
+      "sha256": "86fbc85a6a2276409b6409c58fc5cea8df8a3bafd40a827e9ffeeca8da573195",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/l-short",
+      "kind": "pdf",
+      "description": "Line geometry requires exactly four finite numbers",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/l-short.pdf",
+      "sha256": "c394426c9c304eeb5f611fbd901c83d756499eb3bd60083bda61c51ba6293a6e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/l-long",
+      "kind": "pdf",
+      "description": "Line geometry requires exactly four finite numbers",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/l-long.pdf",
+      "sha256": "d17e881448047e00b643eb8967e74eeaa9167dcfc9596d654ef99972246139a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/l-number",
+      "kind": "pdf",
+      "description": "Line geometry requires exactly four finite numbers",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/l-number.pdf",
+      "sha256": "16dd9f095caabff170cf720a09a7294d4cad04303d5935963a6cdb7efa03a3bd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/extension-without-leader",
+      "kind": "pdf",
+      "description": "Line parameter types, cardinality and sign restrictions are validated",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/extension-without-leader.pdf",
+      "sha256": "f7563caa4be4833af6e67e5c62a7883a4e7b2d1fb8b151cfe21d8e5467554ed5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/negative-extension",
+      "kind": "pdf",
+      "description": "Line parameter types, cardinality and sign restrictions are validated",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/negative-extension.pdf",
+      "sha256": "3ccf04c64a266f736f93605635c3561f067cec2ec8c0ec2dda8b3e4964967aeb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/negative-offset",
+      "kind": "pdf",
+      "description": "Line parameter types, cardinality and sign restrictions are validated",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/negative-offset.pdf",
+      "sha256": "51c72c085c188bc2b5a3b1cf3d68b7995f1a3540512023571dc667aae856e15b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/leader-type",
+      "kind": "pdf",
+      "description": "Line parameter types, cardinality and sign restrictions are validated",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/leader-type.pdf",
+      "sha256": "ecb08c1fa963e7614325197b742e58957898f3ef199312fcb890e8940cc986c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/caption-type",
+      "kind": "pdf",
+      "description": "Line parameter types, cardinality and sign restrictions are validated",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/caption-type.pdf",
+      "sha256": "94603915754a55f03cbcefce748886c7030bb039a58e878d76acc39a21ceef70",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/endings-type",
+      "kind": "pdf",
+      "description": "Line parameter types, cardinality and sign restrictions are validated",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/endings-type.pdf",
+      "sha256": "6aac766821a4006cfdcce29f1d6bc0bd2984dde2de9dc7b1a2b2690387f6a6ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/endings-count",
+      "kind": "pdf",
+      "description": "Line parameter types, cardinality and sign restrictions are validated",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/endings-count.pdf",
+      "sha256": "0b5977eeb5a8ba231e681bc01bbb74d86a27dee4506bb55ad2d00e2e57b7efca",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/ending-type",
+      "kind": "pdf",
+      "description": "Line parameter types, cardinality and sign restrictions are validated",
+      "expected": "open",
+      "requirements": [
+        "content-line-appearances"
+      ],
+      "path": "corpus/generated/line_annotations/ending-type.pdf",
+      "sha256": "5ff6c9f56e8ea4bff3637fa3a46d58202d9d9362d79c14de5cc6376cb452f2f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "line_annotations/caption",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/caption.pdf",
+      "sha256": "f97ae9c1d9269e5a9e1a7a5402655bf14bb1151d560889eb5e436e41180cf418",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/caption.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/leader",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/leader.pdf",
+      "sha256": "a4f25cf709bbc24a63876374418343d1f123b9b73465c5ccc9c0ca650caca732",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/leader.ppm",
+      "oracle_sha256": "2061effb7c8f79d4f8cc12f0e94c1ff480c3c4ade14c1c76a18b156f41315ce2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/extension",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/extension.pdf",
+      "sha256": "99f98c74b3aab17ed15fa1d673bf5754e552bdac2bc08ee3b630b6c71664f8d2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/extension.ppm",
+      "oracle_sha256": "25b27c8f5c22e6c26c7418a505bb9248c0fcb029f9ca34295d741f18f4d8a393",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/offset",
+      "kind": "pdf",
+      "description": "Exact literal regions and convex clipping verify line coordinates, stroke and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/line_annotations/offset.pdf",
+      "sha256": "be7920b341f0de4cbc9e6f19698c52456eea5cfe1b1b39e07d90ce0a19654a53",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/offset.ppm",
+      "oracle_sha256": "00a900e7300272551b74b4f5a311e875a5adea53e94beae3dc4249082498e4d9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "line_annotations/arrow",
+      "kind": "pdf",
+      "description": "Analytic arrow outline replaces the old explicit refusal without changing the PDF bytes",
+      "expected": "render",
+      "requirements": [
+        "content-line-appearances",
+        "content-line-endings"
+      ],
+      "path": "corpus/generated/line_annotations/arrow.pdf",
+      "sha256": "75c41cfd87614b79b0b78739e82cebcbe04288102f633fc85e12ab08b68d54db",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/line_annotations/arrow.ppm",
+      "oracle_sha256": "3c6b93125c1b445d80239ba652586dd24f12e0d030b9d1e377f6842b677257c9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    }
+  ]
+}

@@ -1,8 +1,9 @@
-//! `extraction`: a content stream compiles into a display list and its
-//! positioned text in one interpretation (ADR 0014), or fails with a
-//! structured error, in both recovery modes. Characters, lines, words and
-//! glyph records stay inside the text they describe, every quad is finite,
-//! and search finds only ranges of the text that fold to the query.
+//! `extraction`: a content stream yields its positioned text through the
+//! text device (ADR 0014, ADR 0034), or fails with a structured error, in
+//! both recovery modes, and the same with or without a render context.
+//! Characters, lines, words and glyph records stay inside the text they
+//! describe, every quad is finite, search finds only ranges of the text that
+//! fold to the query, and extracting text leaves rendering unchanged.
 //!
 //! The input is a content stream on the fixed page of [`super::content`].
 //! Its Type 3 font `/F` maps code 97 to `a`; marked content with
@@ -11,14 +12,16 @@
 //! the extracted text is searched too, each with every option combination.
 
 use pagura::{
-    DisplayList, Document, OpenOptions, Recovery, RenderOptions, SearchOptions, TextPage,
+    Document, OpenOptions, Recovery, RenderContext, RenderOptions, SearchOptions, TextPage,
 };
 use pagura_extract::Character;
+use std::sync::Arc;
 
 /// The most characters of the extracted text searched for.
 const QUERY_CHARS: usize = 8;
 
-/// Compiles the page with and without extraction and checks the text.
+/// Extracts the page's text with and without a context, checks it, and
+/// renders the page through the context afterwards.
 ///
 /// # Panics
 ///
@@ -35,53 +38,46 @@ pub fn run(data: &[u8]) {
         else {
             continue;
         };
+        let context = pagura::render_context(Arc::new(document));
+        let document = context.document();
         let Some(page) = super::checked(document.page(0)) else {
             continue;
         };
-        // All three entry points use the facade's feature-selected provider.
-        let compiled = pagura::compile_page_with_text(&document, page);
-        let plain = pagura::compile_page(&document, page);
-        let text = pagura::text_page(&document, page);
-        match &compiled {
-            Ok((list, extracted)) => {
-                let plain = plain.as_ref();
-                assert!(plain.is_ok(), "only the extracting compilation succeeded");
-                if let Ok(plain) = plain {
-                    assert_same_list(list, plain);
-                }
-                assert!(
-                    text.as_ref().is_ok_and(|text| same_text(text, extracted)),
-                    "text_page differs from the extracting compilation"
-                );
-                assert_text(extracted);
-                for query in comment.iter().cloned().chain(text_query(extracted)) {
-                    search(extracted, &query);
-                }
-            }
-            Err(error) => {
-                assert!(
-                    text.as_ref().err() == Some(error),
-                    "text_page fails differently"
-                );
-                if let Err(plain) = &plain {
-                    super::assert_structured(plain);
-                }
+        // Both use the facade's feature-selected provider.
+        let text = pagura::text_page(document, page);
+        let shared = context.text_page(page);
+        assert_eq!(
+            text.as_ref().err(),
+            shared.as_ref().err(),
+            "extraction fails differently with a context"
+        );
+        if let (Ok(text), Ok(shared)) = (&text, &shared) {
+            assert!(same_text(text, shared), "the context's text differs");
+            assert_text(text);
+            for query in comment.iter().cloned().chain(text_query(text)) {
+                search(text, &query);
             }
         }
-        super::checked(compiled);
+        super::checked(text);
+        assert_same_rendering(&context);
         super::assert_diagnostics(&document.diagnostics(), recovery);
     }
 }
 
-/// Extraction leaves the display list unchanged: the same marks, rendering
-/// the same pixels.
-fn assert_same_list(list: &DisplayList, plain: &DisplayList) {
-    assert_eq!(list.len(), plain.len(), "extraction changed the mark count");
+/// Extraction leaves rendering unchanged: the page renders the same through
+/// the context that extracted its text and on its own.
+fn assert_same_rendering(context: &RenderContext) {
+    let document = context.document();
+    let Ok(page) = document.page(0) else {
+        return;
+    };
     let render = RenderOptions::default();
-    let pixels = |list: &DisplayList| list.render(&render).map(|p| p.data().to_vec());
-    let pixels = (pixels(list), pixels(plain));
-    assert!(pixels.0 == pixels.1, "extraction changed the rendered page");
-    super::checked(pixels.0);
+    let shared = context
+        .render_page(page, &render)
+        .map(|p| p.data().to_vec());
+    let alone = pagura::render_page(document, page, &render).map(|p| p.data().to_vec());
+    assert!(shared == alone, "extraction changed the rendered page");
+    super::checked(shared);
 }
 
 fn same_text(a: &TextPage, b: &TextPage) -> bool {

@@ -8,7 +8,7 @@ import struct
 import zlib
 from .model import Case, RENDER, OPEN, UNSUPPORTED
 from .pdf import document, stream, opaque_rectangles
-from . import image, jpx
+from . import image, jpx, jbig2
 
 AREA = "recovery"
 WHITE = (255, 255, 255)
@@ -137,6 +137,13 @@ def widget_cases():
     ]:
         objects=[b'<< /Subtype /Widget /Rect [1 1 7 7] '+field+b' >>']
         if parent: objects.append(parent)
+        if name == 'widget-rotated-border':
+            yield Case(name,page(b'',objects,extra=b'/Annots [5 0 R]'),RENDER,
+                       ('recovery-widgets',),
+                       'Same original input: quarter-turn of the square border is black on its four literal one-pixel inside strips',
+                       oracle=opaque_rectangles(16,16,[((1,1,6,1),(0,0,0)),((1,6,6,1),(0,0,0)),
+                                                    ((1,2,1,4),(0,0,0)),((6,2,1,4),(0,0,0))]))
+            continue
         yield Case(name,page(b'',objects,extra=b'/Annots [5 0 R]'),UNSUPPORTED if error=='unsupported' else OPEN,
                    ('recovery-widgets',),name,feature='annotation.appearance' if error=='unsupported' else None,
                    extra={} if error=='unsupported' else {'render_error':error})
@@ -280,14 +287,101 @@ def pattern_cases():
 
 
 def cases():
+    yield from jbig2_capability_cases()
+
+
+    yield from raw_jpx_cases()
     yield from pattern_cases()
     yield type3_case()
     yield from sampled_cases()
     yield from widget_cases()
     yield from transfer_cases()
     yield from codec_cases()
+    yield from type1_sparse_subr_cases()
     yield render('unclosed-graphics',b'q 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.graphics-unclosed',))
+    yield render('unclosed-marked',b'/P <</MCID 0>> BDC 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.marked-unclosed',))
+    # Printer PCLm output opens a sequence per strip and never closes one.
+    yield render('unclosed-marked-deep',b'/P BMC '*400+b'1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.marked-unclosed',))
     yield from type3_empty_bounds_cases()
+
+
+def jbig2_capability_cases():
+    """T.88 7.4.8.5: only the capability promises contradict complete data."""
+    reference = [[int(x == y or x == 7-y) for x in range(8)] for y in range(4)]
+    target = [[int(1 <= x <= 6 and 1 <= y <= 2) for x in range(8)] for y in range(4)]
+    first = jbig2._segment(2,36,1,jbig2.region(reference,jbig2.arithmetic(reference,2)))
+    refinement = jbig2._segment(3,42,1,jbig2.region(target,jbig2.refinement_payload(target,reference,1)),refs=(2,))
+    rectangles = [((x,3-y,1,1),BLACK) for y,row in enumerate(target) for x,value in enumerate(row) if value]
+    for name,flags in [('auxiliary',66),('refinement',96),('both',64)]:
+        data = jbig2._segment(1,48,1,jbig2._page_info(8,4,flags))+first+refinement
+        image_dict = b'/Type /XObject /Subtype /Image /Width 8 /Height 4 /BitsPerComponent 1 /ColorSpace /DeviceGray /Filter /JBIG2Decode'
+        yield render('jbig2-page-capabilities-'+name,b'8 0 0 4 0 0 cm /X Do',
+                     [stream(data,image_dict)],b'<< /XObject << /X 5 0 R >> >>',rectangles,
+                     requirement='recovery-jbig2-page-capabilities',repairs=('jbig2.page-capabilities',))
+
+    # T.88 Figures 14–15: SLTP shares the state whose reference centre
+    # alone is one. A later explicit dot exposes an incorrectly reused state.
+    centre = [[int(x==2 and y==2) for x in range(5)] for y in range(5)]
+    dot = [[int(x==4 and y==4) for x in range(5)] for y in range(5)]
+    prior = jbig2._segment(2,36,1,jbig2.region(centre,jbig2.arithmetic(centre,2)))
+    for template in (0,1):
+        refinement = jbig2._segment(3,42,1,jbig2.region(dot,jbig2.refinement_payload(dot,centre,template,typical=True)),refs=(2,))
+        data = jbig2._segment(1,48,1,jbig2._page_info(5,5,64))+prior+refinement
+        image_dict = b'/Type /XObject /Subtype /Image /Width 5 /Height 5 /BitsPerComponent 1 /ColorSpace /DeviceGray /Filter /JBIG2Decode'
+        yield render(f'jbig2-page-capabilities-prediction-centre-t{template}',b'5 0 0 5 0 0 cm /X Do',
+                     [stream(data,image_dict)],b'<< /XObject << /X 5 0 R >> >>',[((4,0,1,1),BLACK)],
+                     requirement='recovery-jbig2-page-capabilities',repairs=('jbig2.page-capabilities',))
+
+
+def raw_jpx_cases():
+    """PDF 7.4.9 framing repair; colour is stated by the dictionary, never guessed."""
+    resources = b'<< /XObject << /X 5 0 R >> >>'
+    for name,planes,space in [
+        ('gray',[[0,64,128,255]],b'/DeviceGray'),
+        ('rgb',[[255,0,0,255],[0,255,0,255],[0,0,255,255]],b'/DeviceRGB'),
+    ]:
+        data = jpx.codestream(planes,4,1,levels=0)
+        params = b'/Type /XObject /Subtype /Image /Width 4 /Height 1 /ColorSpace '+space+b' /Filter /JPXDecode'
+        colors = [(v,)*3 for v in planes[0]] if len(planes)==1 else list(zip(*planes))
+        yield render('jpx-raw-'+name,b'4 0 0 1 0 0 cm /X Do',[stream(data,params)],resources,
+                     [((x,0,1,1),c) for x,c in enumerate(colors)],
+                     requirement='recovery-jpx-codestream',repairs=('jpx.raw-codestream',))
+        for suffix,extra in [('no-space',params.replace(b'/ColorSpace '+space,b'')),
+                             ('opacity',params+b' /SMaskInData 1'),
+                             ('truncated',params)]:
+            encoded = data[:-1] if suffix=='truncated' else data
+            yield Case('jpx-raw-'+name+'-'+suffix,page(b'4 0 0 1 0 0 cm /X Do',[stream(encoded,extra)],resources),
+                       OPEN,('recovery-jpx-codestream',),'Raw JPX without sufficient metadata or complete data remains rejected',
+                       # Strict rejects repairable raw framing before it can
+                       # inspect the incomplete codestream. Repair still must
+                       # reject truncation instead of returning partial pixels.
+                       strict_valid=suffix!='truncated', extra={'render_error':'syntax'})
+
+    yield raw_jpx_subsampling_case()
+
+
+def raw_jpx_subsampling_case():
+    """7.4.9 explicit RGB is authoritative; T.800 B.2 locates each sample grid."""
+    planes = [[16*i for i in range(16)], [0,80,160,240], [20,220,40,200,60,180,80,160]]
+    steps = [(1,1),(2,2),(2,1)]
+    # Independently encode each component on its own native grid, then combine
+    # their level-zero packets under one SIZ/COD declaration (T.800 A.5.1/B.2).
+    streams = [jpx.codestream([values],4//dx,4//dy) for values,(dx,dy) in zip(planes,steps)]
+    first = streams[0]
+    coding, tile = first.index(b'\xff\x52'), first.index(b'\xff\x90')
+    size = struct.pack('>H8IH',0,4,4,0,0,4,4,0,0,3) + b''.join(bytes([7,dx,dy]) for dx,dy in steps)
+    header = b'\xff\x4f' + jpx.marker(0x51,size) + first[coding:tile]
+    packets = b''.join(data[data.index(b'\xff\x93')+2:-2] for data in streams)
+    encoded = header + jpx.marker(0x90,struct.pack('>HIBB',0,14+len(packets),0,1)) + b'\xff\x93' + packets + b'\xff\xd9'
+    params = b'/Type /XObject /Subtype /Image /Width 4 /Height 4 /ColorSpace /DeviceRGB /Filter /JPXDecode'
+    # The oracle uses only the declared source samples and integer grid
+    # locations, never decoder output. No sampling ratio implies YCbCr.
+    pixels = bytes(planes[c][(y//dy)*(4//dx)+(x//dx)]
+                   for y in range(4) for x in range(4) for c,(dx,dy) in enumerate(steps))
+    return render('jpx-raw-rgb-subsampled',b'4 0 0 4 0 0 cm /X Do',
+                  [stream(encoded,params)],b'<< /XObject << /X 5 0 R >> >>',size=4,
+                  oracle=b'P6\n4 4\n255\n'+pixels,
+                  requirement='recovery-jpx-codestream',repairs=('jpx.raw-codestream',))
 
 
 def type3_empty_bounds_cases():
@@ -323,3 +417,21 @@ def type3_empty_bounds_cases():
                    OPEN, ('recovery-type3',),
                    'Reversed bounds do not hide painting or later procedure errors',
                    extra={'render_error': 'syntax'})
+
+
+def type1_sparse_subr_cases():
+    """PDF9.9/Type1 6/8: unchanged rectangle outlines despite unused Subrs slots."""
+    from .font import sparse_subr_program
+    font = (b'<< /Type /Font /Subtype /Type1 /BaseFont /Fixture /FirstChar 65 /LastChar 65 '
+            b'/Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>')
+    descriptor = (b'<< /Type /FontDescriptor /FontName /Fixture /Flags 32 /FontBBox [0 0 100 200] '
+                  b'/ItalicAngle 0 /Ascent 200 /Descent 0 /CapHeight 200 /StemV 50 /FontFile 7 0 R >>')
+    resources = b'<< /Font << /F 5 0 R >> >>'
+    for name in ('tail','interior','nested','all-unused'):
+        for filled in (False,True):
+            program = sparse_subr_program(name,filled=filled)
+            marker = program.index(b'currentfile eexec\n')+len(b'currentfile eexec\n')
+            params = b'/Length1 %d /Length2 %d /Length3 0' % (marker,len(program)-marker)
+            yield render('type1-sparse-'+name+('-valid' if filled else ''),b'BT /F 20 Tf 4 4 Td (A) Tj ET',
+                         [font,descriptor,stream(program,params)],resources,[((4,4,2,4),BLACK)],
+                         requirement='font-type1-sparse-subrs',repairs=() if filled else ('font.type1-sparse-subrs',))

@@ -26,6 +26,13 @@ impl Point {
         self.x.is_finite() && self.y.is_finite()
     }
 
+    /// Whether this point satisfies scan conversion's existing coordinate
+    /// working range. The same policy checks both stored path coordinates
+    /// and mapped vertices; this is independent of any viewport or clip.
+    pub fn within_working_range(self) -> bool {
+        crate::flatten::bounded(self).is_ok()
+    }
+
     /// The dot product of two vectors.
     pub fn dot(self, other: Self) -> f64 {
         self.x * other.x + self.y * other.y
@@ -160,6 +167,20 @@ impl Transform {
         Self::new(x, 0.0, 0.0, y, 0.0, 0.0)
     }
 
+    /// Maps default user space to the view of `box_`: its displayed upper
+    /// left is the origin, y grows downwards and `rotation` turns clockwise.
+    /// This is unscaled; callers apply `UserUnit` and device resolution
+    /// separately (ISO 32000-2, 8.3.2.3 and Table 31).
+    pub fn page_view(box_: pagura_core::Rect, rotation: pagura_core::Rotation) -> Self {
+        use pagura_core::Rotation;
+        match rotation {
+            Rotation::None => Self::new(1.0, 0.0, 0.0, -1.0, -box_.x0(), box_.y1()),
+            Rotation::Clockwise90 => Self::new(0.0, 1.0, 1.0, 0.0, -box_.y0(), -box_.x0()),
+            Rotation::Clockwise180 => Self::new(-1.0, 0.0, 0.0, 1.0, box_.x1(), -box_.y0()),
+            Rotation::Clockwise270 => Self::new(0.0, -1.0, -1.0, 0.0, box_.y1(), box_.x1()),
+        }
+    }
+
     /// The transform that applies `self` first and then `next`.
     ///
     /// PDF's `cm` operator computes `CTM' = M × CTM`, which is
@@ -228,9 +249,83 @@ impl Mul<Transform> for Point {
     }
 }
 
+/// The lesser of two coordinates, in one comparison: `a` if `a < b`, else
+/// `b`.
+///
+/// `f64::min` also sets a NaN operand aside. WebAssembly has no instruction
+/// for that, so there each call costs three comparisons and three selects,
+/// and the raster's hot loops make many. For the raster's finite
+/// coordinates the two agree, up to the sign of a zero result. That sign
+/// `f64::min` leaves to the platform; this gives the same zero on every
+/// target.
+#[inline]
+pub(crate) fn lesser(a: f64, b: f64) -> f64 {
+    if a < b { a } else { b }
+}
+
+/// The greater of two coordinates, in one comparison: `a` if `a > b`, else
+/// `b`, as [`lesser`] for `f64::max`.
+#[inline]
+pub(crate) fn greater(a: f64, b: f64) -> f64 {
+    if a > b { a } else { b }
+}
+
+/// The sign of every turn of the closed polygon `points` when they certify
+/// a simple convex polygon: strict turns of one sign and exactly one
+/// revolution. The error guard excludes uncertain determinants, including
+/// underflowing ones, and collinear subdivision.
+pub(crate) fn convex_orientation(points: &[Point]) -> Option<f64> {
+    let mut sign = 0.0_f64;
+    let mut turns = 0;
+    let half = |p: Point| p.y > 0.0 || (p.y == 0.0 && p.x >= 0.0);
+    for i in 0..points.len() {
+        let p = points[if i == 0 { points.len() - 1 } else { i - 1 }];
+        let q = points[i];
+        let r = points[(i + 1) % points.len()];
+        let a = q - p;
+        let b = r - q;
+        turns += usize::from(half(a) != half(b));
+        let (left, right) = (a.x * b.y, a.y * b.x);
+        let cross = left - right;
+        if cross.abs() <= 8.0 * f64::EPSILON * (left.abs() + right.abs()) + f64::MIN_POSITIVE
+            || (sign != 0.0 && cross.signum() != sign)
+        {
+            return None;
+        }
+        sign = cross.signum();
+    }
+    (turns == 2).then_some(sign)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Point, Transform};
+    use super::{Point, Transform, convex_orientation, greater, lesser};
+
+    #[test]
+    fn lesser_and_greater_match_min_and_max_without_nan() {
+        let values = [
+            f64::MIN,
+            -1e12,
+            -1.5,
+            -f64::MIN_POSITIVE,
+            0.0,
+            f64::MIN_POSITIVE,
+            0.5,
+            1e12,
+            f64::MAX,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ];
+        for a in values {
+            for b in values {
+                assert_eq!(lesser(a, b).to_bits(), a.min(b).to_bits(), "{a} {b}");
+                assert_eq!(greater(a, b).to_bits(), a.max(b).to_bits(), "{a} {b}");
+            }
+        }
+        // Of two equal zeros, the second, on every target.
+        assert_eq!(lesser(-0.0, 0.0).to_bits(), 0.0_f64.to_bits());
+        assert_eq!(greater(0.0, -0.0).to_bits(), (-0.0_f64).to_bits());
+    }
 
     #[test]
     fn vector_operators_match_componentwise_arithmetic() {
@@ -262,6 +357,24 @@ mod tests {
     }
 
     #[test]
+    fn coordinate_query_keeps_the_scan_conversion_boundary() {
+        let limit = crate::flatten::MAX_COORDINATE;
+        for value in [0.0, limit.next_down(), limit, -limit, -limit.next_down()] {
+            assert!(Point::new(value, value).within_working_range());
+        }
+        for value in [
+            limit.next_up(),
+            -limit.next_up(),
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ] {
+            assert!(!Point::new(value, 0.0).within_working_range());
+            assert!(!Point::new(0.0, value).within_working_range());
+        }
+    }
+
+    #[test]
     fn then_applies_left_operand_first() {
         let scale = Transform::scale(2.0, 3.0);
         let shift = Transform::translate(10.0, 20.0);
@@ -283,5 +396,34 @@ mod tests {
         let back = point * transform * inverse;
         assert!((back.x - point.x).abs() < 1e-12 && (back.y - point.y).abs() < 1e-12);
         assert!(Transform::scale(0.0, 1.0).inverse().is_none());
+    }
+
+    #[test]
+    fn rejects_uncertain_concave_and_repeated_turns() {
+        let rectangle = [
+            Point::new(1.0, 1.0),
+            Point::new(7.0, 1.0),
+            Point::new(7.0, 7.0),
+            Point::new(1.0, 7.0),
+        ];
+        assert_eq!(convex_orientation(&rectangle), Some(1.0));
+        assert_eq!(
+            convex_orientation(&rectangle.into_iter().rev().collect::<Vec<_>>()),
+            Some(-1.0)
+        );
+        assert!(convex_orientation(&rectangle.repeat(2)).is_none());
+        let mut concave = rectangle.to_vec();
+        concave.insert(2, Point::new(2.0, 2.0));
+        assert!(convex_orientation(&concave).is_none());
+        let mut subdivided = rectangle.to_vec();
+        subdivided.insert(1, Point::new(4.0, 1.0));
+        assert!(convex_orientation(&subdivided).is_none());
+        let star: Vec<_> = (0..5)
+            .map(|i| {
+                let a = f64::from((i * 2) % 5) * std::f64::consts::TAU / 5.0;
+                Point::new(a.cos(), a.sin())
+            })
+            .collect();
+        assert!(convex_orientation(&star).is_none());
     }
 }

@@ -20,7 +20,7 @@
         "corpus/manifests/cms-signatures.json"
       ],
       "description": "Stream original signed ranges; select the signer certificate by issuer/serial or SKI; verify the content digest and DER attribute signature with RSA v1.5, PSS or ECDSA. Isolate signature errors and malformed certificate schemas. Report BER set ordering and weak SHA-1 separately.",
-      "gaps": "Issuer matching currently requires identical DER names. Certificate paths, algorithm strength acceptance beyond reporting SHA-1, revocation and modification analysis remain unchecked. Globally invalid ASN.1 cannot isolate an embedded certificate whose element boundaries cannot be parsed."
+      "gaps": "Issuer matching currently requires identical DER names. The PDF CMS stage does not establish path trust, revocation or algorithm-strength acceptance beyond reporting SHA-1. Host-anchored path/CRL validation exists separately in pagura-pki; structural modification analysis is supplied by pagura-document before CMS verification. Globally invalid ASN.1 cannot isolate an embedded certificate whose element boundaries cannot be parsed."
     },
     {
       "id": "cms-detached",
@@ -36,7 +36,7 @@
         "corpus/manifests/cms-signatures.json"
       ],
       "description": "Detached id-data and ESS signing-certificate v1/v2 signer binding (RFC 5035 sections 3-5); frame the CMS prefix and accept only zero PDF Contents padding. Link catalog Perms/DocMDP to its certification signature.",
-      "gaps": "Complete PAdES attribute semantics, profiles, policies and historical signature discovery remain outside this integrity stage."
+      "gaps": "Complete PAdES attribute semantics, profiles and policies remain outside this integrity stage. Historical signature discovery is implemented by pagura-document; encrypted/repaired or unconfirmed history can remain incomplete."
     },
     {
       "id": "cms-timestamp",

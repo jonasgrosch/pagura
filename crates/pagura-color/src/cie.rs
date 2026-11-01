@@ -4,8 +4,13 @@
 //! source white to D65, the sRGB matrix, gamut clipping and the sRGB
 //! transfer curve. This is an output-device choice, not ICC processing.
 
-use crate::features;
+mod bounds;
+
+use crate::affine::{Affine, Undecided};
 use pagura_core::{Error, Result};
+
+pub(crate) use bounds::{MARGIN, power_bounds, power_cubic};
+pub use bounds::{encode_bounds, encode_estimate};
 
 /// A 3×3 matrix applied to column vectors, row by row.
 pub type Matrix = [[f64; 3]; 3];
@@ -105,21 +110,76 @@ pub fn lab_to_xyz([l, a, b]: [f64; 3], white: [f64; 3]) -> [f64; 3] {
 
 /// Converts D65-relative XYZ to gamut-clipped, encoded sRGB.
 pub fn xyz_to_srgb(xyz: [f64; 3]) -> [f64; 3] {
-    map(XYZ_TO_LINEAR_SRGB, xyz).map(|v| {
-        let v = v.clamp(0.0, 1.0);
-        if v <= 0.003_130_8 {
-            12.92 * v
-        } else {
-            1.055 * v.powf(1.0 / 2.4) - 0.055
-        }
+    linear_srgb(xyz).map(encode)
+}
+
+/// Converts D65-relative XYZ to gamut-clipped linear sRGB, which [`encode`]
+/// takes to encoded sRGB.
+pub fn linear_srgb(xyz: [f64; 3]) -> [f64; 3] {
+    map(XYZ_TO_LINEAR_SRGB, xyz).map(|v| v.clamp(0.0, 1.0))
+}
+
+/// Encloses [`map`] (see [`crate::affine`]).
+pub(crate) fn enclose_map(matrix: Matrix, value: [Affine; 3]) -> [Affine; 3] {
+    matrix.map(|row| {
+        value[0]
+            .scale(row[0])
+            .add(value[1].scale(row[1]))
+            .add(value[2].scale(row[2]))
     })
 }
 
+/// Encloses [`linear_srgb`].
+pub(crate) fn enclose_linear_srgb(xyz: [Affine; 3]) -> Result<[Affine; 3], Undecided> {
+    let [r, g, b] = enclose_map(XYZ_TO_LINEAR_SRGB, xyz);
+    Ok([r.clamp(0.0, 1.0)?, g.clamp(0.0, 1.0)?, b.clamp(0.0, 1.0)?])
+}
+
+/// The branch [`encode`] takes for every value of `v`: the enclosure of
+/// the encoded value where every value is scaled, `None` where every value
+/// is raised to the power.
+pub(crate) fn enclose_encode(v: Affine) -> Result<Option<Affine>, Undecided> {
+    if v.high() <= LINEAR_LIMIT {
+        Ok(Some(v.scale(12.92)))
+    } else if v.low() > LINEAR_LIMIT {
+        Ok(None)
+    } else {
+        Err(Undecided::Split {
+            form: v,
+            at: LINEAR_LIMIT,
+            count: 1,
+        })
+    }
+}
+
+/// The sRGB transfer function (IEC 61966-2-1) of a linear value in `0..=1`.
+pub fn encode(v: f64) -> f64 {
+    if v <= LINEAR_LIMIT {
+        12.92 * v
+    } else {
+        affine(v.powf(1.0 / 2.4))
+    }
+}
+
+/// The largest linear value [`encode`] scales instead of raising.
+const LINEAR_LIMIT: f64 = 0.003_130_8;
+
+/// The encoding of a power `p = v^(1/2.4)`: increasing in `p`, also as
+/// rounded arithmetic.
+fn affine(p: f64) -> f64 {
+    1.055 * p - 0.055
+}
+
 /// A CIE-based PDF colour space (8.6.5.2–8.6.5.4) after parameter validation.
+///
+/// Diffuse-black metadata is retained without altering the XYZ equations.
+/// Bradford adaptation and sRGB output use disabled black-point compensation,
+/// matching the processor's `UseBlackPtComp /OFF` and `Default` policy.
 #[derive(Debug, Clone)]
 pub struct Calibrated {
     model: Model,
     white: [f64; 3],
+    black: [f64; 3],
     adaptation: Matrix,
 }
 
@@ -140,22 +200,21 @@ impl Calibrated {
         if gamma <= 0.0 {
             return Err(Error::syntax("CalGray Gamma must be positive"));
         }
-        Self::new(Model::Gray { gamma }, white)
+        Self::new(Model::Gray { gamma }, white, black)
     }
 
     /// A CalRGB space (8.6.5.3). `matrix` maps linear components to XYZ,
     /// row by row (the transpose of PDF's column-major `Matrix` array).
     ///
     /// # Errors
-    /// `Syntax` for an invalid white point, a negative black point or a
-    /// nonpositive gamma; `Unsupported` for a nonzero black point, which
-    /// needs black-point compensation; `Limit` for a singular white point.
+    /// `Syntax` for an invalid white point, a negative or nonfinite black
+    /// point, or a nonpositive gamma; `Limit` for a singular white point.
     pub fn rgb(white: [f64; 3], black: [f64; 3], gamma: [f64; 3], matrix: Matrix) -> Result<Self> {
         check_points(white, black)?;
         if gamma.iter().any(|&v| v <= 0.0) {
             return Err(Error::syntax("CalRGB Gamma must be positive"));
         }
-        Self::new(Model::Rgb { gamma, matrix }, white)
+        Self::new(Model::Rgb { gamma, matrix }, white, black)
     }
 
     /// A Lab space (8.6.5.4); `range` is `[a_min, a_max, b_min, b_max]`.
@@ -167,15 +226,29 @@ impl Calibrated {
         if range[0] > range[1] || range[2] > range[3] {
             return Err(Error::syntax("invalid Lab range"));
         }
-        Self::new(Model::Lab { range }, white)
+        Self::new(Model::Lab { range }, white, black)
     }
 
-    fn new(model: Model, white: [f64; 3]) -> Result<Self> {
+    fn new(model: Model, white: [f64; 3], black: [f64; 3]) -> Result<Self> {
         Ok(Self {
             model,
             white,
+            black,
             adaptation: adaptation(white)?,
         })
+    }
+
+    /// The declared diffuse black point in CIE XYZ (Tables 62–64).
+    ///
+    /// This source metadata does not alter the component-to-XYZ equations.
+    /// Conversion uses the processor's disabled black-point-compensation
+    /// policy, also required by `UseBlackPtComp /OFF` (8.6.5.9). Explicit
+    /// compensation requests are rejected by the interpreter.
+    /// The PDF interpreter separately bounds WhitePoint and BlackPoint array
+    /// entries to its existing `1e6` numeric working range. These standalone
+    /// constructors accept finite nonnegative black-point metadata.
+    pub fn black_point(&self) -> [f64; 3] {
+        self.black
     }
 
     /// The number of colour components: 1 for CalGray, 3 otherwise.
@@ -200,7 +273,14 @@ impl Calibrated {
     }
 
     /// Converts components, clipped to the space's ranges, to encoded sRGB.
+    ///
+    /// Black-point compensation is disabled; see [`Self::black_point`].
     pub fn convert(&self, components: &[f64]) -> [f64; 3] {
+        self.linear(components).map(encode)
+    }
+
+    /// The gamut-clipped linear sRGB that [`Self::convert`] encodes.
+    pub fn linear(&self, components: &[f64]) -> [f64; 3] {
         let n = |i: usize| components.get(i).copied().unwrap_or(0.0);
         let xyz = match self.model {
             Model::Gray { gamma } => self.white.map(|w| w * n(0).clamp(0.0, 1.0).powf(gamma)),
@@ -217,7 +297,7 @@ impl Calibrated {
                 self.white,
             ),
         };
-        xyz_to_srgb(map(self.adaptation, xyz))
+        linear_srgb(map(self.adaptation, xyz))
     }
 }
 
@@ -226,14 +306,11 @@ fn check_points(white: [f64; 3], black: [f64; 3]) -> Result<()> {
     if white[0] <= 0.0 || white[1] != 1.0 || white[2] <= 0.0 {
         return Err(Error::syntax("invalid CIE white point"));
     }
+    if black.iter().any(|v| !v.is_finite()) {
+        return Err(Error::syntax("nonfinite CIE black point"));
+    }
     if black.iter().any(|&v| v < 0.0) {
         return Err(Error::syntax("negative CIE black point"));
-    }
-    if black != [0.0; 3] {
-        return Err(Error::unsupported(
-            features::BLACK_POINT,
-            "nonzero CIE black point is not implemented",
-        ));
     }
     Ok(())
 }
@@ -272,13 +349,48 @@ mod tests {
         assert!(Calibrated::gray(white, [0.0; 3], 0.0).is_err());
         assert!(Calibrated::lab(white, [0.0; 3], [1.0, 0.0, 0.0, 1.0]).is_err());
         assert!(Calibrated::lab([0.9505, 0.9, 1.089], [0.0; 3], [0.0; 4]).is_err());
-        let error = Calibrated::gray(white, [0.1, 0.0, 0.0], 1.0).unwrap_err();
-        assert_eq!(error.feature(), Some(features::BLACK_POINT));
+        assert!(Calibrated::gray(white, [-0.1, 0.0, 0.0], 1.0).is_err());
         let lab = Calibrated::lab(white, [0.0; 3], [-100.0, 100.0, -100.0, 100.0]).unwrap();
         assert_eq!(lab.components(), 3);
         assert_eq!(lab.lab_range(), Some([-100.0, 100.0, -100.0, 100.0]));
         // Lab white is sRGB white after adaptation.
         let [r, g, b] = lab.convert(&[100.0, 0.0, 0.0]);
         assert!(r > 0.999 && g > 0.999 && b > 0.999, "{r} {g} {b}");
+    }
+
+    #[test]
+    fn black_point_metadata_preserves_disabled_compensation() {
+        let white = [0.96422, 1.0, 0.82521];
+        let matrix = [[0.5, 0.3, 0.2], [0.2, 0.7, 0.1], [0.0, 0.1, 0.9]];
+        for black in [[0.1; 3], white, [50.0; 3], [0.2, 1.0, 1.7], [f64::MAX; 3]] {
+            let gray = Calibrated::gray(white, black, 2.2).unwrap();
+            let rgb = Calibrated::rgb(white, black, [1.5, 2.0, 2.5], matrix).unwrap();
+            let lab = Calibrated::lab(white, black, [-100.0, 100.0, -100.0, 100.0]).unwrap();
+            assert_eq!(gray.black_point(), black);
+            assert_eq!(rgb.black_point(), black);
+            assert_eq!(lab.black_point(), black);
+            let gray_zero = Calibrated::gray(white, [0.0; 3], 2.2).unwrap();
+            let rgb_zero = Calibrated::rgb(white, [0.0; 3], [1.5, 2.0, 2.5], matrix).unwrap();
+            let lab_zero =
+                Calibrated::lab(white, [0.0; 3], [-100.0, 100.0, -100.0, 100.0]).unwrap();
+            for values in [[0.0; 3], [0.18, 0.5, 0.75], [1.0; 3], [-1.0, 2.0, 0.5]] {
+                assert_eq!(gray.convert(&values), gray_zero.convert(&values));
+                assert_eq!(rgb.convert(&values), rgb_zero.convert(&values));
+                assert_eq!(lab.convert(&values), lab_zero.convert(&values));
+            }
+        }
+    }
+
+    #[test]
+    fn black_point_rejects_negative_and_nonfinite_metadata() {
+        let white = [0.96422, 1.0, 0.82521];
+        for invalid in [-0.1, f64::NEG_INFINITY, f64::INFINITY, f64::NAN] {
+            for channel in 0..3 {
+                let mut black = [0.0; 3];
+                black[channel] = invalid;
+                let error = Calibrated::gray(white, black, 1.0).unwrap_err();
+                assert_eq!(error.kind, pagura_core::ErrorKind::Syntax);
+            }
+        }
     }
 }
