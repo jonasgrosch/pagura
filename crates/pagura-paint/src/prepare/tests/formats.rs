@@ -105,6 +105,8 @@ fn normal_cmyk_pages_store_f32_within_a_level() {
     let red = b.rgb([1.0, 0.0, 0.0]);
     let converted = b.transparency(PAGE, rgb, mark(half));
     b.rect(converted, [2.0, 0.5, 4.0, 3.5], red, mark(StateId(0)));
+    // Overlapping members retain the conversion buffer after one-member folding.
+    b.rect(converted, [2.5, 1.0, 5.0, 3.75], red, mark(half));
     assert_eq!(formats(&b), [Format::F32, Format::F64]);
     check(&b);
     // Another blend mode keeps the page F64.
