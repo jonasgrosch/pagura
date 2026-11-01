@@ -17,7 +17,7 @@
     ".github/workflows/null-annotation-parity.yml": "abcd9c6530885f0a10f87ff38197f76206f85683c35be6fe092ccb437a6052e1",
     "benchmarks/policy.json": "3e8c6abd6562ce1d4f3ba1e4c369739811341cc1f5dca47d966f335761b5358d",
     "benchmarks/probes/calculator-branch-fixtures.json": "ddf8731883b689e8a41d2c7aa694d3baa218b95821c9d5ac8424324ac44b32ed",
-    "benchmarks/probes/compatibility-gap-fixtures.json": "f14c9c61e2d9880bcdba18cb58a0a9ca924dc6a5061bf78902bb4dc33361c7f6",
+    "benchmarks/probes/compatibility-gap-fixtures.json": "f3eea9b0ae8e6130890d665b4cb4811f3f8b4c906e29e835f29c12539bd25087",
     "benchmarks/probes/image-repair-cases.json": "4d540a51a0489c68c4391687333b30ff1904fac85d69d36c66a1697ef74ccfe2",
     "benchmarks/probes/null-annotation-fixtures.json": "d4e3d179340e7835032cc219e5f1ee7b39b7e6069f1ad338679ed0334f6dd902",
     "corpus/manifests/annotation_compat.json": "91f6e05cb4d9ad220e2d6be0f41b7d86047b839ec46f27430562d15bc2cd6323",
@@ -352,7 +352,7 @@
     "crates/pagura/tests/jbig2_unused_tables.rs": "625839e875b02468dc745359dcc4508e19420f9b26b2cce17f8d8215b8332ce6",
     "docs/ANNOTATION_APPEARANCES.md": "9e76fcd0cfbe34fabc12917b3584eabf55c8676dbb900c8cda1e9221d4cbcb97",
     "docs/RECOVERY.md": "8d38ca470caaa0411dfac3d747c9ea54d5ebe09c6ba244b94868599e66fc9c54",
-    "docs/STATUS.md": "75806a9a49c79a1e80aca8cdd099ea90f78625f6eca588e3b6df2db26dacc7e3",
+    "docs/STATUS.md": "7fb859f9203cabc31a60288d7b1f329b099a7da6e1e422552a31168ddd08c6dc",
     "docs/adr/0003-reported-recovery.md": "024dab6a9d1896d777371f5efdc64226ed451e814da111827446d64ac062e377",
     "docs/adr/0004-rendering-pipeline.md": "6e7f6b5833ff91c81cee18032445b9d88de0142d0822ef385fe8873b3e6ac1c7",
     "docs/adr/0009-text-and-fonts.md": "f54752ed4bf4325cea780c80c7fd1e5fceb1741c3ac62e31c5360d75a296ee19",
@@ -443,14 +443,14 @@
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
-    "corpus/manifests/original_records.json": "0eae4a4742d9a996209ca92dbcb2990fe17d19ffcdce0926eb0d2f1b99576b0f",
+    "corpus/manifests/original_records.json": "3c2fa9d2fd8462470858e2d5ad558ded8083d41270d865c0711ba193a4bad36c",
     "crates/pagura-document/src/builder.rs": "cfb221d7ad92acb21c46578729c4efce22645260221dd4f406ab56da9dbde9a6",
     "crates/pagura-document/src/xref.rs": "2ab4210836ea3e893b0a6a74935fce7728686db854e1cb0355d93ff6661d9f67",
     "crates/pagura-document/src/xref/original.rs": "34cc937041a26ea7348195af15cb34c99f2c64cb7ec0cbc6c3d8a8d30debb04b",
     "crates/pagura-document/src/xref/rebuild.rs": "cb541aa3fdf937c8914e0d0c98a0baa30e613c542178cd76980eef4d23e100aa",
-    "crates/pagura-document/tests/original_records.rs": "54d13046970222c02b39f8ad65c855fccb00bad2bd873ff1d989e3045ced29e2",
-    "crates/pagura/tests/api/original_records.rs": "2ee93f4fe04ee21fa82eed8cff3b8649c22425fc018206c1a1b74f5b6f2aa250",
-    "tools/fixturegen/original_records.py": "f44013bb020eb8817dfcf87e66a9993b78919a382fa69622fc2289c2efbad50b"
+    "crates/pagura-document/tests/original_records.rs": "ee093c0b9810bcbd512ba055fad8a4c09714878c8af74b08843749a636750ffe",
+    "crates/pagura/tests/api/original_records.rs": "16dda31769c9cbbd3c897aeaf8ea2136480ccc31dcdbb4335652f3cb7abe0588",
+    "tools/fixturegen/original_records.py": "af99f97d022cc9fa574327d2c30233e5117ee2e3a670a6dfd18f635326524f32"
   },
   "capabilities": [
     {
@@ -637,7 +637,8 @@
         "original_records/leading-junk-physical-offsets",
         "original_records/leading-junk-relative-offsets",
         "original_records/missing-pdf-header",
-        "original_records/all-free-size-coverage"
+        "original_records/all-free-size-coverage",
+        "original_records/unknown-pdf-header"
       ],
       "comparisons": {
         "pdfium": "unprobed",

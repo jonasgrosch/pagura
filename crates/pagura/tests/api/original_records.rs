@@ -40,6 +40,7 @@ fn complete_pixels_preserve_admitted_and_declined_stream_recovery() {
         "header-extra-format",
         "leading-junk-physical-offsets",
         "leading-junk-relative-offsets",
+        "missing-pdf-header",
         "all-free-size-coverage",
     ] {
         let original = fixture("original_records", &format!("{name}.pdf"));
@@ -103,6 +104,36 @@ fn scalar_admission_does_not_make_a_repaired_source_an_incremental_base() {
         ErrorKind::Unsupported(features::REPAIRED)
     );
     assert_eq!(doc.original_bytes(), original);
+}
+
+#[test]
+fn absent_header_composes_without_granting_original_record_authority() {
+    let bytes = fixture("original_records", "missing-pdf-header.pdf");
+    let strict = document(bytes.clone(), Recovery::Strict).unwrap_err();
+    assert_eq!(strict.kind, ErrorKind::Syntax);
+    assert_eq!(strict.position, pagura::Position::File(0));
+    assert_eq!(strict.object, None);
+    assert_eq!(
+        strict.repair.map(pagura::Repair::as_str),
+        Some("file.header-absent")
+    );
+    assert_eq!(
+        strict.message,
+        "missing PDF header before a complete leading Catalog object; no version inferred"
+    );
+    let repaired = document(bytes.clone(), Recovery::Repair).unwrap();
+    assert!(!repaired.contains_object(pagura::ObjectId::new(5, 0)));
+    assert_eq!(repaired.original_bytes(), bytes);
+
+    for mode in [Recovery::Strict, Recovery::Repair] {
+        let error =
+            document(fixture("original_records", "unknown-pdf-header.pdf"), mode).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(error.message, "missing or unknown PDF header");
+        assert_eq!(error.position, pagura::Position::File(0));
+        assert_eq!(error.object, None);
+        assert_eq!(error.repair, None);
+    }
 }
 
 #[test]

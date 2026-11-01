@@ -1861,6 +1861,7 @@
     "original_records/leading-junk-physical-offsets",
     "original_records/leading-junk-relative-offsets",
     "original_records/missing-pdf-header",
-    "original_records/all-free-size-coverage"
+    "original_records/all-free-size-coverage",
+    "original_records/unknown-pdf-header"
   ]
 }
