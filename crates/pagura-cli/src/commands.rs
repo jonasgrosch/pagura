@@ -243,20 +243,42 @@ fn convert_ppm(
     path: &Path,
 ) -> Result<Stage, Failure> {
     let page_started = Instant::now();
+    let source = context.document().page(page)?;
+    let size = device_size(source, options)?;
+    if u64::from(size.0) * u64::from(size.1) <= SMALL_RGB_CHUNK_BYTES as u64 / 3 {
+        convert_ppm_buffer::<SMALL_RGB_CHUNK_BYTES>(
+            context,
+            source,
+            options,
+            path,
+            size,
+            page_started,
+        )
+    } else {
+        convert_ppm_buffer::<RGB_CHUNK_BYTES>(context, source, options, path, size, page_started)
+    }
+}
+
+// Keep each packing buffer in its own frame: dispatch and small conversions
+// must not probe the larger buffer's stack pages before selecting a size.
+#[inline(never)]
+fn convert_ppm_buffer<const N: usize>(
+    context: &RenderContext,
+    source: &pagura::Page,
+    options: &RenderOptions,
+    path: &Path,
+    size: (u32, u32),
+    page_started: Instant,
+) -> Result<Stage, Failure> {
+    const { assert!(N != 0 && N.is_multiple_of(3)) };
     let emit_started = Instant::now();
-    #[expect(
-        clippy::large_stack_arrays,
-        reason = "one fixed 48 KiB output packing buffer, independent of input dimensions"
-    )]
-    let mut rgb = [0; RGB_CHUNK_BYTES];
+    let mut rgb = [0; N];
     let mut used = 0;
     let mut file: Option<File> = None;
     let mut emit = emit_started.elapsed();
     // Each page is visited once: its scene is dropped after rendering
     // instead of being stored.
-    let source = context.document().page(page)?;
     let scene = context.record(source)?;
-    let size = device_size(source, options)?;
     let rendered = context.render_bands(
         &scene,
         options,
@@ -298,7 +320,11 @@ fn convert_ppm(
     let render = page_started.elapsed().saturating_sub(emit);
     rendered??;
     finished?;
-    Ok(Stage { page, render, emit })
+    Ok(Stage {
+        page: source.index(),
+        render,
+        emit,
+    })
 }
 
 /// PNG currently collects a complete surface, then encodes before creating output.
@@ -334,9 +360,11 @@ fn image_path(directory: &Path, page: usize, format: ImageFormat) -> std::path::
     directory.join(format!("page-{:04}.{}", page + 1, format.extension()))
 }
 
-/// The sole fixed packing buffer, shared across bands and independent of
-/// page dimensions. Its complete chunks are written without a second copy.
+/// The normal packing buffer, shared across bands. Small outputs select the
+/// smaller fixed bound below; complete chunks need no second copy.
 const RGB_CHUNK_BYTES: usize = 3 * 16_384;
+/// A complete output of at most 4096 pixels still needs only one final write.
+const SMALL_RGB_CHUNK_BYTES: usize = 3 * 4096;
 
 /// Binary PPM (P6) starts with the dimensions of the complete page.
 fn write_ppm_header(out: &mut impl Write, (width, height): (u32, u32)) -> std::io::Result<()> {
@@ -345,10 +373,10 @@ fn write_ppm_header(out: &mut impl Write, (width, height): (u32, u32)) -> std::i
 
 /// Packs already-quantized opaque output, with no second compositing or
 /// rounding step. The CLI selects opaque white for PPM before rendering.
-fn write_rgb(
+fn write_rgb<const N: usize>(
     out: &mut impl Write,
     rgba: &[u8],
-    rgb: &mut [u8; RGB_CHUNK_BYTES],
+    rgb: &mut [u8; N],
     used: &mut usize,
 ) -> std::io::Result<()> {
     let (mut pixels, rest) = rgba.as_chunks::<4>();
@@ -376,9 +404,9 @@ fn write_rgb(
 }
 
 /// Drains only on explicit success paths. There is no Drop-time writer.
-fn drain_rgb(
+fn drain_rgb<const N: usize>(
     out: &mut impl Write,
-    rgb: &[u8; RGB_CHUNK_BYTES],
+    rgb: &[u8; N],
     used: &mut usize,
 ) -> std::io::Result<()> {
     if *used != 0 {
