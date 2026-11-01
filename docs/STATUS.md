@@ -1,5 +1,15 @@
 # Capability and evidence status
 
+This source combines certified opaque-black tiling, calibrated BlackPoint metadata
+with compensation disabled, unmatched-EMC recovery, literal-null annotation
+members, checked Minion CID source-Unicode fallback, complete single-page JBIG2
+packaging repair, bounded Type 4 calculator branch proofs, complete inline-EI
+framing and declared-precision JP2 palette-padding recovery. Component evidence
+retains its exact source provenance. This selected union requires its own
+accuracy, all-page, parity, cost, memory and exact-head CI qualification; no
+aggregate gain follows by summing branches. Referenced null annotations remain
+errors in this source.
+
 Pagura has substantial rendering, reading, form-filling and incremental-writing
 support. It is **not a complete PDF implementation**, and feature parity with
 PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics has not been established.
@@ -16,12 +26,41 @@ they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
-43 capability families, all 90 literal tags reviewed, and all 335 requirement IDs assigned.
+43 capability families, all 90 literal tags reviewed, and all 368 requirement IDs assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.
 
+Unmatched marked-content endings (`EMC`) are reported no-ops in Repair,
+retaining visibility and structure within the current scope. Strict rejects;
+operation limits and subsequent syntax/resource failures remain authoritative.
+See [recovery policy](RECOVERY.md).
+
 ## Capability matrix
+
+JBIG2 also reports `jbig2.unused-aggregation-table` for the unused Huffman
+aggregation selector when aggregation is disabled (T.88 7.4.2.1.1). Its table
+remains parsed, validated and budgeted; genuine aggregation, arithmetic coding,
+other flag errors and malformed references retain their checks. Only the first
+occurrence in decoding order is retained, including correct Globals identity.
+This narrow policy does not allow file envelopes, terminal page/file segments,
+missing arithmetic markers or page-information reordering. New literal-matrix
+controls cover valid twins, used aggregation and subsequent faults; broader
+codec parity remains unestablished.
+
+JBIG2 viewing reports `jbig2.page-capabilities` when complete regions contradict
+the page's auxiliary/refinement capability bits (T.88 7.4.8.5). Strict mode
+rejects the same input. This repair changes neither region validation nor
+resource limits; it does not establish broader JBIG2 compatibility.
+Refinement line prediction reuses the template state with only its reference
+centre set (T.88 6.3.5.6, Figures 14–15). The decoder and independent encoder
+now map that symbolic state through their own template bit order; geometric
+expected bitmaps remain unchanged when the TPGR streams are re-encoded.
+
+Raw JPEG 2000 codestreams in PDF images require the reported
+`jpx.raw-codestream` viewing repair, an explicit PDF colour space and no
+embedded-opacity request. Strict mode requires full JPX framing (7.4.9).
+This does not infer missing colour/channel metadata or extend codec coverage.
 
 | Area | Implemented | Remaining boundary |
 |---|---|---|
@@ -29,14 +68,14 @@ The source check detects stale evidence and missing ownership, not runtime parit
 | Core and document structure | Bounded syntax, generation-aware objects, classic/xref streams, object streams, hybrid files, incremental revisions, lazy object caches, page trees and reported reconstruction/repair | Broader malformed-file compatibility needs current corpus evidence. Opening requires complete bytes; linearization hints and range loading are not implemented. External-file streams remain unsupported. |
 | Filters | ASCIIHex, ASCII85, RunLength, LZW, Flate, PNG/TIFF predictors and bounded decoding; explicit raw-DEFLATE entry point and reported compatibility repairs | Image filters dispatch to `pagura-image`; their tags in the generic filter crate do not mean the engine lacks those codecs. |
 | Password encryption | Standard handler R2–R6, RC4/AES, crypt filters, permissions consistency checks and Unicode 3.2 SASLprep for R6; CLI legacy PDFDocEncoding password conversion | Adobe public-key security handlers; encrypted historical-revision access; encryption on write. The browser password path does not provide the CLI's legacy text conversion. |
-| Font programs | TrueType/OpenType glyf; cmap 0/2/4/6/10/12/13 and post 1/2/3; CFF Expert/ExpertSubset charsets, FDSelect 0/3/4; CFF2 default-instance charstring and Private DICT blends; static Type 1/PFA/PFB programs | Nondefault variations, CFF2 Font DICT matrices, cmap 8, other post formats, collections, general PostScript, hybrid/synthetic Type 1, synthetic CFF, CFF CharstringType 1, standalone CIDFont programs and nonhorizontal Type 1 `sbw`. Hints are not executed. Primary-text verification remains incomplete for some implemented formats. See the [font inventory](../crates/pagura-font/README.md). |
-| PDF text/font binding | Simple, Type 3 and CID fonts; embedded and predefined CMaps, ToUnicode, widths and vertical metrics; bundled standard-14 substitutes and opt-in CJK substitutes (`cjk-fonts`); shared document font resources | Vertical substituted CID fonts, unknown symbolic encodings/collections and executable CMap programs. Embedded vertical fonts are supported. Substitution coverage depends on the provider and build features. |
+| Font programs | TrueType/OpenType glyf; cmap 0/2/4/6/10/12/13 and post 1/2/3; CFF Expert/ExpertSubset charsets, FDSelect 0/3/4; CFF2 default-instance charstring and Private DICT blends; static Type 1/PFA/PFB programs, with reported retention of unused sparse Subrs slots; bounded indexed/named TTC v1/v2 faces with PDF selected-family validation | Nondefault variations, CFF2 Font DICT matrices, cmap 8, other post formats, unknown collection versions and unresolved/ambiguous face names, general PostScript, hybrid/synthetic Type 1, synthetic CFF, CFF CharstringType 1, standalone CIDFont programs and nonhorizontal Type 1 `sbw`. Hints are not executed. Primary-text verification remains incomplete for some implemented formats. See the [font inventory](../crates/pagura-font/README.md). |
+| PDF text/font binding | Simple, Type 3 and CID fonts; embedded and predefined CMaps, ToUnicode, widths and vertical metrics; bundled standard-14 substitutes and opt-in CJK substitutes (`cjk-fonts`); shared document font resources; reported PDF collection-name policy and intact CIDFontType0 program-binding repairs (Strict rejects); checked horizontal MinionPro CID fallback through complete source Unicode and provider Times outlines (ADR 0009) | Vertical substituted CID fonts, unknown symbolic encodings/collections and executable CMap programs. Embedded vertical fonts are supported. Minion fallback is a visual substitute, not original-font appearance equivalence; incomplete used-code identity or multi-scalar shaping is refused. Substitution coverage depends on the provider and build features. Contradictory standalone sfnt/font-family validation remains a separate gap. |
 | Image codecs | JPEG baseline/extended/progressive, Huffman and arithmetic, 8/12-bit, CMYK/YCCK; CCITT G3/G4; JBIG2 generic/refinement/symbol/text/halftone/Huffman regions; JPEG 2000 Part 1 with progression, precincts, ROI and partial-quality reconstruction | JPEG lossless/hierarchical modes, CCITT extension mode, JBIG2 extended templates/necessary extensions, and JPX profiles/layouts outside the implemented subset. Codec success does not establish complete PDF image rendering. |
 | PDF image integration | Inline images and XObjects, 1–16-bit samples, Decode arrays, masks, separate soft masks and interpolation/minification; JPX straight/premultiplied embedded alpha is decoded and composited, with Gray/RGB/CMYK embedded spaces, bounded embedded ICC forward transforms, eight-bit unsigned sYCC, direct Indexed index/opacity channels, and mixed-precision/reference-grid adaptation | Indexed JPX opacity with container palettes, other/mixed sYCC precisions, Lab-input ICC, multi-profile precedence and unsupported selected-transform fallback remain open. Gray/RGB embedded ICC and eight-bit sYCC have independent pixel fixtures; broader interactions still need evidence. See [image description](../crates/pagura-interpret/src/machine/image/describe.rs) and [painting](../crates/pagura-paint/src/source/image.rs). |
-| Paths and shading | Fills/strokes, dashes, clipping, forms, tiling patterns, mesh shadings, functions, crop/rotation/UserUnit and tiled output | Explicit refusals remain for singular transforms and pattern-placement/state/image-mask cases; classify each as valid unsupported input, invalid input or a resource/numerical limit. Difficult mesh/geometry cases need independent accuracy evidence. |
-| Colour and transparency | Device/Default/Indexed, ICC forward matrix/TRC and LUT processing, calibrated colours, Lab, Separation/DeviceN; Gray/RGB/CMYK transparency groups, standard blend modes, knockout and soft masks | ICC destination/inverse transforms and calibrated group destinations; nonzero calibrated black points/black-point compensation; fractional, pattern and per-colourant transfer-region selection. Supported ICC group destinations currently use their resolved device base. Lab is prohibited as a blending destination, not a feature to implement. |
+| Paths and shading | Fills/strokes, dashes, clipping, forms, tiling patterns with a bounded opaque-black complete-pixel field certificate, mesh shadings, functions, crop/rotation/UserUnit and tiled output | Pattern-coloured stencil cells clip geometry jointly; magnified Interpolate samples bilinear opacity once on complete pattern alpha and shape, while minification keeps exact cells; ordinary nested tiling fills/strokes and glyphs propagate inherited geometry through every pattern level. Multiple true-quadratic glyph ancestors and curved leaves use joint original-control coverage intervals, certified to one byte before composition; canonical cubic glyph semantics and existing resource limits remain authoritative. An unselected Pattern colour space remains an explicit refusal. Nested image stencils and transparency groups preserve joint clipping. Explicit refusals remain for singular transforms and pattern-placement/state cases; classify each as valid unsupported input, invalid input or a resource/numerical limit. Difficult mesh/geometry cases need independent accuracy evidence. |
+| Colour and transparency | Device/Default/Indexed, ICC forward matrix/TRC and LUT processing, calibrated colours with diffuse-black metadata in the existing PDF numeric working range and compensation disabled, Lab, Separation/DeviceN; Gray/RGB/CMYK transparency groups, standard blend modes, knockout and soft masks | ICC destination/inverse transforms and calibrated group destinations; explicitly enabled black-point compensation; fractional, pattern and per-colourant transfer-region selection. Supported ICC group destinations currently use their resolved device base. Lab is prohibited as a blending destination, not a feature to implement. |
 | Overprint | CMYK process and spot display simulation, including group interactions, with `Auto`/`Always`/`Never` library and CLI options; catalog/page PDF/X intent detection | Destination ICC output transforms and transfer/overprint combinations; viewer control. Spot display uses alternate-based ink equivalents with a 32-plate bound, not physical ink prediction. PDF/X detection is not conformance validation. |
-| Annotation display | Existing normal appearance streams and states; screen visibility and NoZoom/NoRotate placement; generated Link/Square borders, Text icons and supported empty widgets | Appearance synthesis for other subtypes and richer borders; ordinary rendering of nonempty widgets without an appearance remains limited. Playing media or interacting with 3D content is not provided by painting an appearance. Annotation authoring is not yet a general editing API. |
+| Annotation display | Stored normal appearances and states; screen visibility, NoZoom/NoRotate and FixedPrint placement; generated geometric markup, FreeText, icons, borders and source text/choice/button widgets through the shared appearance generator. Valid indirect Rect coordinates resolve normally; missing inert Popup geometry is a reported Repair-only skip. | Reader-chosen icons and synthesized layout are policy rather than universal reference pixels. Nonlinear generated path strokes and dashed rounded strokes remain explicit refusals pending separate accuracy work; unsupported text encodings/transforms and malformed geometry remain errors. Playing media, applying redactions, general annotation authoring, and persistence of new generated button/rich-text forms remain separate gaps. New display coverage requires exact-head qualification. |
 | AcroForms | Field tree/types/inheritance/widgets; text, checkbox, radio and choice filling; appearance generation; filled-page rendering; incremental saved values and appearances; browser controls, preview, discard and download | XFA, rich text, generated button states, nested direct field/widget identities, password-field persistence, complex appearance updates, rotated widgets and encodings outside the reversible simple horizontal model. See [editing](EDITING.md) for library and browser boundaries. |
 | Navigation and actions | Name/number trees, destinations, outlines, links and page labels; inert action data; browser internal destinations and controlled URI activation | No JavaScript calculations/events or automatic action execution. General external-file, launch, submission and media actions need explicit host contracts. |
 | Text extraction and accessibility | Positioned glyphs, words/lines/reading order, ActualText/Alt/ReversedChars, Unicode search and quads; separate tagged logical view; viewer search/copy/selection and screen-reader-readable DOM text | Tagged logical structure is not connected to the viewer accessibility tree. Custom namespaces/RoleMapNS and some cross-stream/cross-page replacements are unsupported; bidi/script-specific reconstruction remains incomplete. The DOM text layer alone is not PDF/UA support. |
@@ -49,7 +88,34 @@ The source check detects stale evidence and missing ownership, not runtime parit
 | Profiles and document services | PDF 1.x/2.x headers and many shared features; low-level access to document objects; PDF/X declarations influence overprint policy | Complete PDF 2.0 feature coverage; PDF/A and PDF/UA validation; PDF/X conformance; typed attachment/associated-file, portfolio, metadata and richer document-service APIs. Rendering a profile-labelled file is separate from validating or authoring that profile. |
 | Safety and release evidence | Safe Rust and workspace-only product dependencies, bounded APIs, deterministic replay, fuzz drivers, generated independent fixtures, conversion/regression harnesses | Long fuzz campaigns, host/process containment and cancellation evidence, refreshed compatibility reports, non-render operation adapters and the complete controlled performance gate. |
 
+JBIG2 recovery accepts complete sequential file packaging only when its header
+declares one page. All coded data, page dimensions, referrals, EOP and terminal
+EOF remain validated, with original source positions. Unknown-height pages require
+a final stripe with no following region before EOP (T.88 7.4.9). Internal page-0 resources
+must precede page information; late global segments remain refused. A terminal empty EOF1
+after the sole EOP1 has a separate reported association repair. Strict mode
+refuses these PDF-prohibited wrappers. Unknown page counts, random-access and
+multipage files remain refused; no arithmetic termination or EOF bytes are
+synthesized. See `jbig2-single-page-wrapper-recovery` and ADR 0003.
+
 ## Evidence and accuracy
+
+JP2 palette padding has an explicit reported Repair path: only unused high
+bits above the declared column precision are cleared; Strict still refuses
+them. Independent literal sample/pixel controls cover mixed signed precision,
+meaningful 16-bit high bits, PDF Indexed override, alpha and retained malformed
+or unsupported layouts. This is a source description; exact-head execution,
+public compatibility, cost/memory and integration qualification remain pending.
+
+Inline separator recovery accepts a complete `EI` token at a caller-framed
+boundary only with a reported repair. Before drawing such an image, raw and
+general-filter samples must have the exact row-padded byte count under the
+caller’s limits. Image-codec separator recovery remains refused until its
+completeness proof can share one per-image codec work budget; missing tokens,
+comment gaps and incomplete samples do not qualify through this repair.
+The independent `paint_inline_framing` controls distinguish new complete
+images from retained legacy sample-padding behavior. Runtime, public-corpus,
+performance and memory qualification of this addition remains pending.
 
 Source entry points and existing tests supporting this reconciliation include:
 
@@ -180,3 +246,13 @@ requirement entry and this page together. Record library, renderer, CLI, host
 and viewer availability separately. Replace a historical scoreboard only with
 an actual run that records the new source/binary/corpus identities. Unknown or
 untested competitor cells remain open in the parity plan; they are never a pass.
+
+
+Type 4 calculator source support additionally proves at most two intermediate
+stack depths using validated, evaluator-clamped Domain facts. Independent
+endpoint, full RGB/RGBA, shared-function later-page, work-reservation and
+native/WASI parity controls define this subset. Unknown stack counts,
+incompatible joins, a third depth and unproved correlations remain explicitly
+unsupported; original Syntax/Limit outcomes remain. This source inventory does
+not claim a public-page admission, a performance/memory result or full Type 4
+coverage; exact-head qualification is separate.

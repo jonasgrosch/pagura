@@ -7571,6 +7571,58 @@
       }
     },
     {
+      "id": "jbig2/refinement-prediction-centre-context-t0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-prediction-centre-context-t0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-prediction-centre-context-t0.jb2",
+          "sha256": "9fe53921c294f48f2084f4e43a3aa91a128b26e3368c22b5f3f1cf048b2185e6"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-prediction-centre-context-t0.out",
+          "sha256": "18519afd330d3447bb196dd75ea7a7998db6f2fcb2a5dc134f35690a2dbcc072"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-prediction-centre-context-t0.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-prediction-centre-context-t1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-prediction-centre-context-t1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-prediction-centre-context-t1.jb2",
+          "sha256": "6072aee973f2c76a8fea44b37d6b5bf251c41c9c07b98a05eeed729e98340414"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-prediction-centre-context-t1.out",
+          "sha256": "18519afd330d3447bb196dd75ea7a7998db6f2fcb2a5dc134f35690a2dbcc072"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-prediction-centre-context-t1.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
       "id": "jbig2/refinement-t0-prediction-0",
       "kind": "vector",
       "description": "Independent T.88 encoding and geometric bitmap",

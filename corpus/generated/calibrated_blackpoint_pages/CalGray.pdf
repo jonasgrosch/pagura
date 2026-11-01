@@ -1,0 +1,51 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 3 /Kids [3 0 R 5 0 R 7 0 R] >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Contents 4 0 R /Resources << /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] /BlackPoint [0 0 0] /Gamma 2.2 >>] >> /ExtGState << /GS << /UseBlackPtComp /OFF >> >> >> >>
+endobj
+4 0 obj
+<< /Length 32 >>
+stream
+/GS gs /C cs 0.5 sc 0 0 8 8 re f
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Contents 6 0 R /Resources << /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] /BlackPoint [.2 1 1.7] /Gamma 2.2 >>] >> /ExtGState << /GS << /UseBlackPtComp /OFF >> >> >> >>
+endobj
+6 0 obj
+<< /Length 168 >>
+stream
+/GS gs /C cs 0 sc 0 0 1 8 re f 0.01 sc 1 0 1 8 re f 0.18 sc 2 0 1 8 re f 0.5 sc 3 0 1 8 re f 0.75 sc 4 0 1 8 re f 1 sc 5 0 1 8 re f 2 sc 6 0 1 8 re f -1 sc 7 0 1 8 re f
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Contents 8 0 R /Resources << /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] /BlackPoint [50 50 50] /Gamma 2.2 >>] >> /ExtGState << /GS << /UseBlackPtComp /OFF >> >> >> >>
+endobj
+8 0 obj
+<< /Length 168 >>
+stream
+/GS gs /C cs -1 sc 0 0 1 8 re f 2 sc 1 0 1 8 re f 1 sc 2 0 1 8 re f 0.75 sc 3 0 1 8 re f 0.5 sc 4 0 1 8 re f 0.18 sc 5 0 1 8 re f 0.01 sc 6 0 1 8 re f 0 sc 7 0 1 8 re f
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000133 00000 n 
+0000000380 00000 n 
+0000000462 00000 n 
+0000000712 00000 n 
+0000000931 00000 n 
+0000001181 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+1400
+%%EOF

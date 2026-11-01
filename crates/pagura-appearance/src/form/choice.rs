@@ -1,27 +1,24 @@
 //! Choice-field display values, rows and selection highlights (12.7.5.4).
 
 use super::{
+    Font,
     da::DefaultAppearance,
-    font::Font,
     layout::{self, TextLayout},
+    variable::Inputs,
 };
 use crate::program::Program;
 use crate::values::optional;
 use pagura_core::{Error, Rect, Result};
 use pagura_document::{
     Document,
-    forms::{ChoiceOption, Field, FieldKind, FieldValue, FilledField, FilledValue, FormFiller},
+    forms::{ChoiceOption, FieldKind, FieldValue, FilledValue},
 };
 
 /// The field's selected display values: the in-memory choice, else V.
-pub(super) fn values<'a>(
-    filler: &'a FormFiller<'_>,
-    field: &'a Field<'_>,
-    index: usize,
-) -> Vec<&'a str> {
-    match filler.get(index).map(FilledField::value) {
+pub(super) fn values<'a>(field: &'a Inputs<'_, '_>) -> Vec<&'a str> {
+    match field.change {
         Some(FilledValue::Choice(value)) => value.values().iter().map(String::as_str).collect(),
-        _ => match &field.value {
+        _ => match field.value {
             Some(FieldValue::Text(s)) => vec![s],
             Some(FieldValue::Texts(v)) => v.iter().map(String::as_str).collect(),
             _ => Vec::new(),
@@ -33,24 +30,18 @@ pub(super) fn values<'a>(
 /// selected rows highlighted.
 pub(super) fn list(
     out: &mut Program,
-    filler: &FormFiller<'_>,
-    index: usize,
+    field: &Inputs<'_, '_>,
     area: Rect,
     font: &Font,
     da: &DefaultAppearance,
     values: &[&str],
 ) -> Result<()> {
-    let document = filler.document();
-    let field = filler
-        .form()
-        .fields
-        .get(index)
-        .ok_or(Error::invalid_argument("filled field index is absent"))?;
+    let document = field.document;
     let FieldKind::Choice {
         options,
         multi_select,
         ..
-    } = &field.kind
+    } = field.kind
     else {
         return Err(Error::syntax("list requires choice options"));
     };
@@ -70,12 +61,11 @@ pub(super) fn list(
     if top > options.len() {
         return Err(Error::syntax("choice TI is outside Opt"));
     }
-    let selected =
-        if let Some(FilledValue::Choice(value)) = filler.get(index).map(FilledField::value) {
-            value.indices().to_vec()
-        } else {
-            source_indices(document, field, options, values)?
-        };
+    let selected = if let Some(FilledValue::Choice(value)) = field.change {
+        value.indices().to_vec()
+    } else {
+        source_indices(document, field, options, values)?
+    };
     let row_da = DefaultAppearance { size, ..da.clone() };
     for (row, (i, option)) in options.iter().enumerate().skip(top).enumerate() {
         let y1 = area.y1() - row as f64 * height;
@@ -115,7 +105,7 @@ pub(super) fn list(
 }
 
 /// TI, the first visible option (Table 234).
-fn top_index(document: &Document, field: &Field<'_>) -> Result<usize> {
+fn top_index(document: &Document, field: &Inputs<'_, '_>) -> Result<usize> {
     Ok(optional(document, field.dictionary, b"TI")?
         .map(|value| {
             document
@@ -132,7 +122,7 @@ fn top_index(document: &Document, field: &Field<'_>) -> Result<usize> {
 /// whose display text V names, since V is authoritative (Table 234).
 fn source_indices(
     document: &Document,
-    field: &Field<'_>,
+    field: &Inputs<'_, '_>,
     options: &[ChoiceOption],
     values: &[&str],
 ) -> Result<Vec<usize>> {

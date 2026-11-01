@@ -1,0 +1,796 @@
+{
+  "schema": 2,
+  "area": "markup_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "markup_annotations/highlight-72",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/highlight-72.pdf",
+      "sha256": "2c166e6bdc2c01df538a53164c96c046103376dcf423853f352daa80cf239e03",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/highlight-72.ppm",
+      "oracle_sha256": "f6f0cd8a09fd672de1c856187cc39910ca74e9e05ce45e2c2b5280ba0fa75c0a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/highlight-144",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/highlight-144.pdf",
+      "sha256": "2c166e6bdc2c01df538a53164c96c046103376dcf423853f352daa80cf239e03",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/highlight-144.ppm",
+      "oracle_sha256": "c930aab333616d40d65da8079a27491a79285f05a227964440fec750a0ff376f",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/highlight-alternate",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/highlight-alternate.pdf",
+      "sha256": "65cc1523737a3ed3c01146b24cfe4172db081ea38b528f5f5d59b5cfcd79f170",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.quad-order"
+      ],
+      "oracle": "corpus/generated/markup_annotations/highlight-alternate.ppm",
+      "oracle_sha256": "f6f0cd8a09fd672de1c856187cc39910ca74e9e05ce45e2c2b5280ba0fa75c0a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/highlight-vertical",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/highlight-vertical.pdf",
+      "sha256": "2734477890b3c96e4198f842baf439a0ac74f3aa995da82bcf21d6d8c73f0970",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/highlight-vertical.ppm",
+      "oracle_sha256": "ab5c5e1ce0b169c4630211a7784cc8d6ff2ba8b28df946d9cf8f03ffc0b63dc2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/underline-72",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/underline-72.pdf",
+      "sha256": "df562c65d629452011b5723fda5d3e67458e47d62be8b3ed153ae82cbf9e05ee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/underline-72.ppm",
+      "oracle_sha256": "4d2afb79a04f567717f759b9ae834fdd09a8f482e6980cc8e8ac70877758ea69",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/underline-144",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/underline-144.pdf",
+      "sha256": "df562c65d629452011b5723fda5d3e67458e47d62be8b3ed153ae82cbf9e05ee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/underline-144.ppm",
+      "oracle_sha256": "6ff30a2bb4c60339e59ecc3859c38351a16feb9cce13dde77cd0da995ee4cfa7",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/underline-alternate",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/underline-alternate.pdf",
+      "sha256": "13ceb4427d1b25a0aecff370cde99315a21c3e968ef67392035d2df12f366d93",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.quad-order"
+      ],
+      "oracle": "corpus/generated/markup_annotations/underline-alternate.ppm",
+      "oracle_sha256": "4d2afb79a04f567717f759b9ae834fdd09a8f482e6980cc8e8ac70877758ea69",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/underline-vertical",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/underline-vertical.pdf",
+      "sha256": "99fda8884c2fe835a75fc9c38ef5ef1d873f814d1aff2a682c8457ae5c281ae4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/underline-vertical.ppm",
+      "oracle_sha256": "b54f8171494335bda656d899293b697b3aa270ae0b83441718b40000cee64cca",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/strikeout-72",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/strikeout-72.pdf",
+      "sha256": "d5a74b52f0312914d4e06b319dd0bad89e16ceb1b66bacfb68789019825b1f88",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/strikeout-72.ppm",
+      "oracle_sha256": "5e80fecb679ea6363f34ecdb921c0c818258c2ebfbfca397581722d10d045a50",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/strikeout-144",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/strikeout-144.pdf",
+      "sha256": "d5a74b52f0312914d4e06b319dd0bad89e16ceb1b66bacfb68789019825b1f88",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/strikeout-144.ppm",
+      "oracle_sha256": "8667cf44b57bb3efd73b5737f2e168e26cfbc053cdb4089301478d192e83e7aa",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/strikeout-alternate",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/strikeout-alternate.pdf",
+      "sha256": "98413ccb5aaa3328b70b6b85f4d7477f1d9814841a81e92ede25700b75b39120",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.quad-order"
+      ],
+      "oracle": "corpus/generated/markup_annotations/strikeout-alternate.ppm",
+      "oracle_sha256": "5e80fecb679ea6363f34ecdb921c0c818258c2ebfbfca397581722d10d045a50",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/strikeout-vertical",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/strikeout-vertical.pdf",
+      "sha256": "535e23341f1c79b7aa5bac7a39a04ea31b30655ef593e02511f553e9ce02fa07",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/strikeout-vertical.ppm",
+      "oracle_sha256": "5e1b4fecb9efacdcf717505084ac4da6cbf0b91dc27277f7d6ecc17bc1df5b50",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/squiggly-72",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/squiggly-72.pdf",
+      "sha256": "8b020a6f60ba759b9bf73191c2e556d0d618634a369bf212ae5d9d54ddbba90d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/squiggly-72.ppm",
+      "oracle_sha256": "3c87dd0715c52131a296373a49b9206fa6ad71c475474d184fcb7bb16d286226",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/squiggly-144",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/squiggly-144.pdf",
+      "sha256": "8b020a6f60ba759b9bf73191c2e556d0d618634a369bf212ae5d9d54ddbba90d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/squiggly-144.ppm",
+      "oracle_sha256": "e3f5362102439ae52e2d034aa2633ca390c81cabefe55d39ab19948f9d2ca0d0",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/squiggly-alternate",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/squiggly-alternate.pdf",
+      "sha256": "c71d1c55f7df53a5ddbdb0afbdb6170a90ab70902c0ad67ec40c4be64fd89ad2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.quad-order"
+      ],
+      "oracle": "corpus/generated/markup_annotations/squiggly-alternate.ppm",
+      "oracle_sha256": "3c87dd0715c52131a296373a49b9206fa6ad71c475474d184fcb7bb16d286226",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/squiggly-vertical",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/squiggly-vertical.pdf",
+      "sha256": "d4f02bed836dcf8529098733201e65b617da932608dfe0847197a8242a71983b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/squiggly-vertical.ppm",
+      "oracle_sha256": "fe87c5e9d9e84812f274c70fd76ee7f3242a0daaffc433d74dead6d69f32ea8b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/multiply-black",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/multiply-black.pdf",
+      "sha256": "e38c46bd9261aeaffb6d515757cf422e4d53afc0af1206e9aacbefc7186de047",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/multiply-black.ppm",
+      "oracle_sha256": "3fcfd2f5260006cc7ededc8f831dddf3938a9fcd6711c694ebde6e1176fa7777",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/multiply-cyan",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/multiply-cyan.pdf",
+      "sha256": "2f5dd5b005bd8a86df51ee996ace289e1cc649d096cf5555ab30fa963b71cebf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/multiply-cyan.ppm",
+      "oracle_sha256": "148b36b3e9eeb48e00f486e5e9d109e6e353b04b042766411153f1e7ccd35300",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/multiply-opacity",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/multiply-opacity.pdf",
+      "sha256": "00f183fb9d859d661a643b6b54bd007cfa095579d72d769825767f04df557db7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/multiply-opacity.ppm",
+      "oracle_sha256": "f3af19785414b0c9f14bc1229c3ee6c07ae3ad76637fbd75674671262e93263d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/separate-opacity",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/separate-opacity.pdf",
+      "sha256": "261f61e8ed3fc0ce145b9640cd7f266fe9d270a2aaacecbb6f7081748fbe11bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/separate-opacity.ppm",
+      "oracle_sha256": "1a7128a39e8d94a9f15e16fb48a878d977fd099866d14bb9e32c726a7153c30d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/underline-opacity",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/underline-opacity.pdf",
+      "sha256": "e2d6aa007432692b033df56c2e14c550b72b4a329a83f24a394c2369b465cad8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/underline-opacity.ppm",
+      "oracle_sha256": "51465d63a4e05d379b4de2e203bfb5ad9d9c66c764a330964c398379e6388791",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/strikeout-color",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/strikeout-color.pdf",
+      "sha256": "9f2b403654d47898846382e5e859596b94b7598a5f34c3a5cab6330a92749b2d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/strikeout-color.ppm",
+      "oracle_sha256": "f3977d965784f30d297961bfbc493c0a99b07c59104baeea3d87e2046d82ec0f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/squiggly-clipped",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/squiggly-clipped.pdf",
+      "sha256": "8ebf3e5f9ddf8710999d69a0a863e2454011c6cd6643c7bee434c269af3e25b5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/squiggly-clipped.ppm",
+      "oracle_sha256": "d81659055ef372d00814a626e2fe876bc44fdd529fa3ea1fb960abdead3e54aa",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/rotated",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/rotated.pdf",
+      "sha256": "897d42ae1b48fbb8a45baa13538feb6bafb33911cb9477436952365921407f7a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/rotated.ppm",
+      "oracle_sha256": "bee1734004d649503251cebac42cbb085cad8128a1e353074a396df597822dc8",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/skewed",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/skewed.pdf",
+      "sha256": "7d8d3ba8e404b49a3b25f8357927a1886340c405b5114c4527f0ec5caa6250c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/skewed.ppm",
+      "oracle_sha256": "76cbcf44628c724c8a2026e7ea7c43d7a9a26e7093e2d2d51219a65cf897a128",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/skewed-underline",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/skewed-underline.pdf",
+      "sha256": "959bd5ca903fff744b2488143e5ab4408a96634911cab0dfae16d42990f165fe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/skewed-underline.ppm",
+      "oracle_sha256": "2aa771c6a6d5d50b385d8b17ac6a250c527930dfd28c90f22ff9ced569576434",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/overlap",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/overlap.pdf",
+      "sha256": "5b60e90d08bcde4c6d1325120c4a18a70c95a3ef11f282e01b537f7842484f5a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/overlap.ppm",
+      "oracle_sha256": "0de8247a437ec82b0c297f8f17576e9e028449b80dda9ed7d5bd19563653a59f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/disjoint",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/disjoint.pdf",
+      "sha256": "00a7843a437306f32536e982004c69b24605574797f052c3e192a0b5ce2c98bc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/disjoint.ppm",
+      "oracle_sha256": "f50f7a4d93c4278da5d2f416e903d42bd897c4619582c7c4239be22c3a7dcec1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/no-color",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/no-color.pdf",
+      "sha256": "5fc513f4323df194f16c3a0389c3ae3f91f322f8700e43d2258cdc6afa32d38f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/no-color.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/zero-opacity",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/zero-opacity.pdf",
+      "sha256": "720f4bcb7da994a9a95c577dead0ad2a9e219eef6cdf75574c0cb56bac1fa466",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/zero-opacity.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/zero-area",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/zero-area.pdf",
+      "sha256": "70d32c1850feeedf01b435e90c66d9b17513d68952818334e99b57219f42f222",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/zero-area.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/indirect",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/indirect.pdf",
+      "sha256": "dab32c356fdbd3a8c021aa768e376091e98caf211a0608cc31b96203918fcc61",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/indirect.ppm",
+      "oracle_sha256": "f6f0cd8a09fd672de1c856187cc39910ca74e9e05ce45e2c2b5280ba0fa75c0a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/stored-ignores-geometry",
+      "kind": "pdf",
+      "description": "Literal polygons, exact winding/clip integration and the blend equation",
+      "expected": "render",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/stored-ignores-geometry.pdf",
+      "sha256": "aa73de47f0ab8d7259238f7abbbcb08231ba8a970b23f8419ce9c6c64f423854",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/markup_annotations/stored-ignores-geometry.ppm",
+      "oracle_sha256": "f6f0cd8a09fd672de1c856187cc39910ca74e9e05ce45e2c2b5280ba0fa75c0a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "markup_annotations/missing",
+      "kind": "pdf",
+      "description": "Required quad count, numeric types and orientation validate before empty color",
+      "expected": "open",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/missing.pdf",
+      "sha256": "d94640e73ed8c1009a3e9f1d11e58426d399a2534b20f44ccc1405730fb56474",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "markup_annotations/null",
+      "kind": "pdf",
+      "description": "Required quad count, numeric types and orientation validate before empty color",
+      "expected": "open",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/null.pdf",
+      "sha256": "e9501cb5a2d8c32007dec7c137c1dc2e1a9cb0dcd668befd7d4316b7f2f10edf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "markup_annotations/type",
+      "kind": "pdf",
+      "description": "Required quad count, numeric types and orientation validate before empty color",
+      "expected": "open",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/type.pdf",
+      "sha256": "363cd3a87b805253377b3f66420556d504260e303e1ce6fd7be5f8ad103fd9ed",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "markup_annotations/empty",
+      "kind": "pdf",
+      "description": "Required quad count, numeric types and orientation validate before empty color",
+      "expected": "open",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/empty.pdf",
+      "sha256": "f20582ec68264af646b228565c8adfbc153bf6902012fd1da867c7c4cedd2d96",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "markup_annotations/short",
+      "kind": "pdf",
+      "description": "Required quad count, numeric types and orientation validate before empty color",
+      "expected": "open",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/short.pdf",
+      "sha256": "b990819020d90e4d4fc99835318a72de6bf4bc6582f40baccddbc76073dbd323",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "markup_annotations/number",
+      "kind": "pdf",
+      "description": "Required quad count, numeric types and orientation validate before empty color",
+      "expected": "open",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/number.pdf",
+      "sha256": "d436fdd42f534f081626e67c9672bc0380297f182841c6edc6888f743ee943ac",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "markup_annotations/clockwise",
+      "kind": "pdf",
+      "description": "Required quad count, numeric types and orientation validate before empty color",
+      "expected": "open",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/clockwise.pdf",
+      "sha256": "81d493704acc5608cda1973eaea3321dce4f8391eb2e6e8b06d5634b74e9c81a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "markup_annotations/concave",
+      "kind": "pdf",
+      "description": "Required quad count, numeric types and orientation validate before empty color",
+      "expected": "open",
+      "requirements": [
+        "content-text-markup"
+      ],
+      "path": "corpus/generated/markup_annotations/concave.pdf",
+      "sha256": "0831f1e07aa92d47977ed7ae488cb86d56a6ebe1fd674e6320ed4c593c8cf1bd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    }
+  ]
+}

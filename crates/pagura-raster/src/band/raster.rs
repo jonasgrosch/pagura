@@ -422,6 +422,7 @@ impl BandRasterizer {
         let (scan, listed) = match &shape.body {
             Body::Edges(edges) => (edges.scan, edges.strips.is_some()),
             Body::Glyph(glyph) => (glyph.scan, glyph.strips.is_some()),
+            Body::Certified(_) => return rows.end,
         };
         if listed || rows.is_empty() {
             return rows.end;
@@ -445,6 +446,7 @@ impl BandRasterizer {
         }
         let _ = band;
         match &shape.body {
+            Body::Certified(certified) => self.classified(certified, shape.bounds, rows, out),
             Body::Edges(edges) => {
                 let items = Items {
                     lines: Lines::Slice {
@@ -688,25 +690,35 @@ impl BandRasterizer {
         }
     }
 
+    fn classified(
+        &mut self,
+        classified: &Rows,
+        bounds: DeviceRect,
+        rows: std::ops::Range<u32>,
+        out: &mut dyn RowOut,
+    ) {
+        for y in rows {
+            out.push_row(y);
+            let mut sink = Out {
+                coverage: out,
+                x0: bounds.x0 as usize,
+                x1: bounds.x1 as usize,
+            };
+            let segments = classified.row(y);
+            for s in segments {
+                sink.run(s.x0 as usize, s.x1 as usize, s.value);
+            }
+            self.work = self.work.saturating_add(segments.len() + 2);
+        }
+    }
+
     /// Writes a clip's own coverage: its paths' classified rows, or its
     /// rectangle's sides through the cells.
     fn clip(&mut self, clip: &ClipShape, rows: std::ops::Range<u32>, out: &mut dyn RowOut) {
         let bounds = clip.bounds();
         let rows = rows.start.max(bounds.y0)..rows.end.min(bounds.y1).max(rows.start);
         if let Some(classified) = clip.rows() {
-            for y in rows {
-                out.push_row(y);
-                let mut sink = Out {
-                    coverage: out,
-                    x0: bounds.x0 as usize,
-                    x1: bounds.x1 as usize,
-                };
-                let segments = classified.row(y);
-                for s in segments {
-                    sink.run(s.x0 as usize, s.x1 as usize, s.value);
-                }
-                self.work = self.work.saturating_add(segments.len() + 2);
-            }
+            self.classified(classified, bounds, rows, out);
             return;
         }
         let whole = [
@@ -985,6 +997,20 @@ pub(crate) fn inspect(
     mut visit: impl FnMut(u32, usize, usize, f64, f64),
 ) -> Result<()> {
     let (items, scan) = match &shape.body {
+        Body::Certified(rows) => {
+            for y in shape.bounds.y0..shape.bounds.y1 {
+                for segment in rows.row(y) {
+                    visit(
+                        y,
+                        segment.x0 as usize,
+                        segment.x1 as usize,
+                        f64::from(segment.value) / 255.0,
+                        0.0,
+                    );
+                }
+            }
+            return Ok(());
+        }
         Body::Edges(edges) => (
             Items {
                 lines: Lines::Slice {

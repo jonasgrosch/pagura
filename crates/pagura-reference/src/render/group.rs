@@ -76,6 +76,7 @@ impl Renderer<'_> {
             initial,
             selection,
             stencil: context.stencil,
+            inherited: context.inherited,
             depth: context.depth + 1,
             crop: context.crop,
         };
@@ -189,6 +190,7 @@ impl Renderer<'_> {
             initial,
             selection: Selection::Off,
             stencil: None,
+            inherited: &[],
             depth: depth + 1,
             crop: Crop::Free,
         };

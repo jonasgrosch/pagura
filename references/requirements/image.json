@@ -327,7 +327,8 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura-image tests::independent_vectors"
+        "pagura-image tests::independent_vectors",
+        "pagura-image tests/jbig2_wrapper.rs"
       ],
       "review": [
         {
@@ -348,7 +349,9 @@
         }
       ],
       "gaps": "JBIG2 coding modes not supported by the integrated decoder remain explicit feature errors.",
-      "choices": [],
+      "choices": [
+        "Reported complete declared single-page sequential file-wrapper recovery and a separate terminal EOF1 association policy are specified by jbig2-single-page-wrapper-recovery; neither is normative PDF permission."
+      ],
       "verdict": "PDF wrapper rules exercised; JBIG2 primary-text review pending."
     },
     {

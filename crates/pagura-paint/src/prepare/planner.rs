@@ -87,6 +87,8 @@ pub(crate) struct Planner<'s> {
     clips: FastMap<clips::Key, clips::State>,
     /// Prepared clips by their paths, which clip states share.
     built_clips: clips::Built,
+    /// Extra geometric clip chains inherited by patterned stencil content.
+    stencil_clips: Vec<clips::Chain>,
     /// The clip state looked up last: marks in a row usually share one.
     last_clip: Option<(clips::Key, clips::State)>,
     solids: FastMap<SolidKey, u32>,
@@ -158,6 +160,9 @@ pub(crate) struct Scope {
     /// The paint of an uncoloured tiling pattern's cell content: its index
     /// and the paint, for stencil masks that need their own.
     pub(crate) paint: Option<(u32, Arc<Paint>)>,
+    /// The outer stencil geometry and its clipping path chain, in device
+    /// space independently of a tiling cell's placement.
+    pub(crate) stencil_clip: Option<u32>,
     /// Nesting.
     pub(crate) depth: usize,
 }
@@ -241,6 +246,7 @@ impl<'s> Planner<'s> {
             crop,
             clips: FastMap::default(),
             built_clips: FastMap::default(),
+            stencil_clips: Vec::new(),
             last_clip: None,
             solids: FastMap::default(),
             images: FastMap::default(),
@@ -284,6 +290,7 @@ impl<'s> Planner<'s> {
             separated: self.simulate,
             masked: false,
             paint: None,
+            stencil_clip: None,
             depth: 0,
         };
         self.children(&scope, &root.children, budget)
@@ -446,6 +453,7 @@ impl<'s> Planner<'s> {
             + self.crop.retained_bytes()
             + bytes.map_bytes(&self.clips)?
             + clips::retained_bytes(&self.built_clips, bytes)?
+            + clips::stencil_bytes(&self.stencil_clips)
             + bytes.map_bytes(&self.solids)?
             + bytes.map_bytes(&self.masks)?
             + bytes.map_bytes(&self.transfers)?
@@ -462,6 +470,7 @@ impl<'s> Planner<'s> {
             crop,
             clips,
             built_clips,
+            stencil_clips,
             solids,
             masks,
             transfers,
@@ -474,6 +483,7 @@ impl<'s> Planner<'s> {
             crop,
             clips,
             built_clips,
+            stencil_clips,
             solids,
             masks,
             transfers,

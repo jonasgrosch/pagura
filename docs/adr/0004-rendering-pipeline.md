@@ -59,7 +59,13 @@ exact result.
 - **Image sampling:** for a minified image, the exact-area average of the
   source samples under the pixel's preimage; for a magnified one, the nearest
   sample or, with `/Interpolate`, bilinear interpolation of associated colour
-  and alpha between sample centres (8.9.5.3, ADR 0010). Decoders return
+  and alpha between sample centres (8.9.5.3, ADR 0010). A magnified
+  pattern-coloured stencil supplies that bilinear alpha as a per-pixel
+  source value: it scales the completed pattern result's alpha and shape
+  once, while the image unit square, clip and cell ink remain joint
+  geometry. It is not an independently averaged geometric mask. Minified
+  stencils retain exact painted sample cells regardless of Interpolate.
+  Decoders return
   byte-exact samples, and the exact average is over those samples. A JPEG
   block's DC term is the mean of its unrounded inverse transform, not of its
   rounded, clamped and colour-converted samples (on a large real image they
@@ -67,6 +73,66 @@ exact result.
   blocks clamp), so block means from DC terms are an output-changing
   optimization under section 3: admissible only for blocks certified not to
   clamp in any stage, with the bound shown against this oracle.
+- **Tiling lattices** (8.7.3.1, Table 74): every cell instance is exact
+  geometry under a lattice transform `L` that `TilingType` derives from the
+  pattern-to-device transform `M = [a b c d e f]`. Only an invertible `M`
+  has a lattice; a singular one is refused (`pattern.tiling`) whatever the
+  type. `TilingType 2` cells "shall not be distorted", so `L = M`.
+  `TilingType 1` cells are spaced "by a multiple of a device pixel", with
+  distortion that "shall not exceed 1 device pixel"; `TilingType 3` spaces
+  them the same way with "additional distortion permitted". For both, each
+  device lattice vector, `XStep·(a, b)` and `YStep·(c, d)`, has each
+  component rounded to a whole pixel, halves away from zero; a vector whose
+  components both round to zero becomes one pixel along its component of
+  larger magnitude (the horizontal one on a tie), in that component's
+  direction. `L` keeps `M`'s image of the pattern origin and takes
+  `(XStep, 0)` and `(0, YStep)` to the rounded vectors, so instances lie
+  whole pixels apart. When no such whole-pixel lattice can serve, `L = M`,
+  the exact lattice of `TilingType 2`, whose spacing the specification lets
+  vary by up to one device pixel (amended 2026-10-27, owner decision; it
+  replaces a refusal). That happens when the rounded vectors are parallel,
+  and under `TilingType 1` when the rounded `L` would move a corner of
+  `BBox` more than one pixel from where `M` puts it, allowing 10⁻¹² pixel
+  for f64 evaluation. `TilingType 3` has no distortion limit.
+  `pagura-reference` implements this definition separately from the
+  renderer.
+- **Opaque constant tiling fields:** only a pattern exceeding the ordinary
+  instance cap may replace enumeration with a certified constant field. The
+  cell must be one opaque Normal DeviceGray-black rectangular fill, with no
+  transfer, soft mask, overprint, alpha-as-shape, or selected black-generation
+  or undercolour-removal function; all its local clips and
+  `BBox` must be positive-area axis-aligned rectangles after their stored
+  local transforms. An uncoloured override or inherited image-stencil clip
+  declines this certificate. Ordinary accepted enumeration remains unchanged.
+  The selected lattice and numeric instance ranges are validated first.
+  Let `u,v` be outward upper bounds on the inverse lattice's unit-pixel
+  x/y spans, and `e` a componentwise device placement-error bound. The inward
+  width of the clipped cell rectangle must exceed
+  `abs(XStep) + 3*u + 2*u*e`, and its height the corresponding y expression.
+  Each permissible-translation interval then contains a lattice point whose
+  cell contains the complete 3-by-3 device-pixel neighbourhood. Outward inverse
+  intervals enclose the target pixel centres; the floor-selected witness range
+  must fit completely inside the actual enumerated index bounds. Uncertain or
+  missing witnesses decline the certificate. At least one
+  opaque black instance therefore gives full alpha and shape independently
+  of partially covered overlapping cells; geometric plane coverage alone
+  would not prove this for independently antialiased instances.
+  Determinant intervals exclude zero, and outward gamma16 arithmetic bounds
+  placement using absolute affine terms before cancellation. A conservative
+  certificate domain requires `e < 2^-16` device pixel; unresolved arithmetic
+  retains enumeration or its existing refusal. This is an eligibility bound,
+  not a changed coverage tolerance or product working-range limit. Inspection
+  and clip traversal are metered before work; ordinary preparation, raster,
+  surface, depth and memory limits remain in force. The field uses the original
+  solid paint and composite/conversion state through the normal mark pipeline
+  and original pattern group. The outer mark/clip coverage, alpha, soft mask
+  and backdrop composition still apply once. Independent rational controls
+  cover the admitted geometry/compositing and retained refusal boundaries.
+  The independent reference instead checks actual finite placed fill, BBox
+  and local clip quadrilaterals against every corner of each requested pixel;
+  its candidate and clip visits share one cumulative render-work meter. Raw
+  geometry remains subject to the existing working-range policy before
+  transformation or clipping can hide an excessive coordinate.
 - **Composition through non-amplifying operations:** the imaging model of
   clause 11 in exact arithmetic on the same coverage bytes and sources, for
   any number of overlapping marks. These operations are Normal compositing,
@@ -124,6 +190,34 @@ straight edges and certified monotone glyph quadratics. Edges are listed
 per strip of 16 rows; the kernel accumulates them in their own order into
 reusable f64 cells, tracks touched cells, and emits partial cells and solid
 spans. A rectangle is two vertical edges in that same kernel.
+
+**Inherited glyph clipping.** Ordinary tiling below an image stencil retains
+patterned glyph outlines with their original linear map and exact origin.
+Every descendant intersects the entire source chain geometrically. True
+quadratic glyph boundaries, including multiple curved ancestors and a curved
+leaf, use the existing localized subdivision, outward control hulls, row
+resolver and cell integrator. The symmetric difference of an intersection is
+bounded by the sum of its sources' symmetric differences; both endpoints of
+each joint area interval must quantize to the same coverage byte before any
+blend, transfer, group or mask sees it. General cubic and singular glyphs
+keep the same canonical polygon and geometric point semantics as ordinary
+glyph placements.
+
+Preparation retains complete certified coverage runs in the same row
+representation as clipping paths. Execution emits those runs through the
+ordinary row sink; it does not correct pixels or perform fallible geometry.
+Candidate pixels come from conservative original controls, points and outward
+hull bounds, including pixels whose initial chords cover no area. A true
+boundary hull that misses a pixel permits the existing polygon clip
+classification to prove a constant covered state there. Removing such constant
+sources leaves ordinary canonical path semantics, preserving straight-edge
+rounding ties. Unresolved true-curve intervals remain explicit numerical
+`Limit` errors. All retained sources, hull indices, runs, scans, interval
+scratch and failed refinement work are charged before allocation or work to
+the existing render-byte and raster-work meters. New curved sources also
+carry their cumulative proof and emission work into the aggregate render-work
+admission, including a clip whose certified intersection is empty; no cross-render cache or
+additional rendering mode is introduced (8.5.4, 8.7.3, 8.9.6.2, 9.3.6).
 
 **Certification and row union.** Each contour splits into y-monotone chains.
 The certificate proves that neighbouring chains keep their order between

@@ -5,7 +5,7 @@ use crate::{
     CidToUnicode, FontKind, PdfFont, Provider, WritingMode,
     cid::Cid,
     features,
-    font::{Mapping, Source, cid_collection},
+    font::{Mapping, Source, UnicodeCoverage, cid_collection},
     metrics::Metrics,
     report::Report,
 };
@@ -49,7 +49,7 @@ pub(crate) fn load(
     }
     // An Identity or unnamed collection shares no glyph identity with any
     // substitute. A known Latin family draws through the font's own ToUnicode
-    // text with the metric-compatible bundled face (ADR 0009).
+    // text with an explicitly selected bundled face (ADR 0009).
     if collection.is_none_or(|(_, ordering)| ordering == b"Identity")
         && let Some(face) = latin_face(document, descendant)?
     {
@@ -119,24 +119,29 @@ fn latin(
     descendant: &Dictionary,
     id: Option<ObjectId>,
     mapping: Mapping,
-    face: Standard14,
+    selection: LatinSelection,
     provider: &dyn Provider,
 ) -> Result<PdfFont> {
     let program = provider
-        .standard_font(face.name().as_bytes())?
+        .standard_font(selection.face.name().as_bytes())?
         .and_then(|data| data.program.clone())
         .ok_or_else(unavailable)?;
     let to_unicode = crate::font::to_unicode(document, font, &mapping)?;
+    if selection.coverage == UnicodeCoverage::Required && to_unicode.is_none() {
+        return Err(unavailable());
+    }
     let metrics = Metrics::composite(document, descendant)?;
     let report = Report::new(document);
     // Codes without ToUnicode text, notdef among them, select no glyph.
-    report.diagnostic(
+    if selection.coverage == UnicodeCoverage::Partial {
+        report.diagnostic(
         Diagnostic::information(
             crate::information::CID_GLYPH_MISSING,
             "Identity CID substitute draws only codes with ToUnicode text; others paint nothing and retain PDF advances",
         )
         .in_object_opt(id),
-    )?;
+        )?;
+    }
     report.diagnostic(
         Diagnostic::information(
             crate::information::SUBSTITUTED,
@@ -150,6 +155,7 @@ fn latin(
         source: Source::UnicodeSubstitute {
             program,
             to_unicode,
+            coverage: selection.coverage,
         },
         mapping,
         metrics,
@@ -159,12 +165,32 @@ fn latin(
     .accounted())
 }
 
-/// The Latin standard face a CIDFont's `/BaseFont` names, if any.
-fn latin_face(document: &Document, descendant: &Dictionary) -> Result<Option<Standard14>> {
+/// A reader-selected face and its required source-code coverage policy.
+#[derive(Debug, Clone, Copy)]
+struct LatinSelection {
+    face: Standard14,
+    coverage: UnicodeCoverage,
+}
+
+/// The bounded Latin face policy for this CIDFont's `/BaseFont`.
+fn latin_face(document: &Document, descendant: &Dictionary) -> Result<Option<LatinSelection>> {
     Ok(optional(document, descendant, b"BaseFont")?
         .and_then(Value::as_name)
-        .and_then(|name| standard_name(name.as_bytes()))
-        .filter(|face| !face.is_symbolic()))
+        .and_then(|name| {
+            let name = name.as_bytes();
+            standard_name(name)
+                .filter(|face| !face.is_symbolic())
+                .map(|face| LatinSelection {
+                    face,
+                    coverage: UnicodeCoverage::Partial,
+                })
+                .or_else(|| {
+                    super::family::checked_cid_face(name).map(|face| LatinSelection {
+                        face,
+                        coverage: UnicodeCoverage::Required,
+                    })
+                })
+        }))
 }
 
 pub(crate) fn glyph(

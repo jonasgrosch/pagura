@@ -155,9 +155,10 @@ pub enum FieldKind<'a> {
         password: bool,
         /// Fixed character cells.
         comb: bool,
-        /// RichText flag; rich text is never evaluated.
+        /// RichText flag; the document view keeps XML inert.
         rich_text: bool,
-        /// Original RV data, a string or stream reference, without XML parsing.
+        /// Original RV data, without resolving references or parsing XML.
+        /// Indirect null is treated as absent when generation selects the value.
         rich_value: Option<&'a Value>,
     },
     /// Choice configuration (12.7.5.4).
@@ -239,6 +240,36 @@ pub struct Field<'a> {
     pub additional_actions: Vec<AdditionalAction<'a>>,
     /// Unmodified own dictionary, without inherited entries inserted.
     pub dictionary: &'a Dictionary,
+}
+
+/// The effective appearance data of one source widget (12.7.4.3–12.7.5).
+///
+/// Unlike [`AcroForm`], this projection does not build a full field/name index
+/// or read actions or default values. Its owning choice dictionary supplies I and TI;
+/// appearance characteristics remain on the widget itself.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct WidgetField<'a> {
+    /// Effective text, choice or button configuration.
+    pub kind: FieldKind<'a>,
+    /// Effective field flags.
+    pub flags: FieldFlags,
+    /// Effective source V for stateful fields, decoded without modifying source
+    /// bytes. Push buttons do not use a value.
+    pub value: Option<FieldValue<'a>>,
+    /// Candidate normal state for a missing checkbox/radio appearance. AS wins over V;
+    /// numeric Opt states select their widget ordinal. None means Off.
+    pub button_state: Option<&'a Name>,
+    /// Effective DA, including AcroForm fallback.
+    pub default_appearance: Option<&'a [u8]>,
+    /// Effective Q, including AcroForm fallback.
+    pub justification: Justification,
+    /// The owning field's dictionary; separate widgets do not override it.
+    pub dictionary: &'a Dictionary,
+    /// AcroForm DR, borrowed without copying font resources.
+    pub default_resources: Option<&'a Dictionary>,
+    /// Whether an XFA entry is present; it is never executed.
+    pub has_xfa: bool,
 }
 
 /// A widget associated with a terminal field (12.5.6.19, 12.7.4.2).

@@ -135,15 +135,10 @@ pub(super) fn stream_extent(
         if parser.keyword(ENDSTREAM) {
             return Ok(start..end);
         }
-        // A wrong length cannot swallow another complete physical object.
-        if bytes
-            .get(start..end)
-            .is_some_and(|data| data.windows(ENDOBJ.len()).any(|part| part == ENDOBJ))
-        {
-            return Err(Error::syntax("stream Length crosses an object boundary")
-                .at(parser.position())
-                .in_object(id));
-        }
+        // An overlong declaration can cross endobj. It is not the repaired
+        // extent: terminator() still requires one complete endstream/endobj
+        // before the next physical object or revision boundary. Never scan
+        // through that boundary to satisfy the declaration.
     }
     let (marker, actual) = terminator(document, id, start, context)?;
     repairs.repair(

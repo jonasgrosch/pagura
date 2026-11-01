@@ -113,7 +113,7 @@ impl Sampler {
     }
 
     /// Whether a device pixel spans more than one sample along either axis.
-    fn minifies(&self) -> bool {
+    pub(crate) fn minifies(&self) -> bool {
         let t = self.inverse;
         t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9
     }

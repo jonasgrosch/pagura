@@ -1,10 +1,14 @@
-//! Link and square borders (12.5.4, 12.5.6.5, 12.5.6.8).
+//! Link, square and circle borders (12.5.4, 12.5.6.5, 12.5.6.8).
 
-use super::marks::{Color, Marks, Pen, Subpath, color, scalar};
+mod form;
+mod relief;
+
+use super::cloud;
+use super::marks::{Color, Marks, Pen, Subpath, color};
 use crate::features;
 use crate::stream::AppearanceStream;
-use crate::values::numbers;
-use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
+use crate::values::{number, numbers, optional, optional_dictionary};
+use pagura_core::{Dictionary, Error, Meter, Name, Rect, Result};
 use pagura_document::Document;
 
 /// The annotation whose border is drawn.
@@ -14,42 +18,62 @@ pub(super) enum Shape {
     Link,
     /// A square: an optional interior colour `IC` inside the border.
     Square,
+    /// A circle/ellipse with optional interior colour `IC`.
+    Circle,
 }
 
 /// The border inside `rect`, centred half a line width in, and for squares
-/// the interior it encloses.
+/// and circles the interior it encloses. Rectangle differences reduce the shape bounds
+/// before border inset; the appearance BBox stays the original annotation Rect.
 pub(super) fn generate(
     document: &Document,
     annotation: &Dictionary,
     rect: Rect,
     shape: Shape,
 ) -> Result<Option<AppearanceStream>> {
-    if shape == Shape::Square && (annotation.contains_key(b"BE") || annotation.contains_key(b"RD"))
-    {
-        return Err(Error::unsupported(
-            features::ANNOTATION_APPEARANCE,
-            "square border effects and rectangle differences are not implemented",
-        ));
-    }
-    let border = Border::read(document, annotation)?;
+    let effect = if shape == Shape::Link {
+        None
+    } else {
+        cloud::Effect::read(document, annotation)?
+    };
+    let bounds = if shape == Shape::Link {
+        rect
+    } else {
+        inset_bounds(document, annotation, rect)?
+    };
+    let border = if shape == Shape::Circle {
+        Border::read(document, annotation)?
+    } else {
+        Border::read_rectangular(document, annotation)?
+    };
     let inset = (border.width * 0.5)
-        .min(rect.width() * 0.5)
-        .min(rect.height() * 0.5);
+        .min(bounds.width() * 0.5)
+        .min(bounds.height() * 0.5);
     let inner = Rect::from_corners(
-        rect.x0() + inset,
-        rect.y0() + inset,
-        rect.x1() - inset,
-        rect.y1() - inset,
+        bounds.x0() + inset,
+        bounds.y0() + inset,
+        bounds.x1() - inset,
+        bounds.y1() - inset,
     )
     .ok_or(Error::syntax("invalid border rectangle"))?;
     let mut marks = Marks::new(document, annotation);
-    let outline = Subpath::Rect {
-        x: inner.x0(),
-        y: inner.y0(),
-        width: inner.width(),
-        height: inner.height(),
+    let cloud = effect
+        .map(|effect| {
+            if shape == Shape::Circle {
+                effect.ellipse(document, inner, border.width)
+            } else {
+                effect.rectangle(document, inner, border.width)
+            }
+        })
+        .transpose()?;
+    let outline = if let Some(cloud) = &cloud {
+        cloud.path()
+    } else if shape == Shape::Circle {
+        Subpath::Ellipse(inner)
+    } else {
+        border.outline(inner)
     };
-    if shape == Shape::Square
+    if shape != Shape::Link
         && let Some(interior) = color(document, annotation, b"IC", None)?
     {
         marks.fill(&[outline], &interior)?;
@@ -58,7 +82,7 @@ pub(super) fn generate(
         && let Some(color) = color(document, annotation, b"C", Some(Color::black()))?
     {
         let underline = [(inner.x0(), inner.y0()), (inner.x1(), inner.y0())];
-        let path = if border.underline {
+        let path = if border.underline && cloud.is_none() {
             Subpath::Polyline(&underline)
         } else {
             outline
@@ -67,39 +91,147 @@ pub(super) fn generate(
             width: border.width,
             dash: &border.dash,
         };
-        marks.stroke(&[path], &color, pen)?;
+        if cloud.is_some() || !border.paint_relief(&mut marks, bounds, &color)? {
+            marks.stroke(&[path], &color, pen)?;
+        }
     }
     marks.finish(rect)
 }
 
+/// Tables 180/183 specify RD in left, top, right, bottom order, unlike a Rect.
+pub(super) fn inset_bounds(
+    document: &Document,
+    annotation: &Dictionary,
+    rect: Rect,
+) -> Result<Rect> {
+    if !rect.width().is_finite() || !rect.height().is_finite() {
+        return Err(Error::limit("annotation extent exceeds numeric range"));
+    }
+    let Some(differences) = optional(document, annotation, b"RD")? else {
+        return Ok(rect);
+    };
+    let differences = differences
+        .as_array()
+        .ok_or(Error::syntax("annotation RD must be an array"))?;
+    let [left, top, right, bottom] = differences else {
+        return Err(Error::syntax("annotation RD must have four numbers"));
+    };
+    let [left, top, right, bottom] = [
+        number(document, left)?,
+        number(document, top)?,
+        number(document, right)?,
+        number(document, bottom)?,
+    ];
+    let horizontal = left + right;
+    let vertical = top + bottom;
+    if !horizontal.is_finite() || !vertical.is_finite() {
+        return Err(Error::limit("annotation insets exceed numeric range"));
+    }
+    if [left, top, right, bottom].iter().any(|value| *value < 0.0)
+        || horizontal >= rect.width()
+        || vertical >= rect.height()
+    {
+        return Err(Error::syntax("annotation RD leaves invalid shape bounds"));
+    }
+    Rect::from_corners(
+        rect.x0() + left,
+        rect.y0() + bottom,
+        rect.x1() - right,
+        rect.y1() - top,
+    )
+    .ok_or(Error::syntax("invalid annotation shape bounds"))
+}
+
 /// An annotation border: BS, else Border, else solid and 1 unit wide
 /// (Tables 166, 168).
-pub(super) struct Border {
-    pub(super) width: f64,
+pub(crate) struct Border {
+    pub(crate) width: f64,
     pub(super) dash: Vec<f64>,
     pub(super) underline: bool,
+    radii: [f64; 2],
+    relief: Option<relief::Kind>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Corners {
+    Square,
+    Rounded,
 }
 
 impl Border {
+    /// Styles for paths whose own geometry does not consume corner radii.
     pub(super) fn read(document: &Document, annotation: &Dictionary) -> Result<Self> {
+        Self::read_with_corners(document, annotation, Corners::Square)
+    }
+
+    /// Styles for a rectangular border, including legacy Border corner radii.
+    pub(crate) fn read_rectangular(document: &Document, annotation: &Dictionary) -> Result<Self> {
+        Self::read_with_corners(document, annotation, Corners::Rounded)
+    }
+
+    /// The border centreline; radii are clamped to half each extent when written.
+    pub(super) fn outline(&self, bounds: Rect) -> Subpath<'static> {
+        if self.radii.contains(&0.0) {
+            Subpath::Rect {
+                x: bounds.x0(),
+                y: bounds.y0(),
+                width: bounds.width(),
+                height: bounds.height(),
+            }
+        } else {
+            Subpath::RoundedRect {
+                bounds,
+                radii: self.radii,
+            }
+        }
+    }
+
+    /// Paints B/I facets and returns whether a relief style was selected.
+    pub(super) fn paint_relief(
+        &self,
+        marks: &mut Marks<'_>,
+        bounds: Rect,
+        color: &Color,
+    ) -> Result<bool> {
+        let Some(kind) = self.relief else {
+            return Ok(false);
+        };
+        relief::paint(marks, bounds, self.width, color, kind)?;
+        Ok(true)
+    }
+
+    /// Worst-case number of edges in one rectangular outline.
+    pub(super) fn outline_segments(&self) -> usize {
+        if self.radii.contains(&0.0) && self.relief.is_none() {
+            4
+        } else {
+            12
+        }
+    }
+
+    fn read_with_corners(
+        document: &Document,
+        annotation: &Dictionary,
+        corners: Corners,
+    ) -> Result<Self> {
+        let mut radii = [0.0; 2];
         let (mut width, mut dash, mut style) = (1.0, Vec::new(), b"S".as_slice());
-        if let Some(bs) = annotation.get(b"BS") {
-            let bs = document.resolve_dictionary(bs)?;
-            width = scalar(document, bs, b"W")?.unwrap_or(1.0);
-            style = bs
-                .get(b"S")
-                .map(|value| document.resolve(value))
+        if let Some(bs) = optional_dictionary(document, annotation, b"BS")? {
+            width = optional(document, bs, b"W")?
+                .map(|value| number(document, value))
                 .transpose()?
-                .and_then(Value::as_name)
+                .unwrap_or(1.0);
+            style = optional(document, bs, b"S")?
+                .map(|value| value.as_name().ok_or(Error::syntax("BS S must be a name")))
+                .transpose()?
                 .map_or(b"S", Name::as_bytes);
             if style == b"D" {
-                dash = bs
-                    .get(b"D")
+                dash = optional(document, bs, b"D")?
                     .map(|value| numbers(document, value))
                     .transpose()?
                     .unwrap_or_else(|| vec![3.0]);
             }
-        } else if let Some(border) = annotation.get(b"Border") {
+        } else if let Some(border) = optional(document, annotation, b"Border")? {
             let border = document
                 .resolve(border)?
                 .as_array()
@@ -110,20 +242,17 @@ impl Border {
             if rest.len() > 1 {
                 return Err(Error::syntax("invalid annotation Border"));
             }
-            let radii = [
-                document.resolve(horizontal)?.as_number(),
-                document.resolve(vertical)?.as_number(),
-            ];
-            if radii != [Some(0.0), Some(0.0)] {
+            radii = [number(document, horizontal)?, number(document, vertical)?];
+            if radii.iter().any(|radius| *radius < 0.0) {
+                return Err(Error::syntax("negative annotation corner radius"));
+            }
+            if corners == Corners::Square && radii != [0.0, 0.0] {
                 return Err(Error::unsupported(
                     features::ANNOTATION_APPEARANCE,
-                    "rounded annotation borders are not implemented",
+                    "rounded borders require rectangular annotation geometry",
                 ));
             }
-            width = document
-                .resolve(line)?
-                .as_number()
-                .ok_or(Error::syntax("invalid annotation border width"))?;
+            width = number(document, line)?;
             if let Some(array) = rest.first() {
                 dash = numbers(document, array)?;
             }
@@ -131,13 +260,44 @@ impl Border {
         if width < 0.0 {
             return Err(Error::syntax("negative annotation border width"));
         }
-        if matches!(style, b"B" | b"I") {
+        if dash.iter().any(|value| *value < 0.0)
+            || !dash.is_empty() && dash.iter().all(|value| *value == 0.0)
+        {
+            return Err(Error::syntax("invalid annotation dash pattern"));
+        }
+        let relief = match style {
+            b"B" => Some(relief::Kind::Raised),
+            b"I" => Some(relief::Kind::Sunken),
+            _ => None,
+        };
+        if corners == Corners::Square && relief.is_some() {
             return Err(Error::unsupported(
                 features::ANNOTATION_APPEARANCE,
-                "relief annotation borders are not implemented",
+                "relief borders require rectangular annotation geometry",
             ));
         }
+        if relief.is_some() {
+            let limits = document.limits();
+            Meter::new(
+                limits.path_segments,
+                "relief border geometry budget exceeded",
+            )
+            .charge(16)?; // Optional rectangular fill and both six-edge facets.
+            Meter::new(limits.operations, "relief border work budget exceeded").charge(24)?;
+        }
+        if !radii.contains(&0.0) {
+            // At most a fill and a stroke, each with eight arcs and four edges.
+            let limits = document.limits();
+            Meter::new(
+                limits.path_segments,
+                "rounded border geometry budget exceeded",
+            )
+            .charge(24)?;
+            Meter::new(limits.operations, "rounded border work budget exceeded").charge(24)?;
+        }
         Ok(Self {
+            relief,
+            radii,
             width,
             dash,
             underline: style == b"U",

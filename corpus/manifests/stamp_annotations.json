@@ -1,0 +1,833 @@
+{
+  "schema": 2,
+  "area": "stamp_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "stamp_annotations/Approved",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Approved.pdf",
+      "sha256": "62afb864a41b96b442eee7052dbd220a6f5c4e1b71e837220f6b296f4eb082a0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Approved.ppm",
+      "oracle_sha256": "c3397d86131a186d22941d97fb0f0b846481a1e5d82d592fa55ca36540709c86",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/Experimental",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Experimental.pdf",
+      "sha256": "53f43b818c674d1a249dd7d56640e195eeca6f050b9c0222c3e299fa49f7c98d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Experimental.ppm",
+      "oracle_sha256": "0e91b89cfd0f883ffcba5f859910a45af7b09420e7096e7776dd69feb5d256f0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/NotApproved",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/NotApproved.pdf",
+      "sha256": "7d253ee3a35d4de2b702ce7a75a3c42bc8193670d879c01333a98de41ce54f16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/NotApproved.ppm",
+      "oracle_sha256": "7c87bd6b62d8ce8d3958e403326367ed802426f12b3a0df51b3d3cedecfbcbde",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/AsIs",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/AsIs.pdf",
+      "sha256": "961f7b41d67cdb21d48528239357e38d4b77f080ba48decbf707848413db3fed",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/AsIs.ppm",
+      "oracle_sha256": "f211e0e8cf531478ee1e2904a36999fdf1c337b4a2541039ed6d486eadbcfa5b",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/Expired",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Expired.pdf",
+      "sha256": "b53f3810e93e54faf48b6d61e24f7e90caff33304374fc1119ca577138cb8135",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Expired.ppm",
+      "oracle_sha256": "ef8a96cf19b5f94ffd4c6b834f19584dace1c58490b00ad7e32bfe55ab386619",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/NotForPublicRelease",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/NotForPublicRelease.pdf",
+      "sha256": "3fa3710a29357cad43060b7a68dae47e5efab8d28b9f3a3dc2940089d0871080",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/NotForPublicRelease.ppm",
+      "oracle_sha256": "8cc2ab31fe895d88f30d047cc1ec9a2f9564ff0f9b8ed0bd37354e4e6bcf1eec",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/Confidential",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Confidential.pdf",
+      "sha256": "b402f3cc414ea10bc08ebe2b59fc62ad761fdbac452f7ec8410b3bd870bed468",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Confidential.ppm",
+      "oracle_sha256": "7118fbfb572f25f5e04d071554834c528eab656e4ed56af396edc7af8e8465a3",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/Final",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Final.pdf",
+      "sha256": "52fd76fbbcaeb3a8d6ba523caa8ebb478b98c1db9217156789863668267c9cc3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Final.ppm",
+      "oracle_sha256": "f90d7b91b0bc7828e9c6bef3df6c3b57e80eeba0ca2a8f44c13109d303fd9f91",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/Sold",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Sold.pdf",
+      "sha256": "1af326aa4282f8f8f8a99c669ea2770061d5c3264bd7f7aea3af3621bd2e9e5a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Sold.ppm",
+      "oracle_sha256": "f6484a2b2702f52bedc87fb3e6dc843d986dc3a6b9419ce7b6312c24006527bb",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/Departmental",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Departmental.pdf",
+      "sha256": "a813636439a8aff02766830d6b7c4c1f243722d1d040a9ea0a5fb568d5efd9d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Departmental.ppm",
+      "oracle_sha256": "4f20afbf7ae6765e168b32848549fe127a9887114512fc6fc847544d25aa7fd5",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/ForComment",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/ForComment.pdf",
+      "sha256": "5123c53757c26f8b3954dc0006bc8033966271e0453a1d74c7be4c1813888fad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/ForComment.ppm",
+      "oracle_sha256": "dc0abb33923dbace15604ca9972073742cd4cc8fd011c4baa389557ad0dadae0",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/TopSecret",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/TopSecret.pdf",
+      "sha256": "4788c62eb2237d073fdacb089f8373da82a0556cad3d8419c14c512155b569b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/TopSecret.ppm",
+      "oracle_sha256": "7877705cf45011f7eebc3e2694191c2de7f1b12dc920cf8f650f8626cec627ef",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/Draft",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Draft.pdf",
+      "sha256": "88bf0560a9fbb6d98bc58d475ea9890b9174ecd8a1f57424ad62478b7999cb00",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Draft.ppm",
+      "oracle_sha256": "e62dfea0e80a00aeb5bd4047144ba406cfbc75719349fbb5bdaf063b20e1cff9",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/ForPublicRelease",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/ForPublicRelease.pdf",
+      "sha256": "88e91324617c644984e61bd54440dd2e5e8c507f5f953b332816a22853e84303",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/ForPublicRelease.ppm",
+      "oracle_sha256": "98302a7211c4789cfd4dd86a21c3c21ee6f65210ceefe5a47c0c6e582e20d62d",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/Final-144",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Final-144.pdf",
+      "sha256": "52fd76fbbcaeb3a8d6ba523caa8ebb478b98c1db9217156789863668267c9cc3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Final-144.ppm",
+      "oracle_sha256": "a04ddf09ed3acc0b5c1efcfd1d753547999ebf598fcdba5113540f9a5823db35",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/Draft-144",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/Draft-144.pdf",
+      "sha256": "88bf0560a9fbb6d98bc58d475ea9890b9174ecd8a1f57424ad62478b7999cb00",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/Draft-144.ppm",
+      "oracle_sha256": "302cafb7e843c47563b68a02e2601c8c69a109950387e282681305acd1f4c91e",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/NotForPublicRelease-144",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/NotForPublicRelease-144.pdf",
+      "sha256": "3fa3710a29357cad43060b7a68dae47e5efab8d28b9f3a3dc2940089d0871080",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/NotForPublicRelease-144.ppm",
+      "oracle_sha256": "44ac7d720e184a82c8fa8baa5ee679e8398b52eaa216e6257e04dcc1c27705e9",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/final-stored-72",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/final-stored-72.pdf",
+      "sha256": "17218bc1028d8f481e9c3e9e1db0dd55bb9c3249bb2307e3c8c0356a12598cdf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/final-stored-72.ppm",
+      "oracle_sha256": "f90d7b91b0bc7828e9c6bef3df6c3b57e80eeba0ca2a8f44c13109d303fd9f91",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/final-stored-144",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/final-stored-144.pdf",
+      "sha256": "17218bc1028d8f481e9c3e9e1db0dd55bb9c3249bb2307e3c8c0356a12598cdf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/final-stored-144.ppm",
+      "oracle_sha256": "a04ddf09ed3acc0b5c1efcfd1d753547999ebf598fcdba5113540f9a5823db35",
+      "dpi": 144,
+      "width": 256,
+      "height": 96,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/default",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/default.pdf",
+      "sha256": "2107ca692c22b1c04956744e8641e59b5c50760138e8b01d317839d797a35423",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/default.ppm",
+      "oracle_sha256": "e62dfea0e80a00aeb5bd4047144ba406cfbc75719349fbb5bdaf063b20e1cff9",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/null-name",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/null-name.pdf",
+      "sha256": "05452767dbc1e4b6ba24a07506e85d7e19ffebf762f0f1e41fa43f24da6d428d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/null-name.ppm",
+      "oracle_sha256": "e62dfea0e80a00aeb5bd4047144ba406cfbc75719349fbb5bdaf063b20e1cff9",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/unknown-name",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/unknown-name.pdf",
+      "sha256": "8140bb8051bb45e043cc80acb1585f3d9c01b1475e2a951364d797c7e07badcd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/unknown-name.ppm",
+      "oracle_sha256": "e62dfea0e80a00aeb5bd4047144ba406cfbc75719349fbb5bdaf063b20e1cff9",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/null-intent",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/null-intent.pdf",
+      "sha256": "8863d7a7489745dc7c94c88489c6a7b29d177d6ad9af6caf9bc0b6c1a65496c6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/null-intent.ppm",
+      "oracle_sha256": "e62dfea0e80a00aeb5bd4047144ba406cfbc75719349fbb5bdaf063b20e1cff9",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/indirect",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/indirect.pdf",
+      "sha256": "5108871554a41b1da4c2fe15416ce2431f5e53bb5eb945a8574bf7e2556d07a9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/indirect.ppm",
+      "oracle_sha256": "f90d7b91b0bc7828e9c6bef3df6c3b57e80eeba0ca2a8f44c13109d303fd9f91",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/color",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/color.pdf",
+      "sha256": "5daedf9e4d799d828475dac0c730d8cd8775cd1e9e1c67bcdad8208bf18f9715",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/color.ppm",
+      "oracle_sha256": "928ebc67e1844cbf59be83886b66f6a1e025838359ab08d98b46d5459e2fb4a8",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/opacity",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/opacity.pdf",
+      "sha256": "cd775e7d29af8eedfb503317a2974aedabcb487685e2b5977e0996a222f88c1e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/opacity.ppm",
+      "oracle_sha256": "d19a772ca63a187059ea4d3c7a1c087fae9c7d19075c19388ed1c61ebd495137",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/separate-opacity",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/separate-opacity.pdf",
+      "sha256": "7ed8ef02df1e96b39175aadd3914183f6ed6fc65dbd306bc67f03efc71ae3645",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/separate-opacity.ppm",
+      "oracle_sha256": "a1976f2862e29cc561cad9db0894c17ec0c1f73821d1b5209cb7923be4e3e2d2",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/rotated",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/rotated.pdf",
+      "sha256": "d9b9aa4ee1acbdd48abd8e7da7ebe7c2d2037382846fe4354f4114bfd5439354",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/rotated.ppm",
+      "oracle_sha256": "be36e17566922c6ee43fff9fd4b26caccd3a72fe48a9d3e90eb095569a5dcad6",
+      "dpi": 144,
+      "width": 96,
+      "height": 256,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/tall",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/tall.pdf",
+      "sha256": "bb608b44c69499b0218cc9d50879ed06a054037995f9a1ab45214bb505976430",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/tall.ppm",
+      "oracle_sha256": "171068d5865120bb8e3c9112d506d31175b5166c641cafbdf0879ef5b1f418ee",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/hidden",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/hidden.pdf",
+      "sha256": "6d18e9e40d1897578a52440f4cebc81e4f954257fcb7cd25fb09c8f70758a580",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/stamp_annotations/hidden.ppm",
+      "oracle_sha256": "046cd86c816121ee22cfdb3a030a62969501812bdc5f1a6ff189f062c7f617dd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/no-view",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/no-view.pdf",
+      "sha256": "db38ce9fde7ada708ce603bd4976d77d2b7800726761c205d7a314ff6da448c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/stamp_annotations/no-view.ppm",
+      "oracle_sha256": "046cd86c816121ee22cfdb3a030a62969501812bdc5f1a6ff189f062c7f617dd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/no-color",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/no-color.pdf",
+      "sha256": "ad8e6def69084c386b85529abc22f05ff8db7a1c60062c17f2eef97281710006",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/stamp_annotations/no-color.ppm",
+      "oracle_sha256": "046cd86c816121ee22cfdb3a030a62969501812bdc5f1a6ff189f062c7f617dd",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/stored-ignores-fields",
+      "kind": "pdf",
+      "description": "AFM metrics, analytic original quadratic integrals and literal frame regions independently establish pixels",
+      "expected": "render",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/stored-ignores-fields.pdf",
+      "sha256": "466f26727e53f45c721071cbba62bc1c8d7a1891a5bfaa2ef1c71c29d1fed4b3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/stamp_annotations/stored-ignores-fields.ppm",
+      "oracle_sha256": "f90d7b91b0bc7828e9c6bef3df6c3b57e80eeba0ca2a8f44c13109d303fd9f91",
+      "dpi": 72,
+      "width": 128,
+      "height": 48,
+      "tolerance": 1
+    },
+    {
+      "id": "stamp_annotations/name-type",
+      "kind": "pdf",
+      "description": "Name/IT types validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/name-type.pdf",
+      "sha256": "b7e1bbed43ad906b99a6fefbf09b343fb3b3168f229fc6f7d60423ee76c3f956",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "stamp_annotations/intent-type",
+      "kind": "pdf",
+      "description": "Name/IT types validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/intent-type.pdf",
+      "sha256": "71bb5878c5c3405253f94cf30136da128b172c160537b8b43f946687eb31f000",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "stamp_annotations/intent-StampImage",
+      "kind": "pdf",
+      "description": "Image, snapshot and unrecognized intents require stored artwork",
+      "expected": "unsupported",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/intent-StampImage.pdf",
+      "sha256": "e7ed7d51ff2c146800d94b2cfbc986a9eddc716b983e03b6866262d22d540ef9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "stamp_annotations/intent-StampSnapshot",
+      "kind": "pdf",
+      "description": "Image, snapshot and unrecognized intents require stored artwork",
+      "expected": "unsupported",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/intent-StampSnapshot.pdf",
+      "sha256": "f79ff2b8d62ad1862d5b0d268e1b8e4c40b60b2b9d9e96de771b49646f0bc322",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "stamp_annotations/intent-Unknown",
+      "kind": "pdf",
+      "description": "Image, snapshot and unrecognized intents require stored artwork",
+      "expected": "unsupported",
+      "requirements": [
+        "content-stamp-appearances"
+      ],
+      "path": "corpus/generated/stamp_annotations/intent-Unknown.pdf",
+      "sha256": "5d78519bfa268baac47e374b91038b4304a35004c30488faf09e755ce401f2c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    }
+  ]
+}

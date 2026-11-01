@@ -1,0 +1,57 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 16 16] /Resources << /Pattern << /P 5 0 R >> /XObject << /I 6 0 R >> /ExtGState << /G << /ca 0.5 >> >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 61 >>
+stream
+/G gs /Pattern cs /P scn 10.5 1.0 -1.0 9.5 3.25 2.25 cm /I Do
+endstream
+endobj
+5 0 obj
+<< /Length 74 /Type /Pattern /PatternType 1 /TilingType 2 /BBox [0 0 16 16] /XStep 16 /YStep 16 /PaintType 1 /Resources << /Pattern << /Q 7 0 R >> /ColorSpace << /CS [/Pattern /DeviceRGB] >> >>>>
+stream
+/Pattern cs /Q scn 2.25 1.75 m 13.75 1.75 l 13.75 14.25 l 2.25 14.25 l h f
+endstream
+endobj
+6 0 obj
+<< /Length 2 /Type /XObject /Subtype /Image /Width 3 /Height 2 /ImageMask true /BitsPerComponent 1>>
+stream
+@†
+endstream
+endobj
+7 0 obj
+<< /Length 74 /Type /Pattern /PatternType 1 /TilingType 2 /BBox [0 0 16 16] /XStep 16 /YStep 16 /PaintType 1 /Resources << /Pattern << /Q 8 0 R >> /ColorSpace << /CS [/Pattern /DeviceRGB] >> >>>>
+stream
+/Pattern cs /Q scn 1.75 3.25 m 13.25 3.25 l 13.25 13.75 l 1.75 13.75 l h f
+endstream
+endobj
+8 0 obj
+<< /Length 88 /Type /Pattern /PatternType 1 /TilingType 2 /BBox [0 0 16 16] /XStep 16 /YStep 16 /PaintType 1 /Resources << >>>>
+stream
+1 0 0 rg 0 0 16 16 re f 0 0 1 rg 7.25 4.75 m 12.25 4.75 l 12.25 10.75 l 7.25 10.75 l h f
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000305 00000 n 
+0000000416 00000 n 
+0000000719 00000 n 
+0000000855 00000 n 
+0000001158 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+1407
+%%EOF

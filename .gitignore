@@ -9,3 +9,5 @@ __pycache__/
 /references/private/
 /corpus/private/
 /web/pkg/
+/jbig2-wrapper-parity-results.json
+/jbig2-wrapper-parity-native-results.json

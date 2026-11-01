@@ -44,16 +44,16 @@ pub fn default_text_style(bytes: &[u8], limits: &Limits) -> Result<TextStyle> {
 /// A parsed DA string: the text parameters layout uses, and the bytes of
 /// every other operator, replayed verbatim before the text.
 #[derive(Debug, Clone)]
-pub(super) struct DefaultAppearance {
-    pub(super) font: Name,
-    pub(super) size: f64,
-    pub(super) state: Vec<u8>,
-    pub(super) matrix: [f64; 4],
-    pub(super) character_space: f64,
-    pub(super) word_space: f64,
-    pub(super) scale: f64,
-    pub(super) leading: f64,
-    pub(super) rise: f64,
+pub(crate) struct DefaultAppearance {
+    pub(crate) font: Name,
+    pub(crate) size: f64,
+    pub(crate) state: Vec<u8>,
+    pub(crate) matrix: [f64; 4],
+    pub(crate) character_space: f64,
+    pub(crate) word_space: f64,
+    pub(crate) scale: f64,
+    pub(crate) leading: f64,
+    pub(crate) rise: f64,
 }
 
 /// Which of the once-only operators a DA string has shown.
@@ -64,7 +64,7 @@ struct Seen {
 }
 
 impl DefaultAppearance {
-    pub(super) fn parse(bytes: &[u8], limits: &Limits) -> Result<Self> {
+    pub(crate) fn parse(bytes: &[u8], limits: &Limits) -> Result<Self> {
         if bytes.len() > limits.string_bytes {
             return Err(Error::limit("default appearance string budget exceeded"));
         }

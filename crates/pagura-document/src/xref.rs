@@ -439,7 +439,11 @@ pub(crate) fn integer_offset(dictionary: &Dictionary, key: &[u8]) -> Result<Opti
 }
 
 /// Finds the `%PDF-` header and returns its offset (7.5.2).
-pub(crate) fn header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
+pub(crate) fn header(
+    bytes: &[u8],
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<usize> {
     let offset = bytes
         .get(..bytes.len().min(HEADER_WINDOW + HEADER_LENGTH))
         .and_then(|head| {
@@ -450,8 +454,20 @@ pub(crate) fn header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usiz
                 _ => false,
             })
         })
-        .filter(|&at| at < HEADER_WINDOW)
-        .ok_or(Error::syntax("missing or unknown PDF header").at(Position::File(0)))?;
+        .filter(|&at| at < HEADER_WINDOW);
+    let Some(offset) = offset else {
+        if absent_header(bytes, limits)? {
+            diagnostics.repair(
+                Diagnostic::new(
+                    repairs::HEADER_ABSENT,
+                    "missing PDF header before a complete leading Catalog object; no version inferred",
+                )
+                .at(Position::File(0)),
+            )?;
+            return Ok(0);
+        }
+        return Err(Error::syntax("missing or unknown PDF header").at(Position::File(0)));
+    };
     if offset != 0 {
         diagnostics.repair(
             Diagnostic::new(
@@ -482,6 +498,42 @@ pub(crate) fn header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usiz
         )?;
     }
     Ok(offset)
+}
+
+/// A missing declaration is distinguishable from arbitrary data only when
+/// the bounded prefix starts with a complete, explicitly typed Catalog.
+/// The normal opener must still validate its page tree, xref and security.
+/// An explicit unknown/truncated PDF declaration remains an error. No PDF
+/// version is synthesized or stored by this repair.
+fn absent_header(bytes: &[u8], limits: &Limits) -> Result<bool> {
+    let head = &bytes[..bytes.len().min(HEADER_WINDOW)];
+    if head.windows(4).any(|part| part == b"%PDF") {
+        return Ok(false);
+    }
+    let mut parser = Parser::new(head, Origin::File, *limits);
+    parser.peek();
+    if crate::object::recovery::header(head, parser.offset(), limits).is_none() {
+        return Ok(false);
+    }
+    let candidate: Result<bool> = (|| {
+        parser.unsigned()?;
+        parser.unsigned()?;
+        if !parser.keyword(b"obj") {
+            return Ok(false);
+        }
+        let value = parser.parse()?;
+        Ok(value.as_dictionary().is_some_and(|dictionary| {
+            dictionary.is_name(b"Type", b"Catalog")
+                && dictionary
+                    .get(b"Pages")
+                    .and_then(pagura_core::Value::as_reference)
+                    .is_some()
+        }) && parser.keyword(b"endobj"))
+    })();
+    match candidate {
+        Err(error) if error.kind == ErrorKind::Syntax => Ok(false),
+        result => result,
+    }
 }
 
 /// Finds the offset given after the last `startxref` (clause 7.5.5).

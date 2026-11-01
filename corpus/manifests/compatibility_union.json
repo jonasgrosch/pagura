@@ -1,0 +1,1170 @@
+{
+  "schema": 2,
+  "area": "compatibility_union",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "compatibility_union/direct-twin-72",
+      "kind": "pdf",
+      "description": "Literal direct rectangles are the independent semantic cost twin",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/direct-twin-72.pdf",
+      "sha256": "a85c0160271cb1dd953bee9435f16722a2127af7328d470c8dabc27515627e86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/compatibility_union/direct-twin-72.ppm",
+      "oracle_sha256": "04a1de587aa81192785324f3edcd1a9576b105221c09aabe0b9be6cfef0330ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/off-72",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/off-72.pdf",
+      "sha256": "e4cd68a9e2eca0fb6293dca12b11fdb70132d2d6d357ef7362b4c6e973352649",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/off-72.ppm",
+      "oracle_sha256": "04a1de587aa81192785324f3edcd1a9576b105221c09aabe0b9be6cfef0330ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/default-72",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/default-72.pdf",
+      "sha256": "ccc3de875bc52c59618d4368764fd7d59b7cb3125c33d4b35e390d556625a092",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/default-72.ppm",
+      "oracle_sha256": "04a1de587aa81192785324f3edcd1a9576b105221c09aabe0b9be6cfef0330ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/reverse-order-72",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/reverse-order-72.pdf",
+      "sha256": "29aa030e419aecd64b3b298bec42f2969347e788fd28a0509672f20ec6e1652c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/reverse-order-72.ppm",
+      "oracle_sha256": "04a1de587aa81192785324f3edcd1a9576b105221c09aabe0b9be6cfef0330ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/clip-kept-72",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/clip-kept-72.pdf",
+      "sha256": "4fcf81b44ee1956a327bd579bbe8d68c50241f24a47444bc96533c5631d4605a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/clip-kept-72.ppm",
+      "oracle_sha256": "500b15f950c94e3d0e5d8eb24e75c0059e1c944b8b8bd19a735c0d709535c1c7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            22,
+            3,
+            6,
+            6
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/form-keeps-caller-72",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/form-keeps-caller-72.pdf",
+      "sha256": "e0050ec1b7cda4f8e2a83bc44a2a24c7c4aa1286b9de6a899081165f1cf06a53",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/form-keeps-caller-72.ppm",
+      "oracle_sha256": "04a1de587aa81192785324f3edcd1a9576b105221c09aabe0b9be6cfef0330ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/required-resource-72",
+      "kind": "pdf",
+      "description": "Later required failure cannot return an apparently complete repaired page",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/required-resource-72.pdf",
+      "sha256": "1378be2cdea5b022386fb1c4007792bb4b9675f57a2401699014316ee2871324",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Syntax",
+      "dpi": 72
+    },
+    {
+      "id": "compatibility_union/required-cycle-72",
+      "kind": "pdf",
+      "description": "Later required failure cannot return an apparently complete repaired page",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/required-cycle-72.pdf",
+      "sha256": "dd69bf624ddfff92485916b92c4516c5f590b30250e3a25f87f026f91190efcc",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Cycle",
+      "dpi": 72
+    },
+    {
+      "id": "compatibility_union/sparse-stays-limit-72",
+      "kind": "pdf",
+      "description": "Sparse cells cannot use the opaque coverage proof or bypass enumeration limits",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/sparse-stays-limit-72.pdf",
+      "sha256": "d2411a1f66f2a410c3711b432db743e035ae298e4109ef7265d188a4bc5ca7a0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Limit",
+      "dpi": 72
+    },
+    {
+      "id": "compatibility_union/compensation-on-refused-72",
+      "kind": "pdf",
+      "description": "A reported ending never authorizes explicit black point compensation",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/compensation-on-refused-72.pdf",
+      "sha256": "2329ca1ee7e1ad47d621df9afd2ad2cbafcc845a1512c581ca9dbfd56c9b46ab",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "feature": "extgstate.UseBlackPtComp",
+      "dpi": 72
+    },
+    {
+      "id": "compatibility_union/later-page-72",
+      "kind": "pdf",
+      "description": "Clean first page followed by the three-feature interaction on page1",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/later-page-72.pdf",
+      "sha256": "92098ce365cca5dbd5054b45ccdd028e459d8ecffed9e5d383792dd9c4f787b8",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/later-page-72.ppm",
+      "oracle_sha256": "f6fc40f912405379ac957092124e2a665a663d57b850a5f1e97c22a2c836b440",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ],
+      "page0_strict_valid": true,
+      "page0_repairs": [],
+      "qualification_pages": [
+        {
+          "page": 1,
+          "oracle": "corpus/generated/compatibility_union/later-oracle-72.page-1.ppm",
+          "oracle_sha256": "04a1de587aa81192785324f3edcd1a9576b105221c09aabe0b9be6cfef0330ed",
+          "dpi": 72,
+          "width": 32,
+          "height": 32,
+          "tolerance": 0,
+          "strict_valid": false,
+          "repairs": [
+            "content.marked-unmatched"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "compatibility_union/later-oracle-72",
+      "kind": "vector",
+      "description": "Independent target-page geometry; not a renderer golden",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "files": {
+        ".page-1.ppm": {
+          "path": "corpus/generated/compatibility_union/later-oracle-72.page-1.ppm",
+          "sha256": "04a1de587aa81192785324f3edcd1a9576b105221c09aabe0b9be6cfef0330ed"
+        }
+      },
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/direct-twin-144",
+      "kind": "pdf",
+      "description": "Literal direct rectangles are the independent semantic cost twin",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/direct-twin-144.pdf",
+      "sha256": "a85c0160271cb1dd953bee9435f16722a2127af7328d470c8dabc27515627e86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/compatibility_union/direct-twin-144.ppm",
+      "oracle_sha256": "bd3173f8d2dd9b7a50dc4fcca39258e472fd565a70af0f8c34cf2ccec105db76",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/off-144",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/off-144.pdf",
+      "sha256": "e4cd68a9e2eca0fb6293dca12b11fdb70132d2d6d357ef7362b4c6e973352649",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/off-144.ppm",
+      "oracle_sha256": "bd3173f8d2dd9b7a50dc4fcca39258e472fd565a70af0f8c34cf2ccec105db76",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/default-144",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/default-144.pdf",
+      "sha256": "ccc3de875bc52c59618d4368764fd7d59b7cb3125c33d4b35e390d556625a092",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/default-144.ppm",
+      "oracle_sha256": "bd3173f8d2dd9b7a50dc4fcca39258e472fd565a70af0f8c34cf2ccec105db76",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/reverse-order-144",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/reverse-order-144.pdf",
+      "sha256": "29aa030e419aecd64b3b298bec42f2969347e788fd28a0509672f20ec6e1652c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/reverse-order-144.ppm",
+      "oracle_sha256": "bd3173f8d2dd9b7a50dc4fcca39258e472fd565a70af0f8c34cf2ccec105db76",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/clip-kept-144",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/clip-kept-144.pdf",
+      "sha256": "4fcf81b44ee1956a327bd579bbe8d68c50241f24a47444bc96533c5631d4605a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/clip-kept-144.ppm",
+      "oracle_sha256": "0b4f1b7e6ed3d9bf75834e99e87f19708fc681cb782402cab85c5181b2eb7060",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            22,
+            3,
+            6,
+            6
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/form-keeps-caller-144",
+      "kind": "pdf",
+      "description": "Three feature interaction with disjoint CIE, tiling and state witnesses",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/form-keeps-caller-144.pdf",
+      "sha256": "e0050ec1b7cda4f8e2a83bc44a2a24c7c4aa1286b9de6a899081165f1cf06a53",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/form-keeps-caller-144.ppm",
+      "oracle_sha256": "bd3173f8d2dd9b7a50dc4fcca39258e472fd565a70af0f8c34cf2ccec105db76",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    },
+    {
+      "id": "compatibility_union/required-resource-144",
+      "kind": "pdf",
+      "description": "Later required failure cannot return an apparently complete repaired page",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/required-resource-144.pdf",
+      "sha256": "1378be2cdea5b022386fb1c4007792bb4b9675f57a2401699014316ee2871324",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Syntax",
+      "dpi": 144
+    },
+    {
+      "id": "compatibility_union/required-cycle-144",
+      "kind": "pdf",
+      "description": "Later required failure cannot return an apparently complete repaired page",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/required-cycle-144.pdf",
+      "sha256": "dd69bf624ddfff92485916b92c4516c5f590b30250e3a25f87f026f91190efcc",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Cycle",
+      "dpi": 144
+    },
+    {
+      "id": "compatibility_union/sparse-stays-limit-144",
+      "kind": "pdf",
+      "description": "Sparse cells cannot use the opaque coverage proof or bypass enumeration limits",
+      "expected": "open",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/sparse-stays-limit-144.pdf",
+      "sha256": "d2411a1f66f2a410c3711b432db743e035ae298e4109ef7265d188a4bc5ca7a0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "render_error": "Limit",
+      "dpi": 144
+    },
+    {
+      "id": "compatibility_union/compensation-on-refused-144",
+      "kind": "pdf",
+      "description": "A reported ending never authorizes explicit black point compensation",
+      "expected": "unsupported",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/compensation-on-refused-144.pdf",
+      "sha256": "2329ca1ee7e1ad47d621df9afd2ad2cbafcc845a1512c581ca9dbfd56c9b46ab",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "feature": "extgstate.UseBlackPtComp",
+      "dpi": 144
+    },
+    {
+      "id": "compatibility_union/later-page-144",
+      "kind": "pdf",
+      "description": "Clean first page followed by the three-feature interaction on page1",
+      "expected": "render",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/compatibility_union/later-page-144.pdf",
+      "sha256": "92098ce365cca5dbd5054b45ccdd028e459d8ecffed9e5d383792dd9c4f787b8",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched"
+      ],
+      "oracle": "corpus/generated/compatibility_union/later-page-144.ppm",
+      "oracle_sha256": "c21119a12ffdf02ef0e22ae411bc6cea84ca49e726ff4bc9ae33fcd0d0dc74af",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ],
+      "page0_strict_valid": true,
+      "page0_repairs": [],
+      "qualification_pages": [
+        {
+          "page": 1,
+          "oracle": "corpus/generated/compatibility_union/later-oracle-144.page-1.ppm",
+          "oracle_sha256": "bd3173f8d2dd9b7a50dc4fcca39258e472fd565a70af0f8c34cf2ccec105db76",
+          "dpi": 144,
+          "width": 64,
+          "height": 64,
+          "tolerance": 0,
+          "strict_valid": false,
+          "repairs": [
+            "content.marked-unmatched"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "compatibility_union/later-oracle-144",
+      "kind": "vector",
+      "description": "Independent target-page geometry; not a renderer golden",
+      "requirements": [
+        "content-cie",
+        "content-tiling",
+        "recovery-marked-closure"
+      ],
+      "files": {
+        ".page-1.ppm": {
+          "path": "corpus/generated/compatibility_union/later-oracle-144.page-1.ppm",
+          "sha256": "bd3173f8d2dd9b7a50dc4fcca39258e472fd565a70af0f8c34cf2ccec105db76"
+        }
+      },
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            20,
+            1,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        [
+          [
+            1,
+            20,
+            10,
+            10
+          ],
+          [
+            0,
+            0,
+            255
+          ]
+        ]
+      ]
+    }
+  ]
+}

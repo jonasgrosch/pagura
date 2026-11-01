@@ -129,9 +129,38 @@ fn stream_length_mismatch_is_not_repaired_silently() {
     let mut data = fixture("classic", "rectangle.pdf");
     let at = data.windows(8).position(|x| x == b"/Length ").unwrap();
     data[at + 8] = b'9';
-    let document = open(data).unwrap();
+    let strict = open_strict(data.clone()).unwrap();
+    let error = strict.content_streams(strict.page(0).unwrap()).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Syntax);
+    assert_eq!(error.repair.unwrap().as_str(), "stream.length-corrected");
+    assert_eq!(error.object, Some(ObjectId::new(4, 0)));
+    let document = open(data.clone()).unwrap();
     let page = document.page(0).unwrap();
-    assert!(document.content_streams(page).is_err());
+    let streams = document.content_streams(page).unwrap();
+    assert_eq!(streams.len(), 1);
+    assert_eq!(
+        document.stream_data(streams[0]).unwrap().as_ref(),
+        b"1 0 0 rg 8 8 48 32 re f\n"
+    );
+    assert_eq!(document.original_bytes(), data);
+    let diagnostics = document.diagnostics();
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].tag(), "stream.length-corrected");
+    let context = pagura::render_context(std::sync::Arc::new(document));
+    let pixels = context
+        .render_page(
+            context.document().page(0).unwrap(),
+            &pagura::RenderOptions::default(),
+        )
+        .unwrap();
+    assert_eq!(
+        pagura_testkit::ppm(
+            pixels.width(),
+            pixels.height(),
+            &pixels.to_rgb_over(pagura::Rgba8::WHITE)
+        ),
+        fixture("classic", "rectangle.ppm")
+    );
 }
 
 #[test]

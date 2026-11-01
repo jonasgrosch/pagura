@@ -209,6 +209,12 @@ def cases():
     yield from icc_cases()
     yield from invalid_compositing_cases()
     for name, command in [("syntax-unknown", b"future"), ("syntax-arity", b"1 q"), ("syntax-type", b"(bad) w"), ("syntax-Q", b"Q"), ("syntax-q-unclosed", b"q"), ("syntax-l", b"1 1 l"), ("syntax-TJ", b"[/Bad] TJ"), ("syntax-pending-clip", b"W"), ("syntax-reference", b"4 0 R"), ("syntax-zero-dash", b"[0 0] 0 d"), ("transfer", b"/GS gs")]:
+        if name == "syntax-Q":
+            yield Case(name, single_page([command], media_box=b"[0 0 64 64]"), RENDER,
+                       ("content-explicit-operators", "recovery-content-state"),
+                       "An unmatched Q is a reported viewing no-op; Strict rejects it",
+                       oracle=opaque_rectangles(64,64,[]), repairs=("content.graphics-unmatched",), strict_valid=False)
+            continue
         if name == "syntax-q-unclosed":
             yield Case(name, single_page([command], media_box=b"[0 0 64 64]"), RENDER,
                        ("content-explicit-operators",), "Unmatched saved graphics state is reported at sequence end",
@@ -306,7 +312,7 @@ def cie_cases():
         yield Case(name,single_page([command],media_box=b'[0 0 8 8]',resources=b'<< /ColorSpace << /C [/'+family.encode()+b' << /WhitePoint [.96422 1 .82521] '+params+b' >>] >> >>'),RENDER,('content-cie',), 'Defining CIE formulas with Bradford adaptation to D65 and sRGB',oracle=opaque_rectangles(8,8,[((x,0,1,8),c) for x,c in enumerate(colours)]),extra={'tolerance':1})
     colour=cie_rgb('Lab',(128/255*100,-100+128/255*200,-100+128/255*200))
     yield render('cie-indexed-Lab',b'/C cs 0 sc 0 0 8 8 re f',[((0,0,8,8),colour)],resources=b'<< /ColorSpace << /C [/Indexed [/Lab << /WhitePoint [.96422 1 .82521] >>] 0 <808080>] >> >>',requirements=('content-cie',))
-    yield unsupported('cie-blackpoint',b'/C cs','colorspace.BlackPoint',resources=b'<< /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] /BlackPoint [.1 .1 .1] >>] >> >>')
+    yield Case('cie-blackpoint',single_page([b'/C cs'],media_box=b'[0 0 8 8]',resources=b'<< /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] /BlackPoint [.1 .1 .1] >>] >> >>'),RENDER,('content-cie',),'Validated diffuse-black metadata; no paint and black-point compensation disabled',oracle=opaque_rectangles(8,8,[]),extra={'api':'compile_page'})
 
 
 def function_cases():
@@ -380,7 +386,29 @@ def usage_cases():
         yield Case(name,optional_pdf(b'/OC /On BDC 0 0 8 8 re f EMC',configuration=configuration,usage_on=usage),RENDER,('content-usage',),'Initial View usage recommendation with AND aggregation',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)] if visible else []))
 
 
+def appearance_selection_cases():
+    for name,appearance,color in [
+        ('streams',b'/AP << /N 5 0 R /R 6 0 R /D 7 0 R >>',RED),
+        ('states',b'/AP << /N << /Off 5 0 R /On 6 0 R >> /R << /Off 6 0 R /On 7 0 R >> /D << /Off 7 0 R /On 5 0 R >> >> /AS /On',(0,255,0)),
+        ('null',b'/AP null',None),
+        ('null-state',b'/AP << /N << /On 8 0 R >> >> /AS /On',None),
+    ]:
+        annotation=b'<< /Subtype /Link /Rect [2 1 6 7] /Border [0 0 0] '+appearance+b' >>'
+        objects=[b'<< /Type /Catalog /Pages 2 0 R >>',
+                 b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                 b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << >> /Contents 4 0 R /Annots ['+annotation+b'] >>',
+                 stream(b'')]
+        for components in (b'1 0 0',b'0 1 0',b'0 0 1'):
+            objects.append(stream(components+b' rg 0 0 2 4 re f',
+                                  b'/Type /XObject /Subtype /Form /BBox [0 0 2 4] /Resources << >>'))
+        objects.append(b'null')
+        yield Case('annotation-appearance-'+name,document(objects),RENDER,('content-annotations',),
+                   'Table 170 selects independent red/green/blue streams; null entries are absent',
+                   oracle=opaque_rectangles(8,8,[((2,1,4,6),color)] if color else []))
+
+
 def annotation_cases():
+    yield from appearance_selection_cases()
     def pdf(extra=b'',form=b'1 0 0 rg 0 0 2 4 re f',box=b'[0 0 2 4]',matrix=b'[1 0 0 1 0 0]',page=b'0 0 1 rg 0 0 8 8 re f',normal=b'5 0 R',rect=b'[2 1 6 7]'):
         return document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << >> /Contents 4 0 R /Annots [<< /Subtype /Stamp /Rect '+rect+b' /AP << /N '+normal+b' >> '+extra+b' >>] >>',stream(page),stream(form,b'/Type /XObject /Subtype /Form /BBox '+box+b' /Matrix '+matrix+b' /Resources << >>')])
     for name,options,visible in [
@@ -922,6 +950,14 @@ def tiling_cases():
         ('tiling-negative-step',{'step':b'-2 -2'},motif),
         ('tiling-type-two',{'kind':2},motif),
         ('tiling-type-three',{'kind':3},motif),
+        # 8.7.3.1: constant spacing rounds a 1.6-unit lattice to 2 device
+        # pixels, scaling the 0.8-unit square to exactly one pixel.
+        ('tiling-constant-spacing',{'step':b'1.6 1.6','bbox':b'[0 0 1.6 1.6]','cell':b'1 0 0 rg 0 0 .8 .8 re f'},motif),
+        ('tiling-constant-spacing-faster',{'step':b'1.6 1.6','bbox':b'[0 0 1.6 1.6]','cell':b'1 0 0 rg 0 0 .8 .8 re f','kind':3},motif),
+        # A 1.5-unit step becomes 2 pixels, moving the far corner of a
+        # 6-unit BBox by 2 pixels: TilingType 3 permits it, TilingType 1
+        # refuses it (below).
+        ('tiling-faster-distortion',{'step':b'1.5 2','bbox':b'[0 0 6 2]','cell':b'1 0 0 rg 0 0 .75 1 re f','kind':3},motif),
         ('tiling-underlying',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 1 re f'},motif),
         ('tiling-ignored-colour',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 rg /DeviceGray cs 0 sc /S sh 0 0 1 1 re f'},motif),
         ('tiling-ignored-inline',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'BI /W 1 /H 1 /CS /RGB /BPC 8 ID \0\0\xff EI 0 0 1 1 re f'},motif),
@@ -933,6 +969,67 @@ def tiling_cases():
         ('tiling-underlying-reuse',{'paint':2,'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn 0 0 4 8 re f 0 0 1 /P scn 4 0 4 8 re f','cell':b'0 0 1 1 re f'},[((x,y,1,1),RED if x<4 else BLUE) for y in range(0,8,2) for x in range(0,8,2)]),
     ]:
         yield Case(name,pdf(**options),RENDER,('content-tiling',),'8.6.6.2, 8.7.2–8.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite',oracle=opaque_rectangles(8,8,geometry))
+    # TilingType 2 keeps the exact lattice: 0.8-unit squares every 1.6
+    # units cover each pixel by the product of their exact overlaps.
+    def overlap(i):
+        return sum(max(F(0),min(F(i+1),F(8*k,5)+F(4,5))-max(F(i),F(8*k,5))) for k in range(6))
+    exact=bytearray()
+    for row in range(8):
+        for x in range(8):
+            covered=overlap(x)*overlap(7-row)
+            exact.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
+    yield Case('tiling-type-two-fractional',pdf(step=b'1.6 1.6',bbox=b'[0 0 1.6 1.6]',cell=b'1 0 0 rg 0 0 .8 .8 re f',kind=2),RENDER,('content-tiling',),'8.7.3.1, Table 74: no distortion keeps a fractional lattice; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(exact),extra={'tolerance':1})
+    # Constant spacing rounds the device lattice vectors (2.5, 0) and
+    # (0, -2.5) half away from zero, to (3, 0) and (0, -3): the 1.25-unit
+    # squares become 1.5 pixels on a 3-pixel lattice.
+    def halves(i):
+        return sum(max(F(0),min(F(i+1),F(3*k)+F(3,2))-max(F(i),F(3*k))) for k in range(3))
+    rounded=bytearray()
+    for row in range(8):
+        for x in range(8):
+            covered=halves(x)*halves(7-row)
+            rounded.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
+    yield Case('tiling-constant-spacing-half',pdf(step=b'2.5 2.5',bbox=b'[0 0 2.5 2.5]',cell=b'1 0 0 rg 0 0 1.25 1.25 re f'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: constant spacing rounds lattice vectors at a half away from zero; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(rounded),extra={'tolerance':1})
+    # Constant spacing would move the far BBox corner by 2 pixels, so the
+    # exact TilingType 2 lattice places the cells (ADR 0004): 0.75-unit
+    # squares every 1.5 units, 1 unit tall every 2, exact rational coverage.
+    def spaced(i, step, width, count):
+        return sum(max(F(0),min(F(i+1),step*k+width)-max(F(i),step*k)) for k in range(count))
+    distorted=bytearray()
+    for row in range(8):
+        for x in range(8):
+            covered=spaced(x,F(3,2),F(3,4),6)*spaced(7-row,F(2),F(1),4)
+            distorted.extend((255,int(255*(1-covered)+F(1,2)),int(255*(1-covered)+F(1,2))))
+    yield Case('tiling-constant-spacing-distortion',pdf(step=b'1.5 2',bbox=b'[0 0 6 2]',cell=b'1 0 0 rg 0 0 .75 1 re f'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: beyond a pixel of distortion constant spacing uses the exact lattice; exact rational pixel coverage',oracle=b'P6\n8 8\n255\n'+bytes(distorted),extra={'tolerance':1})
+    # The device lattice vectors (0.6, -0.6) and (0.6, -0.8) both round to
+    # (1, -1): no whole-pixel lattice, so the exact lattice places the cells
+    # (ADR 0004). Each red cell is the parallelogram the matrix makes of the
+    # unit square at (2i, 2j), a mark of its own: a pixel keeps the product of
+    # one minus each cell's exact area (11.3, source-over).
+    from .raster import clipped_area
+    a,b,c,d=F(3,10),F(3,10),F(3,10),F(4,10)
+    remaining={}
+    # x = 0.6(i + j) and y = 0.6i + 0.8j, inverted at the page corners, bound
+    # the cells that can meet the page.
+    corners_ij=[((F(8,10)*px-F(6,10)*py)/F(12,100),(F(6,10)*py-F(6,10)*px)/F(12,100)) for px in (0,8) for py in (0,8)]
+    for i in range(int(min(k[0] for k in corners_ij))-2,int(max(k[0] for k in corners_ij))+2):
+        for j in range(int(min(k[1] for k in corners_ij))-2,int(max(k[1] for k in corners_ij))+2):
+            corners=[(a*x+c*y,b*x+d*y) for x,y in ((2*i,2*j),(2*i+1,2*j),(2*i+1,2*j+1),(2*i,2*j+1))]
+            xs,ys=[p[0] for p in corners],[p[1] for p in corners]
+            if max(xs)<=0 or min(xs)>=8 or max(ys)<=0 or min(ys)>=8: continue
+            for x in range(max(0,int(min(xs))),min(8,int(max(xs))+1)):
+                for y in range(max(0,int(min(ys))),min(8,int(max(ys))+1)):
+                    remaining[x,y]=remaining.get((x,y),F(1))*(1-clipped_area(corners,x,y))
+    oblique=bytearray()
+    for row in range(8):
+        for x in range(8):
+            level=int(255*remaining.get((x,7-row),F(1))+F(1,2))
+            oblique.extend((255,level,level))
+    yield Case('tiling-oblique-lattice',pdf(matrix=b'[.3 .3 .3 .4 0 0]',bbox=b'[0 0 1 1]'),RENDER,('content-tiling',),'8.7.3.1, Table 74 and ADR 0004: an oblique lattice with no whole-pixel lattice uses the exact lattice; exact cell areas',oracle=b'P6\n8 8\n255\n'+bytes(oblique),extra={'tolerance':1})
+    for name,refused,reason in [
+        ('tiling-singular-matrix',pdf(matrix=b'[0 0 0 1 0 0]'),'a singular pattern matrix has no lattice'),
+    ]:
+        yield Case(name,refused,UNSUPPORTED,('content-tiling','unsupported-is-explicit'),'8.7.3.1, Table 74 and ADR 0004: '+reason+'; unsupported explicitly',feature='pattern.tiling',oracle=None)
     for name,options in [('tiling-zero-step',{'step':b'0 2'}),('tiling-missing-underlying',{'paint':2}),('tiling-coloured-underlying',{'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn'})]:
         if name == 'tiling-coloured-underlying':
             yield Case(name,pdf(**options),OPEN,('content-tiling',),'Coloured pattern ignores unused underlying colour with a repair',strict_valid=False,repairs=('content.pattern-underlying',))

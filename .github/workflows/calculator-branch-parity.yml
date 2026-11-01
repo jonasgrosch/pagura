@@ -1,0 +1,41 @@
+name: calculator-branch-parity
+on:
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'tools/calculator_branch_parity.mjs'
+      - 'tools/fixturegen/calculator_branches.py'
+      - 'corpus/manifests/**'
+      - 'corpus/generated/calculator_branches/**'
+      - 'benchmarks/probes/calculator-branch-fixtures.json'
+      - '.github/workflows/calculator-branch-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: calculator-branch-parity-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+jobs:
+  oracle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install pinned toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --target wasm32-wasip1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 26.8.1
+      - name: Build native and SIMD controls
+        run: |
+          cargo build --release --locked -p pagura --example calculator_branch_parity
+          cargo build --release --locked -p pagura --example calculator_branch_parity --target wasm32-wasip1
+      - name: Build scalar controls with overflow checks
+        run: cargo build --release --locked -p pagura --example calculator_branch_parity --target wasm32-wasip1 --target-dir target/scalar
+        env:
+          RUSTFLAGS: '-C target-feature=-simd128 -C overflow-checks=on'
+      - name: Verify independent pixels, later pages and public API refusals
+        run: node tools/calculator_branch_parity.mjs

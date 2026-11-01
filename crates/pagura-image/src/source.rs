@@ -366,7 +366,7 @@ impl ImageSource {
         };
         let codec = match &header.codec {
             Codec::Dct(Some(params)) | Codec::Ccitt(Some(params)) => params.retained_bytes(),
-            Codec::Jbig2(Some(globals)) => globals.len(),
+            Codec::Jbig2(Some((globals, _))) => globals.len(),
             _ => 0,
         };
         [

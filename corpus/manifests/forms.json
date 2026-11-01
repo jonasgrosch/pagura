@@ -1583,16 +1583,20 @@
       "kind": "vector",
       "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
       "requirements": [
-        "forms-fill-text"
+        "forms-render-placement"
       ],
       "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-rotated-widget.content",
+          "sha256": "01fb83458d851506289bdf65e8662ba7724bbfbd31eb521431b1140dab02aa18"
+        },
         ".expected": {
           "path": "corpus/generated/forms/text-rotated-widget.expected",
           "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
         },
         ".params": {
           "path": "corpus/generated/forms/text-rotated-widget.params",
-          "sha256": "4e9cdd4ef84346bf3f88a0e825f3aac752d2639dcfde9564e02697bc398f60bb"
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
         },
         ".pdf": {
           "path": "corpus/generated/forms/text-rotated-widget.pdf",

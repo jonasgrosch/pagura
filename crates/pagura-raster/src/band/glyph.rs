@@ -32,7 +32,7 @@ mod tests;
 
 mod overlap;
 mod polygon;
-mod rounding;
+pub(super) mod rounding;
 pub(super) use polygon::Summary;
 pub(crate) use polygon::{PolygonLines, point_sides};
 
@@ -459,7 +459,7 @@ impl GlyphEdges {
         })
     }
 
-    fn source(&self) -> Option<&rounding::Proof> {
+    pub(super) fn source(&self) -> Option<&rounding::Proof> {
         match &self.kind {
             Kind::Curve { source, .. } | Kind::Union { source, .. } => Some(source),
             Kind::Polygon { state, .. } => state.source(),
@@ -563,7 +563,7 @@ fn area_share(outline: &Path, certified: bool) -> (usize, f64) {
     )
 }
 
-fn flattened_with(
+pub(super) fn flattened_with(
     outline: &Path,
     transform: Transform,
     limits: &Limits,
@@ -649,7 +649,7 @@ fn flattened_with(
 
 /// The bounds of `outline`'s points under `transform`, as
 /// [`GlyphEdges::hull`] gives them.
-fn control_hull(outline: &Path, transform: Transform) -> Option<[f64; 4]> {
+pub(super) fn control_hull(outline: &Path, transform: Transform) -> Option<[f64; 4]> {
     let mut hull: Option<[f64; 4]> = None;
     let mut add = |p: Point| {
         let p = transform.apply(p);
@@ -695,6 +695,13 @@ pub(crate) fn place(
     origin: Point,
     options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
+    if options.clip.is_some_and(super::ClipShape::curved) {
+        let mut shape = super::curved::glyph(edges, origin, options)?;
+        if let Some(shape) = &mut shape {
+            shape.add_work(merged(shape.bounds()));
+        }
+        return Ok(shape);
+    }
     let mut shape = placed(edges, origin, options)?;
     if let Some(prepared) = shape.take() {
         shape = Some(rounding::certify(edges, origin, prepared, options)?);

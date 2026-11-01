@@ -9,7 +9,7 @@ pagura           ──► pagura-render, pagura-appearance (form appearances), 
 pagura-render    ──► pagura-paint, pagura-interpret, pagura-extract, pagura-text, pagura-document, pagura-raster
 pagura-paint     ──► pagura-interpret, pagura-color, pagura-image, pagura-raster
 pagura-interpret ──► pagura-content, pagura-appearance, pagura-color, pagura-image, pagura-raster, pagura-extract, pagura-text, pagura-font, pagura-document
-pagura-appearance ─► pagura-text, pagura-document
+pagura-appearance ─► pagura-text, pagura-document, pagura-raster (geometry only)
 pagura-extract   ──► pagura-text (font kinds, writing modes, glyph text), pagura-document, pagura-raster
 pagura-color     ──► pagura-crypto (MD5 for ICC profile IDs)
 pagura-data      ──► pagura-text (its Provider), pagura-font (ADR 0026)
@@ -219,3 +219,11 @@ then build something cleaner, more idiomatic and faster than it.
 
 Architecture-specific native builds are a separately labeled benchmark track
 with identical competitor tuning.
+
+Inherited glyph clips retain original quadratic controls and placements at
+render preparation. Joint interval proofs produce complete certified coverage
+runs for the existing band row emitter, including intersections of several
+curved ancestors and a curved leaf. Canonical clip-row classification may
+remove a constant source only where its outward original boundary hull misses
+the pixel. All source geometry and proof scratch belong to the render budget;
+see ADR 0004 section 4.

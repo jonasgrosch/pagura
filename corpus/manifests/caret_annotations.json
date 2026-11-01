@@ -1,0 +1,578 @@
+{
+  "schema": 2,
+  "area": "caret_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "caret_annotations/caret-72",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/caret-72.pdf",
+      "sha256": "4fcc6854251df094a1afc49fca15c5d50bf36d5c932e56d2db20289092631504",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/caret-72.ppm",
+      "oracle_sha256": "359ec0c2e77002a6b453de20d3327eeaaaf5f2c30f940922db096d59cde1c47a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/paragraph-72",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/paragraph-72.pdf",
+      "sha256": "b637e5263b26d330bc934ddfffe2b35fdce16b97f2ad7c54fc38d24ad6afd989",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/paragraph-72.ppm",
+      "oracle_sha256": "7052a6413dbff0757be5f36abdeea636301142aa4f8ac3e069ad11b71df70fb2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/paragraph-stored-72",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/paragraph-stored-72.pdf",
+      "sha256": "956786b5fc3f0b994ba3643931b0791216d54398e46fa0087d7d9fab1f572113",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/paragraph-stored-72.ppm",
+      "oracle_sha256": "7052a6413dbff0757be5f36abdeea636301142aa4f8ac3e069ad11b71df70fb2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/caret-144",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/caret-144.pdf",
+      "sha256": "4fcc6854251df094a1afc49fca15c5d50bf36d5c932e56d2db20289092631504",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/caret-144.ppm",
+      "oracle_sha256": "d265106a9cf705199dc45edae24b3cd13963dd48685dcc665555c15beb2426f3",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/paragraph-144",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/paragraph-144.pdf",
+      "sha256": "b637e5263b26d330bc934ddfffe2b35fdce16b97f2ad7c54fc38d24ad6afd989",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/paragraph-144.ppm",
+      "oracle_sha256": "9aaa4050f9a30a3e29c09ffa37814f5436c0411aad559061291d69d9f6e3c758",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/paragraph-stored-144",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/paragraph-stored-144.pdf",
+      "sha256": "956786b5fc3f0b994ba3643931b0791216d54398e46fa0087d7d9fab1f572113",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/paragraph-stored-144.ppm",
+      "oracle_sha256": "9aaa4050f9a30a3e29c09ffa37814f5436c0411aad559061291d69d9f6e3c758",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/none",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/none.pdf",
+      "sha256": "17b5b436ef8235566514f0ca79fae88a0a41887074ef1658d3986b2ed0ae9db6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/none.ppm",
+      "oracle_sha256": "359ec0c2e77002a6b453de20d3327eeaaaf5f2c30f940922db096d59cde1c47a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/null",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/null.pdf",
+      "sha256": "b06e4a36bc34a2e7b9595b4d8419c40f6b3e38a13d9a8f1df16f2a0d4cc3bf8e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/null.ppm",
+      "oracle_sha256": "359ec0c2e77002a6b453de20d3327eeaaaf5f2c30f940922db096d59cde1c47a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/rotated",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/rotated.pdf",
+      "sha256": "f17f05cca9aecac975dce962556f6a609c94ed227bcac557a5a7de0d3393e56a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/rotated.ppm",
+      "oracle_sha256": "3b66bff95f7bcc095e56a2ade709c6fd44a4b1bf3569e7e3344d33198ac90d99",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/inset",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/inset.pdf",
+      "sha256": "64f0661000b5e7960a85a3b18ea0959abd04bb69a6dbad02e5d7b7af77c73ee5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/inset.ppm",
+      "oracle_sha256": "7052a6413dbff0757be5f36abdeea636301142aa4f8ac3e069ad11b71df70fb2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/asymmetric",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/asymmetric.pdf",
+      "sha256": "c1799e50de3b9e03d6dd83b05abe3f98c45a2a180a487aec9c14081e1d9dc263",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/asymmetric.ppm",
+      "oracle_sha256": "f64c4586334527abee04f42192d1e6a1f2514216e8eefdc3c19eae1c7bea001c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/unequal",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/unequal.pdf",
+      "sha256": "13079266778096e27705f09508b7c80f6def0269a1ea2edf31037a178a64dcf8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/unequal.ppm",
+      "oracle_sha256": "7516c9372f5411c3c417e71f5d70da43da15179b25ac48b6012b37e07680f773",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/opacity",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/opacity.pdf",
+      "sha256": "3dc199aa3ce8d505192af09d09478c5926271396b7157a8a9e48b2e361b3167c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/opacity.ppm",
+      "oracle_sha256": "797af655941a04b11a6ddf49addfa5d8341ed5b14a1dda5a8f81e69d3154d939",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/separate-opacity",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/separate-opacity.pdf",
+      "sha256": "93814c0e6dcce434f795a237e740c3c84afe54f0e9aed489c78b8fdcad9d8c8e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/separate-opacity.ppm",
+      "oracle_sha256": "e5a88075364c87af012791a118b11852803dc5112cb8d898e6c99f75a2e904f9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/no-color",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/no-color.pdf",
+      "sha256": "1cfa69e0fbaa83899a08585e5893a2f7c9ff1577dac509ae8479ca91448bf515",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/no-color.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/zero-opacity",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/zero-opacity.pdf",
+      "sha256": "47849b4090fe7b2ea36ad8bd89e3a1dcb5b9afe566c059d5287d7aea6f6cad7e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/zero-opacity.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/hidden",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/hidden.pdf",
+      "sha256": "063453c258e763c73ebc0e8f312ebea5da960cf656b3b2fd6039900744e69fd8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/hidden.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/no-view",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/no-view.pdf",
+      "sha256": "4071a3810e59ff1f7285ed42b110684454ce50ee0d0b36b48469f81e2a5ca464",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/no-view.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/indirect",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/indirect.pdf",
+      "sha256": "5877ecdec994e01c5d27a1ca66dfda751a06bc49cbd0f08e2d524a6c677dd5f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/indirect.ppm",
+      "oracle_sha256": "7052a6413dbff0757be5f36abdeea636301142aa4f8ac3e069ad11b71df70fb2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/unrelated-fields",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/unrelated-fields.pdf",
+      "sha256": "2b08323018492a247fe3aa4f4e1b10637d4d74221d4c40a08b0c553d741ed04c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/unrelated-fields.ppm",
+      "oracle_sha256": "359ec0c2e77002a6b453de20d3327eeaaaf5f2c30f940922db096d59cde1c47a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/stored-ignores-geometry",
+      "kind": "pdf",
+      "description": "Independent literal page-space polygons, rational coverage and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/stored-ignores-geometry.pdf",
+      "sha256": "130ac6ca4d72b133c26d0c559801e09207dae5bdc16e9f0cd778c9a06489e963",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/caret_annotations/stored-ignores-geometry.ppm",
+      "oracle_sha256": "7052a6413dbff0757be5f36abdeea636301142aa4f8ac3e069ad11b71df70fb2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "caret_annotations/rd-type",
+      "kind": "pdf",
+      "description": "RD cardinality, numeric types and signs and Sy type validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/rd-type.pdf",
+      "sha256": "7d832ab8f567572723d04494c49bf275c4c46c9343f14826b75ed55ad409ec72",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caret_annotations/rd-empty",
+      "kind": "pdf",
+      "description": "RD cardinality, numeric types and signs and Sy type validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/rd-empty.pdf",
+      "sha256": "18c37f4b1c344392874d6f08109a8ee85b7810e1fa3ba2a3d8a6c96b44ae614b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caret_annotations/rd-short",
+      "kind": "pdf",
+      "description": "RD cardinality, numeric types and signs and Sy type validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/rd-short.pdf",
+      "sha256": "3e7aab3f7e59b7420083fae8fc9da123336005dca6747fd75916fc8cddd0be98",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caret_annotations/rd-long",
+      "kind": "pdf",
+      "description": "RD cardinality, numeric types and signs and Sy type validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/rd-long.pdf",
+      "sha256": "bbb89b4b90dbc9210ed25a92dfe1f35b637fcad6282a438c463fb992c65e7dfe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caret_annotations/rd-number",
+      "kind": "pdf",
+      "description": "RD cardinality, numeric types and signs and Sy type validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/rd-number.pdf",
+      "sha256": "27e41b0b706e0b0a015f395ff83a23e98d46b12bbad131ba43e430cfaac3cf01",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caret_annotations/rd-negative",
+      "kind": "pdf",
+      "description": "RD cardinality, numeric types and signs and Sy type validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/rd-negative.pdf",
+      "sha256": "08601d1504c660cb85622295debe0ef914cad5ff18050be5c3a3fedff3f4fe3a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caret_annotations/rd-wide",
+      "kind": "pdf",
+      "description": "RD cardinality, numeric types and signs and Sy type validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/rd-wide.pdf",
+      "sha256": "56ff73864acf76046d3d6e9beed7c99f39d06fd3c9bf10538d44f578c34b6b7e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caret_annotations/rd-tall",
+      "kind": "pdf",
+      "description": "RD cardinality, numeric types and signs and Sy type validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/rd-tall.pdf",
+      "sha256": "d731adfd152833041018afe216545868bd19fbb4a33190bc9e6b96452be64d6c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caret_annotations/symbol-type",
+      "kind": "pdf",
+      "description": "RD cardinality, numeric types and signs and Sy type validate before empty output",
+      "expected": "open",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/symbol-type.pdf",
+      "sha256": "290ddcbd1e34258933e300321c0f1af1e78d81c747685cb15c8d5bb527593cd2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "caret_annotations/symbol-unknown",
+      "kind": "pdf",
+      "description": "Unrecognized symbols refuse explicitly",
+      "expected": "unsupported",
+      "requirements": [
+        "content-caret-appearances"
+      ],
+      "path": "corpus/generated/caret_annotations/symbol-unknown.pdf",
+      "sha256": "f187d395e614e00c37862cbfee7f22a9db6711bf6e2195a7573ca8929effb9e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 32 32] /Resources << /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] /BlackPoint [.2 1 1.7] /Gamma 2.2 >>] >> /ExtGState << /GS << /UseBlackPtComp /OFF >> >> /Pattern << /P 5 0 R >> /XObject << /Child 6 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 89 >>
+stream
+q /GS gs /C cs 0 sc 1 1 10 10 re f Q EMC q /Pattern cs /P scn 20 1 10 10 re f Q /Child Do
+endstream
+endobj
+5 0 obj
+<< /Length 18 /Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 10 10] /XStep .001 /YStep .001 /Resources << >> >>
+stream
+0 g 0 0 10 10 re f
+endstream
+endobj
+6 0 obj
+<< /Length 9 /Type /XObject /Subtype /Form /BBox [0 0 32 32] /Resources << /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] /BlackPoint [.2 1 1.7] /Gamma 2.2 >>] >> /ExtGState << /GS << /UseBlackPtComp /OFF >> >> /Pattern << /P 5 0 R >> /XObject << /Child 6 0 R >> >>>>
+stream
+/Child Do
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000425 00000 n 
+0000000564 00000 n 
+0000000748 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1072
+%%EOF

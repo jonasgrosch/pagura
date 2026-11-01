@@ -3,6 +3,7 @@
 //! independently generated vectors of `tools/fixturegen/text.py`.
 mod support;
 
+mod checked_cid;
 mod descriptor;
 mod substitution;
 mod tolerance;

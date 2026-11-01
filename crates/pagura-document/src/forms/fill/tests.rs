@@ -23,6 +23,10 @@ fn input<'a>(mode: &str, value: &'a str, name: &'a Name, indices: &'a [usize]) -
 fn snapshot(change: &FilledField) -> String {
     match change.value() {
         FilledValue::Text(text) => format!("text|{text}"),
+        FilledValue::RichText { xml, default_style } => format!(
+            "rich|{xml}|{}",
+            default_style.as_deref().unwrap_or_default()
+        ),
         FilledValue::Choice(c) => format!(
             "choice|{}|{}|{}",
             c.values().join(","),
@@ -204,4 +208,67 @@ fn aggregate_replacements_release_storage_on_reset() {
     filler.reset(0);
     filler.set(rejected, FillValue::Text(&text)).unwrap();
     assert_eq!(filler.changes().count(), rejected);
+}
+
+#[test]
+fn rich_values_are_inert_bounded_atomic_replacements() {
+    let document = Document::open(
+        fixture("forms", "text-rich.pdf"),
+        &OpenOptions {
+            limits: Limits {
+                string_bytes: 128,
+                ..Default::default()
+            },
+            recovery: Recovery::Strict,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let mut filler = document.form_filler().unwrap().unwrap();
+    // XML interpretation belongs to the appearance layer; even malformed XML
+    // is inert at this source-data boundary and cannot execute anything.
+    let value = FillValue::RichText {
+        xml: "<body><p>AB</p></body>",
+        default_style: Some("color:#0000ff"),
+    };
+    filler.set(0, value).unwrap();
+    let saved = filler.get(0).unwrap().clone();
+    assert!(
+        matches!(saved.value(), FilledValue::RichText { xml, default_style:Some(style) }
+        if xml=="<body><p>AB</p></body>" && style=="color:#0000ff")
+    );
+    for input in [
+        FillValue::RichText {
+            xml: &"X".repeat(129),
+            default_style: None,
+        },
+        FillValue::RichText {
+            xml: "<body/>",
+            default_style: Some(&"X".repeat(129)),
+        },
+    ] {
+        assert_eq!(filler.set(0, input).unwrap_err().kind, ErrorKind::Limit);
+        assert_eq!(filler.get(0), Some(&saved));
+    }
+    assert_eq!(
+        filler.set(0, FillValue::Text("AB")).unwrap_err().kind,
+        ErrorKind::Unsupported(features::RICH_TEXT)
+    );
+    assert_eq!(filler.get(0), Some(&saved));
+    filler.reset(0);
+    assert!(filler.get(0).is_none());
+    filler.set(0, value).unwrap();
+    assert_eq!(filler.get(0), Some(&saved));
+
+    let plain = Document::open(
+        fixture("forms", "text-quadding-0.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let mut filler = plain.form_filler().unwrap().unwrap();
+    assert_eq!(
+        filler.set(0, value).unwrap_err().kind,
+        ErrorKind::InvalidArgument
+    );
+    assert!(filler.get(0).is_none());
 }

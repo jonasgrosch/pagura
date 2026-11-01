@@ -152,7 +152,7 @@ impl Planner<'_> {
     /// Keeps a prepared paint, reserving its bytes and its geometry work
     /// over `region` (mesh shadings), the repairs preparing it made and its
     /// execution storage, shared by the draws of `image`.
-    fn add_paint(
+    pub(super) fn add_paint(
         &mut self,
         paint: Source,
         region: pagura_raster::DeviceRect,

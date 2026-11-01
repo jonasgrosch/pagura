@@ -1,6 +1,6 @@
 //! Iterative field walk. Forward Fields/Kids own membership (12.7.4.1).
 use super::{
-    AcroForm, Field, FieldFlags, FieldKind,
+    AcroForm, Field, FieldKind,
     attributes::{self, Entry, Inherited, Key},
     names, values, widgets,
 };
@@ -152,7 +152,7 @@ impl<'a> Walk<'a> {
             )?);
             return Ok(());
         }
-        let effective = inherited.overlay(&mut self.context, dictionary, source)?;
+        let effective = inherited.overlay(&mut self.context, dictionary, source, Key::ALL)?;
         let field = self.field(dictionary, source, parent, &effective)?;
         let index = self.form.fields.len();
         self.form.fields.push(field);
@@ -265,16 +265,10 @@ impl<'a> Walk<'a> {
         }
         qualified_name.push_str(part);
         self.duplicate(&qualified_name, effective, source)?;
-        let flags = FieldFlags::from_bits(
-            effective
-                .get(Key::Ff)
-                .map(|e| attributes::unsigned(e, &mut self.context))
-                .transpose()?
-                .unwrap_or(0),
-        );
+        let flags = effective.flags(&mut self.context)?;
         // Nonterminal dictionaries need no FT. Kids are inspected using their
         // own field entries, never an inherited FT (12.7.4.1–12.7.4.2).
-        let group = self.has_field_children(dictionary, source)?;
+        let group = attributes::has_field_children(&mut self.context, dictionary, source)?;
         let kind = if group {
             FieldKind::Group
         } else {
@@ -312,20 +306,6 @@ impl<'a> Walk<'a> {
             additional_actions: attributes::additional(&mut self.context, dictionary, source)?,
             dictionary,
         })
-    }
-
-    fn has_field_children(&mut self, dictionary: &'a Dictionary, source: Source) -> Result<bool> {
-        let Some(kids) = self.context.present(dictionary, b"Kids", source)? else {
-            return Ok(false);
-        };
-        for value in attributes::array(&mut self.context, kids, source)? {
-            self.context.step(0, source)?;
-            let (child, _) = self.context.dictionary(value, source)?;
-            if self.context.present(child, b"T", source)?.is_some() {
-                return Ok(true);
-            }
-        }
-        Ok(false)
     }
 
     fn duplicate(&mut self, name: &str, effective: &Inherited<'a>, source: Source) -> Result<()> {

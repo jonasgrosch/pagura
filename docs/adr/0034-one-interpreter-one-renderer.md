@@ -137,8 +137,54 @@ Prepared paint is a closed set chosen once per paint and render: solid,
 shading (axial, radial, function-based, mesh) and image sampler; a shading
 that paints one opaque colour is a solid. It fills a span of working
 colours or reports a constant. A tiling pattern is a group of its instances
-composited through the painted mark's coverage. Colour conversion is a
-prepared converter; functions are total after preparation.
+composited through the painted mark's coverage. For a non-interpolated
+patterned image stencil, preparation turns painted sample row runs into
+geometric rectangles. A tiling child's clip includes the stencil and the
+outer mark's clip chain, so mask and child geometry are intersected before
+coverage quantization; the result is not multiplied by the stencil coverage
+again. Shading stencils use the same geometry with existing shading sampling.
+Ordinary nested tiling painted by a fill or stroke propagates that mark's
+complete geometry and clip chain to its children at every nesting level.
+Glyph outlines propagate under their full device linear map and origin.
+True-quadratic glyph sources retain their original controls separately from
+canonical path clips. Preparation refines joint localized area intervals for
+every curved ancestor and any curved leaf before composition; original-control
+bounds certify coverage under ADR 0004. Canonical general-cubic glyph geometry
+keeps its existing polygon contract. Proof work, source copies and retained
+coverage rows use the existing work/byte meters; unresolved intervals retain
+ordinary resource or numerical limits.
+The resulting pattern group has no second outer coverage factor: each leaf
+mark already integrates the stencil, all enclosing marks and its own clips
+jointly. Fill rules remain attached to each ancestor; strokes contribute the
+existing outlined stroke under its device transform. A generic flattened clip
+cannot replace a true-quadratic glyph source. An
+independent control packs 101 quadratic slivers of area 1/1000 pixel into one
+pixel: every control-point displacement is below the generic flattener's
+1/256-pixel tolerance, but dropping the curves into their chords would lose
+101/1000 pixel of ink. Both the solid-glyph control and its patterned twin
+retain true-curve integration with the original independently computed oracle.
+Independent analytic cap intersections additionally cover multiple differently
+mapped curved ancestors and leaves, fractional clipping, winding holes and
+transparency. The separate 100-sliver exact-byte-tie reference diagnostic
+remains external and is not counted as accuracy evidence.
+Nested image stencils propagate the same complete geometric intersection;
+transparency groups apply the inherited clip once through their children.
+Magnified interpolated stencils retain their unit-square geometry through
+that same clipping. The ordinary image sampler supplies one bilinear opacity
+at each global device-pixel centre (ADR 0004, 8.9.5.3), applied once to both
+the complete tiling/shading result's alpha and shape, before graphics-state
+alpha and soft masks. An intermediate one-mark F64 group gives shading the
+same application point; no extra executor or image interpretation is used.
+That neutral group's Normal overprint forms clause 11.7.4.3's implicit
+source before the original non-Normal blend; the result does not perform a
+second source-component substitution. Rational translucent-backdrop
+Separation/DeviceN controls distinguish one substitution from two.
+Under minification, including anisotropic placements, Interpolate uses the
+existing exact source-cell areas. Inherited clip identities
+include their stencil chain; source paths and capacities are metered and
+released after planning. Cell marks retain ADR 0004's per-pixel compositing
+contract, rather than claiming continuous union integration across cell marks.
+Colour conversion is a prepared converter; functions are total after preparation.
 
 ### 5. Precision and storage
 
@@ -174,6 +220,25 @@ Type 4 calculator programs are validated statically (stack effect and operand
 types per branch); a program that cannot be validated fails in preparation and
 arithmetic faults get defined results. Budgets are per render, so a whole page
 can reach a limit that its tiles do not.
+
+The original Type 4 proof remains first. Only its
+`Unsupported(function.calculator)` outcome may qualify through an additional
+fixed two-slot frontier joined by stack depth. Real-value facts start from
+validated finite Domain bounds, to which evaluation clips inputs, and from
+literals. Ordered comparisons use only separated intervals; arithmetic drops
+unproved bounds and no input correlation is inferred. Every surviving endpoint
+must contain the declared numeric result count. Unknown stack counts,
+incompatible kinds, a third depth and any failed proof retain the complete
+original refusal. Original Syntax and Limit outcomes are not reconsidered.
+Each syntax subtree is visited once with at most two abstract states; together
+with the original checker, an instruction has at most three abstract operator
+applications. Copies and joins stay bounded by the 100-entry stack. This is an
+algorithmic bound, not a wall-clock or memory-neutrality claim: the larger cold
+kind representation and additional proof need actual cost/memory evidence.
+Runtime/register evaluation, arithmetic and the meaning of `function_work`
+are unchanged; the maximum reaching prefix, including copy/roll moves, is
+reserved before execution.
+
 
 ### 8. The Store
 

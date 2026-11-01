@@ -1,7 +1,7 @@
 //! The rendering tags the facade re-exports are unique, well formed and in
 //! the areas their crates own (ADR 0017).
 
-use pagura::{form_appearance, tags};
+use pagura::{JBIG2_EOF_PAGE_ASSOCIATION, JBIG2_FILE_WRAPPER, form_appearance, repairs, tags};
 
 #[test]
 fn rendering_tags_are_unique_and_well_formed() {
@@ -31,4 +31,53 @@ fn rendering_tags_are_unique_and_well_formed() {
             .any(|tag| tag.as_str() == "function.calculator")
     );
     assert_eq!(tags::image::JPEG_PROCESS.as_str(), "jpeg.process");
+}
+
+#[test]
+fn packaging_tags_have_unique_owned_public_identities() {
+    assert_eq!(JBIG2_FILE_WRAPPER.as_str(), "jbig2.file-wrapper");
+    assert_eq!(
+        JBIG2_EOF_PAGE_ASSOCIATION.as_str(),
+        "jbig2.eof-page-association"
+    );
+    let tags = [JBIG2_FILE_WRAPPER, JBIG2_EOF_PAGE_ASSOCIATION];
+    for (index, tag) in tags.iter().enumerate() {
+        let (area, item) = tag.as_str().split_once('.').unwrap();
+        assert_eq!(area, "jbig2");
+        assert!(
+            !item.is_empty()
+                && item
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte == b'-')
+        );
+        assert!(!tags[..index].contains(tag));
+    }
+}
+
+#[test]
+fn inline_repairs_are_public_and_owned_by_the_inline_area() {
+    let mut seen = Vec::new();
+    for tag in repairs::inline::ALL {
+        let tag = tag.as_str();
+        assert_eq!(tag.split_once('.').map(|(area, _)| area), Some("inline"));
+        assert!(tag.bytes().all(|byte| byte.is_ascii_graphic()));
+        assert!(!seen.contains(&tag));
+        seen.push(tag);
+    }
+    assert!(repairs::inline::ALL.contains(&repairs::inline::EI_SEPARATOR));
+}
+
+#[test]
+fn image_repairs_are_exposed_through_the_facade() {
+    let raw = repairs::image::JPX_CODESTREAM;
+    assert_eq!(raw.as_str(), "jpx.raw-codestream");
+    assert!(repairs::image::ALL.contains(&raw));
+    let repair = repairs::image::JPX_PALETTE_PADDING;
+    assert_eq!(repair.as_str(), "jpx.palette-padding");
+    assert!(repairs::image::ALL.contains(&repair));
+    let mut seen = Vec::new();
+    for repair in repairs::image::ALL {
+        assert!(!seen.contains(repair), "duplicate repair {repair:?}");
+        seen.push(*repair);
+    }
 }

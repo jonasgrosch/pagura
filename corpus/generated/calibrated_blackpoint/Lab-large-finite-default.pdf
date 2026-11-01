@@ -1,0 +1,29 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/Lab << /WhitePoint [.96422 1 .82521] /BlackPoint [10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0 0 0] /Range [-100 100 -100 100] >>] >> /ExtGState << /GS << /UseBlackPtComp /Default >> >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 206 >>
+stream
+/GS gs /C cs 0 0 0 sc 0 0 1 8 re f 8 0 0 sc 1 0 1 8 re f 50 0 0 sc 2 0 1 8 re f 75 0 0 sc 3 0 1 8 re f 100 0 0 sc 4 0 1 8 re f 50 40 -20 sc 5 0 1 8 re f 50 -70 30 sc 6 0 1 8 re f 50 200 -200 sc 7 0 1 8 re f
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000486 00000 n 
+trailer
+<< /Size 5 /Root 1 0 R >>
+startxref
+743
+%%EOF

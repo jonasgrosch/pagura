@@ -34,6 +34,7 @@ mod clip;
 mod convex;
 mod coverage;
 mod curve;
+mod curved;
 mod edges;
 mod glyph;
 mod raster;
@@ -45,6 +46,7 @@ mod union;
 
 pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, RowOut, Span};
+pub use curved::ClipSource;
 pub(crate) use edges::{Mapped, Polygon};
 pub use glyph::GlyphEdges;
 pub use raster::BandRasterizer;
@@ -201,6 +203,7 @@ pub(crate) fn inspected_coverage(shape: &Shape, area: Area) -> Vec<u8> {
     let scan = match &shape.body {
         shape::Body::Edges(body) => body.scan,
         shape::Body::Glyph(body) => body.scan,
+        shape::Body::Certified(_) => (shape.bounds.x0 as usize, shape.bounds.x1 as usize),
     };
     let mut bytes = crate::testing::bytes();
     let mut cells = cells::Cells::new(scan.1.saturating_sub(scan.0), &mut bytes).unwrap();

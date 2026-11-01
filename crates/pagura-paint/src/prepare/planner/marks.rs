@@ -5,6 +5,8 @@
 //! own, gathered into its run's item where it can be (`runs`).
 
 mod glyphs;
+mod interpolation;
+mod nested;
 mod paints;
 
 use super::clips::{Clipping, Extra};
@@ -13,7 +15,7 @@ use super::{Planner, Scope};
 use crate::plan::{Boundary, Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
 use crate::prepare::overprint::{Keeping, Place, direct_cmyk};
 use crate::prepare::{Budget, Prepared, bounds, index};
-use crate::source::{BBoxUse, Source};
+use crate::source::{BBoxUse, ImageBudgets, ImageSampler, PaintContext, Source};
 use pagura_core::{Error, Limits, Meter, Position, Rect, Result};
 use pagura_interpret::{
     BlendMode, Composite, FillNode, GlyphSource, ImageMask, ImageNode, MarkInfo, Paint, PaintId,
@@ -55,9 +57,58 @@ struct Spec<'a> {
     hull: Option<bounds::Hull>,
     geometry: Geometry<'a>,
     colour: Colour<'a>,
+    /// A stencil's explicit painted-cell geometry replaces its image.
+    stencil: bool,
+    /// Bilinear image opacity applied once after painting its pattern.
+    opacity: Option<u32>,
 }
 
 impl Planner<'_> {
+    /// A certified constant pattern source through the normal mark pipeline.
+    /// Only the per-cell geometry is replaced: the original solid paint,
+    /// composite/conversion state and operator position remain authoritative.
+    pub(super) fn constant_pattern_fill(
+        &mut self,
+        scope: &Scope,
+        group: u32,
+        node: &FillNode,
+        bounds: pagura_raster::DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<()> {
+        let mut inner = scope.clone();
+        inner.group = group;
+        inner.transform = Transform::IDENTITY;
+        inner.crop = false;
+        inner.bounds = bounds;
+        inner.plain = false;
+        inner.records = false;
+        inner.depth += 1;
+        // This replaces a cell walk, which ordinarily checks the same depth.
+        if inner.depth >= self.limits.depth {
+            return Err(Error::limit("compositing depth exceeded"));
+        }
+        let info = MarkInfo {
+            state: node.mark.state,
+            clip: None,
+            position: node.mark.position,
+        };
+        let spec = Spec {
+            info: &info,
+            position: info.position,
+            hull: Some([
+                f64::from(bounds.x0),
+                f64::from(bounds.y0),
+                f64::from(bounds.x1),
+                f64::from(bounds.y1),
+            ]),
+            geometry: Geometry::Area(None),
+            colour: Colour::Paint(node.paint),
+            stencil: false,
+            opacity: None,
+        };
+        self.mark(&inner, &spec, budget)
+    }
+
     pub(super) fn fill(
         &mut self,
         scope: &Scope,
@@ -71,6 +122,8 @@ impl Planner<'_> {
             hull,
             geometry: Geometry::Fill(&node.path, node.rule),
             colour: Colour::Paint(node.paint),
+            stencil: false,
+            opacity: None,
         };
         self.mark(scope, &spec, budget)
     }
@@ -95,6 +148,8 @@ impl Planner<'_> {
             hull,
             geometry: Geometry::Stroke(&node.path, pen),
             colour: Colour::Paint(node.paint),
+            stencil: false,
+            opacity: None,
         };
         self.mark(scope, &spec, budget)
     }
@@ -113,6 +168,8 @@ impl Planner<'_> {
             hull,
             geometry: Geometry::Unit(to_device),
             colour: Colour::Image(node),
+            stencil: false,
+            opacity: None,
         };
         self.mark(scope, &spec, budget)
     }
@@ -143,6 +200,8 @@ impl Planner<'_> {
             hull,
             geometry,
             colour: Colour::Shading(node),
+            stencil: false,
+            opacity: None,
         };
         self.mark(scope, &spec, budget)
     }
@@ -167,6 +226,10 @@ impl Planner<'_> {
                     Error::invalid_argument("scene paint out of range"),
                 )?))
             }
+            Colour::Image(node) if node.image.space.is_none() && scope.paint.is_none() => node
+                .stencil
+                .and_then(|id| scene.paints.get(id.index()))
+                .cloned(),
             Colour::Shading(_) | Colour::Image(_) => None,
         };
         // With a transfer function anywhere outside soft masks, a pattern or
@@ -220,6 +283,13 @@ impl Planner<'_> {
             .soft_mask
             .map(|id| self.mask_use(scope, id, budget))
             .transpose()?;
+        if let Colour::Image(node) = spec.colour
+            && matches!(paint.as_deref(), Some(Paint::Tiling(_) | Paint::Shading(_)))
+            && patterned
+        {
+            self.clip(scope, (spec.info.clip, extra), budget)?;
+            return self.pattern_stencil(scope, node, &state, culling, budget);
+        }
         let Some(mut covered) = self.coverage(scope, spec, (culling, extra), budget)? else {
             return Ok(());
         };
@@ -244,6 +314,61 @@ impl Planner<'_> {
             }
             None => self.mark_item((scope, spec), &state, (covered, compositing), budget),
         }
+    }
+
+    /// Paint a non-interpolated mask as its exact sample-cell region.
+    fn pattern_stencil(
+        &mut self,
+        scope: &Scope,
+        node: &ImageNode,
+        state: &Composite,
+        bounds: pagura_raster::DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<()> {
+        if ImageSampler::stencil_interpolates(&node.image, node.transform.then(scope.transform))? {
+            return self.interpolated_stencil(scope, node, state, bounds, budget);
+        }
+        let target = self.target(scope);
+        let context = PaintContext {
+            transform: scope.transform,
+            target: &target,
+            composite: state,
+            store: self.store,
+            limits: self.limits,
+            region: bounds,
+        };
+        let path = ImageSampler::stencil_path(
+            &node.image,
+            node.transform,
+            &context,
+            &mut self.repairs,
+            ImageBudgets {
+                bytes: &mut budget.bytes,
+                work: &mut budget.work,
+                functions: &mut budget.functions,
+            },
+        )?;
+        let released = path.retained_bytes();
+        let prepared = if path.is_empty() {
+            Ok(())
+        } else {
+            let paint = node
+                .stencil
+                .ok_or(Error::invalid_argument("stencil mask without a paint"))?;
+            let spec = Spec {
+                info: &node.mark,
+                position: node.mark.position,
+                hull: bounds::path(&path, scope.transform).map(|h| bounds::expand(h, 1.0)),
+                geometry: Geometry::Fill(&path, FillRule::NonZero),
+                colour: Colour::Paint(paint),
+                stencil: true,
+                opacity: None,
+            };
+            self.prepare_mark(scope, &spec, budget)
+        };
+        drop(path);
+        budget.bytes.refund(released);
+        prepared
     }
 
     /// The clip and shape of a mark that meets the region, and the pixels
@@ -343,8 +468,13 @@ impl Planner<'_> {
         (covered, compositing): (Covered, Compositing),
         budget: &mut Budget,
     ) -> Result<()> {
+        let inherited = spec.stencil || scope.stencil_clip.is_some();
         let serial = self.serial;
-        let Some((group, content)) = self.pattern(scope, tiling, covered.bounds, budget)? else {
+        let mut inner = scope.clone();
+        if inherited {
+            inner.stencil_clip = Some(self.pattern_geometry(scope, spec, budget)?);
+        }
+        let Some((group, content)) = self.pattern(&inner, tiling, covered.bounds, budget)? else {
             return Ok(());
         };
         budget.work.charge(covered.work)?;
@@ -356,8 +486,9 @@ impl Planner<'_> {
             position: spec.position,
             work: covered.work,
             kind: ItemKind::Group(GroupUse {
+                stencil: spec.opacity,
                 group,
-                cover: Some(covered.cover),
+                cover: (!inherited).then_some(covered.cover),
                 compositing,
                 conversion: None,
             }),
@@ -416,6 +547,9 @@ impl Planner<'_> {
             boundary: covered.boundary,
             words,
         };
+        if let Some(opacity) = spec.opacity {
+            return self.sampled_stencil_mark(scope, spec, covered, mark, opacity, budget);
+        }
         if self.gathering == Some(scope.group)
             && !records
             && covered.boundary == Boundary::Absent
