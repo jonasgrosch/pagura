@@ -325,11 +325,25 @@ impl BandRasterizer {
     ///
     /// Returns a `Limit` error when the storage exceeds `bytes`.
     pub fn new(area: Area, bytes: &mut Meter) -> Result<Self> {
+        Self::with_run_storage(area, true, bytes)
+    }
+
+    /// Creates the ordinary rasterizer, optionally omitting glyph-run storage.
+    /// A run without that storage uses the same per-shape coverage kernel,
+    /// one glyph at a time, without allocating during execution.
+    ///
+    /// # Errors
+    /// As [`Self::new`], for the storage actually selected.
+    pub fn with_run_storage(area: Area, runs: bool, bytes: &mut Meter) -> Result<Self> {
         let width = super::row::width(area.region.x1)?;
         Ok(Self {
             area,
             cells: Cells::new(width, bytes)?,
-            run: Run::new(width, bytes)?,
+            run: if runs {
+                Run::new(width, bytes)?
+            } else {
+                Run::default()
+            },
             work: 0,
         })
     }
@@ -342,9 +356,42 @@ impl BandRasterizer {
     ///
     /// As [`Self::new`].
     pub fn charge(area: Area, bytes: &mut Meter) -> Result<()> {
+        Self::charge_with_run_storage(area, true, bytes)
+    }
+
+    /// Charges exactly the storage [`Self::with_run_storage`] selects.
+    ///
+    /// # Errors
+    /// As [`Self::charge`].
+    pub fn charge_with_run_storage(area: Area, runs: bool, bytes: &mut Meter) -> Result<()> {
         let width = super::row::width(area.region.x1)?;
         Cells::charge(width, bytes)?;
-        Run::charge(width, bytes)
+        if runs {
+            Run::charge(width, bytes)?;
+        }
+        Ok(())
+    }
+
+    /// Admits this rasterizer under the next render's reservation. Unneeded
+    /// run storage drops before charging; newly needed storage is allocated
+    /// before execution and old matching storage is charged without copying.
+    ///
+    /// # Errors
+    /// As [`Self::with_run_storage`].
+    pub fn fit_run_storage(&mut self, runs: bool, bytes: &mut Meter) -> Result<()> {
+        if !runs {
+            self.run = Run::default();
+        }
+        let width = super::row::width(self.area.region.x1)?;
+        Cells::charge(width, bytes)?;
+        if runs {
+            if self.run.cells.is_empty() {
+                self.run = Run::new(width, bytes)?;
+            } else {
+                Run::charge(width, bytes)?;
+            }
+        }
+        Ok(())
     }
 
     /// The area.
@@ -560,6 +607,21 @@ impl BandRasterizer {
         band: u32,
         out: &mut BandCoverage,
     ) -> usize {
+        if self.run.cells.is_empty() {
+            let Some(&(_, glyph)) = glyphs.first() else {
+                out.clear();
+                return 0;
+            };
+            self.rasterize(
+                MarkCoverage {
+                    shape: Some(glyph),
+                    clip,
+                },
+                band,
+                out,
+            );
+            return 1;
+        }
         out.clear();
         let rows = self.area.band_rows(band);
         let mut run = std::mem::take(&mut self.run);
@@ -1391,6 +1453,37 @@ mod tests {
             most = most.max(raster.run.carry.next.kept.len());
         }
         (page, most, raster.work_done() - work)
+    }
+
+    #[test]
+    fn omitted_run_storage_keeps_bytes_and_is_admitted_before_reuse() {
+        let area = crate::band::tests::area(0, 0, 80, 48, 5);
+        let mut full_charge = Meter::new(usize::MAX, "bytes");
+        BandRasterizer::charge(area, &mut full_charge).unwrap();
+        let mut lean_charge = Meter::new(usize::MAX, "bytes");
+        BandRasterizer::charge_with_run_storage(area, false, &mut lean_charge).unwrap();
+        assert!(full_charge.used() > lean_charge.used() + RUN_CELLS);
+        let mut exact = Meter::new(lean_charge.used(), "bytes");
+        let mut lean = BandRasterizer::with_run_storage(area, false, &mut exact).unwrap();
+        assert_eq!(lean.retained_bytes(), lean_charge.used());
+        let placed = placements(area, &[0.006, 0.013], 12.0, (2.0, 46.0));
+        let glyphs = disjoint(&placed);
+        assert!(!glyphs.is_empty());
+        let mut bytes = Meter::new(full_charge.used(), "bytes");
+        let mut full = BandRasterizer::new(area, &mut bytes).unwrap();
+        let expected = run_page(&mut full, &glyphs, false).0;
+        assert_eq!(run_page(&mut lean, &glyphs, false).0, expected);
+        assert_eq!(lean.retained_bytes(), lean_charge.used());
+        let mut short = Meter::new(full_charge.used() - 1, "bytes");
+        assert!(lean.fit_run_storage(true, &mut short).is_err());
+        assert_eq!(lean.run.cells, []);
+        let mut exact = Meter::new(full_charge.used(), "bytes");
+        lean.fit_run_storage(true, &mut exact).unwrap();
+        assert_eq!(run_page(&mut lean, &glyphs, false).0, expected);
+        let mut exact = Meter::new(lean_charge.used(), "bytes");
+        lean.fit_run_storage(false, &mut exact).unwrap();
+        assert_eq!(lean.retained_bytes(), lean_charge.used());
+        assert_eq!(run_page(&mut lean, &glyphs, false).0, expected);
     }
 
     /// Glyphs crossing their band keep their rows for the next band, and

@@ -217,7 +217,11 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     let workspace = sizes.bytes(&plan, charged);
     budget.bytes.charge(workspace)?;
     let before = budget.bytes.used();
-    BandRasterizer::charge(area, &mut budget.bytes)?;
+    BandRasterizer::charge_with_run_storage(
+        area,
+        crate::execute::run_shapes(&plan) != 0,
+        &mut budget.bytes,
+    )?;
     plan.scratch = workspace.saturating_add(budget.bytes.used() - before);
     // Optional storage comes last, from what the page's own storage leaves:
     // it never refuses a page that admits without it.

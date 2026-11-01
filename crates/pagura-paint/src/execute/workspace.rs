@@ -43,14 +43,14 @@ impl Scratch {
             .map(|workspace| Kept::new(plan, workspace));
         let mut bytes = Meter::new(plan.scratch, "render memory budget exceeded");
         let rasterizer = match self.rasterizer.take() {
-            Some(rasterizer) if rasterizer.area() == plan.area => {
-                BandRasterizer::charge(plan.area, &mut bytes)?;
+            Some(mut rasterizer) if rasterizer.area() == plan.area => {
+                rasterizer.fit_run_storage(run_shapes(plan) != 0, &mut bytes)?;
                 rasterizer
             }
             other => {
                 // Its storage goes before the new one is made.
                 drop(other);
-                BandRasterizer::new(plan.area, &mut bytes)?
+                BandRasterizer::with_run_storage(plan.area, run_shapes(plan) != 0, &mut bytes)?
             }
         };
         let workspace = Workspace::new(plan, plan.sizes, previous, &mut bytes)?;
@@ -408,7 +408,7 @@ impl Sizes {
 }
 
 /// The most placements of one glyph run.
-fn run_shapes(plan: &Plan) -> usize {
+pub(crate) fn run_shapes(plan: &Plan) -> usize {
     plan.items
         .iter()
         .filter_map(|item| match &item.kind {
