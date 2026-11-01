@@ -6,7 +6,7 @@ use crate::input::{create_new, write_new};
 use crate::{document_services, json, microbench, scan};
 use pagura::provider::default_provider;
 use pagura::text::SearchOptions;
-use pagura::{Document, Recovery, RenderContext, RenderOptions, Rgba8, device_size};
+use pagura::{Document, Recovery, RenderContext, RenderOptions, device_size};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;

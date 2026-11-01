@@ -124,7 +124,7 @@
     "crates/pagura-appearance/src/widget_rotation.rs": "fc02483206650009ce01d844011b6ecc26c36db3d2cf5f2e896929994d6e20e2",
     "crates/pagura-cli/src/args.rs": "ea65ee5c6a62c46ec0a6deeaa74222765c88bc6b4cb72b9b6db1ac32bd8caed0",
     "crates/pagura-cli/src/args/tests.rs": "a420ad45a9bfdacb39717402b5c1551edd253f1851b8625dc23d2f2d3d3e9ec2",
-    "crates/pagura-cli/src/commands.rs": "9fffa690fa1377a217783daa1696ad6b0cb6daa5345c80cb75edbbf0928396af",
+    "crates/pagura-cli/src/commands.rs": "5d842f5e0d95238f8b5bfd8a23365f84c9c060ee9ed3ce4db968e1b78134dadb",
     "crates/pagura-cli/src/json.rs": "3ea97edcee8ba6ba1fc971b286817a5081e86c65f00d1eb2eb7ac7f9349b4829",
     "crates/pagura-cli/src/password.rs": "600dc9c3973633fa92b14a0a3e452abcc406be456eddb1089ff2e65bf0a2370f",
     "crates/pagura-cli/src/scan.rs": "68e082860e96fadfdcb8c4a9d87c5d51650155ed44dab4857eb7bf99246dae0b",
