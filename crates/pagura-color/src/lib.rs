@@ -21,11 +21,12 @@ mod space;
 
 pub use components::Components;
 pub use convert::{
-    Colorants, Conversion, Converter, Encoder, MAX_CHANNELS, Painted, Process, Target, luminosity,
+    Colorants, Conversion, Converter, CurvedRgb, Encoder, MAX_CHANNELS, Painted, Process,
+    RgbEncoding, Target, luminosity,
 };
 pub use function::{
     CalculatorFunction, ExponentialFunction, Function, SampledFunction, StitchingFunction,
 };
 pub use icc::{Intent, Profile};
-pub use ramp::{MAX_RAMP_CHANNELS, Ramp, RampStage};
+pub use ramp::{APPROXIMATE, MAX_RAMP_CHANNELS, Piece, Ramp, RampStage};
 pub use space::{ColorSpace, Colorant, DeviceN, IccSpace, Indexed, MAX_COMPONENTS, Separation};

@@ -117,14 +117,16 @@ pub(super) fn prepare(
         ));
     }
     // The frame's admission budgets one byte per sample of a sequential
-    // plane; native planes also need a block flag and a prefix table.
+    // plane; native planes also need a block flag and a prefix table. They
+    // are working memory beside the conversion's rows (ADR 0016).
     let tables = SHORTCUT_BYTES * frame.components.len() as u64;
     let planes: u64 = frame
         .components
         .iter()
         .map(|c| (c.stride * c.rows) as u64 * 65)
         .sum();
-    if planes.saturating_add(tables) > limits.decoded_bytes as u64 {
+    let rows = u64::from(frame.width) * super::transform::ROW_BYTES as u64;
+    if planes.saturating_add(tables).saturating_add(rows) > limits.decode_bytes as u64 {
         return Err(Error::limit("JPEG native plane budget exceeded"));
     }
     for (index, c) in frame.components.iter_mut().enumerate() {

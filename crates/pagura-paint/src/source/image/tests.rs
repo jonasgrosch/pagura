@@ -21,6 +21,7 @@ mod accuracy;
 mod documents;
 mod oracle;
 mod ownership;
+mod separable;
 mod timing;
 
 pub(super) fn meter() -> pagura_core::Meter {
@@ -674,6 +675,88 @@ fn indexed_images_look_up_their_base_colours() {
         case.decode = vec![[0.0, f64::from((1u16 << bits) - 1)]];
         agree(&case, 3);
     }
+}
+
+/// Grey tables on an RGB target sample one colour lane and copy its sums to
+/// the three: for grey images of random codes, with decodes that invert or
+/// pass the colour range, soft masks on the image's grid and colour keys,
+/// under every placement, each span's summed texels are those of the
+/// five-lane table, bit for bit.
+#[test]
+fn grey_tables_sum_as_their_three_lanes_do() {
+    let decodes = [[0.0, 1.0], [1.0, 0.0], [-0.25, 1.25], [0.1, 0.7]];
+    let mut spans = 0;
+    for seed in 0..8u32 {
+        let (width, height) = (9 + seed % 4, 7 + seed % 3);
+        let count = usize::try_from(width * height).unwrap();
+        let mut grey = case(image((width, height), 1, 8, bytes(count, 8, 11 + seed)));
+        grey.decode = vec![decodes[usize::try_from(seed).unwrap() % decodes.len()]];
+        if seed % 2 == 1 {
+            let mask = image((width, height), 1, 8, bytes(count, 8, 29 + seed));
+            grey.mask = Some((mask, [0.0, 1.0], MaskUse::Soft(None)));
+        }
+        if seed % 3 == 2 {
+            grey.key = Some(vec![[40, 90]]);
+        }
+        for unit_to_device in placements(width, height) {
+            let sampler = sampler(&grey, unit_to_device, 3);
+            let prepared = sampler.prepared.as_deref().unwrap();
+            // Unmasked opaque tables may average codes instead.
+            let super::Plan::Texels {
+                sampling,
+                paint: Paint::Colors(paint),
+            } = &prepared.plan
+            else {
+                continue;
+            };
+            let super::texels::Strategy::Table(table, opaque, true) = &paint.1 else {
+                panic!("DeviceGray in an RGB space has equal colour lanes");
+            };
+            let ahead = usize::from(
+                prepared
+                    .mask
+                    .as_ref()
+                    .is_some_and(|mask| mask.independent.is_none()),
+            );
+            let (x0, y0, x1, y1) = window(unit_to_device);
+            let len = usize::try_from(x1 - x0).unwrap();
+            let (mut five, mut one) = (scratch(&sampler), scratch(&sampler));
+            for y in y0..y1 {
+                let pixels = Pixels::new(x0, y, len);
+                let (mut wide, mut narrow) =
+                    (vec![0.0; len * (5 + ahead)], vec![0.0; len * (5 + ahead)]);
+                let mut buffers = super::SamplingBuffers {
+                    storage: &mut five.plan,
+                    fused: &mut five.fused,
+                };
+                prepared.table(
+                    sampling,
+                    pixels,
+                    &mut buffers,
+                    (table, 5, *opaque),
+                    &mut wide,
+                );
+                let mut buffers = super::SamplingBuffers {
+                    storage: &mut one.plan,
+                    fused: &mut one.fused,
+                };
+                prepared.grey_table(
+                    sampling,
+                    pixels,
+                    &mut buffers,
+                    (table, *opaque),
+                    &mut narrow,
+                );
+                assert_eq!(
+                    bits(&narrow),
+                    bits(&wide),
+                    "seed {seed}, {unit_to_device:?}, row {y}"
+                );
+                spans += 1;
+            }
+        }
+    }
+    assert!(spans > 100, "the shortcut was compared on {spans} spans");
 }
 
 #[test]
@@ -1562,6 +1645,19 @@ fn curve_values_are_declined_without_room() {
     assert!(kept_any, "no image kept its curve values");
 }
 
+/// How `sampler` converts the texels of a span over `pixels`, and of its
+/// words.
+fn modes(sampler: &ImageSampler, pixels: Pixels<'_>) -> (TexelMode, TexelMode) {
+    let prepared = sampler.prepared.as_deref().unwrap();
+    match &prepared.plan {
+        super::Plan::Texels { paint, .. } => (
+            prepared.texel_mode(paint, pixels),
+            prepared.word_mode(paint),
+        ),
+        super::Plan::Codes(_) => (TexelMode::Exact, TexelMode::Exact),
+    }
+}
+
 /// Spans kept to F32 levels that copy one opaque texel per pixel convert
 /// texels to values of the same levels: their levels and alphas are those
 /// of exact spans, under every placement, with and without a soft mask
@@ -1574,40 +1670,93 @@ fn rounded_texels_keep_the_levels_of_exact_texels() {
             .map(|&v| crate::kernel::level(v).to_bits())
             .collect::<Vec<_>>()
     };
-    let photo = Case {
-        space: Some(icc_rgb()),
-        ..case(image((29, 19), 3, 8, bytes(29 * 19 * 3, 8, 83)))
-    };
-    let soft = Case {
-        mask: Some((
-            image((29, 19), 1, 8, bytes(29 * 19, 8, 89)),
-            [0.0, 1.0],
-            MaskUse::Soft(None),
-        )),
-        ..photo.clone()
-    };
     let mut rounded = 0;
-    for case in [&photo, &soft] {
-        for unit_to_device in placements(29, 19) {
-            let sampler = sampler(case, unit_to_device, 3);
-            let (mut exact_storage, mut kept_storage) = (scratch(&sampler), scratch(&sampler));
-            let (x0, y0, x1, y1) = window(unit_to_device);
-            let len = usize::try_from(x1 - x0).unwrap();
-            let (mut exact, mut kept) = (SpanColors::default(), SpanColors::default());
-            for y in y0..y1 {
-                let pixels = Pixels::new(x0, y, len);
-                let levels = Pixels {
-                    precision: crate::source::Precision::Level,
-                    ..pixels
-                };
-                sampler.span(pixels, &mut exact_storage, &mut exact);
-                sampler.span(levels, &mut kept_storage, &mut kept);
-                let place = format!("{unit_to_device:?} row {y}");
-                assert_eq!(level(&kept.colors), level(&exact.colors), "{place}");
-                assert_eq!(bits(&kept.alpha), bits(&exact.alpha), "{place}");
-                rounded += usize::from(kept_storage.mode == TexelMode::Rounded);
+    // The smaller image converts its texels directly, the larger through its
+    // components' first-stage values and their RGB conversion.
+    for (width, height) in [(29, 19), (37, 29)] {
+        let samples = usize::try_from(width * height).unwrap();
+        let photo = Case {
+            space: Some(icc_rgb()),
+            ..case(image((width, height), 3, 8, bytes(samples * 3, 8, 83)))
+        };
+        let soft = Case {
+            mask: Some((
+                image((width, height), 1, 8, bytes(samples, 8, 89)),
+                [0.0, 1.0],
+                MaskUse::Soft(None),
+            )),
+            ..photo.clone()
+        };
+        for case in [&photo, &soft] {
+            for unit_to_device in placements(width, height) {
+                let sampler = sampler(case, unit_to_device, 3);
+                let (mut exact_storage, mut kept_storage) = (scratch(&sampler), scratch(&sampler));
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                let (mut exact, mut kept) = (SpanColors::default(), SpanColors::default());
+                for y in y0..y1 {
+                    let pixels = Pixels::new(x0, y, len);
+                    let levels = Pixels {
+                        precision: crate::source::Precision::Level,
+                        ..pixels
+                    };
+                    sampler.span(pixels, &mut exact_storage, &mut exact);
+                    sampler.span(levels, &mut kept_storage, &mut kept);
+                    let place = format!("{width}x{height} {unit_to_device:?} row {y}");
+                    assert_eq!(level(&kept.colors), level(&exact.colors), "{place}");
+                    assert_eq!(bits(&kept.alpha), bits(&exact.alpha), "{place}");
+                    rounded += usize::from(modes(&sampler, levels).0 == TexelMode::Rounded);
+                }
             }
         }
     }
     assert!(rounded > 20, "{rounded} rounded spans");
+}
+
+/// Words of nearest samples of a memoized image convert texels to values of
+/// the same N16 words: they are the words of exact spans under every
+/// placement, and exact spans read through the same memo between them keep
+/// their exact colours.
+#[test]
+fn word_texels_keep_the_words_of_exact_texels() {
+    let word = |color: &[f64; 3]| {
+        [
+            crate::kernel::opaque_word(color[0]),
+            crate::kernel::opaque_word(color[1]),
+            crate::kernel::opaque_word(color[2]),
+            u16::MAX,
+        ]
+    };
+    let mut worded = 0;
+    // As for levels: one image converts directly, the other through its
+    // components' first-stage values and their RGB conversion.
+    for (width, height) in [(29, 19), (37, 29)] {
+        let samples = usize::try_from(width * height).unwrap();
+        let photo = Case {
+            space: Some(icc_rgb()),
+            ..case(image((width, height), 3, 8, bytes(samples * 3, 8, 83)))
+        };
+        for unit_to_device in placements(width, height) {
+            let sampler = sampler(&photo, unit_to_device, 3);
+            let (mut exact_storage, mut storage) = (scratch(&sampler), scratch(&sampler));
+            let (x0, y0, x1, y1) = window(unit_to_device);
+            let len = usize::try_from(x1 - x0).unwrap();
+            let (mut exact, mut between) = (SpanColors::default(), SpanColors::default());
+            for y in y0..y1 {
+                let pixels = Pixels::new(x0, y, len);
+                let place = format!("{width}x{height} {unit_to_device:?} row {y}");
+                sampler.span(pixels, &mut exact_storage, &mut exact);
+                let mut words = vec![[0u16; 4]; len];
+                if sampler.words(pixels, &mut storage, &mut words) {
+                    let exact_words: Vec<_> =
+                        exact.colors.as_chunks::<3>().0.iter().map(word).collect();
+                    assert_eq!(words, exact_words, "{place}");
+                    worded += usize::from(modes(&sampler, pixels).1 == TexelMode::Words);
+                }
+                sampler.span(pixels, &mut storage, &mut between);
+                assert_eq!(bits(&between.colors), bits(&exact.colors), "{place}");
+            }
+        }
+    }
+    assert!(worded > 20, "{worded} spans of words");
 }

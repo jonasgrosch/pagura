@@ -17,6 +17,7 @@
 mod plan;
 
 pub(crate) use plan::Channel;
+pub use plan::CurvedRgb;
 
 use crate::function::Function;
 use crate::icc::Intent;
@@ -224,6 +225,22 @@ impl Converter {
         self.plan.painted()
     }
 
+    /// Whether each process channel of a colour is its own component's
+    /// alone, clipped and complemented as the target family stores it, with
+    /// no spot channel: a device colour in its target's own family.
+    pub fn per_channel(&self) -> bool {
+        self.plan.per_channel(self.target.channels())
+    }
+
+    /// Where colours convert by clipping each of three components and
+    /// encoding them into the process channels (DeviceRGB into a target
+    /// without black generation or undercolour removal functions or spot
+    /// channels), that encoding: [`Self::convert`] of the components, bit
+    /// for bit.
+    pub fn rgb_encoding(&self) -> Option<RgbEncoding<'_>> {
+        self.plan.rgb_encoding(self.target.channels())
+    }
+
     /// Converts `components` (clipped to the space's ranges) into
     /// `output`, which holds [`Target::channels`] values, and returns the
     /// channels the colour paints. Additive channels hold intensity and
@@ -284,6 +301,13 @@ impl Converter {
     ) -> Painted {
         self.plan.convert_curved_rounded(curved, output, round);
         self.plan.painted()
+    }
+
+    /// [`Self::convert_curved_rounded`] of three components resolved once,
+    /// for a caller that converts many: `Some` where the conversion is an
+    /// ICC matrix/TRC profile's alone into an RGB target without spots.
+    pub fn curved_rgb(&self) -> Option<CurvedRgb> {
+        self.plan.curved_rgb(self.target.channels())
     }
 
     /// Converts colours of `count` components each into `output`,
@@ -360,7 +384,7 @@ impl Encoder {
     }
 }
 
-pub use plan::luminosity;
+pub use plan::{RgbEncoding, luminosity};
 
 #[cfg(test)]
 mod tests;

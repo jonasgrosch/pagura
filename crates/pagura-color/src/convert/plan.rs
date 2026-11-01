@@ -208,6 +208,40 @@ impl Plan {
         self.painted
     }
 
+    /// [`Converter::per_channel`] into a target of `channels` channels.
+    ///
+    /// [`Converter::per_channel`]: crate::Converter::per_channel
+    pub(super) fn per_channel(&self, channels: usize) -> bool {
+        self.lookup.is_none()
+            && self.process == channels
+            && matches!(&self.kind, Kind::Chain(chain)
+                if chain.steps.is_empty() && matches!(chain.terminal, Terminal::Native { .. }))
+    }
+
+    /// [`Converter::rgb_encoding`] into a target of `channels` channels.
+    ///
+    /// [`Converter::rgb_encoding`]: crate::Converter::rgb_encoding
+    pub(super) fn rgb_encoding(&self, channels: usize) -> Option<RgbEncoding<'_>> {
+        let Kind::Chain(chain) = &self.kind else {
+            return None;
+        };
+        match &chain.terminal {
+            Terminal::Rgb {
+                source: Source::Rgb,
+                encode:
+                    encode @ (Encode::Gray
+                    | Encode::Rgb
+                    | Encode::Cmyk {
+                        black: None,
+                        removal: None,
+                    }),
+            } if self.lookup.is_none() && chain.steps.is_empty() && self.process == channels => {
+                Some(RgbEncoding { encode })
+            }
+            _ => None,
+        }
+    }
+
     pub(super) fn arithmetic(&self) -> bool {
         match &self.kind {
             Kind::Tints(_) | Kind::All | Kind::Nothing => true,
@@ -355,6 +389,22 @@ impl Plan {
             icc.encode.apply(linear.map(cie::encode), process);
         }
         spots.fill(1.0);
+    }
+
+    /// [`Self::convert_curved_rounded`] of three components into RGB
+    /// resolved once, where the conversion is a matrix/TRC profile's alone
+    /// into encoded sRGB with no spot channels; `None` otherwise.
+    pub(super) fn curved_rgb(&self, channels: usize) -> Option<CurvedRgb> {
+        let icc = self.icc()?;
+        if icc.profile.curved_inputs(icc.intent) != Some(3)
+            || icc.count != 3
+            || !matches!(icc.encode, Encode::Rgb)
+            || channels != 3
+        {
+            return None;
+        }
+        let (matrix, scale) = icc.profile.curved_matrix(icc.intent)?;
+        Some(CurvedRgb { matrix, scale })
     }
 
     /// [`Self::convert_rounded`] of components already through
@@ -630,9 +680,43 @@ fn enclose_clip(
     Ok(clipped)
 }
 
+/// [`Converter::convert_curved_rounded`] of a matrix/TRC profile's three
+/// curved components into encoded sRGB, with its stages resolved once: the
+/// same arithmetic in the same order, without finding the stages again.
+///
+/// [`Converter::convert_curved_rounded`]: crate::Converter::convert_curved_rounded
+#[derive(Debug, Clone, Copy)]
+pub struct CurvedRgb {
+    matrix: cie::Matrix,
+    /// The absolute intent's factor for each XYZ value.
+    scale: Option<[f64; 3]>,
+}
+
+impl CurvedRgb {
+    /// The encoded sRGB of `curved`, kept to `round` as
+    /// [`Converter::convert_curved_rounded`] keeps it, bit for bit.
+    ///
+    /// [`Converter::convert_curved_rounded`]: crate::Converter::convert_curved_rounded
+    #[inline]
+    pub fn convert_rounded(&self, curved: [f64; 3], round: impl Fn(f64) -> u32) -> [f64; 3] {
+        let mut xyz = cie::map(self.matrix, curved);
+        if let Some(scale) = self.scale {
+            for (value, scale) in xyz.iter_mut().zip(scale) {
+                *value *= scale;
+            }
+        }
+        cie::linear_srgb(cie::map(cie::D50_TO_D65, xyz)).map(|v| encode_rounded(v, &round))
+    }
+}
+
 /// The encoding of linear value `v`, or where `round` of it is all that
 /// matters, a value that rounds alike, found without the transfer function's
 /// power where its bounds ([`cie::encode_estimate`]) decide the rounding.
+#[expect(
+    clippy::inline_always,
+    reason = "a colour's channels find their bounds side by side, not one call after another"
+)]
+#[inline(always)]
 fn encode_rounded(v: f64, round: &impl Fn(f64) -> u32) -> f64 {
     match cie::encode_estimate(v) {
         Some([low, high]) if round(low) == round(high) => low,
@@ -1048,7 +1132,20 @@ impl Encode {
 
     /// Writes encoded sRGB into the process channels (10.3).
     pub(super) fn apply(&self, rgb: [f64; 3], output: &mut [f64]) {
-        let encoded = match self {
+        for (out, value) in output.iter_mut().zip(self.encoded(rgb)) {
+            *out = value;
+        }
+    }
+
+    /// The process values of encoded sRGB `rgb`, the target's channels
+    /// first.
+    #[expect(
+        clippy::inline_always,
+        reason = "texels of RGB samples encode one by one ([`RgbEncoding`])"
+    )]
+    #[inline(always)]
+    fn encoded(&self, rgb: [f64; 3]) -> [f64; 4] {
+        match self {
             Self::Rgb => [rgb[0], rgb[1], rgb[2], 0.0],
             Self::Gray => [luminosity(rgb), 0.0, 0.0, 0.0],
             Self::Cmyk { black, removal } => {
@@ -1065,10 +1162,36 @@ impl Encode {
                     1.0 - black,
                 ]
             }
-        };
-        for (out, value) in output.iter_mut().zip(encoded) {
-            *out = value;
         }
+    }
+}
+
+/// The conversion of DeviceRGB colours that clips their components and
+/// encodes them into the process channels, with no black generation or
+/// undercolour removal function and no spot channel
+/// ([`Converter::rgb_encoding`]).
+///
+/// [`Converter::rgb_encoding`]: crate::Converter::rgb_encoding
+#[derive(Debug, Clone, Copy)]
+pub struct RgbEncoding<'a> {
+    encode: &'a Encode,
+}
+
+impl RgbEncoding<'_> {
+    /// A component as the conversion takes it: clipped to `0..=1`.
+    #[inline]
+    pub fn clip(value: f64) -> f64 {
+        value.clamp(0.0, 1.0)
+    }
+
+    /// The colour of the clipped components `rgb`, the target's channels
+    /// first: what [`Converter::convert`] writes for the components they
+    /// were clipped from, bit for bit.
+    ///
+    /// [`Converter::convert`]: crate::Converter::convert
+    #[inline]
+    pub fn encode(&self, rgb: [f64; 3]) -> [f64; 4] {
+        self.encode.encoded(rgb)
     }
 }
 

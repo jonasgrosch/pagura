@@ -2,11 +2,12 @@
 //!
 //! Interned table entries pay once per entry. Other shared roots pay per
 //! retained reference: this may overestimate aliases, but never depends on
-//! the Store, reference counts, or earlier recordings. ICC profiles are the
-//! exception: the interpretation hands every reference to one profile stream
-//! the same profile, so a scene pays for each once ([`Profiles`]). Child
-//! value types supply their own retained estimates; this is not allocator
-//! telemetry.
+//! the Store, reference counts, or earlier recordings. ICC profiles and
+//! images are the exceptions: the interpretation hands every reference to
+//! one profile stream the same profile, and every drawing of one image
+//! XObject in one set of colour space resources the same description, so a
+//! scene pays for each once ([`Profiles`], [`Images`]). Child value types
+//! supply their own retained estimates; this is not allocator telemetry.
 
 use crate::model::{
     Composite, FillStroke, Image, ImageMask, Paint, Pen, Shading, ShadingFunction, ShadingKind,
@@ -45,6 +46,36 @@ impl Profiles {
     }
 
     /// How many profiles the scene holds.
+    #[cfg(test)]
+    pub(super) fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// The bytes of the index, which a finished scene does not keep.
+    pub(super) fn index_bytes(&self, bytes: &Meter) -> Result<usize> {
+        bytes.map_bytes(&self.0)
+    }
+}
+
+/// The images a scene draws, each charged once.
+#[derive(Debug, Default)]
+pub(super) struct Images(FastMap<usize, Arc<Image>>);
+
+impl Images {
+    /// Charges `drawn` unless the scene has met it, and returns whether it
+    /// is new. The map holds each one, so that its address stays its own.
+    pub(super) fn charge(&mut self, drawn: &Arc<Image>, bytes: &mut Meter) -> Result<bool> {
+        let key = Arc::as_ptr(drawn).addr();
+        if self.0.contains_key(&key) {
+            return Ok(false);
+        }
+        bytes.reserve_map_capacity(&mut self.0, 1)?;
+        bytes.charge(image(drawn))?;
+        self.0.insert(key, Arc::clone(drawn));
+        Ok(true)
+    }
+
+    /// How many images the scene holds.
     #[cfg(test)]
     pub(super) fn len(&self) -> usize {
         self.0.len()

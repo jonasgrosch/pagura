@@ -109,7 +109,7 @@ fn square() -> Curve {
 
 /// A spot ink with this CMYK composition per unit of tint, converted into
 /// CMYK.
-fn ink(cmyk: [f64; 4]) -> Converter {
+pub(super) fn ink(cmyk: [f64; 4]) -> Converter {
     let space = ColorSpace::Separation(Arc::new(Separation {
         colorant: Colorant::Named(pagura_core::Name::from(b"Spot")),
         alternate: Arc::new(ColorSpace::DeviceCmyk),
