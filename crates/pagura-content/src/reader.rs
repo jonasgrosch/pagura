@@ -116,6 +116,17 @@ impl<'c> Reader<'c> {
         (self.taken || self.operands.is_empty()) && self.compatibility == 0
     }
 
+    /// Discards operands left at the end of a sequence, returning whether
+    /// there were any. An open compatibility section remains unbalanced.
+    pub fn discard_operands(&mut self) -> bool {
+        if self.compatibility != 0 || self.taken || self.operands.is_empty() {
+            return false;
+        }
+        self.operands.clear();
+        self.buffers.clear();
+        true
+    }
+
     /// The next operation, charging one unit of `tokens` per token, or
     /// `None` at the end of the content.
     ///
@@ -295,7 +306,7 @@ impl<'c> Reader<'c> {
     /// Reads the value at `offset` with the object parser.
     fn parse(&mut self, offset: usize) -> Result<Operand> {
         self.parser.seek(offset)?;
-        let value = self.parser.parse()?;
+        let value = self.read_value()?;
         self.keep_repairs()?;
         self.position = self.parser.offset();
         Ok(match value {
@@ -309,6 +320,16 @@ impl<'c> Reader<'c> {
             }
             value => Operand::Value(value),
         })
+    }
+
+    /// Failed operands must not leave diagnostics accumulating in the parser
+    /// when a public caller retries the reader after an error.
+    fn read_value(&mut self) -> Result<Value> {
+        let value = self.parser.parse();
+        if value.is_err() {
+            self.parser.take_diagnostics();
+        }
+        value
     }
 
     /// Keeps the repairs the object parser applied to the value it just
@@ -410,13 +431,12 @@ impl<'c> Reader<'c> {
                 break;
             }
             let key = self
-                .parser
-                .parse()?
+                .read_value()?
                 .as_name()
                 .cloned()
                 .ok_or(Error::syntax("inline image key must be name"))?;
             self.keep_repairs()?;
-            let value = self.parser.parse()?;
+            let value = self.read_value()?;
             self.keep_repairs()?;
             no_references(&value)?;
             if dictionary.contains_key(key.as_bytes()) {

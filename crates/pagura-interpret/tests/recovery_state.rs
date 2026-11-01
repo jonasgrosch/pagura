@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 //! Reported state recovery cannot bypass syntax, scope or resource limits.
-use pagura_core::{ErrorKind, Limits, Position, Recovery, Result};
+use pagura_core::{Error, ErrorKind, Limits, ObjectId, Position, Recovery, Result};
 use pagura_document::{Document, OpenOptions};
 use pagura_interpret::Interpreter;
 use pagura_testkit::fixture;
@@ -67,7 +67,6 @@ fn every_state_repair_has_a_positioned_strict_refusal() {
 #[test]
 fn syntax_and_crossed_state_boundaries_remain_errors() {
     for content in [
-        "1 2",
         "BX",
         "notAnOperator",
         "BT BT",
@@ -104,4 +103,61 @@ fn unmatched_closures_are_charged_to_the_operation_budget() {
         .scene(document.page(0).unwrap())
         .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
+}
+
+#[test]
+fn unused_operands_are_reported_without_changing_the_strict_error() {
+    let content = "1 0 0 rg 0 0 8 8 re f 1 2 /Name";
+    let strict = document(
+        content,
+        &OpenOptions {
+            recovery: Recovery::Strict,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let error = Interpreter::new(&strict)
+        .scene(strict.page(0).unwrap())
+        .unwrap_err();
+    let object = ObjectId::new(4, 0);
+    assert_eq!(
+        error,
+        Error::syntax("content sequence ends with unfinished state")
+            .at(Position::Stream {
+                object,
+                offset: content.len()
+            })
+            .in_object(object)
+    );
+    assert!(strict.diagnostics().is_empty());
+    let repaired = document(content, &OpenOptions::default()).unwrap();
+    Interpreter::new(&repaired)
+        .scene(repaired.page(0).unwrap())
+        .unwrap();
+    let diagnostics = repaired.diagnostics();
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].tag(), "content.operands-unused");
+    assert_eq!(
+        diagnostics[0].position,
+        Position::Stream {
+            object,
+            offset: content.len()
+        }
+    );
+}
+
+#[test]
+fn unused_operands_never_close_unfinished_content_state() {
+    for content in ["BX 1 2", "BT 1 2", "0 0 m 1 2", "0 0 8 8 re W 1 2"] {
+        let doc = document(content, &OpenOptions::default()).unwrap();
+        let error = Interpreter::new(&doc)
+            .scene(doc.page(0).unwrap())
+            .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert!(
+            doc.diagnostics()
+                .iter()
+                .all(|d| d.tag() != "content.operands-unused")
+        );
+    }
 }

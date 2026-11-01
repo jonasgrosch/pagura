@@ -280,7 +280,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     /// # Errors
     ///
     /// Positioned errors of the operators, and `Syntax` for a sequence that
-    /// ends with pending operands, an open section, path, clip or text
+    /// ends with an open section, path, clip or text
     /// object; open marked content and unmatched `q` are reported repairs.
     pub(crate) fn run(
         &mut self,
@@ -319,6 +319,24 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         }
         if reader.has_repairs() {
             self.report_parsed(content, reader.take_diagnostics())?;
+        }
+        if scope.path.is_empty()
+            && scope.pending_clip.is_none()
+            && scope.text.is_none()
+            && reader.discard_operands()
+        {
+            let error = Error::syntax("content sequence ends with unfinished state");
+            if self.document().recovery() == Recovery::Strict {
+                return Err(content.locate(error, content.end()));
+            }
+            self.repair_at_end(
+                content,
+                error,
+                Diagnostic::new(
+                    repairs::OPERANDS_UNUSED,
+                    "operands without an operator discarded at end of content sequence (7.8.2)",
+                ),
+            )?;
         }
         if !reader.is_balanced()
             || !scope.path.is_empty()

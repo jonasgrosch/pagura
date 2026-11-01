@@ -343,3 +343,15 @@ images. Conformance fixtures opt in with `scan_recovery:"repair"`; the consumer
 requires that schema/mode and executes a separate actual Strict render. Scan
 JSON exposes kind, feature, repair and message; full Error positions/object
 identity remain separate public-API/parity checks.
+
+- `content.operands-unused` (7.8.2): operands left without an operator at
+  the end of an otherwise balanced content sequence are discarded and reported
+  in Repair. Open compatibility sections, text objects, paths and pending clips
+  remain errors; Strict preserves the original full unfinished-state error.
+
+The content reader coalesces pending object-parser diagnostics by repair kind
+until they are taken. The interpreter takes them after every operation, while
+public callers may leave them pending without growth per repeated occurrence.
+Failed operand parses release their pending parser diagnostics before retry.
+The new lone-sign and hexadecimal-byte repairs retain the original full Strict
+errors; explicit Repair scanning is required to exercise those repairs.

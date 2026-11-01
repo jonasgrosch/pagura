@@ -131,6 +131,16 @@ def recovery_cases():
             name = 'repair-optional-' + label + '-' + policy.decode()
             geometry = [] if label == 'unregistered' and policy == b'AnyOff' else full
             yield repaired(name, pdf, tag, geometry, requirements=('content-optional',))
+    yield Case('repair-operands-unused', page(red + b' 1 2 /Name'), RENDER,
+               ('content-reported-recovery',), 'Reported recovery: content.operands-unused',
+               repairs=('content.operands-unused',), strict_valid=False,
+               oracle=opaque_rectangles(8, 8, full),
+               extra={'api': 'compile_page', 'scan_recovery': 'repair'})
+    for label, command in [('compatibility', b'BX 1 2'), ('text', b'BT 1 2'),
+                           ('path', b'0 0 m 1 2'), ('clip', b'0 0 8 8 re W 1 2')]:
+        yield Case('unused-operands-open-' + label, page(command), OPEN,
+                   ('content-reported-recovery',), 'Unused operands cannot close unfinished state',
+                   strict_valid=False, extra={'api': 'compile_page', 'render_error': 'Syntax'})
     # Malformed operands get the object parser's repairs, as document objects
     # do, read in place or through the parser; its reference repairs stay
     # errors, since content operands are direct (7.8.2).

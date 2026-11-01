@@ -408,3 +408,34 @@ fn draining_operand_repairs_keeps_later_occurrences_reported() {
     }
     assert!(reader.next(&mut tokens).unwrap().is_none());
 }
+
+#[test]
+fn failed_operand_retries_do_not_retain_parser_repairs() {
+    let content = Content::from_bytes(b"[/A#Z");
+    let mut reader = Reader::new(&content, &Limits::default()).with_recovery(Recovery::Repair);
+    let mut tokens = Meter::new(4096, "test tokens");
+    for _ in 0..4096 {
+        assert_eq!(
+            reader.next(&mut tokens).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
+        assert!(reader.parser.take_diagnostics().is_empty());
+        assert!(!reader.has_repairs());
+    }
+}
+
+#[test]
+fn repaired_operands_keep_the_original_full_strict_reader_errors() {
+    for (bytes, message, offset) in [
+        (b"- w".as_slice(), "invalid number", 0),
+        (b"<4!1> Tj".as_slice(), "invalid hexadecimal string", 3),
+    ] {
+        let content = Content::from_bytes(bytes);
+        let mut reader = Reader::new(&content, &Limits::default());
+        assert_eq!(
+            reader.next(&mut meter()).unwrap_err(),
+            Error::syntax(message).at(Position::Buffer(offset))
+        );
+        assert!(!reader.has_repairs());
+    }
+}

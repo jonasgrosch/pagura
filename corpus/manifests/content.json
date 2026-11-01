@@ -7383,6 +7383,93 @@
       "api": "compile_page"
     },
     {
+      "id": "content/repair-operands-unused",
+      "kind": "pdf",
+      "description": "Reported recovery: content.operands-unused",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-operands-unused.pdf",
+      "sha256": "64c789604bd1bb296ed1742d74c8a91e732d17ccb7f85c92e0fe06c3a468cfaa",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.operands-unused"
+      ],
+      "oracle": "corpus/generated/content/repair-operands-unused.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "scan_recovery": "repair"
+    },
+    {
+      "id": "content/unused-operands-open-compatibility",
+      "kind": "pdf",
+      "description": "Unused operands cannot close unfinished state",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/unused-operands-open-compatibility.pdf",
+      "sha256": "9b8eed9c1b5560b109c1cb1f05c3779db31dfcc836a26145fcb75e2ad1a67b17",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/unused-operands-open-text",
+      "kind": "pdf",
+      "description": "Unused operands cannot close unfinished state",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/unused-operands-open-text.pdf",
+      "sha256": "11b57f4b028a0208b7706abeafc9da07c0eda9b16bb3606e05571996efc512b4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/unused-operands-open-path",
+      "kind": "pdf",
+      "description": "Unused operands cannot close unfinished state",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/unused-operands-open-path.pdf",
+      "sha256": "7048490530c8248612ce3822e8113d53745c835a00e3d2c5b21bd667b65f7514",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/unused-operands-open-clip",
+      "kind": "pdf",
+      "description": "Unused operands cannot close unfinished state",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/unused-operands-open-clip.pdf",
+      "sha256": "198b70bc2ecc129d3664774321d6d7631f70c2852c0e645d1eec29f4aa1c7f98",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
       "id": "content/repair-operand-number-sign",
       "kind": "pdf",
       "description": "Reported recovery: syntax.number-sign",
