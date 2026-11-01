@@ -97,6 +97,8 @@ pub use pagura_document::repairs::ANNOTATION_NULL as PAGES_ANNOTATION_NULL;
 pub use pagura_image::jbig2::repairs::PAGE_CAPABILITIES as JBIG2_PAGE_CAPABILITIES;
 /// Reported repair of an unused JBIG2 Huffman aggregation-table selector.
 pub use pagura_image::jbig2::repairs::UNUSED_AGGREGATION_TABLE as JBIG2_UNUSED_AGGREGATION_TABLE;
+/// Reported recovery of the exact GontDescriptor font key after unavailable loading.
+pub use pagura_text::repairs::DESCRIPTOR_KEY as FONT_DESCRIPTOR_KEY;
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,

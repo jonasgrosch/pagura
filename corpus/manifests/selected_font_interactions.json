@@ -1,0 +1,426 @@
+{
+  "schema": 2,
+  "area": "selected_font_interactions",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "selected_font_interactions/mixed-visible",
+      "kind": "pdf",
+      "description": "Immutable RequiredNamed and checked CID policies coexist; source widths remain authoritative.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/selected_font_interactions/mixed-visible.pdf",
+      "sha256": "a1e8a36514d5d15c6b520ee6d0078bbbd72c0531d90c560e2a5acd7e3a318530",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/selected_font_interactions/mixed-visible.ppm",
+      "oracle_sha256": "d30de7904bff368d9d93eb0b3ee86ab782db668e00eb86bb5f4068535dd6362c",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "scan_recovery": "repair",
+      "page": 0,
+      "tolerance": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/empty-nonzero-alias-space",
+      "kind": "pdf",
+      "description": "Immutable RequiredNamed and checked CID policies coexist; source widths remain authoritative.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/selected_font_interactions/empty-nonzero-alias-space.pdf",
+      "sha256": "dd83b7ad98f7de0c376acb3ec2d3f37e0f928b5edf6cb297d1bf428a9f287ba7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/selected_font_interactions/empty-nonzero-alias-space.ppm",
+      "oracle_sha256": "598853c322d929ef93a49b40e6d2b934826aeac93c03c8d427823ffaa2b7fe1c",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "scan_recovery": "repair",
+      "page": 0,
+      "tolerance": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/source-widths-bbox",
+      "kind": "pdf",
+      "description": "Immutable RequiredNamed and checked CID policies coexist; source widths remain authoritative.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/selected_font_interactions/source-widths-bbox.pdf",
+      "sha256": "e0973b7332e5138a0ca6f1909aea61a4ec64146550591c9f7e6af5b05a5ea956",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/selected_font_interactions/source-widths-bbox.ppm",
+      "oracle_sha256": "d30de7904bff368d9d93eb0b3ee86ab782db668e00eb86bb5f4068535dd6362c",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "scan_recovery": "repair",
+      "page": 0,
+      "tolerance": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      },
+      "selected_font_geometry": {
+        "alias_quads": [
+          [
+            40,
+            0,
+            50,
+            0,
+            50,
+            20,
+            40,
+            20
+          ],
+          [
+            50,
+            0,
+            60,
+            0,
+            60,
+            20,
+            50,
+            20
+          ]
+        ],
+        "cid_advance": 24
+      }
+    },
+    {
+      "id": "selected_font_interactions/after-visible-alias-missing",
+      "kind": "pdf",
+      "description": "Immutable RequiredNamed and checked CID policies coexist; source widths remain authoritative.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/selected_font_interactions/after-visible-alias-missing.pdf",
+      "sha256": "2a0d7f21ae03d604a691f02f7772a8272952b0ce45773148f78f109342c14510",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "information": [
+        "font.substituted"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "page": 0,
+      "tolerance": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/invisible-alias-missing",
+      "kind": "pdf",
+      "description": "Immutable RequiredNamed and checked CID policies coexist; source widths remain authoritative.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/selected_font_interactions/invisible-alias-missing.pdf",
+      "sha256": "10a1a7f5d2ab35d76543500bc38ad47f58ff5cb97e5c2feb7fd02cf7b9f8b55a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "information": [
+        "font.substituted"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "page": 0,
+      "tolerance": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/later-first-alias-missing",
+      "kind": "pdf",
+      "description": "Immutable RequiredNamed and checked CID policies coexist; source widths remain authoritative.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/selected_font_interactions/later-first-alias-missing.pdf",
+      "sha256": "16d19f8badedb6b05c2c633697446737c53699f63383adfea8faff007d934346",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "information": [
+        "font.substituted"
+      ],
+      "feature": "font.descriptor-glyph",
+      "scan_recovery": "repair",
+      "page": 1,
+      "tolerance": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/later-first-alias-valid",
+      "kind": "pdf",
+      "description": "Immutable RequiredNamed and checked CID policies coexist; source widths remain authoritative.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/selected_font_interactions/later-first-alias-valid.pdf",
+      "sha256": "11f82121469dbf2eb2d5f424b980dc244a495e57d548c9528e7fb6484b695e00",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-key"
+      ],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/selected_font_interactions/later-first-alias-valid.ppm",
+      "oracle_sha256": "d30de7904bff368d9d93eb0b3ee86ab782db668e00eb86bb5f4068535dd6362c",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "scan_recovery": "repair",
+      "page": 1,
+      "tolerance": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/cid-hole-with-empty-alias",
+      "kind": "pdf",
+      "description": "Immutable RequiredNamed and checked CID policies coexist; source widths remain authoritative.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "text-checked-cid-substitution"
+      ],
+      "path": "corpus/generated/selected_font_interactions/cid-hole-with-empty-alias.pdf",
+      "sha256": "a1d083080f12e703a64306bed9f688503502245ac4e0e3056b066bfbea5eadf1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "information": [
+        "font.substituted"
+      ],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "page": 0,
+      "tolerance": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/canonical-ttc-second",
+      "kind": "pdf",
+      "description": "Alias TTC cannot guess native face zero; canonical unique second-name policy is retained.",
+      "expected": "render",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "font-truetype"
+      ],
+      "path": "corpus/generated/selected_font_interactions/canonical-ttc-second.pdf",
+      "sha256": "1a09e35bef582c0246291c8e5bfc237510126eebb9de686f139fdfdc5ce902df",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.collection-face"
+      ],
+      "oracle": "corpus/generated/selected_font_interactions/canonical-ttc-second.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "feature": null,
+          "repair": "font.collection-face"
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/alias-ttc-single",
+      "kind": "pdf",
+      "description": "Alias TTC cannot guess native face zero; canonical unique second-name policy is retained.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "font-truetype"
+      ],
+      "path": "corpus/generated/selected_font_interactions/alias-ttc-single.pdf",
+      "sha256": "f3f6921e35b3eff709a9d0ecf2be1df1c1d2ca22a97bbbfd198e19dfe5dec19e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/alias-ttc-pair-first",
+      "kind": "pdf",
+      "description": "Alias TTC cannot guess native face zero; canonical unique second-name policy is retained.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "font-truetype"
+      ],
+      "path": "corpus/generated/selected_font_interactions/alias-ttc-pair-first.pdf",
+      "sha256": "1e681cdb7c37ab41b0dda484ca2c791b384d9f43f44a88d9adc00511657de2f3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/alias-ttc-pair-second",
+      "kind": "pdf",
+      "description": "Alias TTC cannot guess native face zero; canonical unique second-name policy is retained.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "font-truetype"
+      ],
+      "path": "corpus/generated/selected_font_interactions/alias-ttc-pair-second.pdf",
+      "sha256": "e193e93d31e4176d917373c28b5e830b705899c82d25ed61ef376e4065408582",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "selected_font_interactions/alias-ttc-ambiguous",
+      "kind": "pdf",
+      "description": "Alias TTC cannot guess native face zero; canonical unique second-name policy is retained.",
+      "expected": "unsupported",
+      "requirements": [
+        "text-descriptor-key-recovery",
+        "font-truetype"
+      ],
+      "path": "corpus/generated/selected_font_interactions/alias-ttc-ambiguous.pdf",
+      "sha256": "75c9400b7c2649a8387b89614f43ccb5a8bce8742d5a872f5fe037120b5ffc01",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "feature": "font.non-embedded",
+      "scan_recovery": "repair",
+      "tolerance": 0,
+      "mode_errors": {
+        "strict": {
+          "kind": "Unsupported",
+          "feature": "font.non-embedded",
+          "repair": null
+        }
+      }
+    }
+  ]
+}

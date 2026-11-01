@@ -160,7 +160,10 @@ impl<'a> Fonts<'a> {
                 kind: font.kind(),
             },
             bbox: if self.text {
-                font_box(document, dictionary, font.kind())
+                match font.recovered_descriptor_key() {
+                    Some(key) => recovered_font_box(document, dictionary, key)?,
+                    None => font_box(document, dictionary, font.kind()),
+                }
             } else {
                 None
             },
@@ -354,4 +357,27 @@ fn font_box(document: &Document, dictionary: &Dictionary, kind: FontKind) -> Opt
         .ok()?
         .as_array()
         .and_then(Rect::from_array)
+}
+
+/// Reads geometry from the descriptor already bound by a recovered font.
+/// Unlike the legacy best-effort lookup, a supplied malformed box and
+/// resolution failures remain errors; no program box replaces source data.
+fn recovered_font_box(
+    document: &Document,
+    dictionary: &Dictionary,
+    key: &[u8],
+) -> Result<Option<Rect>> {
+    let descriptor = dictionary
+        .get(key)
+        .ok_or_else(|| Error::syntax("recovered font descriptor is missing"))?;
+    let descriptor = document.resolve_dictionary(descriptor)?;
+    let Some(value) = descriptor.get(b"FontBBox") else {
+        return Ok(None);
+    };
+    document
+        .resolve(value)?
+        .as_array()
+        .and_then(Rect::from_array)
+        .map(Some)
+        .ok_or_else(|| Error::syntax("invalid recovered font descriptor FontBBox"))
 }
