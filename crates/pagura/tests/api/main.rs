@@ -13,6 +13,7 @@ mod facade;
 mod original_records;
 
 mod font_descriptor;
+mod font_directory_count;
 mod overprint;
 mod png;
 mod provider;

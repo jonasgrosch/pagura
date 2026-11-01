@@ -297,3 +297,13 @@ Unsigned scalar/endobj separation and portable declared-Length budget checks are
 Narrow `GontDescriptor` recovery binds a complete supplied TrueType program and preserves source Encoding/Widths, with required actually used glyph identity and Strict outline checks. Source-owned standalone and mixed-font interaction evidence retains its original source labels; current integration is checked separately. No general unknown-font compatibility or fresh combined performance campaign is claimed.
 
 The CLI also offers explicit `scan --repair` with schema2 and an unavailable Strict audit (`strict:null`). This source-owned mode does not add a rendering capability or imply new corpus qualification.
+### Exact sfnt directory-count repair scope
+
+Explicit Repair has a bounded `font.sfnt-directory-count` recovery for exactly
+one excess record with an intact unique bounded directory and an original
+first head/CFF payload header. Strict/default parsing keeps the full original
+error. Full required program/glyph validation and caller limits remain. Legacy
+Strict-first scan cannot discover this repair; direct Repair API tests provide
+its rendering evidence. This does not add TTC, missing CFF cmap, alternate
+font binding or glyph-location inference. No feature-completeness or public
+corpus admission count is established by this source entry.

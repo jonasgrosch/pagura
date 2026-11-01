@@ -108,6 +108,8 @@ pub use pagura_image::jbig2::repairs::UNUSED_AGGREGATION_TABLE as JBIG2_UNUSED_A
 pub use pagura_text::repairs::DESCRIPTOR_KEY as FONT_DESCRIPTOR_KEY;
 /// Reported recovery of immediate defined parsed-null annotation references.
 pub use pagura_document::repairs::ANNOTATION_NULL_REFERENCE as PAGES_ANNOTATION_NULL_REFERENCE;
+/// Repair for a proven one-record excess in an sfnt directory count.
+pub use pagura_font::repairs::SFNT_DIRECTORY_COUNT as FONT_SFNT_DIRECTORY_COUNT;
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,

@@ -1,12 +1,14 @@
 //! Bounded sfnt directory recovery; 9.9.1/Table 124 and the OpenType table
 //! directory.
+mod count;
+
 use super::Tables;
 use crate::budget::Work;
 use crate::read::{cursor, here, limit, syntax};
 use crate::repairs;
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Position, Result};
+use pagura_core::{ErrorKind, Position, Recovery, Result};
 use std::ops::Range;
 
 /// sfnt versions: TrueType outlines, CFF outlines (`OTTO`), and Apple's
@@ -113,11 +115,48 @@ pub(super) fn parse(
     header_end: usize,
     work: &mut Work<'_>,
 ) -> Result<Directory> {
-    let mut records = records(data, offset, work)?;
-    work.entries(
-        (records.range.len() - OFFSET_TABLE) / TABLE_RECORD,
-        Position::Buffer(offset),
-    )?;
+    let records = records(data, offset, work)?;
+    let count = (records.range.len() - OFFSET_TABLE) / TABLE_RECORD;
+    let signature = records.signature;
+    work.entries(count, Position::Buffer(offset))?;
+    match read_tables(data, records, header_end, work) {
+        Ok(directory) => Ok(directory),
+        Err(error)
+            if offset == 0
+                && header_end == 0
+                && error.kind == ErrorKind::Syntax
+                && error.message == "sfnt table overlaps directory"
+                && work.mode() == Recovery::Repair =>
+        {
+            let Some(actual) = count::prove(data, signature, count, work)? else {
+                return Err(error);
+            };
+            work.repair(
+                repairs::SFNT_DIRECTORY_COUNT,
+                "sfnt directory count includes the first table header",
+                Position::Buffer(4),
+            )?;
+            // The declared entry charge covers this smaller directory. The
+            // failed map is dropped, while all attempted work stays charged.
+            // Collections never reach this proof: file-relative face tables
+            // keep their existing reader and selected-family contracts.
+            let mut records = records(data, 0, work)?;
+            records.range.end = OFFSET_TABLE + TABLE_RECORD * actual;
+            records.cursor = cursor(data)
+                .cursor_at(OFFSET_TABLE)?
+                .take_cursor(TABLE_RECORD * actual)?;
+            read_tables(data, records, 0, work)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn read_tables(
+    data: &[u8],
+    mut records: Records<'_>,
+    header_end: usize,
+    work: &mut Work<'_>,
+) -> Result<Directory> {
     let mut tables = Tables::new();
     let mut clipped_post = false;
     while let Some(record) = records.next()? {
@@ -153,7 +192,12 @@ pub(super) fn parse(
         }
     }
     Ok(Directory {
-        flavor: flavor(records.signature, &tables, Position::Buffer(offset), work)?,
+        flavor: flavor(
+            records.signature,
+            &tables,
+            Position::Buffer(records.range.start),
+            work,
+        )?,
         tables,
         clipped_post,
     })

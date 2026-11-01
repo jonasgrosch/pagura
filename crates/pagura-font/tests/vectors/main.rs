@@ -9,6 +9,7 @@ use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
 use pagura_font::{CmapSubtable, FontFormat, FontProgram, GlyphId};
 
 mod collections;
+mod directory_count;
 mod recovery;
 mod static_fonts;
 use pagura_raster::{PathBuilder, Point, Segment};
