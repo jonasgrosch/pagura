@@ -158,16 +158,20 @@ def cases():
         ("header-extra-format", {"header": b"%PDF-1.7 extra\n"}, "file.header-format"),
         ("leading-junk-physical-offsets", {"leading": b"junk\n"}, "file.header-offset"),
         ("leading-junk-relative-offsets", {"leading": b"junk\n", "relative": True}, "file.header-offset"),
-        ("missing-pdf-header", {"header": b"%XYZ-1.7\n"}, None),
+        ("missing-pdf-header", {"header": b"%XYZ-1.7\n"}, "file.header-absent"),
+        ("unknown-pdf-header", {"header": b"%PDF-9.7\n"}, None),
         ("all-free-size-coverage", {"free_only": True}, None),
     ]:
         data, xref, _ = page(**options)
-        invalid = name in ["encrypt-undefined-reference", "missing-pdf-header"]
+        invalid = name in ["encrypt-undefined-reference", "unknown-pdf-header"]
         errors = strict_size(xref)
         if tag:
             errors = {"strict": {"kind": "Syntax", "repair": tag,
                                  "file_position": 8 if tag == "file.header-format" else 5, "object": None}}
         if name == "missing-pdf-header":
+            errors = {"strict": {"kind": "Syntax", "repair": tag, "file_position": 0,
+                                 "object": None, "message": "missing PDF header before a complete leading Catalog object; no version inferred"}}
+        if name == "unknown-pdf-header":
             errors = {mode: {"kind": "Syntax", "message": "missing or unknown PDF header", "repair": None,
                              "file_position": 0, "object": None} for mode in ["strict", "repair"]}
         if name == "encrypt-undefined-reference":

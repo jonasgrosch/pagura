@@ -1577,12 +1577,53 @@
       "id": "original_records/missing-pdf-header",
       "kind": "pdf",
       "description": "Pristine header, absent Encrypt and useful physical-record scope; no new original authority",
-      "expected": "invalid",
+      "expected": "render",
       "requirements": [
         "original-record-scalar-reconstruction"
       ],
       "path": "corpus/generated/original_records/missing-pdf-header.pdf",
       "sha256": "b526734be046b271123c2d524263269e6964c98f0e4b7f2c98a2233b0ae2ee0c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-absent",
+        "xref.rebuilt",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/original_records/missing-pdf-header.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": "file.header-absent",
+          "file_position": 0,
+          "object": null,
+          "message": "missing PDF header before a complete leading Catalog object; no version inferred"
+        }
+      },
+      "document_queries": [
+        {
+          "object": [
+            5,
+            0
+          ],
+          "expected": "missing"
+        }
+      ]
+    },
+    {
+      "id": "original_records/unknown-pdf-header",
+      "kind": "pdf",
+      "description": "Pristine header, absent Encrypt and useful physical-record scope; no new original authority",
+      "expected": "invalid",
+      "requirements": [
+        "original-record-scalar-reconstruction"
+      ],
+      "path": "corpus/generated/original_records/unknown-pdf-header.pdf",
+      "sha256": "1557f02725b64bb2a62a2ca31718462a56da7d30df690bacd96e3d2aeb447555",
       "pages": null,
       "strict_valid": false,
       "repairs": [],

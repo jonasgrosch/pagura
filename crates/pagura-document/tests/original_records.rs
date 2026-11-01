@@ -115,6 +115,7 @@ fn absent_nonexact_and_other_fault_records_never_supply_authority() {
         "header-extra-format",
         "leading-junk-physical-offsets",
         "leading-junk-relative-offsets",
+        "missing-pdf-header",
         "all-free-size-coverage",
     ] {
         let document = open(name);
