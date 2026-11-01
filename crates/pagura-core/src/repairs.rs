@@ -23,6 +23,13 @@ pub const DICTIONARY_OPENER: Repair = Repair::new("syntax.dictionary-opener");
 pub const DIRECT_STREAM: Repair = Repair::new("syntax.direct-stream");
 /// Leading zeros in reference identifiers (7.3.10, EC3 issue 379).
 pub const LEADING_ZERO_REFERENCE: Repair = Repair::new("syntax.reference-leading-zero");
+/// A sign with no digits after it (7.3.3) reads as the integer 0, as
+/// PDFium, MuPDF, Poppler and pdf.js read it.
+pub const NUMBER_SIGN: Repair = Repair::new("syntax.number-sign");
+/// A byte that is neither a hexadecimal digit nor white space inside a
+/// hexadecimal string (7.3.4.3) is skipped, as PDFium, MuPDF, Poppler and
+/// pdf.js skip it.
+pub const HEX_DIGIT: Repair = Repair::new("syntax.hex-digit");
 /// An invalid UTF-16BE or UTF-8 sequence, or a byte PDFDocEncoding does not
 /// define, in a text string, replaced by U+FFFD (7.9.2.2, Annex D.3).
 pub const INVALID_TEXT: Repair = Repair::new("string.invalid-text");
@@ -40,6 +47,8 @@ pub const ALL: &[Repair] = &[
     DICTIONARY_OPENER,
     DIRECT_STREAM,
     LEADING_ZERO_REFERENCE,
+    NUMBER_SIGN,
+    HEX_DIGIT,
     INVALID_TEXT,
     LANGUAGE_ESCAPE,
 ];

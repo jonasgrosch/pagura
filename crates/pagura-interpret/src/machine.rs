@@ -302,7 +302,8 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     ) -> Result<()> {
         self.session.serial += 1;
         scope.initial = Some((Arc::new(scope.state.clone()), self.session.serial));
-        let mut reader = Reader::new(content, &self.session.limits);
+        let mut reader =
+            Reader::new(content, &self.session.limits).with_recovery(self.document().recovery());
         while let Some(Operation { op, offset }) = reader.next(&mut self.session.tokens)? {
             self.position = content.position(offset);
             let result = match op {
@@ -312,6 +313,12 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 op => self.operation(op, resources, scope),
             };
             result.map_err(|error| content.locate(error, offset))?;
+            if reader.has_repairs() {
+                self.report_parsed(content, reader.take_diagnostics())?;
+            }
+        }
+        if reader.has_repairs() {
+            self.report_parsed(content, reader.take_diagnostics())?;
         }
         if !reader.is_balanced()
             || !scope.path.is_empty()
@@ -346,6 +353,22 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 ),
             )?;
             scope.saved.clear();
+        }
+        Ok(())
+    }
+
+    /// Reports the object parser's repairs on operands of `content`, each in
+    /// the stream holding it. Under strict recovery the parser has already
+    /// failed on them instead.
+    fn report_parsed(&self, content: &Content<'_>, repairs: Vec<Diagnostic>) -> Result<()> {
+        for mut diagnostic in repairs {
+            if let Position::Buffer(offset) = diagnostic.position {
+                diagnostic.position = content.position(offset);
+                if let Position::Stream { object, .. } = diagnostic.position {
+                    diagnostic = diagnostic.in_object(object);
+                }
+            }
+            self.document().repair(diagnostic)?;
         }
         Ok(())
     }

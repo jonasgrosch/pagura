@@ -12,8 +12,8 @@ type Streams<'a, 'b, 'h> = Option<Context<'a, 'b, 'h>>;
 pub use direct::{DirectStream, DirectStreamHandler, PathComponent};
 
 use crate::repairs::{
-    DICTIONARY_CLOSER, DICTIONARY_OPENER, DIRECT_STREAM, DUPLICATE_KEY, KEY_SOLIDUS,
-    LEADING_ZERO_REFERENCE, NAME_ESCAPE, ZERO_REFERENCE,
+    DICTIONARY_CLOSER, DICTIONARY_OPENER, DIRECT_STREAM, DUPLICATE_KEY, HEX_DIGIT, KEY_SOLIDUS,
+    LEADING_ZERO_REFERENCE, NAME_ESCAPE, NUMBER_SIGN, ZERO_REFERENCE,
 };
 use crate::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, Name, ObjectId, Position, Recovery, Result,
@@ -479,7 +479,13 @@ impl<'a> Parser<'a> {
             if is_whitespace(byte) {
                 continue;
             }
-            let digit = hex_digit(byte).ok_or_else(|| self.error("invalid hexadecimal string"))?;
+            let Some(digit) = hex_digit(byte) else {
+                self.diagnostics.repair_once(
+                    Diagnostic::new(HEX_DIGIT, "invalid hexadecimal string byte skipped")
+                        .at(self.position()),
+                )?;
+                continue;
+            };
             match high.take() {
                 Some(high) => self.push_bounded(&mut bytes, (high << 4) | digit)?,
                 None => high = Some(digit),
@@ -685,6 +691,13 @@ impl<'a> Parser<'a> {
         // At most 15 bytes of digits and point: the value and its decimal places, exactly.
         let short = digits.len() <= SHORT_DIGITS;
         let (mut mantissa, mut decimals) = (0_i64, 0);
+        if signed && digits.is_empty() {
+            self.diagnostics.repair(
+                Diagnostic::new(NUMBER_SIGN, "sign without digits read as 0")
+                    .at(self.origin.position(start)),
+            )?;
+            return Ok(Value::Integer(0));
+        }
         let valid = !digits.is_empty()
             && digits != b"."
             && digits.iter().all(|&byte| match byte {
