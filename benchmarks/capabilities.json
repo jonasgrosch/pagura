@@ -287,7 +287,7 @@
     "crates/pagura-paint/src/source/image/stencil.rs": "2224593d135a0310c6a051c7a5e6abda511479aa1ac9f49be3942181d3ca32fa",
     "crates/pagura-paint/src/source/image/tests.rs": "5851cfe2a22c04ff59ca343a75cae664d93105f6c782f665d4bbe08f06e8927a",
     "crates/pagura-paint/src/source/image/texels.rs": "90085e17d53f4f3f067b5e89b588d6f37b0e42b8f09a82525ab0551effe3d400",
-    "crates/pagura-paint/src/source/shading.rs": "f7fb3863f98aee2aac25dc02d8d6dccda3b74812bd04c0dfe4589edef3479653",
+    "crates/pagura-paint/src/source/shading.rs": "afbc596a29df14a8b618791e8c45b6ba95b044a11347e73bbd6fd093669acc53",
     "crates/pagura-paint/src/source/shading/tests/synthetic.rs": "f1f0a5c4f643ec97230a4cfa732f52e9dcddf46141ef55dba36154c525e2998f",
     "crates/pagura-pki/README.md": "78b4b7263e9b6d8dffbb680c9c7a704d5467927792da30d0a5933fa98c8262a5",
     "crates/pagura-pki/src/der.rs": "6c7621b84679165da74f16bbfab6a67cefe3dd74cf62dbf22177d64fed0101fa",
