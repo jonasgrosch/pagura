@@ -10,9 +10,12 @@ mod document;
 mod editing;
 mod facade;
 mod original_records;
+
+mod font_descriptor;
 mod overprint;
 mod provider;
 mod render;
+mod selected_fonts;
 mod signatures;
 mod streaming;
 mod support;

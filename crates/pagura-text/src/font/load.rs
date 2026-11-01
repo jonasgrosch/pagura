@@ -133,11 +133,28 @@ pub(super) fn load_with(
                 provider,
             );
         }
-        return crate::substitute::load(document, font, descriptor, kind, provider, position);
+        if let Some(font) =
+            crate::substitute::try_load(document, font, descriptor, kind, provider, position)?
+        {
+            return Ok(font);
+        }
+        return super::descriptor_key::recover(
+            document,
+            font,
+            kind,
+            position,
+            crate::substitute::unavailable(),
+        );
     }
-    let descriptor = descriptor.ok_or_else(|| {
-        Error::unsupported(features::NON_EMBEDDED, "font program is not embedded")
-    })?;
+    let Some(descriptor) = descriptor else {
+        return super::descriptor_key::recover(
+            document,
+            font,
+            kind,
+            position,
+            Error::unsupported(features::NON_EMBEDDED, "font program is not embedded"),
+        );
+    };
     let route = route(document, font, descriptor, position)?;
     let program = match crate::program::load(document, descriptor, kind, metrics_font, rendering) {
         Ok(program) => Arc::new(program),
@@ -153,16 +170,7 @@ pub(super) fn load_with(
             return fallback.replace(document, error, mapping, provider);
         }
     };
-    let metrics = if kind == FontKind::Type0 {
-        Metrics::composite(document, metrics_font)?
-    } else {
-        Metrics::simple(
-            document,
-            font,
-            Some(descriptor.dictionary),
-            GLYPH_SPACE_UNITS,
-        )?
-    };
+    let metrics = embedded_metrics(document, font, metrics_font, kind, descriptor)?;
     let mapping = if let Some(mapping) = mapping {
         mapping
     } else {
@@ -192,6 +200,72 @@ pub(super) fn load_with(
         metrics,
         limits: document.limits(),
         retained: 0,
+        selection_policy: crate::font::SelectionPolicy::LegacyNotdef,
+    }
+    .accounted())
+}
+
+fn embedded_metrics(
+    document: &Document,
+    font: &Dictionary,
+    metrics_font: &Dictionary,
+    kind: FontKind,
+    descriptor: Descriptor<'_>,
+) -> Result<Metrics> {
+    if kind == FontKind::Type0 {
+        Metrics::composite(document, metrics_font)
+    } else {
+        Metrics::simple(
+            document,
+            font,
+            Some(descriptor.dictionary),
+            GLYPH_SPACE_UNITS,
+        )
+    }
+}
+
+/// Complete, strictly parsed program with the source's simple Encoding and Widths.
+/// No provider, prefix decode or program fallback participates in alias proof.
+pub(super) fn recovered_descriptor(
+    document: &Document,
+    font: &Dictionary,
+    descriptor: Descriptor<'_>,
+) -> Result<PdfFont> {
+    let program = Arc::new(crate::program::load_descriptor_recovery(
+        document, descriptor, font,
+    )?);
+    let metrics = Metrics::simple(
+        document,
+        font,
+        Some(descriptor.dictionary),
+        GLYPH_SPACE_UNITS,
+    )?;
+    // Eligibility proved an explicit known base. Keep its holes and exact
+    // Differences; the ordinary TrueType StandardEncoding hole fill is not proof.
+    let names = encoding::load(
+        document,
+        font.get(b"Encoding"),
+        BaseEncoding::Standard.names(),
+    )?;
+    let mapping = Mapping::Simple(Box::new(SimpleMapping::new(
+        names,
+        &document.limits(),
+        encoding::font_name(document, font)?,
+    )?));
+    Ok(PdfFont {
+        kind: FontKind::TrueType,
+        writing_mode: WritingMode::Horizontal,
+        source: Source::Program {
+            program,
+            route: Route::Named,
+            ownership: Ownership::Embedded,
+            cid_map: None,
+        },
+        mapping,
+        metrics,
+        limits: document.limits(),
+        retained: 0,
+        selection_policy: super::SelectionPolicy::RequiredNamed,
     }
     .accounted())
 }
@@ -340,6 +414,7 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
         mapping,
         limits: document.limits(),
         retained: 0,
+        selection_policy: crate::font::SelectionPolicy::LegacyNotdef,
     }
     .accounted())
 }

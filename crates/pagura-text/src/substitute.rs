@@ -37,8 +37,20 @@ pub(crate) fn load(
     provider: &dyn Provider,
     position: Position,
 ) -> Result<PdfFont> {
+    try_load(document, font, descriptor, kind, provider, position)?.ok_or_else(unavailable)
+}
+
+/// Only an unavailable built-in selection is None; provider and validation errors propagate.
+pub(crate) fn try_load(
+    document: &Document,
+    font: &Dictionary,
+    descriptor: Option<Descriptor<'_>>,
+    kind: FontKind,
+    provider: &dyn Provider,
+    position: Position,
+) -> Result<Option<PdfFont>> {
     if !matches!(kind, FontKind::Type1 | FontKind::TrueType) {
-        return Err(unavailable());
+        return Ok(None);
     }
     let base = required(document, font, b"BaseFont")?
         .as_name()
@@ -51,7 +63,7 @@ pub(crate) fn load(
     let latin = flagged && latin_route(document, font, base.as_bytes(), standard, position)?;
     let symbolic = flagged && !latin;
     if symbolic && !standard.is_some_and(Standard14::is_symbolic) {
-        return Err(unavailable());
+        return Ok(None);
     }
     let selected = match standard {
         Some(face) => face,
@@ -60,12 +72,12 @@ pub(crate) fn load(
                 let flags = if latin { flags.nonsymbolic() } else { flags };
                 closest(document, descriptor, flags)?
             }
-            _ => return Err(unavailable()),
+            _ => return Ok(None),
         },
     };
-    let data = provider
-        .standard_font(selected.name().as_bytes())?
-        .ok_or_else(unavailable)?;
+    let Some(data) = provider.standard_font(selected.name().as_bytes())? else {
+        return Ok(None);
+    };
     let encoding = if kind == FontKind::TrueType && symbolic {
         None
     } else {
@@ -125,16 +137,19 @@ pub(crate) fn load(
             .in_object_opt(descriptor.and_then(|d| d.id)),
         )?;
     }
-    Ok(PdfFont {
-        kind,
-        writing_mode: WritingMode::Horizontal,
-        source,
-        mapping,
-        metrics,
-        limits: document.limits(),
-        retained: 0,
-    }
-    .accounted())
+    Ok(Some(
+        PdfFont {
+            kind,
+            writing_mode: WritingMode::Horizontal,
+            source,
+            mapping,
+            metrics,
+            limits: document.limits(),
+            retained: 0,
+            selection_policy: crate::font::SelectionPolicy::LegacyNotdef,
+        }
+        .accounted(),
+    ))
 }
 
 /// Whether a font flagged Symbolic takes its explicit Latin encoding: a known
@@ -181,7 +196,7 @@ fn latin_encoding(document: &Document, font: &Dictionary) -> Result<bool> {
     }))
 }
 
-fn unavailable() -> Error {
+pub(crate) fn unavailable() -> Error {
     Error::unsupported(
         features::NON_EMBEDDED,
         "font has no safe available substitute",

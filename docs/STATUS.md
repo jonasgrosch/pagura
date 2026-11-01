@@ -26,7 +26,7 @@ they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
-43 capability families, all 90 literal tags reviewed, and all 371 requirement IDs assigned.
+43 capability families, all 91 literal tags reviewed, and all 373 requirement IDs assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.
@@ -275,5 +275,7 @@ not claim a public-page admission, a performance/memory result or full Type 4
 coverage; exact-head qualification is separate.
 
 Unsigned scalar/endobj separation and portable declared-Length budget checks are qualified through PR #355. Recovery requires the exact effective original xref identity and complete physical span; Strict behavior and original bytes are preserved. The original three public cases still refuse, so this scope adds no public-admission credit.
+
+Narrow `GontDescriptor` recovery binds a complete supplied TrueType program and preserves source Encoding/Widths, with required actually used glyph identity and Strict outline checks. Source-owned standalone and mixed-font interaction evidence retains its original source labels; current integration is checked separately. No general unknown-font compatibility or fresh combined performance campaign is claimed.
 
 The CLI also offers explicit `scan --repair` with schema2 and an unavailable Strict audit (`strict:null`). This source-owned mode does not add a rendering capability or imply new corpus qualification.

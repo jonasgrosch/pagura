@@ -85,3 +85,26 @@ fn image_repairs_are_exposed_through_the_facade() {
         seen.push(*repair);
     }
 }
+
+#[test]
+fn descriptor_recovery_tags_have_one_owner_and_a_flat_facade_export() {
+    assert_eq!(
+        pagura::FONT_DESCRIPTOR_KEY,
+        pagura_text::repairs::DESCRIPTOR_KEY
+    );
+    assert_eq!(pagura::FONT_DESCRIPTOR_KEY.as_str(), "font.descriptor-key");
+    assert_eq!(
+        pagura_text::repairs::ALL
+            .iter()
+            .filter(|tag| **tag == pagura::FONT_DESCRIPTOR_KEY)
+            .count(),
+        1
+    );
+    assert_eq!(
+        pagura_text::features::ALL
+            .iter()
+            .filter(|tag| tag.as_str() == "font.descriptor-glyph")
+            .count(),
+        1
+    );
+}

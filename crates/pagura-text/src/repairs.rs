@@ -57,6 +57,9 @@ pub const PROGRAM_BINDING: Repair = Repair::new("font.program-binding");
 /// collection is selected by its unique FontName/BaseFont PostScript name,
 /// including standardized subset-tag removal, as explicit reader policy.
 pub const COLLECTION_FACE: Repair = Repair::new("font.collection-face");
+/// Exact GontDescriptor spelling recovered after unavailable TrueType loading.
+/// The typed matching descriptor and original complete strict-valid program are required.
+pub const DESCRIPTOR_KEY: Repair = Repair::new("font.descriptor-key");
 
 /// Every repair tag defined by this crate.
 pub const ALL: &[Repair] = &[
@@ -68,6 +71,7 @@ pub const ALL: &[Repair] = &[
     CMAP_BLOCK_COUNT,
     CMAP_CODESPACE,
     DESCRIPTOR_FLAGS,
+    DESCRIPTOR_KEY,
     DESCRIPTOR_WEIGHT,
     TYPE3_EMPTY_BOUNDS,
     ENCODING_NAME,
