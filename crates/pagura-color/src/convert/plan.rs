@@ -208,6 +208,40 @@ impl Plan {
         self.painted
     }
 
+    /// [`Converter::per_channel`] into a target of `channels` channels.
+    ///
+    /// [`Converter::per_channel`]: crate::Converter::per_channel
+    pub(super) fn per_channel(&self, channels: usize) -> bool {
+        self.lookup.is_none()
+            && self.process == channels
+            && matches!(&self.kind, Kind::Chain(chain)
+                if chain.steps.is_empty() && matches!(chain.terminal, Terminal::Native { .. }))
+    }
+
+    /// [`Converter::rgb_encoding`] into a target of `channels` channels.
+    ///
+    /// [`Converter::rgb_encoding`]: crate::Converter::rgb_encoding
+    pub(super) fn rgb_encoding(&self, channels: usize) -> Option<RgbEncoding<'_>> {
+        let Kind::Chain(chain) = &self.kind else {
+            return None;
+        };
+        match &chain.terminal {
+            Terminal::Rgb {
+                source: Source::Rgb,
+                encode:
+                    encode @ (Encode::Gray
+                    | Encode::Rgb
+                    | Encode::Cmyk {
+                        black: None,
+                        removal: None,
+                    }),
+            } if self.lookup.is_none() && chain.steps.is_empty() && self.process == channels => {
+                Some(RgbEncoding { encode })
+            }
+            _ => None,
+        }
+    }
+
     pub(super) fn arithmetic(&self) -> bool {
         match &self.kind {
             Kind::Tints(_) | Kind::All | Kind::Nothing => true,
@@ -1048,7 +1082,20 @@ impl Encode {
 
     /// Writes encoded sRGB into the process channels (10.3).
     pub(super) fn apply(&self, rgb: [f64; 3], output: &mut [f64]) {
-        let encoded = match self {
+        for (out, value) in output.iter_mut().zip(self.encoded(rgb)) {
+            *out = value;
+        }
+    }
+
+    /// The process values of encoded sRGB `rgb`, the target's channels
+    /// first.
+    #[expect(
+        clippy::inline_always,
+        reason = "texels of RGB samples encode one by one ([`RgbEncoding`])"
+    )]
+    #[inline(always)]
+    fn encoded(&self, rgb: [f64; 3]) -> [f64; 4] {
+        match self {
             Self::Rgb => [rgb[0], rgb[1], rgb[2], 0.0],
             Self::Gray => [luminosity(rgb), 0.0, 0.0, 0.0],
             Self::Cmyk { black, removal } => {
@@ -1065,10 +1112,36 @@ impl Encode {
                     1.0 - black,
                 ]
             }
-        };
-        for (out, value) in output.iter_mut().zip(encoded) {
-            *out = value;
         }
+    }
+}
+
+/// The conversion of DeviceRGB colours that clips their components and
+/// encodes them into the process channels, with no black generation or
+/// undercolour removal function and no spot channel
+/// ([`Converter::rgb_encoding`]).
+///
+/// [`Converter::rgb_encoding`]: crate::Converter::rgb_encoding
+#[derive(Debug, Clone, Copy)]
+pub struct RgbEncoding<'a> {
+    encode: &'a Encode,
+}
+
+impl RgbEncoding<'_> {
+    /// A component as the conversion takes it: clipped to `0..=1`.
+    #[inline]
+    pub fn clip(value: f64) -> f64 {
+        value.clamp(0.0, 1.0)
+    }
+
+    /// The colour of the clipped components `rgb`, the target's channels
+    /// first: what [`Converter::convert`] writes for the components they
+    /// were clipped from, bit for bit.
+    ///
+    /// [`Converter::convert`]: crate::Converter::convert
+    #[inline]
+    pub fn encode(&self, rgb: [f64; 3]) -> [f64; 4] {
+        self.encode.encoded(rgb)
     }
 }
 

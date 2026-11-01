@@ -21,6 +21,7 @@ mod accuracy;
 mod documents;
 mod oracle;
 mod ownership;
+mod separable;
 mod timing;
 
 pub(super) fn meter() -> pagura_core::Meter {
