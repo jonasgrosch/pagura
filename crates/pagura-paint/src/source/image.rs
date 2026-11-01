@@ -34,9 +34,9 @@ use sampling::Sampling;
 pub(crate) use scratch::{Layout as ScratchLayout, Scratch as ImageScratch};
 use std::sync::Arc;
 use texels::{
-    ByteCodes, CmykTexels, Colors, EncodedTexels, Fused, GreyTexels, Lookup, MemoTexels,
-    Opacity, OpacityTexels, PackedCodes, RgbTexels, SampleTexels, Strategy, TableTexels,
-    TexelMode, WordCodes,
+    ByteCodes, CmykTexels, Colors, EncodedTexels, Fused, GreyTexels, Lookup, MemoTexels, Opacity,
+    OpacityTexels, PackedCodes, RgbTexels, SampleTexels, Strategy, TableTexels, TexelMode,
+    WordCodes,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
