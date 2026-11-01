@@ -25,12 +25,6 @@ pub(crate) fn load(
     let Mapping::Composite { map, .. } = &mapping else {
         return Err(unavailable());
     };
-    if map.mode == WritingMode::Vertical {
-        return Err(Error::unsupported(
-            features::CID_SUBSTITUTE_VERTICAL,
-            "vertical CID substitute glyph forms are unavailable",
-        ));
-    }
     let collection = cid_collection(document, descendant)?;
     if let Some((registry, ordering)) = collection {
         if map.registry().is_some_and(|r| r != registry)
@@ -44,8 +38,22 @@ pub(crate) fn load(
             let unicode = provider
                 .cid_to_unicode(registry, ordering)?
                 .ok_or_else(unavailable)?;
-            return collection_substitute(document, descendant, id, mapping, program, unicode);
+            return collection_substitute(
+                document,
+                descendant,
+                id,
+                mapping,
+                program,
+                unicode,
+                (registry, ordering),
+            );
         }
+    }
+    if map.mode == WritingMode::Vertical {
+        return Err(Error::unsupported(
+            features::CID_SUBSTITUTE_VERTICAL,
+            "vertical CID substitute glyph forms are unavailable",
+        ));
     }
     // An Identity or unnamed collection shares no glyph identity with any
     // substitute. A known Latin family draws through the font's own ToUnicode
@@ -67,9 +75,38 @@ fn collection_substitute(
     mapping: Mapping,
     program: Arc<FontProgram>,
     unicode: Arc<CidToUnicode>,
+    collection: (&[u8], &[u8]),
 ) -> Result<PdfFont> {
     let Mapping::Composite { map, .. } = &mapping else {
         return Err(unavailable());
+    };
+    let (registry, ordering) = collection;
+    let writing_mode = map.mode;
+    let vertical = if writing_mode == WritingMode::Vertical {
+        // Regional collection policy chooses the font's Han language system.
+        // This changes glyph forms only: PDF W/W2/DW/DW2 still own positioning.
+        let language =
+            (registry == b"Adobe")
+                .then_some(ordering)
+                .and_then(|ordering| match ordering {
+                    b"Japan1" => Some(*b"JAN "),
+                    b"GB1" => Some(*b"ZHS "),
+                    b"CNS1" => Some(*b"ZHT "),
+                    b"Korea1" => Some(*b"KOR "),
+                    _ => None,
+                });
+        Some(
+            program
+                .vertical_substitution(*b"hani", language)?
+                .ok_or_else(|| {
+                    Error::unsupported(
+                        features::CID_SUBSTITUTE_VERTICAL,
+                        "CID substitute lacks an applicable vertical glyph feature",
+                    )
+                })?,
+        )
+    } else {
+        None
     };
     let metrics = Metrics::composite(document, descendant)?;
     // Inspect reachable CIDs, not the substitute's own CID charset. Stop at the
@@ -101,8 +138,12 @@ fn collection_substitute(
     )?;
     Ok(PdfFont {
         kind: FontKind::Type0,
-        writing_mode: WritingMode::Horizontal,
-        source: Source::CidSubstitute { program, unicode },
+        writing_mode,
+        source: Source::CidSubstitute {
+            program,
+            unicode,
+            vertical,
+        },
         mapping,
         metrics,
         limits: document.limits(),

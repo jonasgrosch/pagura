@@ -463,6 +463,10 @@ fn lookup(
 }
 
 impl Security {
+    pub(crate) fn authenticated(&self) -> bool {
+        self.key.is_some()
+    }
+
     /// Select a cipher using the security dictionary; placement and execution
     /// of Crypt filters belong to the stream-access module (7.6).
     pub(crate) fn stream_method(
@@ -470,10 +474,13 @@ impl Security {
         document: &Document,
         object: &IndirectObject,
         explicit: crate::stream::CryptSelection,
+        usage: crate::stream::Usage,
     ) -> Result<CryptMethod> {
         let dictionary = object
             .dictionary()
             .ok_or_else(|| Error::syntax("stream requires a dictionary").in_object(object.id()))?;
+        let embedded = usage == crate::stream::Usage::EmbeddedFile
+            || dictionary.is_name(b"Type", b"EmbeddedFile");
         if !matches!(explicit, crate::stream::CryptSelection::Default) && !self.crypt_filters {
             return Err(Error::syntax(
                 "Crypt filters require encryption version 4 or 5",
@@ -495,23 +502,15 @@ impl Security {
                 .filters
                 .get(name.as_bytes())
                 .is_some_and(|filter| filter.embedded_only),
-            crate::stream::CryptSelection::Default => {
-                dictionary.is_name(b"Type", b"EmbeddedFile") && self.embedded_authorization
-            }
+            crate::stream::CryptSelection::Default => embedded && self.embedded_authorization,
             crate::stream::CryptSelection::Identity => false,
         };
         let method = match explicit {
-            crate::stream::CryptSelection::Named(name) => lookup(
-                &self.filters,
-                name.as_bytes(),
-                dictionary.is_name(b"Type", b"EmbeddedFile"),
-            )?,
-            crate::stream::CryptSelection::Identity => CryptMethod::Identity,
-            crate::stream::CryptSelection::Default
-                if dictionary.is_name(b"Type", b"EmbeddedFile") =>
-            {
-                self.embedded
+            crate::stream::CryptSelection::Named(name) => {
+                lookup(&self.filters, name.as_bytes(), embedded)?
             }
+            crate::stream::CryptSelection::Identity => CryptMethod::Identity,
+            crate::stream::CryptSelection::Default if embedded => self.embedded,
             crate::stream::CryptSelection::Default => self.streams,
         };
         if self.key.is_none() && authorization {
@@ -615,3 +614,34 @@ fn decrypt_strings(
 
 #[cfg(test)]
 mod tests;
+
+impl Document {
+    /// Creates a new immutable snapshot authenticated with `password` (7.6).
+    /// Unlike ordinary opening, this operation refuses an incorrect EFOpen-only
+    /// password immediately. Existing caches and authorization remain untouched.
+    /// Password bytes are not retained; permissions remain a separate host policy.
+    ///
+    /// # Errors
+    /// Opening/budget errors, or `Password` when credentials do not authenticate.
+    pub fn reauthenticate(&self, password: &[u8]) -> Result<Self> {
+        if password.len() > self.limits.string_bytes {
+            return Err(Error::limit("password byte budget exceeded"));
+        }
+        let options = crate::OpenOptions {
+            limits: self.limits,
+            recovery: self.recovery,
+            password: password.to_vec(),
+        };
+        let authenticated = Self::open(self.original_bytes(), &options)?;
+        if authenticated
+            .security
+            .as_ref()
+            .is_some_and(|security| !security.authenticated())
+        {
+            return Err(Error::password(
+                "password did not authorize embedded file access",
+            ));
+        }
+        Ok(authenticated)
+    }
+}

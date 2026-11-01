@@ -4,6 +4,7 @@
 
 mod annotation_compat;
 mod annotation_empty_widgets;
+mod annotation_references;
 mod annotations;
 mod calculator;
 mod document;
@@ -12,7 +13,9 @@ mod facade;
 mod original_records;
 
 mod font_descriptor;
+mod font_directory_count;
 mod overprint;
+mod png;
 mod provider;
 mod render;
 mod selected_fonts;

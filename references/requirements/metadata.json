@@ -1,0 +1,50 @@
+{
+  "schema": 2,
+  "area": "metadata",
+  "scope": "Read-only metadata source views, reviewed against ISO 32000-2:2020 EC3 14.3.2/14.3.3 Tables 347-349, 7.7.2 and 14.9.2. Text strings use the shared 7.9.2 decoder. XML/schema parsing, metadata writes, date validation and Info/XMP reconciliation are outside this slice.",
+  "requirements": [
+    {
+      "id": "document-metadata-read",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "14.3.2; Tables 347-348",
+        "14.3.3; Table 349",
+        "7.7.2; 14.9.2",
+        "7.3.9-7.3.10; 7.9.2"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document tests/metadata.rs",
+        "metadata/populated",
+        "metadata/populated-flate",
+        "metadata/absent",
+        "metadata/null",
+        "metadata/undefined",
+        "metadata/empty",
+        "metadata/trapped-false",
+        "metadata/trapped-unknown",
+        "metadata/info-string",
+        "metadata/info-wrong-type",
+        "metadata/info-field-wrong-type",
+        "metadata/info-trapped-boolean",
+        "metadata/info-cycle",
+        "metadata/invalid-text",
+        "metadata/language-wrong-type",
+        "metadata/metadata-direct-dictionary",
+        "metadata/metadata-nonstream",
+        "metadata/metadata-cycle",
+        "metadata/metadata-missing-type",
+        "metadata/metadata-wrong-subtype",
+        "metadata/metadata-inert-xml"
+      ],
+      "review": [
+        {
+          "locator": "14.3.2/14.3.3; Tables 347-349",
+          "rule": "Keep Info and metadata streams separate. Standard Info text fields are decoded text strings; Trapped is a name, with Unknown as its default. Metadata entries reference streams with Type Metadata and Subtype XML. Retrieval leaves XML bytes inert and preserves stream identity.",
+          "verdict": "Primary clauses reviewed. Independent populated, absent/null/empty, Unicode, compressed packet, source identity, malformed/cyclic and limit controls authored; hosted verification pending."
+        }
+      ],
+      "gaps": "Date strings and language tags are preserved without semantic validation. XML/XMP parsing/schema validation, Info/XMP reconciliation, conditional PieceInfo/ModDate validation, writes and CLI/host/viewer operations remain open."
+    }
+  ]
+}

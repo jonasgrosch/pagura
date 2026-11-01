@@ -1,15 +1,11 @@
 # Plan to close competitive PDF feature gaps
 
-Status: proposed implementation plan, reconciled against `render/one-pass` at
-`19059e68448288ccad84a3bc2f4c6c69c5142e2f` (PR #118).
-The documentation reconciliation and G00 source inventory are delivered: 90 tag
-candidates reviewed, 335 registered requirements assigned, and six baseline API
-catalogs reconciled across 43 capability families in the
-[checked capability inventory](CAPABILITIES.md). G01 runtime probes are in
-progress; later packages remain open. Component names identify ownership, not
-assigned people. The follow-up starts from `render/one-pass` at
-`7c03b656d1e1093c6951e80ec2fc189b5b1bf90a`, which includes the G00/initial G01 merge.
-[STATUS.md](STATUS.md) records what exists now.
+Status: implementation in progress against `render/one-pass` at
+`643cc3f2a203a661e95a3e0466a7a664cf5761e9` (PR #118), reconciled 2026-10-26.
+G00's reviewed source inventory is complete. G01 and the feature packages below
+remain open until their acceptance gates pass. The checked
+[capability inventory](CAPABILITIES.md) identifies support on this branch;
+a feature in another open PR is not support on this branch.
 
 ## Baseline and consolidation
 
@@ -42,6 +38,78 @@ Public `RenderContext::render_bands`, between-band stop callbacks and CLI stream
 PPM output already exist. D01/D02a extend these with persistent resumable jobs,
 range input, incremental PNG and host backpressure; basic band streaming is not
 missing work. The earlier async proposal has been updated to this distinction.
+
+## Review groups and PR budget
+
+Use **18 feature groups, with a hard ceiling of 20 PRs for the remaining plan**.
+The two spare slots permit a whole feature to split when its size or dependency
+makes review materially clearer. They are not for probes, adapter-only changes,
+CI fixes, documentation follow-ups or individual annotation subtypes. Previously
+merged inventory work is retained; superseded open PRs are closed after their
+changes and fixes are accounted for in the replacement group.
+
+| Group | Complete review boundary | Packages | Dependency |
+|---|---|---|---|
+| 01 | Capability comparison and final release evidence | G00, G01, C02 | Probes travel with each feature; final evidence follows all groups |
+| 02 | Document structure, reported recovery and explicit external data | R01 | 01 |
+| 03 | Image codec variants and PDF image integration | R02, R03 | 01; existing decoder/colour interfaces |
+| 04 | Font programs, substitution and text binding | R04 | 01 |
+| 05 | Colour, transparency, overprint and graphics correctness | R05, R06 | 01, 03, 04 as needed |
+| 06 | Annotation display and shared appearance generation | V01; shared V02 geometry | 04 for richer font coverage |
+| 07 | Complete AcroForm filling, preview, persistence and data exchange | V02 | 06; 14 for encrypted/repaired saves |
+| 08 | Explicit host actions, XFA and bounded script execution | V03 | 07, 11; scope ADR |
+| 09 | Logical text, search and accessible structure | V04 | 04 |
+| 10 | Layer state, print intent and viewer output | V05 | 05, 06, 09 |
+| 11 | Progressive source input, resumable jobs and streamed encoding | D01; D02a P0–P9 | 02; ADR 0035 |
+| 12 | Metadata, files, collections, image extraction and complete export APIs | D02a | 03 where image interpretation is needed |
+| 13 | Encryption access and end-to-end signature verification | D03, S01 | 02; explicit host trust/key contracts |
+| 14 | Full rewrite and encrypted output | E01 | 13; writer contract |
+| 15 | Page/content/form/annotation authoring and document-service writes | E02, D02b | 06, 07, 09, 12, 14 |
+| 16 | Sanitizing redaction | E03 | 09, 12, 14, 15 |
+| 17 | Signature creation and timestamp/evidence insertion | S02 | 13, 14; signing-provider ADR |
+| 18 | Version, extension and exact profile conformance | C01 | Relevant feature groups |
+
+The current review set has four PRs: [#213](https://github.com/jonasgrosch/pagura/pull/213)
+for document services and complete PNG export, [#256](https://github.com/jonasgrosch/pagura/pull/256)
+for appearance generation, [#182](https://github.com/jonasgrosch/pagura/pull/182)
+for image decoding, and [#273](https://github.com/jonasgrosch/pagura/pull/273)
+for font mapping and vertical CID substitution. Thirty-six superseded task PRs
+are closed; their source branches remain recoverable. Progressive source/jobs
+work is still private within group 11. Unrelated PRs are outside this budget.
+A retained PR is draft until its advertised boundary, public surfaces and hosted
+checks are complete. Remaining work stays assigned in this plan, even if a group
+cannot yet claim the entire package's acceptance gate.
+
+Rebuild each review branch from the current `render/one-pass`, carrying only its
+feature and required shared changes. A dependent branch may be developed privately,
+but open its PR after the prerequisite lands so the review does not repeat the
+prerequisite diff. All PR targets remain `render/one-pass`. Group-specific probes,
+fixtures, requirements and capability updates belong in the same PR as the feature.
+
+## Architecture and size controls
+
+| Owner | One implementation to extend |
+|---|---|
+| `pagura-document` | Immutable source/revision identity, bounded typed views and traversal; host-supplied input only |
+| `pagura-appearance` | Shared font encoding/layout, border geometry and appearance programs for annotations and forms |
+| `pagura-interpret` | PDF resource resolution and the single device dispatch; no second image, text or annotation interpreter |
+| `pagura-color` / `pagura-image` | Object-free transforms and codec/layout types; PDF policy stays at the interpreter boundary |
+| `pagura-paint` / `pagura-raster` | Source-ordered preparation and one exact band executor; export and preview consume the same output |
+| `pagura::editing` / `pagura-write` | Immutable transactions and one bounded serializer; typed operations reuse these layers |
+| CLI / host / viewer | Argument/wire conversion and user state; no duplicate PDF traversal or appearance renderer |
+
+Before adding a module, identify the existing owner and the code it replaces or
+extends. Share a helper when it represents an invariant used by multiple callers;
+do not add generic registries, forwarding layers or parallel models for imagined
+future use. Remove the superseded path in the same change. Generated test data
+must remain separate from product code and independent of the implementation.
+
+Each PR description records its public behavior, dependency, product-code delta,
+removed paths and meaningful tests. Review source and authored generators before
+generated binaries. Large fixture counts do not justify a large product diff;
+reviewers must still be able to follow one feature through its existing owners.
+Preserve bounded work/storage, safe Rust, workspace-only product dependencies and
+the exact-output contracts. Performance-only complexity needs measured evidence.
 
 ## Target and completion rule
 
@@ -119,7 +187,7 @@ Owner: `references/requirements`, `docs`, `benchmarks`; depends on no new produc
 
 - **Source inventory complete at `19059e684`:** `benchmarks/capabilities.json`,
   the generated [review view](CAPABILITIES.md), and `tools/capabilities.py --check`
-  cover 43 capability families, all 90 reviewed literal tags, all 332 registered
+  cover 43 capability families, all 90 reviewed literal tags, all registered
   requirement IDs and all six baseline API inventories. There are 258 unprobed
   family cells. Schema 2 requires dispositions, source locators/hashes, ownership
   and complete surface states; it does not infer runtime support or N/A.
@@ -155,19 +223,26 @@ been exercised. Later discoveries reopen the inventory and relevant package.
 
 Owner: `tools/benchkit`, `benchmarks/adapters`, `tools/fixturegen`; depends on G00 schema.
 
-**Started:** the [document-service probe slice](../benchmarks/probes/README.md)
-adds ten independent populated/empty/rejection controls, 60 explicit case/engine
-cells, identity/source/fixture hashes, and hosted CI. The adapters now cover all
-six baselines across hosted Ubuntu and macOS; hayro attachment/text reconstruction
-and CoreGraphics text reconstruction remain explicit adapter gaps. The wider
-operation/configuration matrix and Pagura document-service observations remain open. These
-fixture results do not promote any G00 family cell or establish Pagura parity.
-The initial render slice adds six independent pixel oracles and 42 case/engine
-cells, including Pagura through its public CLI, for empty/populated controls, fractional geometry and JPX colour/alpha.
-The initial six-baseline run recorded 20 passes and 16 pixel disagreements;
-these are observations pending sampling/colour/alpha adjudication, not established
-competitor defects. The Pagura-inclusive hosted probe run recorded all six subject cases passing. The separate R02 changes need their own expanded probes after
-consolidation onto the shared target.
+The existing harness records engine/build identity, configuration, fixture hashes
+and separate unsupported/incorrect/limit/timeout/adapter-failure outcomes. Service
+and rendering probes expand with the feature groups that introduce their fixtures.
+The accepted appearance checkpoint `fc0a302dc` passes 596 rendering controls and
+all functional/editing gates; subsequent head `a79d0cb99` adds shared RV/DS rich
+field generation and persistence, bringing the set to 644, with hosted acceptance
+pending. Image checkpoint `42795ad26` passes 388 observations and all twelve
+gates, including six explicitly classified malformed-input observations. Image
+head `f0f4d0be2` adds bounded internal JPX metadata references and 16 controls,
+with hosted acceptance pending. Font checkpoint `3e5d8e69c` passes 40 rendering
+controls and all three functional platforms; head `e568b4292` extends CFF2 DICT
+namespace handling and brings the set to 48, with hosted acceptance pending.
+Document services at `e02d3b400` pass 21 service probes and six render controls.
+The new heads also integrate the one-pass base recorded above. The accepted
+checkpoints are separate feature-branch results, not an integrated release result.
+Exact run identities and observations live in each PR and its probe record.
+Fixture passes never promote an entire family. All 258 family comparison cells
+remain unprobed until the wider operation/configuration obligations are established.
+Hayro/CoreGraphics text adapter gaps and artwork/font/sampling disagreements remain
+explicit work, not evidence that the baseline lacks the feature.
 
 Add non-render adapters for extraction/search, forms/events, annotation/layer
 state, attachments, save/reopen, redaction and signatures where applicable.
@@ -201,21 +276,12 @@ External-resource fixtures prove no implicit IO and stable object/revision ident
 
 Owner: `pagura-image`, `pagura-color`, `pagura-interpret`, `pagura-paint`; depends on G01.
 
-**Started from `render/one-pass` at `7c03b656d1e1093c6951e80ec2fc189b5b1bf90a`:**
-`b410d2bcafac55cbe9dbf337dbdbc88144e59ac4` connects embedded ICC profiles to the existing
-forward transforms and bounded profile cache. Independent Gray/RGB, alpha,
-PDF override and malformed-profile fixtures accompany cache/budget controls;
-hosted validation is pending. `0a9f9cb0109d5059350367247212795844a04f7f` adds
-eight-bit unsigned sYCC with IEC Annex F rational pixel oracles, explicit PDF
-overrides and alpha fixtures. Other/mixed sYCC precisions, Lab-input profiles,
-multiple-profile ranking and fallback after an unsupported selected transform remain open. This slice
-does not complete R02 or its platform/interaction acceptance gate.
-`7040b91024dd10282b4e7d5e51b2e1942ff0b6c4` additionally preserves direct
-index/opacity channels for explicit PDF Indexed spaces without a container
-palette, with first/last alpha and SMaskInData 0/1/2 fixtures. It rejects signed
-sYCC channels before signedness is discarded. The source inventory also includes
-`847fb26f0616e8b70bec76883880c78cbc47915d`, which updates the diagnostic formatter
-for the new colour model. Hosted verification remains pending.
+The one-pass base already integrates embedded ICC, eight-bit sYCC and direct
+Indexed opacity. The image group consolidates broader sYCC precision, ranked colour/ICC selection,
+D50 CIELab input, palettes, inline framing and first-image JPX header/opacity
+handling through the existing decoder and channel owners. Non-D50/signed Lab,
+17–38-bit JPX, nonidentity registration and selected-image fragments remain open.
+Only the branch inventory and source-bound hosted results establish what has landed.
 
 1. Interpret embedded ICC/sYCC and colour specification precedence/fallback;
    respect explicit PDF colour spaces and expose all relevant colour candidates.
@@ -236,7 +302,7 @@ Owner: `pagura-image`, `pagura-codec`; depends on G00/G01 and relevant R02 layou
 Implement baseline-supported JPEG lossless/hierarchical processes, CCITT extension
 modes, JBIG2 extended templates/necessary extensions and remaining JPX capability,
 precision/layout/progression variants. Obtain and review the corresponding primary
-amendments before implementation. Split each codec/variant into its own change.
+amendments before implementation. Keep codec-specific commits inside the image review group; split a PR only under the review budget above.
 
 Acceptance: independent decoder vectors, truncated/hostile cases and PDF-level
 fixtures pass with explicit output/work caps. Every valid codec row accepted by
@@ -247,9 +313,14 @@ as such with a standards/baseline reason, not silently removed.
 
 Owner: `pagura-font`, `pagura-text`, `pagura-data`; depends on G00/G01.
 
-Deliver vertical substituted CJK glyph forms/metrics and provider coverage first.
-Then close baseline-supported collections, cmap/post formats, variable instances,
-CFF2 matrices, synthetic/legacy font programs and nonhorizontal advances.
+Group 04 in #273 implements selected vertical CJK substitutions through the
+existing provider path, legacy post 2.5 names, post 4 admission for cmap use,
+reserved post-index validation and format 8 numeric lookup. Its scoped hosted
+checks pass; PDF metrics and extraction remain independent of substitution.
+Remaining work includes baseline-supported collections, other cmap/post
+obligations, variable instances, CFF2 matrix policy, synthetic/legacy font programs
+and nonhorizontal advances. Diagnostic matrix observations are unresolved; they
+do not yet define product behavior.
 Review TrueType/OpenType and remaining Type 1 primary sources. Use bounded
 font-program evaluation for executable font/CMap cases; general document-script
 execution is a separate V03 contract. Treat hinting as an explicit rendering
@@ -298,9 +369,23 @@ edge cases and malformed/limit cases have separate recorded outcomes.
 Owner: `pagura-document`, `pagura-appearance`, `pagura-interpret`; depends on G01,
 relevant R04/R05 work.
 
-Complete missing normal appearances for FreeText, text markup, Ink, Line,
-Circle, Polygon/PolyLine, Stamp, Caret, FileAttachment and other ledger subtypes;
-add border effects, callouts, line endings and required font/layout support.
+The consolidated appearance group covers standard icons, geometric markup,
+Line/PolyLine endings and leaders, captions, text markup, Caret, stamps, FreeText
+and shared rectangular border styles. It also includes rich FreeText, cloudy
+effects, callouts, Sound icons, Redact preview, FixedPrint screen geometry and
+missing text/choice widget appearances. It reuses font encoding/layout and the
+same border geometry for filled forms. Independent authored pixels, malformed
+input/budget controls, stored-appearance precedence, partial tiles and native/WASI
+client checks accompany the feature. Exact supported subvariants are in the
+branch's capability inventory; this list does not imply the entire V01 gate passes.
+
+Normal button caption/icon generation and its source/preview/save state rules
+are under review in this same group. Remaining border/callout combinations,
+interaction-selected R/D states and font/layout cases stay assigned here or to V02. New implementations join this group instead of opening
+another PR for each subtype, ending, border or probe increment.
+
+Complete richer FreeText and other ledger subtype appearances;
+add border effects, remaining callout combinations and required font/layout support.
 Cover state dictionaries and rollover/down appearances where interaction uses
 them. Model flags, geometry and hit testing consistently across render and host.
 
@@ -315,7 +400,7 @@ Owner: `pagura-document`, `pagura-appearance`, `pagura::editing`, `web`;
 depends on V01, R04 and E01 for repair/encrypted-save paths.
 
 Add rich-text/Unicode/CID appearance generation, oblique/reflected/rotated text,
-negative-size handling where valid, rounded/beveled/inset borders, complex Tx
+negative-size handling where valid, remaining rounded stroke/dash evidence, complex Tx
 updates, inline-image/XObject preservation, generated button states and nested
 direct field identities. Complete field types/flags and reset/import/export
 workflows identified by G00. Define password-field handling explicitly; the
@@ -417,17 +502,25 @@ Owner: `pagura-document`, `pagura-image`, `pagura-codec`, facade/CLI/host; the D
 read/extract/export APIs depend on G01 and D03 for encrypted attachments. D02b
 modification APIs follow E01/E02; E02 consumes D02a, so there is no dependency cycle.
 
-Add typed metadata/XMP, embedded/associated files, file specifications, thumbnails,
-portfolio/collection views and baseline-supported document properties. Expose
-lossless original-image extraction where valid and decoded-image export otherwise,
-including masks, colour interpretation and provenance. Connect existing PNG/zlib
-encoders to public conversion APIs/CLI/host. The existing band callback and CLI
-PPM streaming need no replacement; add incremental PNG/DEFLATE, persistent output
-jobs and async backpressure using P4–P9 of the linked D01/D02a design. P4 owns
-assets/occurrences, P5 the shared cursor and P6 the encoder; P7–P9 integrate them.
-Probe PDF-to-SVG/vector/raster and text export formats exposed by the baselines;
-add confirmed PDF-origin export obligations to this package rather than equating
-PNG alone with export parity.
+The document-service group consolidates typed Info/XMP views; EmbeddedFiles,
+catalog/page/object AF, EF/RF and page attachment discovery; explicit payload
+selection and declared size/checksum checks; collection/encrypted-payload
+metadata; stored thumbnail and image-asset extraction; and complete page PNG
+export. Library, CLI, host and viewer are one review boundary. Packet/filename/URL
+bytes remain inert and extraction writes only to an explicit caller destination.
+
+Keep exact stored assets, unwrapped encoded images, interpreted image occurrences,
+normalized image output and page crops distinct. Share image description, colour
+and mask resolution with the interpreter. P4 of the linked D01/D02a design owns
+resource-context-aware image occurrences; P5/P6 extend the existing band driver
+and PNG/DEFLATE encoder. P7–P9 own jobs, async integration and backpressure. These
+remain in group 11, rather than a second extraction/rendering implementation.
+
+Validate association/MIME/date and metadata declarations where the standard
+requires them; a metadata/profile label alone is not conformance. Add confirmed
+PDF-origin SVG/vector/raster/text export obligations found by G01. Complete PNG
+output is not a claim of streaming or all-format export parity. Metadata/files,
+collections and associated-file modification belong to D02b in group 15.
 
 Acceptance: synthetic attachments/image bytes and hashes match independent
 expectations; filenames/URLs remain data and extraction never executes content.
@@ -573,33 +666,17 @@ five warmups, one-sided 95% upper bounds at most 0.80 for median and p95, with
 no peak-memory regression. Missing cells block release; functional parity and
 performance superiority remain separate claims.
 
-## First implementation changes
+## Current implementation order
 
-Start with these reviewable changes; each includes fixtures and its ledger/status
-update. Reorder later display work using G01's measured failure frequencies.
-
-1. G00 is complete for the reviewed source scope. Keep the checked inventory
-   current as packages land, and reopen it when new call sites or API families
-   are discovered. Source classifications do not establish runtime parity.
-2. G01 adapter controls and current corpus baseline. Publish reproducible summaries
-   and the ordered queue of valid missing features, not a single success percentage.
-3. R02 embedded ICC/sYCC interpretation and colour precedence, using existing
-   colour transforms and independently calculated reference samples.
-4. R02 Indexed opacity/channel mapping and remaining image boundaries; retain
-   existing straight/premultiplied alpha and add group/mask interaction oracles.
-5. R04 vertical CJK substitution, with exact glyph-choice/advance/placement cases
-   for the supported collections and no-provider builds.
-6. V01/V02 separate changes for missing annotation appearances, then generated
-   button states/direct field identities and form save/reopen coverage.
-7. D01/D02a P0 contract review of proposed ADR 0035, then P1–P3's minimal
-   range-backed first-page path. Reuse the existing band API; P5/P6 cursor and
-   incremental PNG work can proceed independently on complete inputs.
-8. S01 PDF signer-to-path/CRL integration with real cryptography, explicit host
-   anchors/time and tests proving `NotCheckedYet` changes only when checked.
-
-Before dependent implementation, prepare the V03, D03 and S02 policy ADRs and
-E01 rewrite contract. Planning these decisions does not silently change current
-product policy or declare the corresponding gap closed.
+1. Complete the four consolidated image, appearance, font and document-service
+   groups, including simplification, public integration and hosted checks.
+2. Continue progressive sources/jobs in parallel through the existing parser and
+   render executor; open one group-11 PR when its advertised boundary is complete.
+3. Keep G00 evidence accurate and expand G01 probes in the same feature PRs.
+4. Prepare colour/graphics, AcroForm, rewrite, host-action and signing work against
+   their exact dependencies and explicit contracts.
+5. Reserve final compatibility, robustness and performance evidence for the actual
+   integrated release candidate. A draft or a green subset cannot close the plan.
 
 ## Definition of done for every implementation change
 

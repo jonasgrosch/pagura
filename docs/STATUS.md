@@ -7,15 +7,22 @@ packaging repair, bounded Type 4 calculator branch proofs, complete inline-EI
 framing and declared-precision JP2 palette-padding recovery. Component evidence
 retains its exact source provenance. This selected union requires its own
 accuracy, all-page, parity, cost, memory and exact-head CI qualification; no
-aggregate gain follows by summing branches. Referenced null annotations remain
-errors in this source.
+aggregate gain follows by summing branches. Immediate exact defined Null references additionally follow the reported Repair-only member policy described below.
+Literal null members of page Annots arrays can be recovered with the
+reported `pages.annotation-null` policy (see [RECOVERY](RECOVERY.md)).
+Rendering, links and signature-role traversal share the gate; original
+references/order and array budgets remain authoritative. Immediate exact defined Null references use the separate reported
+`pages.annotation-null-reference` policy; undefined/free/other-generation or
+chained targets remain errors. Repaired signed graphs cannot
+establish an Allowed modification. Whole-field Annots null handling is
+a separate existing gap; this recovery does not normalize that field.
 
 Pagura has substantial rendering, reading, form-filling and incremental-writing
 support. It is **not a complete PDF implementation**, and feature parity with
 PDFium, MuPDF, pdf.js, Poppler, hayro and CoreGraphics has not been established.
 Work spans M1–M7; none of those milestones is declared complete by this page.
 
-This inventory was reconciled against `render/one-pass` at
+The rendering inventory was reconciled against `render/one-pass` at
 `847fb26f0616e8b70bec76883880c78cbc47915d`, the embedded-colour follow-up to the fetched
 one-pass head `7c03b656d1e1093c6951e80ec2fc189b5b1bf90a` (PR #118).
 It describes that branch, including refactoring not yet merged into `main`.
@@ -24,11 +31,14 @@ limits. It does not mean those tests or all corpora were rerun for this audit.
 Library support, PDF integration and viewer support are listed separately where
 they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
+The document-service and complete PNG output rows include the subsequent public
+library, CLI, host and viewer implementation recorded in the checked inventory.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
 43 capability families, all 91 literal tags reviewed, and all 373 requirement IDs assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
-All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
+The [service and rendering probes](../benchmarks/probes/README.md) record bounded
+cross-engine observations; these do not close whole-family competitor cells.
 The source check detects stale evidence and missing ownership, not runtime parity.
 
 Unmatched marked-content endings (`EMC`) are reported no-ops in Repair,
@@ -67,9 +77,9 @@ This does not infer missing colour/channel metadata or extend codec coverage.
 | Rendering architecture | One interpreter with negotiated device needs; separate text device; appearance generation in `pagura-appearance`; cached resolution-independent scenes; source-order preparation, per-buffer N16/F32/F64 storage and one band executor; exact rendering only | Additional output/hit-testing devices, persistent resumable jobs and broader scheduling. `Accuracy::Competitive` and the former rendering pipelines have been removed. Architecture alone does not establish complete PDF feature coverage. |
 | Core and document structure | Bounded syntax, generation-aware objects, classic/xref streams, object streams, hybrid files, incremental revisions, lazy object caches, page trees and reported reconstruction/repair | Broader malformed-file compatibility needs current corpus evidence. Opening requires complete bytes; linearization hints and range loading are not implemented. External-file streams remain unsupported. |
 | Filters | ASCIIHex, ASCII85, RunLength, LZW, Flate, PNG/TIFF predictors and bounded decoding; explicit raw-DEFLATE entry point and reported compatibility repairs | Image filters dispatch to `pagura-image`; their tags in the generic filter crate do not mean the engine lacks those codecs. |
-| Password encryption | Standard handler R2–R6, RC4/AES, crypt filters, permissions consistency checks and Unicode 3.2 SASLprep for R6; CLI legacy PDFDocEncoding password conversion | Adobe public-key security handlers; encrypted historical-revision access; encryption on write. The browser password path does not provide the CLI's legacy text conversion. |
-| Font programs | TrueType/OpenType glyf; cmap 0/2/4/6/10/12/13 and post 1/2/3; CFF Expert/ExpertSubset charsets, FDSelect 0/3/4; CFF2 default-instance charstring and Private DICT blends; static Type 1/PFA/PFB programs, with reported retention of unused sparse Subrs slots; bounded indexed/named TTC v1/v2 faces with PDF selected-family validation | Nondefault variations, CFF2 Font DICT matrices, cmap 8, other post formats, unknown collection versions and unresolved/ambiguous face names, general PostScript, hybrid/synthetic Type 1, synthetic CFF, CFF CharstringType 1, standalone CIDFont programs and nonhorizontal Type 1 `sbw`. Hints are not executed. Primary-text verification remains incomplete for some implemented formats. See the [font inventory](../crates/pagura-font/README.md). |
-| PDF text/font binding | Simple, Type 3 and CID fonts; embedded and predefined CMaps, ToUnicode, widths and vertical metrics; bundled standard-14 substitutes and opt-in CJK substitutes (`cjk-fonts`); shared document font resources; reported PDF collection-name policy and intact CIDFontType0 program-binding repairs (Strict rejects); checked horizontal MinionPro CID fallback through complete source Unicode and provider Times outlines (ADR 0009) | Vertical substituted CID fonts, unknown symbolic encodings/collections and executable CMap programs. Embedded vertical fonts are supported. Minion fallback is a visual substitute, not original-font appearance equivalence; incomplete used-code identity or multi-scalar shaping is refused. Substitution coverage depends on the provider and build features. Contradictory standalone sfnt/font-family validation remains a separate gap. |
+| Password encryption | Standard handler R2–R6, RC4/AES, crypt filters, permissions consistency checks and Unicode 3.2 SASLprep for R6; CLI legacy PDFDocEncoding password conversion; immutable attachment-only reauthentication and viewer password retries | Adobe public-key security handlers; encrypted historical-revision access; encryption on write. The browser password path does not provide the CLI's legacy text conversion. |
+| Font programs | TrueType/OpenType glyf; cmap 0/2/4/6/8/10/12/13 and post 1/2/2.5/3 with post 4 numeric arrays; CFF Expert/ExpertSubset charsets, FDSelect 0/3/4; CFF2 default-instance charstring and Private DICT blends with current namespace unknown-operator policy; static Type 1/PFA/PFB programs with full sbw advances, with reported retention of unused sparse Subrs slots; bounded indexed/named TTC v1/v2 faces with PDF selected-family validation | Nondefault variations, legacy CFF2 Font DICT matrix interpretation, derived post 4 printer names and remaining post formats, unknown collection versions and unresolved/ambiguous face names, general PostScript, hybrid/synthetic Type 1, synthetic CFF, CFF CharstringType 1, standalone CIDFont programs . Hints are not executed. Primary-text verification remains incomplete for some implemented formats. See the [font inventory](../crates/pagura-font/README.md). |
+| PDF text/font binding | Simple, Type 3 and CID fonts; embedded and predefined CMaps, ToUnicode, widths and vertical metrics; bundled standard-14 substitutes and opt-in CJK substitutes (`cjk-fonts`); shared document font resources; selected bounded vertical GSUB substitutions for collection-specific provider fonts; reported PDF collection-name policy and intact CIDFontType0 program-binding repairs (Strict rejects); checked horizontal MinionPro CID fallback through complete source Unicode and provider Times outlines (ADR 0009) | Vertical fonts lacking a selected supported provider substitution, unknown symbolic encodings/collections and executable CMap programs. Embedded vertical fonts are supported. Minion fallback is a visual substitute, not original-font appearance equivalence; incomplete used-code identity or multi-scalar shaping is refused. Substitution coverage depends on the provider and build features. Contradictory standalone sfnt/font-family validation remains a separate gap. |
 | Image codecs | JPEG baseline/extended/progressive, Huffman and arithmetic, 8/12-bit, CMYK/YCCK; CCITT G3/G4; JBIG2 generic/refinement/symbol/text/halftone/Huffman regions; JPEG 2000 Part 1 with progression, precincts, ROI and partial-quality reconstruction | JPEG lossless/hierarchical modes, CCITT extension mode, JBIG2 extended templates/necessary extensions, and JPX profiles/layouts outside the implemented subset. Codec success does not establish complete PDF image rendering. |
 | PDF image integration | Inline images and XObjects, 1–16-bit samples, Decode arrays, masks, separate soft masks and interpolation/minification; JPX straight/premultiplied embedded alpha is decoded and composited, with Gray/RGB/CMYK embedded spaces, bounded embedded ICC forward transforms, eight-bit unsigned sYCC, direct Indexed index/opacity channels, and mixed-precision/reference-grid adaptation | Indexed JPX opacity with container palettes, other/mixed sYCC precisions, Lab-input ICC, multi-profile precedence and unsupported selected-transform fallback remain open. Gray/RGB embedded ICC and eight-bit sYCC have independent pixel fixtures; broader interactions still need evidence. See [image description](../crates/pagura-interpret/src/machine/image/describe.rs) and [painting](../crates/pagura-paint/src/source/image.rs). |
 | Paths and shading | Fills/strokes, dashes, clipping, forms, tiling patterns with a bounded opaque-black complete-pixel field certificate, mesh shadings, functions, crop/rotation/UserUnit and tiled output | Pattern-coloured stencil cells clip geometry jointly; magnified Interpolate samples bilinear opacity once on complete pattern alpha and shape, while minification keeps exact cells; ordinary nested tiling fills/strokes and glyphs propagate inherited geometry through every pattern level. Multiple true-quadratic glyph ancestors and curved leaves use joint original-control coverage intervals, certified to one byte before composition; canonical cubic glyph semantics and existing resource limits remain authoritative. An unselected Pattern colour space remains an explicit refusal. Nested image stencils and transparency groups preserve joint clipping. Explicit refusals remain for singular transforms and pattern-placement/state cases; classify each as valid unsupported input, invalid input or a resource/numerical limit. Difficult mesh/geometry cases need independent accuracy evidence. |
@@ -83,9 +93,10 @@ This does not infer missing colour/channel metadata or extend codec coverage.
 | CMS integrity | Detached CMS/CAdES and RFC3161 integrity, SHA-1 (reported weak), SHA-2, RSA v1.5/PSS and ECDSA P-256/P-384/P-521; signed attributes, ESS binding and timestamp imprints | PDF-facing signer trust, validation time and revocation still report `NotCheckedYet`; complete PAdES policy/LTV and legacy encodings remain incomplete. Issuer matching currently requires identical DER names. |
 | PKI library | Host-anchored certificate path construction/validation, policy/name constraints, offline complete/indirect/delta CRL checking and bounded path search | OCSP, remaining name-normalization cases and application-specific timestamp/CMS policy; connecting these APIs to PDF signatures and the viewer. CRL/path support exists and must not be described as wholly absent. See [PKI scope](../crates/pagura-pki/README.md). |
 | Writing and editing | Deterministic new PDF 1.7 files; immutable transactions; classic/xref-stream append revisions; saved forms; no-op byte preservation and rollback | Full rewrite, freed objects, object-stream output, PDF 2.0 new-file header/ID generation, encryption-on-write, sanitizing redaction, undo/redo and general page-content/page-tree editing APIs. Modified saves require strict, unencrypted input; signed input defaults to refusal. |
-| Image output and cancellation | Public `RenderContext::render_bands` lends final premultiplied RGBA bands with a fallible consumer and between-band stop callback after preflight; the CLI streams PPM with bounded output storage. Library zlib compression and whole-buffer PNG encoding for eight-bit Gray/RGB/straight RGBA exist | Calls restart from the region's first row; persistent pause/resume, incremental PNG/DEFLATE, facade/CLI PNG export, async backpressure and public embedded-image extraction remain. Existing streamed PPM does not imply streamed PNG or progressive input. |
+| Image output and cancellation | Public `RenderContext::render_bands` lends final premultiplied RGBA bands with a fallible consumer and between-band stop callback after preflight; the CLI streams PPM with bounded output storage. Whole-buffer PNG export reaches the facade, CLI, host and viewer, including transparent RGBA; the encoder also accepts eight-bit Gray/RGB. Typed source-image resources and stored thumbnails support exact stored or unwrapped encoded-byte extraction | Calls restart from the region's first row; persistent pause/resume, incremental PNG/DEFLATE and async backpressure remain. Image resource lists do not enumerate interpreted inline/form/pattern/annotation occurrences; normalized isolated-image output and standalone-format eligibility remain open. Existing streamed PPM does not imply streamed PNG or progressive input. |
 | Browser and WASM host | Native/WASI session protocol, viewport generations, bounded render `Store` for scenes/images/fonts/glyph setups, continuous scrolling/zoom, password prompt, text/navigation and form editing | Range input and resumable host jobs, active-request cancellation, parallel scheduling, layer/overprint/print controls and broader browser/device/accessibility validation. Library band-stop support is not wired into active host requests; generation cancellation discards stale queued work. |
-| Profiles and document services | PDF 1.x/2.x headers and many shared features; low-level access to document objects; PDF/X declarations influence overprint policy | Complete PDF 2.0 feature coverage; PDF/A and PDF/UA validation; PDF/X conformance; typed attachment/associated-file, portfolio, metadata and richer document-service APIs. Rendering a profile-labelled file is separate from validating or authoring that profile. |
+| Document services | Bounded Info and catalog/page/object XMP views; EmbeddedFiles, catalog/page/object AF and page Annots discovery; exact EF/RF selection and explicit size/MD5 declaration checks; collection schema/sort/item and encrypted-payload metadata. The facade, CLI and protocol 1.12 viewer share the immutable source model; filenames, URLs and packet contents stay inert | MIME/date/associated-file profile validation; XML/XMP schema semantics and Info/XMP reconciliation; collection folders/layouts and navigator behavior; streaming extraction and D02b metadata/file/collection writes. Declaration checks do not establish authenticity or safety. See [CLI services](CLI.md) and [viewer services](../web/README.md). |
+| PDF profiles | PDF 1.x/2.x headers and many shared features; PDF/X declarations influence overprint policy | Complete PDF 2.0 feature coverage; PDF/A and PDF/UA validation; PDF/X conformance. Rendering a profile-labelled file is separate from validating or authoring that profile. |
 | Safety and release evidence | Safe Rust and workspace-only product dependencies, bounded APIs, deterministic replay, fuzz drivers, generated independent fixtures, conversion/regression harnesses | Long fuzz campaigns, host/process containment and cancellation evidence, refreshed compatibility reports, non-render operation adapters and the complete controlled performance gate. |
 
 JBIG2 recovery accepts complete sequential file packaging only when its header
@@ -155,7 +166,14 @@ Source entry points and existing tests supporting this reconciliation include:
   [alpha sampling](../crates/pagura-paint/src/source/image/texels.rs) and
   [paint fixtures](../corpus/manifests/paint.json), including `image-jpx-alpha-1/2`, plus the new [embedded colour fixtures](../corpus/manifests/paint_jpx.json).
 - [PNG encoder](../crates/pagura-codec/src/png.rs) and
-  [zlib compressor](../crates/pagura-codec/src/flate/encode.rs).
+  [zlib compressor](../crates/pagura-codec/src/flate/encode.rs),
+  [facade PNG export](../crates/pagura/src/png.rs) and
+  [host export tests](../crates/pagura-host/tests/png.rs).
+- [Document source services](../crates/pagura-document/src/files/selection.rs),
+  [public service tests](../crates/pagura/tests/document_services.rs),
+  [CLI service tests](../crates/pagura-cli/tests/document_services_extended.rs),
+  [host service tests](../crates/pagura-host/tests/document_services_extended.rs)
+  and [viewer service tests](../tools/document_services_extended_view_test.mjs).
 - [Public band/stop API](../crates/pagura-render/src/context.rs),
   [shared executor](../crates/pagura-paint/src/execute.rs),
   [streaming tests](../crates/pagura-paint/src/prepare/tests/streaming.rs) and
@@ -279,3 +297,13 @@ Unsigned scalar/endobj separation and portable declared-Length budget checks are
 Narrow `GontDescriptor` recovery binds a complete supplied TrueType program and preserves source Encoding/Widths, with required actually used glyph identity and Strict outline checks. Source-owned standalone and mixed-font interaction evidence retains its original source labels; current integration is checked separately. No general unknown-font compatibility or fresh combined performance campaign is claimed.
 
 The CLI also offers explicit `scan --repair` with schema2 and an unavailable Strict audit (`strict:null`). This source-owned mode does not add a rendering capability or imply new corpus qualification.
+### Exact sfnt directory-count repair scope
+
+Explicit Repair has a bounded `font.sfnt-directory-count` recovery for exactly
+one excess record with an intact unique bounded directory and an original
+first head/CFF payload header. Strict/default parsing keeps the full original
+error. Full required program/glyph validation and caller limits remain. Legacy
+Strict-first scan cannot discover this repair; direct Repair API tests provide
+its rendering evidence. This does not add TTC, missing CFF cmap, alternate
+font binding or glyph-location inference. No feature-completeness or public
+corpus admission count is established by this source entry.

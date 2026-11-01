@@ -20,6 +20,7 @@ pub(crate) use transfer::validate;
 pub use workspace::Scratch;
 pub(crate) use workspace::{
     Extents, MaskCache, PageBand, PageBuffer, Sizes, Usage, Workspace, coverage_capacity,
+    run_shapes,
 };
 
 use crate::kernel::{self, Colors, Mode, Sources};

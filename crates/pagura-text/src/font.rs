@@ -85,6 +85,8 @@ pub(crate) enum Source {
         program: Arc<FontProgram>,
         /// The collection's Unicode, which selects the glyphs.
         unicode: Arc<CidToUnicode>,
+        /// Precompiled vertical forms; PDF metrics remain independent.
+        vertical: Option<pagura_font::VerticalSubstitution>,
     },
     /// A Latin standard face drawing a non-embedded Identity CIDFont with a
     /// Latin family name: each code's ToUnicode text selects the glyph

@@ -185,6 +185,7 @@ mod tests {
         for (area, name, expected) in [
             ("classic", "rectangle", 0),
             ("selected_font_interactions", "later-first-alias-valid", 1),
+            ("recovery_annotation_references", "later-first-use", 1),
         ] {
             let manifest = Manifest::load(area);
             let entry = manifest.case(name).unwrap();

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "21 authored whole-page RGB/refusal contracts and10 structural-policy vectors; native/SIMD/scalar, Strict/Repair, original source bytes and original surviving link identity. Placeholder signatures assert no integrity.",
+  "scope": "38 authored PDF whole-output/refusal contracts and21 structural-policy vectors; original31 prefix retained, new exact-defined-Null identities/current and historical signed contexts; independent RGB/white+transparentRGBA and60 original-link identity checks on native/SIMD/scalar in Strict/Repair. Placeholder signatures assert no integrity. Existing syntax.reference-zero composition and original Strict parser error are explicit; no global diagnostic-permission test.",
   "cases": [
     "recovery_annotations/clean",
     "recovery_annotations/empty",
@@ -32,6 +32,34 @@
     "recovery_annotations/signature-added-null-annotation",
     "recovery_annotations/signature-added-null-content",
     "recovery_annotations/signature-added-null-signing",
-    "recovery_annotations/signature-historical-reference"
+    "recovery_annotations/signature-historical-reference",
+    "recovery_annotation_references/defined-zero",
+    "recovery_annotation_references/defined-seven",
+    "recovery_annotation_references/wrong-generation",
+    "recovery_annotation_references/undefined",
+    "recovery_annotation_references/reference-chain",
+    "recovery_annotation_references/reference-cycle",
+    "recovery_annotation_references/integer",
+    "recovery_annotation_references/string",
+    "recovery_annotation_references/array",
+    "recovery_annotation_references/malformed-dictionary",
+    "recovery_annotation_references/free",
+    "recovery_annotation_references/later-invalid",
+    "recovery_annotation_references/repeat-identity",
+    "recovery_annotation_references/later-first-use",
+    "recovery_annotation_references/many-references",
+    "recovery_annotation_references/compressed-null",
+    "recovery_annotation_references/signature-clean-annotation",
+    "recovery_annotation_references/signature-clean-content",
+    "recovery_annotation_references/signature-clean-signing",
+    "recovery_annotation_references/signature-signed-null-annotation",
+    "recovery_annotation_references/signature-signed-null-content",
+    "recovery_annotation_references/signature-signed-null-signing",
+    "recovery_annotation_references/signature-added-null-annotation",
+    "recovery_annotation_references/signature-added-null-content",
+    "recovery_annotation_references/signature-added-null-signing",
+    "recovery_annotation_references/signature-historical-null-current-valid",
+    "recovery_annotation_references/signature-historical-valid-current-null",
+    "recovery_annotation_references/zero-reference-body"
   ]
 }

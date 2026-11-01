@@ -51,8 +51,12 @@ and reaches the engine only through a provider (invariant 7):
   Source Han Sans Regular for the Japan1, GB1, CNS1 and Korea1 collections
   (SIL OFL 1.1), about 23 MiB. CIDs reach a glyph through the collection's
   Unicode data and the font's Unicode cmap, never through the font's own
-  CIDs, and the PDF's W and DW keep the advances. Writing is horizontal
-  only until vertical forms are supported (`font.cid-substitute-vertical`).
+  CIDs, and the PDF's W/DW and W2/DW2 keep the advances and origins.
+  Vertical substitution (amended 2026-10-26) asks the existing font-program
+  layer for the regional Han script/language's `vrt2`, else `vert`, mapping.
+  Single substitutions and extension-wrapped single substitutions change only
+  the selected glyph; ToUnicode remains extraction data. No applicable feature
+  returns `font.cid-substitute-vertical`; unsupported shaping remains explicit.
   The feature is off by default, so default binaries and the WebAssembly
   host stay small.
 

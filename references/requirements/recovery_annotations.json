@@ -2,33 +2,137 @@
   "schema": 2,
   "area": "recovery_annotations",
   "scope": "Verified Table 31 and clauses 7.3.9,12.5.2 and12.8.2.2 against the locally supplied ISO 32000-2 sponsored EC3 text. Skipping a literal null array member is explicit reported reader policy; it is not dictionary-null conformance. Exact stored appearances and mutation ledgers are independently authored. Structural signature policy does not establish cryptographic integrity.",
-  "requirements": [{
-    "id": "recovery-annotation-null-entry",
-    "reference": "iso32000-2-full-text",
-    "clauses": ["7.3.9", "12.5.2", "12.8.2.2"],
-    "tables": ["31", "166"],
-    "status": "Reported literal-null member recovery shared by rendering, links and structural annotation-role traversal",
-    "tests": [
-      "recovery_annotations/clean", "recovery_annotations/empty", "recovery_annotations/leading",
-      "recovery_annotations/middle", "recovery_annotations/trailing", "recovery_annotations/repeated",
-      "recovery_annotations/null-only", "recovery_annotations/reverse-order", "recovery_annotations/indirect-array",
-      "recovery_annotations/many-nulls", "recovery_annotations/indirect-null", "recovery_annotations/undefined-reference",
-      "recovery_annotations/wrong-generation", "recovery_annotations/boolean", "recovery_annotations/number",
-      "recovery_annotations/string", "recovery_annotations/nested-array", "recovery_annotations/after-null-boolean",
-      "recovery_annotations/after-null-bbox", "recovery_annotations/after-null-cycle", "recovery_annotations/after-null-subtype",
-      "recovery_annotations/signature-clean-annotation", "recovery_annotations/signature-clean-content", "recovery_annotations/signature-clean-signing",
-      "recovery_annotations/signature-signed-null-annotation", "recovery_annotations/signature-signed-null-content", "recovery_annotations/signature-signed-null-signing",
-      "recovery_annotations/signature-added-null-annotation", "recovery_annotations/signature-added-null-content", "recovery_annotations/signature-added-null-signing",
-      "recovery_annotations/signature-historical-reference"
-    ],
-    "rule": "Annots contains annotation references. Repair may report and skip a literal null member, preserving every original surviving value/reference and its order. Strict rejects with the repair tag. Original-array work/result bounds still apply before filtering. A null or missing reference target is not a skippable literal member. This policy does not normalize the whole Annots field.",
-    "verification": {
-      "rule": "The source arrays and signed bytes remain unchanged. Recovery of an ambiguous signed annotation graph cannot establish an Allowed modification.",
-      "implementation": "Document-owned per-member gate reports pages.annotation-null. Rendering and links retain their original array gates/steps. Signature roles retain original-array allocation/walk, validate surviving referenced dictionaries and mark recovered membership ambiguous. Strict signed-source reopening and the existing final diagnostics-to-Inconclusive guard remain intact.",
-      "expectations": "Integer red/green stored appearances and a blue page prefix supply exact ordered RGB. Missing/indirect-null/scalar members and later malformed required appearances remain refusals. Authored DocMDP P3 updates with null ambiguity are Inconclusive; clean annotation/signing controls remain Allowed and clean content edits Disallowed.",
-      "verdict": "Explicit recovery and conservative structural policy, not general annotation validation or cryptographic verification",
-      "choices": ["Diagnostic owner is the page object with unknown byte position; unrelated content operator positions are not used."]
+  "requirements": [
+    {
+      "id": "recovery-annotation-null-entry",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.9",
+        "12.5.2",
+        "12.8.2.2"
+      ],
+      "tables": [
+        "31",
+        "166"
+      ],
+      "status": "Reported literal-null member recovery shared by rendering, links and structural annotation-role traversal",
+      "tests": [
+        "recovery_annotations/clean",
+        "recovery_annotations/empty",
+        "recovery_annotations/leading",
+        "recovery_annotations/middle",
+        "recovery_annotations/trailing",
+        "recovery_annotations/repeated",
+        "recovery_annotations/null-only",
+        "recovery_annotations/reverse-order",
+        "recovery_annotations/indirect-array",
+        "recovery_annotations/many-nulls",
+        "recovery_annotations/indirect-null",
+        "recovery_annotations/undefined-reference",
+        "recovery_annotations/wrong-generation",
+        "recovery_annotations/boolean",
+        "recovery_annotations/number",
+        "recovery_annotations/string",
+        "recovery_annotations/nested-array",
+        "recovery_annotations/after-null-boolean",
+        "recovery_annotations/after-null-bbox",
+        "recovery_annotations/after-null-cycle",
+        "recovery_annotations/after-null-subtype",
+        "recovery_annotations/signature-clean-annotation",
+        "recovery_annotations/signature-clean-content",
+        "recovery_annotations/signature-clean-signing",
+        "recovery_annotations/signature-signed-null-annotation",
+        "recovery_annotations/signature-signed-null-content",
+        "recovery_annotations/signature-signed-null-signing",
+        "recovery_annotations/signature-added-null-annotation",
+        "recovery_annotations/signature-added-null-content",
+        "recovery_annotations/signature-added-null-signing",
+        "recovery_annotations/signature-historical-reference"
+      ],
+      "rule": "Annots contains annotation references. Repair may report and skip a literal null member, preserving every original surviving value/reference and its order. Strict rejects with the repair tag. Original-array work/result bounds still apply before filtering. Referenced identities use the separate narrowly reported immediate-defined-null policy; unavailable and chained targets are not literal-null members. This policy does not normalize the whole Annots field.",
+      "verification": {
+        "rule": "The source arrays and signed bytes remain unchanged. Recovery of an ambiguous signed annotation graph cannot establish an Allowed modification.",
+        "implementation": "Document-owned per-member gate reports pages.annotation-null. Rendering and links retain their original array gates/steps. Signature roles retain original-array allocation/walk, validate surviving referenced dictionaries and mark recovered membership ambiguous. Strict signed-source reopening and the existing final diagnostics-to-Inconclusive guard remain intact.",
+        "expectations": "Integer red/green stored appearances and a blue page prefix supply exact ordered RGB. Missing/wrong-generation/scalar members and later malformed required appearances remain refusals. Authored DocMDP P3 updates with null ambiguity are Inconclusive; clean annotation/signing controls remain Allowed and clean content edits Disallowed.",
+        "verdict": "Explicit recovery and conservative structural policy, not general annotation validation or cryptographic verification",
+        "choices": [
+          "Diagnostic owner is the page object with unknown byte position; unrelated content operator positions are not used."
+        ]
+      }
+    },
+    {
+      "id": "recovery-annotation-null-reference",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "Narrow reported Repair-only skip of immediate exact in-use Null annotation reference, shared across rendering, links and roles.",
+      "normative_context": {
+        "reference": "iso32000-2-full-text",
+        "clauses": [
+          "7.3.9",
+          "7.3.10",
+          "12.5.2",
+          "12.8.2.2"
+        ],
+        "tables": [
+          "31",
+          "166"
+        ],
+        "scope": "Annots requires annotation references; skipping an explicitly defined Null target is reported reader recovery, not a general null/undefined-reference conformance rule."
+      },
+      "tests": [
+        "recovery_annotation_references/defined-zero",
+        "recovery_annotation_references/defined-seven",
+        "recovery_annotation_references/wrong-generation",
+        "recovery_annotation_references/undefined",
+        "recovery_annotation_references/reference-chain",
+        "recovery_annotation_references/reference-cycle",
+        "recovery_annotation_references/integer",
+        "recovery_annotation_references/string",
+        "recovery_annotation_references/array",
+        "recovery_annotation_references/malformed-dictionary",
+        "recovery_annotation_references/free",
+        "recovery_annotation_references/later-invalid",
+        "recovery_annotation_references/repeat-identity",
+        "recovery_annotation_references/later-first-use",
+        "recovery_annotation_references/many-references",
+        "recovery_annotation_references/compressed-null",
+        "recovery_annotation_references/signature-clean-annotation",
+        "recovery_annotation_references/signature-clean-content",
+        "recovery_annotation_references/signature-clean-signing",
+        "recovery_annotation_references/signature-signed-null-annotation",
+        "recovery_annotation_references/signature-signed-null-content",
+        "recovery_annotation_references/signature-signed-null-signing",
+        "recovery_annotation_references/signature-added-null-annotation",
+        "recovery_annotation_references/signature-added-null-content",
+        "recovery_annotation_references/signature-added-null-signing",
+        "recovery_annotation_references/signature-historical-null-current-valid",
+        "recovery_annotation_references/signature-historical-valid-current-null",
+        "pagura/tests/api/annotation_references.rs",
+        "pagura-document/src/annotations/tests.rs",
+        "recovery_annotation_references/zero-reference-body"
+      ],
+      "rule": "Repair first proves current-revision exact object number/generation is in-use, then skips only its immediate nonstream Null value. Canonical Strict consumers are unchanged and retain original untagged Syntax context. No free/undefined/different-generation/chain/null-like scalar normalization. Existing raw-array work/result caps, original references/order, source bytes and surviving dictionary identity remain authoritative. Immediate Null means the parsed nonstream value: an existing syntax.reference-zero repair of a zero-reference body composes with this policy. Its ordinary bounded report/suppression remains separate; admission never searches mutable global diagnostic storage. Strict retains the original earlier parser error/tag. No nonzero reference chain is followed.",
+      "verification": {
+        "rule": "Recovery reports the target object identity and its actual source position. Repeated reads retain existing diagnostic deduplication. Signed source reopening remains Strict, repaired membership remains ambiguous, and the final diagnostics guard prevents Allowed results. Original historical identities and incremental-save permissions are not inferred from current objects. Placeholder signature controls assert no cryptographic integrity.",
+        "expectations": "Authored red/green appearances and blue prefix have independent integer-grid RGB/white+transparent RGBA, including same-context later first use. Generations, free/undefined/chained/cyclic/scalar/malformed/later-invalid members remain exact refusals; caller caps and current/historical signed graphs remain fail-closed."
+      }
     }
-  }],
-  "repair_policies": [{"tag":"pages.annotation-null","clauses":["12.5.2"],"tables":["31"],"behaviour":"Only literal null members are skipped after explicit recovery permission. No original value is rewritten, and unresolved or indirect-null members remain required validation failures."}]
+  ],
+  "repair_policies": [
+    {
+      "tag": "pages.annotation-null",
+      "clauses": [
+        "12.5.2"
+      ],
+      "tables": [
+        "31"
+      ],
+      "behaviour": "Only literal null members are skipped after explicit recovery permission. No original value is rewritten, and unavailable or chained references remain required validation failures; immediate explicitly defined Null uses its separate reported policy."
+    },
+    {
+      "tag": "pages.annotation-null-reference",
+      "clauses": [],
+      "behaviour": "Only Repair skips an immediate exact defined in-use nonstream Null. Target object and source position are reported; original Strict untagged consumer errors, all other members, cumulative document work and signature/save guards stay intact. Null is the immediate parsed value; existing separately reported parser repairs compose under normal diagnostic suppression, without searching reports for permission."
+    }
+  ]
 }

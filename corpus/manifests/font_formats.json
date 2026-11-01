@@ -1,0 +1,848 @@
+{
+  "schema": 2,
+  "area": "font_formats",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "font_formats/post25-direct",
+      "kind": "pdf",
+      "description": "post25 direct",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post25-direct.pdf",
+      "sha256": "5633d24fe392870b1f81190eb95bb69b51bc6985bc8d9fd977a66ba72961c8a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post25-direct.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post2-control-direct",
+      "kind": "pdf",
+      "description": "post2 control direct",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post2-control-direct.pdf",
+      "sha256": "2db133e3eeef2f8dd61c254b910808dee18e79254a05a19f8564cac490de2572",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post2-control-direct.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post25-name-fallback",
+      "kind": "pdf",
+      "description": "post25 name fallback",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post25-name-fallback.pdf",
+      "sha256": "e29add17fb4afa27000d6fa4da0f19b96f075bd42d62e82eac76c5dcc9077f20",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post25-name-fallback.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post2-control-name-fallback",
+      "kind": "pdf",
+      "description": "post2 control name fallback",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post2-control-name-fallback.pdf",
+      "sha256": "aa1af9f480165f34b4627cb7ac1adce091eb6b03b326f2843adea2bbe7322932",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post2-control-name-fallback.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post25-differences",
+      "kind": "pdf",
+      "description": "post25 differences",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post25-differences.pdf",
+      "sha256": "39e982834c798744d932a09ce057c95d9982a72402607d63d72f5ec1e8e4c59b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post25-differences.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post2-control-differences",
+      "kind": "pdf",
+      "description": "post2 control differences",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post2-control-differences.pdf",
+      "sha256": "ab56abfbb811110e4218dbb003eec876569e8c0615056f0cfd945752782d1bce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post2-control-differences.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/ordinary-rectangle",
+      "kind": "pdf",
+      "description": "ordinary rectangle",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/ordinary-rectangle.pdf",
+      "sha256": "ac229abe9538b7df16d1ee5dff11099d0d55a04ceaca3bbce5980b8713315c68",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/ordinary-rectangle.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post4-direct",
+      "kind": "pdf",
+      "description": "post4 direct",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post4-direct.pdf",
+      "sha256": "20fd4bb69c4b7830854cc787ccb56c30e92f284e0cffac862a7da09c3efc8d02",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post4-direct.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post3-control-direct",
+      "kind": "pdf",
+      "description": "post3 control direct",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post3-control-direct.pdf",
+      "sha256": "c4029d87d35a33d1f14e448182d589cfe5ea5f114c1c3bbb0325408a4aa7be81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post3-control-direct.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post4-direct-unnamed",
+      "kind": "pdf",
+      "description": "post4 direct unnamed",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post4-direct-unnamed.pdf",
+      "sha256": "504ad9e730e51c37df2aff5af71ab38d5da4a985fba5304f0df02f7b18e9bb5d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post4-direct-unnamed.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/post3-control-direct-unnamed",
+      "kind": "pdf",
+      "description": "post3 control direct unnamed",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/post3-control-direct-unnamed.pdf",
+      "sha256": "c4029d87d35a33d1f14e448182d589cfe5ea5f114c1c3bbb0325408a4aa7be81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/post3-control-direct-unnamed.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-windows-bmp",
+      "kind": "pdf",
+      "description": "cmap8 windows bmp",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-windows-bmp.pdf",
+      "sha256": "a7017d359abb01b0f35c1f77078b2bc79f948dd73cb3e70efae950d4e32a94c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-windows-bmp.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-windows-bmp",
+      "kind": "pdf",
+      "description": "cmap12 windows bmp",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-windows-bmp.pdf",
+      "sha256": "a74fd1a21b8615e9d90cb28cc033d59231ea34ac7e57cec1ca9dd280d770ab19",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-windows-bmp.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-windows-ucs4-isolated",
+      "kind": "pdf",
+      "description": "cmap8 windows ucs4 isolated",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-windows-ucs4-isolated.pdf",
+      "sha256": "5417a900a61bef57107fc829441df552aa925d1dbec3a8d3a96a57936216afb4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-windows-ucs4-isolated.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-windows-utf16-isolated",
+      "kind": "pdf",
+      "description": "cmap12 windows utf16 isolated",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-windows-utf16-isolated.pdf",
+      "sha256": "075c538f7ed63ff1f0cd2fe4f989e5cd24c1aff69cd3a435276a6b05a639f5af",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-windows-utf16-isolated.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-unicode-bmp",
+      "kind": "pdf",
+      "description": "cmap8 unicode bmp",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-unicode-bmp.pdf",
+      "sha256": "7411c0560ed97a93c4fcf5c0bf49f27ef75e1cdb2b214a2d1270011d49d33942",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-unicode-bmp.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-unicode-bmp",
+      "kind": "pdf",
+      "description": "cmap12 unicode bmp",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-unicode-bmp.pdf",
+      "sha256": "bc4070a5643da128b4d9136ae691f2332738627b152f0a576af9b18bb8b2793f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-unicode-bmp.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap8-unicode-ucs4-isolated",
+      "kind": "pdf",
+      "description": "cmap8 unicode ucs4 isolated",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap8-unicode-ucs4-isolated.pdf",
+      "sha256": "7ed437f54d609187a7fe7126153e8a80b28a13532daa06ec103c8792684e8cac",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap8-unicode-ucs4-isolated.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cmap12-unicode-utf16-isolated",
+      "kind": "pdf",
+      "description": "cmap12 unicode utf16 isolated",
+      "expected": "render",
+      "requirements": [
+        "text-truetype-selection"
+      ],
+      "path": "corpus/generated/font_formats/cmap12-unicode-utf16-isolated.pdf",
+      "sha256": "55ff8ee1a813b76794d83c59717767783f2405f6cb048b1b76febd63803dfd5c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cmap12-unicode-utf16-isolated.ppm",
+      "oracle_sha256": "dcfc56a1341e6ab5883b5e5f980611046f8be1c4df8a1c3ed7c073e1399b8713",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-none-simple",
+      "kind": "pdf",
+      "description": "cff2 fd none simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-none-simple.pdf",
+      "sha256": "ce511426aa4ecad0478ad312d2d5fd2caa89223442ec610e52a6bbce603717ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-none-simple.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-matrix-simple",
+      "kind": "pdf",
+      "description": "cff2 fd matrix simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-matrix-simple.pdf",
+      "sha256": "72c0b775bacd1697e9baa8eaf667bdcee4426013b2d8288a6d3caa89fa0377c0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-matrix-simple.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-none-cid",
+      "kind": "pdf",
+      "description": "cff2 fd none cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-none-cid.pdf",
+      "sha256": "b0d804eaad8ac90906816a05cd2c72df9e4ea1fa60f7682747b56c8c8838de2b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-none-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-matrix-cid",
+      "kind": "pdf",
+      "description": "cff2 fd matrix cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-matrix-cid.pdf",
+      "sha256": "dae1b45bb864f8ccc524a7a79ae8e4855de9a6f84e83f56711edeac21e8eacee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-matrix-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff1-fd-matrix-explicit-top-cid",
+      "kind": "pdf",
+      "description": "cff1 fd matrix explicit top cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff1-fd-matrix-explicit-top-cid.pdf",
+      "sha256": "2f226e0d4b9a9576e57973d2ebac7abf8064f02161c92cced3507566c9cf1a0d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff1-fd-matrix-explicit-top-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-matrix-explicit-top-cid",
+      "kind": "pdf",
+      "description": "cff2 fd matrix explicit top cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-matrix-explicit-top-cid.pdf",
+      "sha256": "7ca43830efafd7093608557adc4e5b8f1ff6c7cdfefac88dc7f85d0d785db36b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-matrix-explicit-top-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-fd-small-matrix-cid",
+      "kind": "pdf",
+      "description": "cff2 fd small matrix cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-fd-small-matrix-cid.pdf",
+      "sha256": "e16f59b33c891f8e31158445eef6550c8ceffb149e3766654f82782716279dd9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-fd-small-matrix-cid.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff-matrix-rectangle-1",
+      "kind": "pdf",
+      "description": "cff matrix rectangle 1",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff-matrix-rectangle-1.pdf",
+      "sha256": "17a0ffbc912427c6602fae353515b68ad0833eb2885e61b841d049d98804086b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff-matrix-rectangle-1.ppm",
+      "oracle_sha256": "74e5a5c45553d765b93e392999821b2a79a86b257fc0f15e3d5251d76c2619c1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff-matrix-rectangle-2",
+      "kind": "pdf",
+      "description": "cff matrix rectangle 2",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff-matrix-rectangle-2.pdf",
+      "sha256": "e106d4c72f4ebb7cf9b97e0f383f5b7b3058b99a87e8082ea0079946eec56ff4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff-matrix-rectangle-2.ppm",
+      "oracle_sha256": "5a45ef81dee2c916363a3466965c106607003a9e0ac859913bc6b559ddfb38b1",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-horizontal-control-normal",
+      "kind": "pdf",
+      "description": "type1 advance horizontal control normal",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-horizontal-control-normal.pdf",
+      "sha256": "cdd9129de8024bcec536794c37b465692eb81955f3ec76e18e02bad865911169",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-horizontal-control-normal.ppm",
+      "oracle_sha256": "ed079e9b457a909fc81077f8ce4484b3b03e0af6c4158a0ffbf4aa24d9037d7e",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-horizontal-control-rotated",
+      "kind": "pdf",
+      "description": "type1 advance horizontal control rotated",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-horizontal-control-rotated.pdf",
+      "sha256": "89664187a1e362b4cc3513a39ff48670ffac6f72876898258bad403ba7895291",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-horizontal-control-rotated.ppm",
+      "oracle_sha256": "9d5c76d3772783df77f61dd9d1269c9502267423b4549b3a3530a868274f4663",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-up-normal",
+      "kind": "pdf",
+      "description": "type1 advance up normal",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-up-normal.pdf",
+      "sha256": "294398843ad3325704129aafe5924bdfb999c63787328318ec6547ea2ce83f56",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-up-normal.ppm",
+      "oracle_sha256": "ed079e9b457a909fc81077f8ce4484b3b03e0af6c4158a0ffbf4aa24d9037d7e",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-up-rotated",
+      "kind": "pdf",
+      "description": "type1 advance up rotated",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-up-rotated.pdf",
+      "sha256": "14a1278538315ad1767cfd4a809044ce59b32e3cf2d30626ef2d6aa68f488c56",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-up-rotated.ppm",
+      "oracle_sha256": "9d5c76d3772783df77f61dd9d1269c9502267423b4549b3a3530a868274f4663",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-down-normal",
+      "kind": "pdf",
+      "description": "type1 advance down normal",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-down-normal.pdf",
+      "sha256": "a83ecd776940a268508b08b91b1cd9cee93b89c39a6af91a26287962fb107152",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-down-normal.ppm",
+      "oracle_sha256": "ed079e9b457a909fc81077f8ce4484b3b03e0af6c4158a0ffbf4aa24d9037d7e",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/type1-advance-down-rotated",
+      "kind": "pdf",
+      "description": "type1 advance down rotated",
+      "expected": "render",
+      "requirements": [
+        "font-type1"
+      ],
+      "path": "corpus/generated/font_formats/type1-advance-down-rotated.pdf",
+      "sha256": "80451a107208795889383b0491fdb63a3f9d163ba82d361c5ec4d971502c6551",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/type1-advance-down-rotated.ppm",
+      "oracle_sha256": "9d5c76d3772783df77f61dd9d1269c9502267423b4549b3a3530a868274f4663",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-control-simple",
+      "kind": "pdf",
+      "description": "cff2 dict control simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-control-simple.pdf",
+      "sha256": "1b558db07e868125e88e38e17779efdcffe7ccadb0cbf2105872d60f4f1a85a5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-control-simple.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-control-cid",
+      "kind": "pdf",
+      "description": "cff2 dict control cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-control-cid.pdf",
+      "sha256": "385897cdf740954ab183e05c7792b76477f158855fe8eabcae54eae4ebc49b6e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-control-cid.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-top-simple",
+      "kind": "pdf",
+      "description": "cff2 dict top simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-top-simple.pdf",
+      "sha256": "7940495f99c0b069afbf91f99b8755f184a4e0e9d1db8c907103757f31347e62",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-top-simple.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-top-cid",
+      "kind": "pdf",
+      "description": "cff2 dict top cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-top-cid.pdf",
+      "sha256": "bdb3f2e4a5de56111dc19fc269fde57ce10edf3cac85a655a23ed715ec2162d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-top-cid.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-font-simple",
+      "kind": "pdf",
+      "description": "cff2 dict font simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-font-simple.pdf",
+      "sha256": "a648c5d8004da19e2c1632322f9c5b7880de955a1f0fbba447918c1383577054",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-font-simple.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-font-cid",
+      "kind": "pdf",
+      "description": "cff2 dict font cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-font-cid.pdf",
+      "sha256": "9cf14c5cb32e54cbc5c9338f56f7a3e432d44da725fd1f837414014066d97114",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-font-cid.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-private-simple",
+      "kind": "pdf",
+      "description": "cff2 dict private simple",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-private-simple.pdf",
+      "sha256": "48e17b936a38304ca9d6e6498412d804d73a1f6f0e8f890ab5b16a52216b91b8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-private-simple.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_formats/cff2-dict-private-cid",
+      "kind": "pdf",
+      "description": "cff2 dict private cid",
+      "expected": "render",
+      "requirements": [
+        "font-cff"
+      ],
+      "path": "corpus/generated/font_formats/cff2-dict-private-cid.pdf",
+      "sha256": "b4adc7c00edc00b916ad66f8273c9a469cf751f0781a70dd0958b88d574e8610",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/font_formats/cff2-dict-private-cid.ppm",
+      "oracle_sha256": "6d23726726d28b4b84f98550e6a6ec2e952ab5547ee29a59abe86743ba7538b8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    }
+  ]
+}

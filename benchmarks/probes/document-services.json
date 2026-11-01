@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 document-service controls across six baseline public APIs, read-only synthetic PDFs. Per-fixture observations only; no family-level support, optional build, rendering, editing or release-parity verdict.",
+  "scope": "G01 document-service controls across Pagura and six baseline public APIs, read-only synthetic PDFs. Per-fixture observations only; no family-level support, optional build, rendering, editing or release-parity verdict.",
   "cases": [
     {
       "id": "pages.services",
@@ -113,6 +113,128 @@
       "fixture": "invalid",
       "oracle": "reject-invalid",
       "expected": null
+    },
+    {
+      "id": "annotation-attachments.only",
+      "capability": "document.attachments",
+      "operation": "annotation-attachments",
+      "fixture": "annotation-only",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
+    },
+    {
+      "id": "annotation-attachments.both",
+      "capability": "document.attachments",
+      "operation": "annotation-attachments",
+      "fixture": "annotation-both",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
+    },
+    {
+      "id": "annotation-attachments.mixed",
+      "capability": "document.attachments",
+      "operation": "annotation-attachments",
+      "fixture": "annotation-mixed",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        },
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
+    },
+    {
+      "id": "annotation-attachments.second-page",
+      "capability": "document.attachments",
+      "operation": "annotation-attachments",
+      "fixture": "annotation-second-page",
+      "oracle": "exact-json",
+      "expected": []
+    },
+    {
+      "id": "annotation-attachments.catalog-only",
+      "capability": "document.attachments",
+      "operation": "annotation-attachments",
+      "fixture": "complete-ef",
+      "oracle": "exact-json",
+      "expected": []
+    },
+    {
+      "id": "annotation-attachments.empty",
+      "capability": "document.attachments",
+      "operation": "annotation-attachments",
+      "fixture": "empty",
+      "oracle": "exact-json",
+      "expected": []
+    },
+    {
+      "id": "annotation-attachments.invalid",
+      "capability": "document.attachments",
+      "operation": "annotation-attachments",
+      "fixture": "invalid",
+      "oracle": "reject-invalid",
+      "expected": null
+    },
+    {
+      "id": "attachments.annotation-only",
+      "capability": "document.attachments",
+      "operation": "attachments",
+      "fixture": "annotation-only",
+      "oracle": "exact-json",
+      "expected": []
+    },
+    {
+      "id": "attachments.nested",
+      "capability": "document.attachments",
+      "operation": "attachments",
+      "fixture": "nested-attachments",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
+    },
+    {
+      "id": "attachments.compressed",
+      "capability": "document.attachments",
+      "operation": "attachments",
+      "fixture": "compressed-attachments",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
+    },
+    {
+      "id": "annotation-attachments.compressed",
+      "capability": "document.attachments",
+      "operation": "annotation-attachments",
+      "fixture": "annotation-compressed",
+      "oracle": "exact-json",
+      "expected": [
+        {
+          "name": "probe.txt",
+          "sha256": "bb0530979076ce983311c32a3cbf23448fb488520e3af66529a30246dbf01680"
+        }
+      ]
     }
   ]
 }

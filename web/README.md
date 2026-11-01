@@ -406,3 +406,44 @@ intercepts no uploads or cross-origin requests, and stores no PDF contents.
 Local servers already providing isolation skip registration. HTTPS and service
 workers are required on static hosts; unsupported browsers show an error rather
 than repeatedly reloading. Pages is static hosting, not a document backend.
+
+## Properties and attachments
+
+Open **More → Properties and attachments** to inspect declared Info fields,
+document language and document attachments. Page attachments appear separately;
+the initial selection follows the current page. Enter a page number and choose
+**Show page attachments** to inspect another page. Annotation notes, icon names
+and file descriptions stay distinct. All source labels remain inert text.
+
+Listings never decode payloads. Explicit Download buttons select one exact EF
+payload. Downloads use `metadata.xmp`, `attachment-N-KEY.bin` or
+`page-P-attachment-N-KEY.bin` and an octet-stream MIME type. No XML, URLs or
+embedded content execute, and source filenames cannot choose output paths.
+**Check size and checksum** decodes the selected payload and compares its size
+and PDF CheckSum with their declarations. Missing, matching and mismatching
+values remain separate; this does not establish file safety or authenticity.
+Sizes retain exact integer precision. Dates remain unvalidated declarations.
+
+Changing the selected page, closing the dialog, opening another PDF or restarting
+the host discards obsolete results and downloads. A page-listing failure preserves
+available properties and document attachments. Decode operations are serialized
+within the current selection. The host listing cap is 1024 attachments, and each
+response is at most 32 MiB. Document stream limits bound complete-buffer decoding;
+a browser resource-limit failure ends the session and requires host recovery.
+
+Protocol 1.8 provides properties/catalog reads, 1.10 adds parameter checks,
+1.11 adds page annotation selection and 1.12 adds explicit AF/RF, object/page
+metadata, collection declarations and source-image/thumbnails. The Other document
+sources panel selects one source at a time. Image downloads distinguish original
+stored stream bytes from decoded general-filter bytes with an image codec retained;
+PDF colour/mask dependencies remain. They do not promise standalone image appearance.
+
+A password-required attachment download/check prompts explicitly, creates a fresh
+authenticated temporary handle, retries the same selection and closes the temporary
+handle. The original document and its form edits remain unchanged. Prompt bytes
+are cleared after use; obsolete operations cannot download.
+
+Native/WASI/client and viewer-shim controls live in the document-services,
+extended-services, attachment-check and page-attachment test modules. Real-browser
+interaction validation remains open. Icon activation, interpreted image occurrence
+extraction, streaming, metadata semantic validation and editing remain separate work.

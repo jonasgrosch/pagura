@@ -587,3 +587,25 @@ fn source_lookup_capacity_is_released_before_final_reservations() {
     assert_eq!(prepare(1, placements()), prepare(1024, placements()));
     assert_eq!(prepare(0, Vec::new()), prepare(1024, Vec::new()));
 }
+
+#[test]
+fn scratch_alternates_pages_with_and_without_glyph_runs() {
+    let blank = Build::new(40.0, 24.0);
+    let (mut text, [_, ink]) = page();
+    run(
+        &mut text,
+        PAGE,
+        &line(9, [2.0, 4.0], 3.5),
+        ink,
+        mark(StateId(0)),
+    );
+    let store = Store::new(1 << 20);
+    let mut scratch = Scratch::default();
+    for scene in [&blank, &text, &blank, &text] {
+        let request = scene.request(scene.page(), 5);
+        let (expected, charges) = render_in(scene, &request, &store);
+        let (actual, reused) = render_with(scene, &request, &store, &mut scratch);
+        assert_eq!(actual, expected);
+        assert_eq!(reused, charges);
+    }
+}

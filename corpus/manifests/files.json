@@ -1,0 +1,881 @@
+{
+  "schema": 2,
+  "area": "files",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "files/populated",
+      "kind": "pdf",
+      "description": "populated",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/populated.pdf",
+      "sha256": "3914eac4075fc4ba28b108c73b455dbbd0fb6aa215d8de5c6e08b6709e5585df",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/flate",
+      "kind": "pdf",
+      "description": "flate",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/flate.pdf",
+      "sha256": "af5bd569ddac989f3a3b45e2411c20c8bb1071fcbd442ab007b4b70a1b6766a9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/empty-payload",
+      "kind": "pdf",
+      "description": "empty payload",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/empty-payload.pdf",
+      "sha256": "8a72d32898de307965ed3d6755cc5a3455ee4b136b7cf1b34dfc88d65b83d456",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/stream-type-absent",
+      "kind": "pdf",
+      "description": "stream type absent",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/stream-type-absent.pdf",
+      "sha256": "1a68ff08ada465a6f4329d95b9b9caf9a74556768e4d7ec16867ec273e89807c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/check-flate",
+      "kind": "pdf",
+      "description": "check flate",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "document-file-parameter-checks"
+      ],
+      "path": "corpus/generated/files/check-flate.pdf",
+      "sha256": "afb92e5288fa87d5b4d32e60203279cb99fbcd623067a1e706f65efbf1dbf7bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/check-size-mismatch",
+      "kind": "pdf",
+      "description": "check size mismatch",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "document-file-parameter-checks"
+      ],
+      "path": "corpus/generated/files/check-size-mismatch.pdf",
+      "sha256": "8ae095424e7c8e640dfee2079172e90c3fdfa99c5eeaf1ed7ba604b2ea14d21e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/check-checksum-mismatch",
+      "kind": "pdf",
+      "description": "check checksum mismatch",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "document-file-parameter-checks"
+      ],
+      "path": "corpus/generated/files/check-checksum-mismatch.pdf",
+      "sha256": "82f4bb0de379a34b0a4c31c9958fc19a563e3c7127af2074fe38dc776a0fd373",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/check-both-mismatch",
+      "kind": "pdf",
+      "description": "check both mismatch",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "document-file-parameter-checks"
+      ],
+      "path": "corpus/generated/files/check-both-mismatch.pdf",
+      "sha256": "b88967d7ef1eb0c5acc762df95f8086e893e7c927404c7279bf2c5e148a88eed",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/check-size-only",
+      "kind": "pdf",
+      "description": "check size only",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "document-file-parameter-checks"
+      ],
+      "path": "corpus/generated/files/check-size-only.pdf",
+      "sha256": "1e5c349e8e8d0c6f43a2cd9175c634032e532d5c8fe18718f36dd0d7b549a030",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/check-checksum-only",
+      "kind": "pdf",
+      "description": "check checksum only",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "document-file-parameter-checks"
+      ],
+      "path": "corpus/generated/files/check-checksum-only.pdf",
+      "sha256": "9e7c8aad1a39d0ff8254afb1e05ad49e22640407f11e7429c6e3949c960cb9ac",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/check-empty-params",
+      "kind": "pdf",
+      "description": "check empty params",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "document-file-parameter-checks"
+      ],
+      "path": "corpus/generated/files/check-empty-params.pdf",
+      "sha256": "d48ffade4e1eb8c531377badd28d41d5a12b83563906296c48cc81ac9b8bcb40",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/large-size-declaration",
+      "kind": "pdf",
+      "description": "large size declaration",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/large-size-declaration.pdf",
+      "sha256": "9d217676a2d85b69086ea1d539b6cf787f168d11479a91839c408548876866c2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/external-url",
+      "kind": "pdf",
+      "description": "external url",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/external-url.pdf",
+      "sha256": "0cd2c06a332a77d0ccd8b1f83c2b38f51bff3457382d81f467e6a437121ba1e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/simple-string",
+      "kind": "pdf",
+      "description": "simple string",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/simple-string.pdf",
+      "sha256": "e8e4044ebd2776a10d0310d4bda208d4d994dfaced8ad27754e370280b436b24",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/legacy-paths",
+      "kind": "pdf",
+      "description": "legacy paths",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/legacy-paths.pdf",
+      "sha256": "a249f819541fd0e2b0dadcdf1b3451a46d7de8cd9e173c1ee2b647d58541e371",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/null-entries",
+      "kind": "pdf",
+      "description": "null entries",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/null-entries.pdf",
+      "sha256": "90ec75057f83c7d5ad417c15eba1a22b59162bab29570eb104c50b9d4dc26e78",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/empty-unicode-name",
+      "kind": "pdf",
+      "description": "empty unicode name",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/empty-unicode-name.pdf",
+      "sha256": "17905ddfa893d4779454ba78fdfb4ff12256c5e23fd2660de0cecae28c3cc16b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/absent",
+      "kind": "pdf",
+      "description": "absent",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/absent.pdf",
+      "sha256": "94dae854fc8f3ce6bae4e8f38902b914fd4b24dcf19a1fd8fb1febb72b3ac042",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/null-tree",
+      "kind": "pdf",
+      "description": "null tree",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/null-tree.pdf",
+      "sha256": "9d406cbda363626b6089a34f356b9dc8dc762fc0e317f112e2b0cee6cfb239d3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/empty-tree",
+      "kind": "pdf",
+      "description": "empty tree",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/empty-tree.pdf",
+      "sha256": "b86076226b362cd0aa52692e1dab377de94e8decf5745e8067b2e5c2000a2fc8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/related",
+      "kind": "pdf",
+      "description": "related",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/related.pdf",
+      "sha256": "8a44f6d8553ea15c72e94d17480769f001aed7973dd3f30ea92ff0992df576fe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/duplicate-payload",
+      "kind": "pdf",
+      "description": "duplicate payload",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/duplicate-payload.pdf",
+      "sha256": "f6230b058becdd4fff0c51efd405034e10d8910dd4ef970abd33b5bb4b9e5068",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/catalog-1024",
+      "kind": "pdf",
+      "description": "catalog 1024",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/catalog-1024.pdf",
+      "sha256": "c89253583200570f1ac4deaac7370b20e895a289a672b4c1f4157c5871a2df39",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/catalog-1025",
+      "kind": "pdf",
+      "description": "catalog 1025",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/catalog-1025.pdf",
+      "sha256": "9107a0b6d0889abf7a1d20cf5fc5c8ec2512cf48e8a52b31efa5c65b2ec6e229",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/tree-order",
+      "kind": "pdf",
+      "description": "tree order",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/tree-order.pdf",
+      "sha256": "a13eec08ceab48bb04c1d31cd7059141d4e7d6c806bfe37583d93a43fb69f4c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/spec-stream",
+      "kind": "pdf",
+      "description": "spec stream",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/spec-stream.pdf",
+      "sha256": "9123de1912e927db91b8ba39b385b3307b15034032daa80c24f31f736ba19bb4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/wrong-spec-type",
+      "kind": "pdf",
+      "description": "wrong spec type",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/wrong-spec-type.pdf",
+      "sha256": "14e53beb6f95f48922d666deaaf9d6c82321893bcdf85ae61fbcac44274b3324",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/missing-file-name",
+      "kind": "pdf",
+      "description": "missing file name",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/missing-file-name.pdf",
+      "sha256": "f41f7d124439370be906acf6650ba16eaff3458b977d977a706f8b2ae6a1c971",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/wrong-file-name",
+      "kind": "pdf",
+      "description": "wrong file name",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/wrong-file-name.pdf",
+      "sha256": "b17f3a58242f971b5b56a14c0157394b28474de101a9393b0c6b72c48997ed48",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/wrong-unicode-name",
+      "kind": "pdf",
+      "description": "wrong unicode name",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/wrong-unicode-name.pdf",
+      "sha256": "539de3274c06b5a7c0ef90bd0edd3fd519f39514da8aafbc7cbfb2a26c6f2a3d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/invalid-unicode",
+      "kind": "pdf",
+      "description": "invalid unicode",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/invalid-unicode.pdf",
+      "sha256": "97847aa748942cee578c382cfcb14b0fd7eec38379033065c1cf7534eb83c038",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/wrong-file-system",
+      "kind": "pdf",
+      "description": "wrong file system",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/wrong-file-system.pdf",
+      "sha256": "7fc423179d90f0839a73a5ac9ad23f78a0ea30c7d504fa27ea9376d161dea603",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/wrong-volatile",
+      "kind": "pdf",
+      "description": "wrong volatile",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/wrong-volatile.pdf",
+      "sha256": "33daad4e898fcd823bcdc986bd54de91558f809acf08eee21b7000f973a161c0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/wrong-relationship",
+      "kind": "pdf",
+      "description": "wrong relationship",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/wrong-relationship.pdf",
+      "sha256": "8be755a94dbfe7a7b29eed9d4a76d12807e168e1df054b7e9b92e499e6073d80",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/wrong-identifier",
+      "kind": "pdf",
+      "description": "wrong identifier",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/wrong-identifier.pdf",
+      "sha256": "7226852dcee9feeb0d43e0f1b86002d2103ed787b09939e1aa9ffa3752512870",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/wrong-spec-type-name",
+      "kind": "pdf",
+      "description": "wrong spec type name",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/wrong-spec-type-name.pdf",
+      "sha256": "a0833ccb835f86a93174ce0151dcbb5ca205a56730c6d2c7769793ba311cd411",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/embedded-missing-type",
+      "kind": "pdf",
+      "description": "embedded missing type",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/embedded-missing-type.pdf",
+      "sha256": "0c9a988cc6cfda083c87fd8cca6c2893162c7c13a3f49b43c82369993706af33",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/embedded-wrong-type",
+      "kind": "pdf",
+      "description": "embedded wrong type",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/embedded-wrong-type.pdf",
+      "sha256": "918738d5612e4f4b04f1b0410c1567e17e0503082a060dee1536218c3e140d37",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/embedded-no-matching-name",
+      "kind": "pdf",
+      "description": "embedded no matching name",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/embedded-no-matching-name.pdf",
+      "sha256": "8c5758ceff40cab964c4ba1ea41528a18f286e33bab078bf4b2adf3303a9f244",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/embedded-invalid-key",
+      "kind": "pdf",
+      "description": "embedded invalid key",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/embedded-invalid-key.pdf",
+      "sha256": "9d5abd76e2deff590bc8548d3b3c885e231ab3c8982983bb22f251e79e2aa4cc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/embedded-direct-stream",
+      "kind": "pdf",
+      "description": "embedded direct stream",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/embedded-direct-stream.pdf",
+      "sha256": "00b0bc426fdaa385a02097fd6b5938c122635045d643f6bdf9d2f4849a188578",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/embedded-nonstream",
+      "kind": "pdf",
+      "description": "embedded nonstream",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/embedded-nonstream.pdf",
+      "sha256": "6179b423d9db145d4f4f86f91e55c39edf73fa5ccac0238120ae514d4c9d5e37",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/spec-cycle",
+      "kind": "pdf",
+      "description": "spec cycle",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/spec-cycle.pdf",
+      "sha256": "0d4535af62ff57761ad51a9805c9ee51a2df2d7999b394b3cfa3647dffca4f18",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/related-without-embedded",
+      "kind": "pdf",
+      "description": "related without embedded",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/related-without-embedded.pdf",
+      "sha256": "f7989f21fa5279367eec2e3f5753d8852d0861a44eaa4e5f5351600ab7f1ad10",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/related-unmatched-key",
+      "kind": "pdf",
+      "description": "related unmatched key",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/related-unmatched-key.pdf",
+      "sha256": "cea88097ab977f07f42cd857dbf89df1c2dbca1a5e02aacb3dcb9d013097feb7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/related-odd-array",
+      "kind": "pdf",
+      "description": "related odd array",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/related-odd-array.pdf",
+      "sha256": "2c189de720c2092d692abc564d22e3ea809896fc399258870fbab911b17ccd86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/stream-wrong-type",
+      "kind": "pdf",
+      "description": "stream wrong type",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/stream-wrong-type.pdf",
+      "sha256": "1226a3af9d1f7f4a1e929020136f9b565a8f6ff15ac95cf8a942d362ecee072c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/stream-wrong-subtype",
+      "kind": "pdf",
+      "description": "stream wrong subtype",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/stream-wrong-subtype.pdf",
+      "sha256": "008d490a06d481ca85dc6057e875577827b6cbbedd7e5b849dbb28c213f18ab0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/stream-wrong-params",
+      "kind": "pdf",
+      "description": "stream wrong params",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/stream-wrong-params.pdf",
+      "sha256": "570f30410d94025afe12b69fbe10b6798e117f359600a8f194b09da95b84e30e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/negative-size",
+      "kind": "pdf",
+      "description": "negative size",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/negative-size.pdf",
+      "sha256": "3f3bd79e2d6b2c937f5fb50102b622f7056a92620b87793c35334184e8d1f1b7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/checksum-length",
+      "kind": "pdf",
+      "description": "checksum length",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/checksum-length.pdf",
+      "sha256": "7f0f3f6420a4f8bc1a770b778470aaa3c55ea514880849ee78c83e8e6a444cf0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/wrong-date",
+      "kind": "pdf",
+      "description": "wrong date",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/wrong-date.pdf",
+      "sha256": "d8a190b09a2f64749163f90fa2c2a9d3247732ee393c009a94b6107e99226709",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/external-stream",
+      "kind": "pdf",
+      "description": "external stream",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/external-stream.pdf",
+      "sha256": "291459bc175bbf8b2394d58f179438d06e521a0843e7b0aaf11f746123513132",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/associated-wrong-type",
+      "kind": "pdf",
+      "description": "associated wrong type",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/associated-wrong-type.pdf",
+      "sha256": "f631f73ccf8ee765ea34d87853d4ac6c8a9834809032007b97b4ad11ec770e24",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/associated-string",
+      "kind": "pdf",
+      "description": "associated string",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/associated-string.pdf",
+      "sha256": "91f76e79c19c5dbcbc2989c7335109e9fc8cb89b132fa8aecb0ca3425703938a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/associated-direct-external",
+      "kind": "pdf",
+      "description": "associated direct external",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/associated-direct-external.pdf",
+      "sha256": "1fc590a5f3cae87f926ddc51213af723a8b2bc5dcc9524b1844f3245a276e43f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/associated-direct-embedded",
+      "kind": "pdf",
+      "description": "associated direct embedded",
+      "expected": "open",
+      "requirements": [
+        "document-file-views"
+      ],
+      "path": "corpus/generated/files/associated-direct-embedded.pdf",
+      "sha256": "435ab4b9f43efa358148d6c4e548ebf4243662fb8400c13f38f7cf55f7a74f32",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "files/encrypted",
+      "kind": "pdf",
+      "description": "Synthetic attachment password is required only when payload bytes are requested",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "security-authorization-events"
+      ],
+      "path": "corpus/generated/files/encrypted.pdf",
+      "sha256": "532876381af9f642bd00e7b3cbfad86104891ab7ed521bad6fb2fb87a0c3d98f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.crypt-filter-event"
+      ]
+    },
+    {
+      "id": "files/encrypted-no-type",
+      "kind": "pdf",
+      "description": "Synthetic attachment password is required only when payload bytes are requested",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "security-authorization-events"
+      ],
+      "path": "corpus/generated/files/encrypted-no-type.pdf",
+      "sha256": "bc88b0aaa8f3c36f6875f70758118a813095619971d78904ddecf4c40270593e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.crypt-filter-event"
+      ]
+    },
+    {
+      "id": "files/encrypted-explicit-no-type",
+      "kind": "pdf",
+      "description": "Synthetic attachment password is required only when payload bytes are requested",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "security-authorization-events"
+      ],
+      "path": "corpus/generated/files/encrypted-explicit-no-type.pdf",
+      "sha256": "3e298708917302f6fedc6f5edbf5ca830cf46b88d94776a06ecb8b848eae7c04",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.crypt-filter-event"
+      ]
+    },
+    {
+      "id": "files/encrypted-identity-no-type",
+      "kind": "pdf",
+      "description": "Synthetic attachment password is required only when payload bytes are requested",
+      "expected": "open",
+      "requirements": [
+        "document-file-views",
+        "security-authorization-events"
+      ],
+      "path": "corpus/generated/files/encrypted-identity-no-type.pdf",
+      "sha256": "814549a6bcb3bae9b8f9ca734a2ed4fb41d8f0377549f7355d9066319ff137cf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.crypt-filter-event"
+      ]
+    }
+  ]
+}

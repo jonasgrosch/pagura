@@ -19,13 +19,46 @@ class ProbeTests(unittest.TestCase):
     def setUp(self):
         self.case = copy.deepcopy(self.manifest["cases"][0])
 
+    def test_subject_is_additive_and_its_failed_oracle_fails_the_job(self):
+        inventory = probes.subject_inventory(self.inventory)
+        self.assertNotIn("pagura", self.inventory["engines"])
+        self.assertEqual(inventory["engines"], [*self.inventory["engines"], "pagura"])
+        with self.assertRaisesRegex(ValueError, "lost a baseline"):
+            probes.validate_report(self.report(), self.manifest, inventory)
+        def observed(command, case, directory):
+            if case["oracle"] == "reject-invalid":
+                return {"outcome": "pass", "reason": "stub rejection"}
+            return {"outcome": "pass", "observed": case["expected"]}
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "report.json"
+            with patch.object(probes, "service_commands", return_value={"pagura": ["stub"]}), \
+                 patch.object(probes, "service_identity", return_value={"status": "available"}), \
+                 patch.object(probes, "invoke", side_effect=observed):
+                self.assertTrue(probes.run(self.manifest, inventory, output, ("pagura",)))
+                report = probes.read_json(output)
+                self.assertEqual(len(report["results"]), len(self.manifest["cases"]) * 7)
+                self.assertEqual(sum(row["outcome"] == "not-run" for row in report["results"]), len(self.manifest["cases"]) * 6)
+            with patch.object(probes, "service_commands", return_value={"pagura": ["stub"]}), \
+                 patch.object(probes, "service_identity", return_value={"status": "available"}), \
+                 patch.object(probes, "invoke", return_value={"outcome": "incorrect", "observed": None}):
+                self.assertFalse(probes.run(self.manifest, inventory, output, ("pagura",)))
+
+    def test_resource_limits_never_pass_an_invalid_input_control(self):
+        negative = next(row for row in self.manifest["cases"] if row["oracle"] == "reject-invalid")
+        for status in ("limit", "timeout"):
+            self.assertEqual(probes.adjudicate(negative, {"schema": 1, "status": status, "reason": "bounded"})["outcome"], status)
+
     def test_manifest_owns_operations_and_empty_and_invalid_controls(self):
         probes.validate_manifest(self.manifest, self.inventory)
-        for removed in ("pages.invalid", "attachments.empty"):
+        for removed in ("attachments.empty", "annotation-attachments.only", "annotation-attachments.empty"):
             broken = copy.deepcopy(self.manifest)
             broken["cases"] = [row for row in broken["cases"] if row["id"] != removed]
             with self.subTest(removed=removed), self.assertRaisesRegex(ValueError, "missing"):
                 probes.validate_manifest(broken, self.inventory)
+        broken = copy.deepcopy(self.manifest)
+        broken["cases"] = [row for row in broken["cases"] if row["fixture"] != "invalid"]
+        with self.assertRaisesRegex(ValueError, "missing invalid"):
+            probes.validate_manifest(broken, self.inventory)
         broken = copy.deepcopy(self.manifest)
         broken["cases"][0]["capability"] = "unknown.operation"
         with self.assertRaisesRegex(ValueError, "unassigned"):
@@ -76,6 +109,25 @@ class ProbeTests(unittest.TestCase):
         self.assertIn(b"/UF 8 0 R", probes.fixture("complete-ef"))
         self.assertNotIn(b"/EmbeddedFiles", probes.fixture("empty"))
         self.assertFalse(probes.fixture("invalid").startswith(b"%PDF"))
+
+    def test_annotation_controls_are_distinct_from_catalog_and_second_page(self):
+        only = probes.fixture("annotation-only")
+        self.assertNotIn(b"/EmbeddedFiles", only)
+        self.assertIn(b"/Annots [9 0 R]", only)
+        self.assertIn(b"/FS 7 0 R", only)
+        self.assertIn(b"/UF 8 0 R", only)
+        self.assertIn(b"/EmbeddedFiles", probes.fixture("annotation-both"))
+        self.assertIn(b"/Annots [10 0 R 9 0 R 9 0 R]", probes.fixture("annotation-mixed"))
+        second = probes.fixture("annotation-second-page")
+        self.assertNotIn(b"/Annots", second.split(b"3 0 obj\n")[1].split(b"endobj")[0])
+        self.assertIn(b"/Annots [9 0 R]", second.split(b"10 0 obj\n")[1].split(b"endobj")[0])
+        for variant in probes.ANNOTATION_FIXTURES:
+            content = probes.fixture(variant)
+            xref = int(content.split(b"startxref\n")[1].splitlines()[0])
+            lines = content[xref:].splitlines()
+            count = int(lines[1].split()[1])
+            for index, entry in enumerate(lines[3:count + 2], 1):
+                self.assertTrue(content[int(entry[:10]):].startswith(f"{index} 0 obj\n".encode()))
 
     def report(self):
         return {"schema": 1, "cases": self.manifest["cases"],

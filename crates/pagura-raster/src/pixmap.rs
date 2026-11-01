@@ -181,6 +181,16 @@ impl Pixmap {
             .collect()
     }
 
+    /// Consumes the surface and converts its existing allocation to straight
+    /// RGBA8 in place. Fully transparent pixels become zero RGBA; no pixel
+    /// allocation is made. The conversion matches [`Self::to_straight_rgba`].
+    pub fn into_straight_rgba(mut self) -> Vec<u8> {
+        for pixel in self.data.as_chunks_mut::<4>().0 {
+            *pixel = unpremultiply(*pixel);
+        }
+        self.data
+    }
+
     /// Composites onto `background` and drops alpha, giving packed RGB8.
     pub fn to_rgb_over(&self, background: Rgba8) -> Vec<u8> {
         let under = Rgba8 {
@@ -283,6 +293,17 @@ mod tests {
         assert_eq!(&pixmap.data()[..4], &[128, 0, 0, 128]);
         assert_eq!(&pixmap.to_straight_rgba()[..4], &[255, 0, 0, 128]);
         assert_eq!(&pixmap.to_rgb_over(Rgba8::WHITE)[..3], &[255, 127, 127]);
+    }
+
+    #[test]
+    fn consuming_straight_conversion_reuses_storage_and_normalizes_alpha() {
+        let data = vec![64, 32, 0, 128, 9, 10, 11, 0, 17, 23, 42, 255];
+        let pointer = data.as_ptr();
+        let surface =
+            Pixmap::from_premultiplied(3, 1, data, pagura_core::Limits::default()).unwrap();
+        let straight = surface.into_straight_rgba();
+        assert_eq!(straight.as_ptr(), pointer);
+        assert_eq!(straight, [128, 64, 0, 128, 0, 0, 0, 0, 17, 23, 42, 255]);
     }
 
     #[test]

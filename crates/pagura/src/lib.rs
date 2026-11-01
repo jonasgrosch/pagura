@@ -65,6 +65,7 @@
 //! # }
 //! ```
 
+pub mod png;
 pub mod provider;
 
 /// Positioned text, its reading-order layout, structure and search
@@ -86,13 +87,23 @@ pub use pagura_core::{
     Diagnostic, DiagnosticKind, Dictionary, Error, ErrorKind, Feature, Limits, Name, ObjectId,
     Position, Recovery, Rect, Repair, Result, SignatureLimits, Value,
 };
+/// Inert file specifications, embedded payloads and associated files (7.11, 14.13).
+pub use pagura_document::files;
 /// Interactive form source views and in-memory filling (12.7). Actions are inert data.
 pub use pagura_document::forms;
+/// Source image assets and stored thumbnails, with explicit byte-transfer semantics.
+pub use pagura_document::images;
+/// Document information, language and inert metadata-stream access (14.3).
+pub use pagura_document::metadata;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
 /// Reported recovery of literal null members in page annotation arrays.
 pub use pagura_document::repairs::ANNOTATION_NULL as PAGES_ANNOTATION_NULL;
+/// Reported recovery of immediate defined parsed-null annotation references.
+pub use pagura_document::repairs::ANNOTATION_NULL_REFERENCE as PAGES_ANNOTATION_NULL_REFERENCE;
+/// Repair for a proven one-record excess in an sfnt directory count.
+pub use pagura_font::repairs::SFNT_DIRECTORY_COUNT as FONT_SFNT_DIRECTORY_COUNT;
 /// Reported repair of contradicting JBIG2 page capability declarations.
 pub use pagura_image::jbig2::repairs::PAGE_CAPABILITIES as JBIG2_PAGE_CAPABILITIES;
 /// Reported repair of an unused JBIG2 Huffman aggregation-table selector.

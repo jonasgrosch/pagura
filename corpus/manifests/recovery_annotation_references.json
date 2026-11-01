@@ -1,0 +1,634 @@
+{
+  "schema": 2,
+  "area": "recovery_annotation_references",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "recovery_annotation_references/defined-zero",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/defined-zero.pdf",
+      "sha256": "8243086b8361db9d273c329864b6044fed411709b1ac1bca2a3f9bff7f43907b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null-reference"
+      ],
+      "oracle": "corpus/generated/recovery_annotation_references/defined-zero.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "page": 0,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1,
+      "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "recovery_annotation_references/defined-seven",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/defined-seven.pdf",
+      "sha256": "eed11b9b3e8a798ce0302d5ef0dd4cd0d1347ffff42592dd3c6b873cd08ec377",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null-reference"
+      ],
+      "oracle": "corpus/generated/recovery_annotation_references/defined-seven.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "page": 0,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1,
+      "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "recovery_annotation_references/wrong-generation",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/wrong-generation.pdf",
+      "sha256": "0a4ecca066af31d4a476a4b8af9ad9a9b9cdd259614f808d2d966a2c9f595cd5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax",
+      "scan_recovery": "repair",
+      "mode_errors": {}
+    },
+    {
+      "id": "recovery_annotation_references/undefined",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/undefined.pdf",
+      "sha256": "af8469c288d54b733691834546494c51f40e6cde184f9bff15e735ff9587b1b5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax",
+      "scan_recovery": "repair",
+      "mode_errors": {}
+    },
+    {
+      "id": "recovery_annotation_references/reference-chain",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/reference-chain.pdf",
+      "sha256": "6036796b09214e4b8bfc74c7b7019157c5fd241ef3aa543589f7e8d537e14803",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax",
+      "scan_recovery": "repair",
+      "mode_errors": {}
+    },
+    {
+      "id": "recovery_annotation_references/reference-cycle",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/reference-cycle.pdf",
+      "sha256": "93b5e0b40a60003393c8c18e3c59b4e2044163a87748041af4f2689ed2b79af4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit",
+      "scan_recovery": "repair",
+      "mode_errors": {}
+    },
+    {
+      "id": "recovery_annotation_references/integer",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/integer.pdf",
+      "sha256": "1402de921a1a4a1a96e8c2193c4bdd562c0c1ff3d4afee5ac106271a5745e194",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax",
+      "scan_recovery": "repair",
+      "mode_errors": {}
+    },
+    {
+      "id": "recovery_annotation_references/string",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/string.pdf",
+      "sha256": "d18076dc78078bd441bd489507197eca509182b604637208d67330861563b5ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax",
+      "scan_recovery": "repair",
+      "mode_errors": {}
+    },
+    {
+      "id": "recovery_annotation_references/array",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/array.pdf",
+      "sha256": "7bc9a3b9125ce1baa315ae4e3e2584c592e75ee8eb475ea88cfe055130ef94a5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax",
+      "scan_recovery": "repair",
+      "mode_errors": {}
+    },
+    {
+      "id": "recovery_annotation_references/malformed-dictionary",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/malformed-dictionary.pdf",
+      "sha256": "3b685c8f0cbad439e071fe8c7c5fefaedca106c098e355256f7f75bdd06141f1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax",
+      "scan_recovery": "repair",
+      "mode_errors": {}
+    },
+    {
+      "id": "recovery_annotation_references/free",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/free.pdf",
+      "sha256": "797d0f873b8987ac52423a06bab197c0f39ebae9ec68c42723559723e9518372",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax",
+      "scan_recovery": "repair",
+      "mode_errors": {}
+    },
+    {
+      "id": "recovery_annotation_references/later-invalid",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "open",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/later-invalid.pdf",
+      "sha256": "13ae78aa224572cb2a9cf5892f98f854853a67445eea5f4240260ea0499a33cb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null-reference"
+      ],
+      "render_error": "syntax",
+      "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "recovery_annotation_references/repeat-identity",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/repeat-identity.pdf",
+      "sha256": "2ae5aec19de9c1f9eec7e65767ea53294af45a328ade8906644d2c21a911b748",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null-reference"
+      ],
+      "oracle": "corpus/generated/recovery_annotation_references/repeat-identity.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "page": 0,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1,
+      "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "recovery_annotation_references/later-first-use",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/later-first-use.pdf",
+      "sha256": "6e5643e7abf9eae86cc22642bafe70552cde8d5bba8441f2c05f8d4c089b3b89",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null-reference"
+      ],
+      "oracle": "corpus/generated/recovery_annotation_references/later-first-use.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "page": 1,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1,
+      "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "recovery_annotation_references/many-references",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/many-references.pdf",
+      "sha256": "99ed9531ed12a28cc0f663df64043bd115f7650ce59202e3c02147d30b8f7524",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null-reference"
+      ],
+      "oracle": "corpus/generated/recovery_annotation_references/many-references.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "page": 0,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1,
+      "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "recovery_annotation_references/compressed-null",
+      "kind": "pdf",
+      "description": "Only an immediate exact in-use Null is skipped; supplied neighbors, source order and original refusal paths remain required",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/compressed-null.pdf",
+      "sha256": "a18cc7ec3885b7ad3af704d2109a66d16d4660e4e25d07f429f68bb03c72c354",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null-reference"
+      ],
+      "oracle": "corpus/generated/recovery_annotation_references/compressed-null.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "page": 0,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1,
+      "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      }
+    },
+    {
+      "id": "recovery_annotation_references/signature-clean-annotation",
+      "kind": "vector",
+      "description": "Explicit Null reference recovery cannot establish signed-edit permission. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-clean-annotation.outcome",
+          "sha256": "2bf0fae7692059ba9910efd8411c3f74c50d99f35263107717b6e870512894c5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-clean-annotation.pdf",
+          "sha256": "e911bb6bdf0cb139a898393a4298e1281c074e94a885f00847917fe8bbbab547"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-clean-content",
+      "kind": "vector",
+      "description": "Explicit Null reference recovery cannot establish signed-edit permission. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-clean-content.outcome",
+          "sha256": "82816bd4b9e5853140ca474de590f58a4c01750ee2a8504892e8b86395acbeb5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-clean-content.pdf",
+          "sha256": "c1449f048f4c4e07b2ede329d777695d23453b135d3a600cdbd74a97a076ba1e"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-clean-signing",
+      "kind": "vector",
+      "description": "Explicit Null reference recovery cannot establish signed-edit permission. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-clean-signing.outcome",
+          "sha256": "2bf0fae7692059ba9910efd8411c3f74c50d99f35263107717b6e870512894c5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-clean-signing.pdf",
+          "sha256": "05dffd375c0a86ca06269ac1166897ee3bc64ab8efd6a45a78f279bec35bccba"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-signed-null-annotation",
+      "kind": "vector",
+      "description": "Explicit Null reference recovery cannot establish signed-edit permission. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-signed-null-annotation.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-signed-null-annotation.pdf",
+          "sha256": "3d060aad2716cd68474d5a01a29ef9edf6f3bcd7e35ccae3853422d793ad1429"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-signed-null-content",
+      "kind": "vector",
+      "description": "Explicit Null reference recovery cannot establish signed-edit permission. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-signed-null-content.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-signed-null-content.pdf",
+          "sha256": "2abcc333bb6fda69ec50ffa53c13bd1c8b708eda3678d9f65cc097ca8381238b"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-signed-null-signing",
+      "kind": "vector",
+      "description": "Explicit Null reference recovery cannot establish signed-edit permission. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-signed-null-signing.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-signed-null-signing.pdf",
+          "sha256": "8e2f5756984f1192ee0e730b376b8eb5658f6a0a8422e4f3e23291bda10e00a3"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-added-null-annotation",
+      "kind": "vector",
+      "description": "Explicit Null reference recovery cannot establish signed-edit permission. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-added-null-annotation.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-added-null-annotation.pdf",
+          "sha256": "86e6c8cdeaffc6fd877f84c5dcbffb9da79750bf654f4d99e003bed1849cf5a9"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-added-null-content",
+      "kind": "vector",
+      "description": "Explicit Null reference recovery cannot establish signed-edit permission. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-added-null-content.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-added-null-content.pdf",
+          "sha256": "d6235081b57b15e5c8d7cbf80bbf5beff3358772003fdb09604a3a014cf198ea"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-added-null-signing",
+      "kind": "vector",
+      "description": "Explicit Null reference recovery cannot establish signed-edit permission. Placeholder signatures assert no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-added-null-signing.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-added-null-signing.pdf",
+          "sha256": "92b0a408b1f72b9a3cc63e2810c5731edb9e89d6d1b90a2dec9028bc65f97624"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-historical-null-current-valid",
+      "kind": "vector",
+      "description": "Each source revision retains its own annotation identity and Strict reopening; placeholder signature asserts no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-historical-null-current-valid.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-historical-null-current-valid.pdf",
+          "sha256": "6c5a6cb1e71a506650cb9d955fcd3eaaf58d56e650c1c9c02bb8015da66e6e05"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/signature-historical-valid-current-null",
+      "kind": "vector",
+      "description": "Each source revision retains its own annotation identity and Strict reopening; placeholder signature asserts no integrity.",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "files": {
+        ".outcome": {
+          "path": "corpus/generated/recovery_annotation_references/signature-historical-valid-current-null.outcome",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/recovery_annotation_references/signature-historical-valid-current-null.pdf",
+          "sha256": "18c31b513a17f48b2addb21c3262324de22d28fd5f3c973f3624c1b2850144d5"
+        }
+      },
+      "driver": "annotation-null-reference-signature-policy"
+    },
+    {
+      "id": "recovery_annotation_references/zero-reference-body",
+      "kind": "pdf",
+      "description": "Existing separately reported zero-reference parser repair yields immediate parsed Null; no nonzero chain is followed and Strict retains its earlier parser error",
+      "expected": "render",
+      "requirements": [
+        "recovery-annotation-null-reference"
+      ],
+      "path": "corpus/generated/recovery_annotation_references/zero-reference-body.pdf",
+      "sha256": "63a20a8f12a6a070578e8833f4cee720caa846e6845fcca7fc4be53c98682c24",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.reference-zero",
+        "pages.annotation-null-reference"
+      ],
+      "oracle": "corpus/generated/recovery_annotation_references/zero-reference-body.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "page": 0,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1,
+      "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": "syntax.reference-zero",
+          "message": "object-zero reference interpreted as null"
+        }
+      }
+    }
+  ]
+}

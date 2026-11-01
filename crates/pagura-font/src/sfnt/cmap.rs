@@ -1,4 +1,4 @@
-//! Validated cmap formats 0, 2, 4, 6, 10, 12 and 13; selection never expands code ranges.
+//! Validated cmap formats 0, 2, 4, 6, 8, 10, 12 and 13; selection never expands code ranges.
 //!
 //! Subtables are validated once, while parsing. Lookups then read the
 //! validated bytes with bounds-checked accessors: a mapping that a repaired,
@@ -41,6 +41,8 @@ enum Format {
     Segments,
     /// 6: trimmed table mapping.
     Trimmed,
+    /// 8: mixed 16/32-bit codes, already delimited by the caller.
+    MixedLength,
     /// 10: trimmed array (32-bit codes).
     TrimmedArray,
     /// 12: segmented coverage.
@@ -56,6 +58,7 @@ impl Format {
             2 => Self::HighByte,
             4 => Self::Segments,
             6 => Self::Trimmed,
+            8 => Self::MixedLength,
             10 => Self::TrimmedArray,
             12 => Self::Coverage,
             13 => Self::ManyToOne,
@@ -65,7 +68,10 @@ impl Format {
 
     /// Whether the header has a reserved word and a 32-bit length.
     const fn long_header(self) -> bool {
-        matches!(self, Self::TrimmedArray | Self::Coverage | Self::ManyToOne)
+        matches!(
+            self,
+            Self::MixedLength | Self::TrimmedArray | Self::Coverage | Self::ManyToOne
+        )
     }
 
     /// The length of the fixed header, before the format's arrays.
@@ -75,6 +81,8 @@ impl Format {
             Self::HighByte => extended::SUBHEADERS,
             Self::Segments | Self::Coverage | Self::ManyToOne => 16,
             Self::Trimmed => 10,
+            // Twelve header bytes, the 8192-byte is32 bitmap, then numGroups.
+            Self::MixedLength => 8208,
             Self::TrimmedArray => 20,
         }
     }
@@ -83,8 +91,9 @@ impl Format {
     /// directory order.
     const fn preference(self) -> u8 {
         match self {
-            Self::Coverage => 7,
-            Self::TrimmedArray => 6,
+            Self::Coverage => 8,
+            Self::TrimmedArray => 7,
+            Self::MixedLength => 6,
             Self::Segments => 5,
             Self::Trimmed => 4,
             Self::HighByte => 3,
@@ -109,10 +118,10 @@ enum Layout {
         count: u32,
         array: usize,
     },
-    /// Formats 12 and 13 with `count` complete groups.
+    /// Formats 8, 12 and 13 with `count` complete groups.
     Groups {
         count: usize,
-        many_to_one: bool,
+        format: Format,
     },
 }
 
@@ -261,7 +270,9 @@ fn validate(
         Format::Segments => Layout::Segments {
             count: validate_four(r, glyphs, work)?,
         },
-        Format::Coverage | Format::ManyToOne => validate_groups(r, format, glyphs, work)?,
+        Format::MixedLength | Format::Coverage | Format::ManyToOne => {
+            validate_groups(r, format, glyphs, work)?
+        }
     };
     Ok(Some((length, layout)))
 }
@@ -272,7 +283,11 @@ fn validate_groups(
     glyphs: usize,
     work: &mut Work<'_>,
 ) -> Result<Layout> {
-    r.skip(12)?;
+    let array = format.header();
+    // Format 8's is32 bitmap delimits words in an encoded text stream. This
+    // API receives a complete numeric code, so lookup needs no word decoder
+    // or UTF-16 conversion. Both its bitmap and group count must be present.
+    r.skip(array - 4)?;
     let count = u32_to_usize(r.u32()?);
     work.entries(count, r.position())?;
     work.work(count, r.position())?;
@@ -284,7 +299,7 @@ fn validate_groups(
         let end = r.u32()?;
         let gid = r.u32()?;
         if start > end
-            || end > MAX_UNICODE
+            || (format != Format::MixedLength && end > MAX_UNICODE)
             || previous.is_some_and(|p| start <= p)
             || gid
                 .checked_add(if many_to_one { 0 } else { end - start })
@@ -294,7 +309,7 @@ fn validate_groups(
         }
         previous = Some(end);
     }
-    Ok(Layout::Groups { count, many_to_one })
+    Ok(Layout::Groups { count, format })
 }
 
 /// The arrays of a format 4 subtable: segment ends, starts, deltas and
@@ -461,14 +476,16 @@ impl Cmap {
                 let segments = Segments { data: bytes, count };
                 u32::from(segments.lookup(u16::try_from(code).ok()?)?)
             }
-            Layout::Groups { count, many_to_one } => {
+            Layout::Groups { count, format } => {
+                let array = format.header();
+                let many_to_one = format == Format::ManyToOne;
                 let (mut low, mut high) = (0, count);
                 loop {
                     if low >= high {
                         return None;
                     }
                     let mid = low + (high - low) / 2;
-                    let at = 16 + 12 * mid;
+                    let at = array + 12 * mid;
                     let (start, end, gid) = (
                         u32_at(bytes, at)?,
                         u32_at(bytes, at + 4)?,
@@ -520,114 +537,4 @@ fn malformed(error: &Error) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{Segments, u16_at, validate_four};
-    use crate::budget::{FontBudget, Work};
-    use crate::read::cursor;
-    use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
-
-    /// A format 4 subtable body: ends, pad, starts, deltas, range offsets
-    /// and one glyph array word, after the 14-byte header.
-    fn segments(
-        ends: &[u16],
-        starts: &[u16],
-        deltas: &[u16],
-        offsets: &[u16],
-        array: &[u16],
-    ) -> Vec<u8> {
-        let mut data = vec![0; 14];
-        for words in [ends, &[0], starts, deltas, offsets, array] {
-            data.extend(words.iter().flat_map(|w| w.to_be_bytes()));
-        }
-        data
-    }
-
-    #[test]
-    fn format_four_deltas_range_offsets_and_the_sentinel() {
-        // Segment 0 maps 10..=12 through the glyph array; segment 1 is
-        // the sentinel, mapped by delta 1 to glyph 0.
-        let data = segments(&[12, 0xffff], &[10, 0xffff], &[5, 1], &[4, 0], &[7, 0, 9]);
-        let s = Segments {
-            data: &data,
-            count: 2,
-        };
-        // idRangeOffset 4 from its own word reaches the array's first word.
-        assert_eq!(s.lookup(10), Some(12));
-        assert_eq!(s.lookup(11), Some(0));
-        assert_eq!(s.lookup(12), Some(14));
-        assert_eq!(s.lookup(9), Some(0));
-        assert_eq!(s.lookup(0xffff), Some(0));
-        let truncated = &data[..data.len() - 2];
-        assert_eq!(
-            Segments {
-                data: truncated,
-                count: 2
-            }
-            .lookup(12),
-            None
-        );
-        assert_eq!(u16_at(&data, data.len() - 1), None);
-    }
-
-    /// A whole format 4 subtable: 20..22 use delta -31; 30..32 use a glyph
-    /// array and delta -1; ffff is the required missing-code sentinel.
-    fn format_four() -> Vec<u8> {
-        [
-            4_u16, 46, 0, 6, 4, 1, 2, 0x22, 0x32, 0xffff, 0, 0x20, 0x30, 0xffff, 0xffe1, 0xffff, 1,
-            0, 4, 0, 5, 0, 9,
-        ]
-        .into_iter()
-        .flat_map(u16::to_be_bytes)
-        .collect()
-    }
-
-    #[test]
-    fn format_four_validates_both_mapping_routes_and_keeps_work_charges() {
-        let data = format_four();
-        let mut diagnostics = Diagnostics::new(Recovery::Strict);
-        // Seven codes are validated: one work unit each.
-        for (work, valid) in [(7, true), (6, false)] {
-            let limits = Limits {
-                font_work: work,
-                ..Limits::default()
-            };
-            let mut work = Work::new(FontBudget::new(&limits), &mut diagnostics);
-            let result = validate_four(cursor(&data), 9, &mut work);
-            if valid {
-                assert_eq!(result.unwrap(), 3);
-            } else {
-                assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
-            }
-        }
-        assert_eq!(diagnostics.as_slice(), []);
-        let segments = Segments {
-            data: &data,
-            count: 3,
-        };
-        for (code, glyph) in [
-            (0x1f, 0),
-            (0x20, 1),
-            (0x21, 2),
-            (0x22, 3),
-            (0x23, 0),
-            (0x30, 4),
-            (0x31, 0),
-            (0x32, 8),
-            (0xffff, 0),
-        ] {
-            assert_eq!(segments.lookup(code), Some(glyph));
-        }
-    }
-
-    #[test]
-    fn disordered_end_codes_preserve_the_structural_error_position() {
-        let mut data = format_four();
-        data[14..16].copy_from_slice(&0x32_u16.to_be_bytes());
-        data[16..18].copy_from_slice(&0x22_u16.to_be_bytes());
-        let mut diagnostics = Diagnostics::new(Recovery::Strict);
-        let mut work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
-        let error = validate_four(cursor(&data), 9, &mut work).unwrap_err();
-        assert_eq!(error.message, "overlapping cmap segments");
-        assert_eq!(error.position, Position::Buffer(40));
-    }
-}
+mod tests;

@@ -1,0 +1,3457 @@
+{
+  "schema": 2,
+  "area": "font_directory",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "font_directory/literal-72",
+      "kind": "vector",
+      "description": "Literal blue backdrop and two black rectangle glyphs; exact area at the CropBox transform",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/font_directory/literal-72.ppm",
+          "sha256": "854dcee862cf4175f6741d69333b692fda696b00cc172160c202716560d12273"
+        },
+        ".transparent.rgba": {
+          "path": "corpus/generated/font_directory/literal-72.transparent.rgba",
+          "sha256": "4eaad3bdfc338a6a83969f9a8dba2257035739db68b3edeb4b253705bd8f53f6"
+        },
+        ".white.rgba": {
+          "path": "corpus/generated/font_directory/literal-72.white.rgba",
+          "sha256": "ed630874b23656ab279ca2fdf5c982bc08511d7a9f7b5afc8b998a21e4ea27ab"
+        }
+      },
+      "width": 64,
+      "height": 64,
+      "dpi": 72,
+      "tolerance": 0
+    },
+    {
+      "id": "font_directory/literal-73",
+      "kind": "vector",
+      "description": "Literal blue backdrop and two black rectangle glyphs; exact area at the CropBox transform",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/font_directory/literal-73.ppm",
+          "sha256": "922b1b126e04481068499692bb93fd6c5f3080adacf7c6ea8db5f3b15af9d327"
+        },
+        ".transparent.rgba": {
+          "path": "corpus/generated/font_directory/literal-73.transparent.rgba",
+          "sha256": "2997a22034fde080ef367dab59d6b87dae28520149d64511f30846941050fe0d"
+        },
+        ".white.rgba": {
+          "path": "corpus/generated/font_directory/literal-73.white.rgba",
+          "sha256": "41569c50f2e6d5b827006dec93bc64e736659b543f0a0c2e42f904db94f8692a"
+        }
+      },
+      "width": 65,
+      "height": 65,
+      "dpi": 73,
+      "tolerance": 0
+    },
+    {
+      "id": "font_directory/literal-144",
+      "kind": "vector",
+      "description": "Literal blue backdrop and two black rectangle glyphs; exact area at the CropBox transform",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".ppm": {
+          "path": "corpus/generated/font_directory/literal-144.ppm",
+          "sha256": "1b9ac7736a2ad203d964ad6be4cd4473a672718ce7807ddbbe164d0a0a193676"
+        },
+        ".transparent.rgba": {
+          "path": "corpus/generated/font_directory/literal-144.transparent.rgba",
+          "sha256": "99cca1d4369b8727f943a26f8633e799b23efea6d56aee445466754eaace33a3"
+        },
+        ".white.rgba": {
+          "path": "corpus/generated/font_directory/literal-144.white.rgba",
+          "sha256": "85c3915a64e73ab80ec73c27a2cb4de7e966a376ddb04de469a7fa74d0b0753f"
+        }
+      },
+      "width": 128,
+      "height": 128,
+      "dpi": 144,
+      "tolerance": 0
+    },
+    {
+      "id": "font_directory/ttf-valid",
+      "kind": "vector",
+      "description": "Conforming baseline control; no new repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-valid.contract.json",
+          "sha256": "cebde3b881f27940d9f1a5c2c7f4b4f6f501317dbd93e73930a6364d1e9f2c08"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-valid.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-valid.font",
+          "sha256": "b61da2af3c508e2a6d3c59d7b4326407f83e50c6eb2410edb8ac76b961bfc503"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-valid.pdf",
+          "sha256": "a84ba373b76148bd6c11ba5b1bbd22741601baa233f2d3daa27f440a3c206741"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "rendered",
+      "strict": {
+        "status": "rendered"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "rendered"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "rendered",
+            "diagnostics": []
+          },
+          "render": {
+            "status": "rendered",
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "rendered",
+            "diagnostics": []
+          },
+          "render": {
+            "status": "rendered",
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-count-plus-one",
+      "kind": "vector",
+      "description": "Only numTables bytes differ from valid program; all glyph/table/data bytes unchanged",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-count-plus-one.contract.json",
+          "sha256": "975c20e7edb1b4ce6b6e4f556600194389f8e195e3178c8cb7ae1a4cc4523a0d"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-count-plus-one.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-count-plus-one.font",
+          "sha256": "11720568f35a5f5076ee862f0928af0e09542ed45b85fa46ba0e3874991a12a7"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-count-plus-one.pdf",
+          "sha256": "0265c4f39fdc7eefeeb623ebb81ccef2bbc629c1390e150743648d4e1bf5d961"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "rendered",
+      "strict": {
+        "status": "refused",
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "buffer_position": 52,
+        "repair": null
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused",
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "object": [
+          7,
+          0
+        ],
+        "stream_position": 52,
+        "repair": "font.embedded-unusable"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "rendered",
+            "diagnostics": [
+              "font.sfnt-directory-count"
+            ]
+          },
+          "render": {
+            "status": "rendered",
+            "diagnostics": [
+              "font.sfnt-directory-count"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-count-plus-two",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-count-plus-two.contract.json",
+          "sha256": "6043f86a88c33391ca978f5c42de1c2d138466a6489d085860c997e5e3508351"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-count-plus-two.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-count-plus-two.font",
+          "sha256": "f7b57602d428846f025b6e2a8feffa44e0e4b9c32715f0b4e018b5472da5f116"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-count-plus-two.pdf",
+          "sha256": "acd1cb4976ed9a8ed53e367ba384009c97780ae20e2126d556fa3991b1f97d3a"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-first-offset-inside-record",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-first-offset-inside-record.contract.json",
+          "sha256": "ceb722575c989b9dd8f0205f4ad30b22e0bc06017fcc67280cab9b7b78ce7ae4"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-first-offset-inside-record.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-first-offset-inside-record.font",
+          "sha256": "48a869aac02a6323c8d86c9dba2ede68680773e17024635a1515dc144e30c007"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-first-offset-inside-record.pdf",
+          "sha256": "13706d9d505c1059437fac6c8fd1d13abd0b2d76a193e32733de8ed95a55c08c"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-duplicate-prefix-tag",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-duplicate-prefix-tag.contract.json",
+          "sha256": "908fd875e3507a20954affa55e4c4ba8e6594070ac81158240d101e725609c88"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-duplicate-prefix-tag.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-duplicate-prefix-tag.font",
+          "sha256": "a941c8c46424872c13b3d74d630687cce0ad00fc1650e9206996a7e1c74671a7"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-duplicate-prefix-tag.pdf",
+          "sha256": "eaaf4b14562d3332312143fa0084239e553efce388b31d9f741f1909ffe6f3c2"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "duplicate sfnt table",
+              "position": 44,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "duplicate sfnt table",
+              "position": 44,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "duplicate sfnt table",
+              "position": 44,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "duplicate sfnt table",
+              "position": 44,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-wrong-first-payload-header",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-wrong-first-payload-header.contract.json",
+          "sha256": "968711ecf71ca6e1d086f7e270b9f42c4a8d849c30ebaa46648fa7b49c404895"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-wrong-first-payload-header.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-wrong-first-payload-header.font",
+          "sha256": "1915f43e8ee89d6aabc7019eed67166cba0d997b7813ec8975cc8f95b9bf6cc9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-wrong-first-payload-header.pdf",
+          "sha256": "ced17c9d9e83de3835f21a969c276cf18b1af426c61c3f2bc056d108c7f8af1b"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-prefix-out-of-bounds",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-prefix-out-of-bounds.contract.json",
+          "sha256": "2c09525b4861128c710fa5b420a23d7556b1f53889db53ac67954b74ef2cd606"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-prefix-out-of-bounds.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-prefix-out-of-bounds.font",
+          "sha256": "c68edb7226b6eada8881ed210f8aad7bb2a0ece8401223907e84ab70a296b758"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-prefix-out-of-bounds.pdf",
+          "sha256": "174d5b77f884f8e0b9a3ead84c92ac28bca913f9dd27f8674bae528a3a6be633"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-unknown-signature",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-unknown-signature.contract.json",
+          "sha256": "4bd7229fc8d79bb63f09e59db34d5495a395c4a69b585eefe827546b0e4bc99d"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-unknown-signature.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-unknown-signature.font",
+          "sha256": "f3fc6d428b0075bc0d9fd5da4dd9bc827cbcec38d0fc3cf9a142f43e92215ebe"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-unknown-signature.pdf",
+          "sha256": "97791c5510484a04cd13bf008fcab1c69c97e6e7f5dd2ca0e1c2a236048314db"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-truncated-extra-header",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-truncated-extra-header.contract.json",
+          "sha256": "38e24b7d3f19934d2c266cfd1a093ff5e719ed4d47804c94dd4b6ca16eac482b"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-truncated-extra-header.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-truncated-extra-header.font",
+          "sha256": "55bb1aa170436ecbffdb5258e825897c38f64279ca26741ffe0f293dfe5535e8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-truncated-extra-header.pdf",
+          "sha256": "10bc2de9c9edffdbc94a88c91fa567c62b75aee10b9bed6e9be7028940252521"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-valid",
+      "kind": "vector",
+      "description": "Conforming baseline control; no new repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-valid.contract.json",
+          "sha256": "490e65b0d5afc122eddb658c4c07cfb84ef608f0ad429f179af4560d28b279c6"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-valid.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-valid.font",
+          "sha256": "3ab0f74181d74230b7be58b9864944c395b539f6b1fc1ded18d374b6182f63a5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-valid.pdf",
+          "sha256": "5ea9d44363d85fbb4480b9652449d384c74dccbb77c806d7ce3b4335f860d76d"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "rendered",
+      "strict": {
+        "status": "rendered"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "rendered"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "rendered",
+            "diagnostics": []
+          },
+          "render": {
+            "status": "rendered",
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "rendered",
+            "diagnostics": []
+          },
+          "render": {
+            "status": "rendered",
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-count-plus-one",
+      "kind": "vector",
+      "description": "Only numTables bytes differ from valid program; all glyph/table/data bytes unchanged",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-count-plus-one.contract.json",
+          "sha256": "4ebe82b37b0effc1beb6f26dd3c5cbf80c7ea105aeee0948161f05a93e38945a"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-count-plus-one.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-count-plus-one.font",
+          "sha256": "8dd1e5c26e267895cdd2030a4accbcbe55374d0339965f7bc150364bfb3ad577"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-count-plus-one.pdf",
+          "sha256": "bdce21578822eca780410823cf717df58f73175b0bfce60957b102160842c480"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "rendered",
+      "strict": {
+        "status": "refused",
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "buffer_position": 20,
+        "repair": null
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused",
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "object": [
+          7,
+          0
+        ],
+        "stream_position": 20,
+        "repair": "font.embedded-unusable"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "rendered",
+            "diagnostics": [
+              "font.sfnt-directory-count"
+            ]
+          },
+          "render": {
+            "status": "rendered",
+            "diagnostics": [
+              "font.sfnt-directory-count"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-count-plus-two",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-count-plus-two.contract.json",
+          "sha256": "27097dc8a5db56049a81d1fc2efd6d39110f389cd909b2589e7b2393a4e4f322"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-count-plus-two.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-count-plus-two.font",
+          "sha256": "69a38ade4f6b81f5460c0a3eb4d6d54854c27df199243ca44f3cce182bba1202"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-count-plus-two.pdf",
+          "sha256": "0d16419b322d7f7023b1eb396d545d4067209ef1fe136e58eb955f0b471db9a7"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-first-offset-inside-record",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-first-offset-inside-record.contract.json",
+          "sha256": "e89d7fa035c82ceb9c785c3d92644051b8f9a222270d91b015369d30bd5f3b83"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-first-offset-inside-record.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-first-offset-inside-record.font",
+          "sha256": "21826cc97e877129d70ef09617f4d39ac294e2773214c0fe294a2714bbf600a4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-first-offset-inside-record.pdf",
+          "sha256": "b175ba811d2e777978d8d3f713c1e25cf9e792992040a8e17aa4c9954269028a"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-duplicate-prefix-tag",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-duplicate-prefix-tag.contract.json",
+          "sha256": "2565d830d426cd0562b98696ef59f6801da5fdb25235e128e9e9c2ab6d284f4f"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-duplicate-prefix-tag.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-duplicate-prefix-tag.font",
+          "sha256": "bf7ce40d6ba13af073af83b4f437c05c11e18ccc18677b09dfc23ed91862aa35"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-duplicate-prefix-tag.pdf",
+          "sha256": "d679bc555e04425666ae8ef4f7aff6ccdbbd306baad864bdbba5f3fb85beda58"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-wrong-first-payload-header",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-wrong-first-payload-header.contract.json",
+          "sha256": "77a7986ae856e1ab462a8e1bb0d2d3b35a7cedf9964baa08f3944c735eac16ad"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-wrong-first-payload-header.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-wrong-first-payload-header.font",
+          "sha256": "45a232f6723b59174b09b1901a707eaa74ba7fef340279804d036f58ddeeb9db"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-wrong-first-payload-header.pdf",
+          "sha256": "6467b62980100f736e974ae1efa787f3eff684b732cd6d7c9baddbe87d7155a8"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-prefix-out-of-bounds",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-prefix-out-of-bounds.contract.json",
+          "sha256": "139e3d39ec50a2f8039eaec639ad8b618df64343c273ee93a757e091f36fa0ad"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-prefix-out-of-bounds.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-prefix-out-of-bounds.font",
+          "sha256": "beb6e68c71af57e7fea3fe3d9c6f32a7a6521eb1b1825f465b1e051fc6527b44"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-prefix-out-of-bounds.pdf",
+          "sha256": "d5b07add6b3af711f483d0c49ec47fe2c1c4cea1a106b21e937e07d881376178"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-unknown-signature",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-unknown-signature.contract.json",
+          "sha256": "6733e797ae4f180925ecfb86779a607fde4e2235367d5e99ddced36d39d4d7ef"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-unknown-signature.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-unknown-signature.font",
+          "sha256": "b8ef111455bdff188f52b2f4811c18f723524eabb9b58cfa5f4c04a4472b51ac"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-unknown-signature.pdf",
+          "sha256": "38d59835ffc9b23854d78f17e385486b96420f4c83d881f04fbc7238d0f1204d"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-truncated-extra-header",
+      "kind": "vector",
+      "description": "Must decline count proof; no output and no new count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-truncated-extra-header.contract.json",
+          "sha256": "97b6aea2b43765667ef3fab7d9f244c8bfd0084b2ce7fe613bbe4bf150a6c59b"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-truncated-extra-header.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-truncated-extra-header.font",
+          "sha256": "7ea8a2d5edb5b6e2f12da9f78a2eb79b6281309836083348cb8f5008dfb5d553"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-truncated-extra-header.pdf",
+          "sha256": "cb3a8cc43ac82061739bceb1bff86170b3439598663b70baab03269012f2c12c"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-valid",
+      "kind": "vector",
+      "description": "Conforming name-keyed baseline control",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-valid.contract.json",
+          "sha256": "e99ecef67c17bc1bd2a4de52123b8912d4b557c5419d7106ac71ee34501b96e3"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-valid.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-valid.font",
+          "sha256": "4e5b3f2354a103fa55ab95e26310dc2dbf68137cdbe0dc836816fe27bec377de"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-valid.pdf",
+          "sha256": "b00b149110bd3f2dd881868e43a9686597690dcb4a2bf059aa1651df5db21758"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "rendered",
+      "strict": {
+        "status": "rendered"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "rendered"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "rendered",
+            "diagnostics": []
+          },
+          "render": {
+            "status": "rendered",
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "rendered",
+            "diagnostics": []
+          },
+          "render": {
+            "status": "rendered",
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-count-plus-one",
+      "kind": "vector",
+      "description": "Candidate must use embeddedglyphs; oldRepair generic substitution is baseline characterization only",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-count-plus-one.contract.json",
+          "sha256": "71d272a938656e3bffef1e77f2a31ec1eb854b6a590c0d2865357f859c4c616c"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-count-plus-one.expect",
+          "sha256": "42d5da5714adc1a4ded11482695a8d52aa849f73951807b48f381b3503453341"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-count-plus-one.font",
+          "sha256": "f82766461ee39406f05ad6d2a075ac400c191b63c91bd57cbe8c6ce24ef3f574"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-count-plus-one.pdf",
+          "sha256": "c1ab0441fd7b83322a772c1852920b7e8a8c74d9d19044386487ae990d3eba87"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "rendered",
+      "strict": {
+        "status": "refused",
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "buffer_position": 20,
+        "repair": null
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "status": "refused",
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "object": [
+          7,
+          0
+        ],
+        "stream_position": 20,
+        "repair": "font.embedded-unusable"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "rendered",
+            "diagnostics": [
+              "font.sfnt-directory-count"
+            ]
+          },
+          "render": {
+            "status": "rendered",
+            "diagnostics": [
+              "font.sfnt-directory-count"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-genuine-table-overlap",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-genuine-table-overlap.contract.json",
+          "sha256": "15f3a77b59e9b900bea86e212c203dc07a2617c423277ec10b33a3b4b44cad53"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-genuine-table-overlap.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-genuine-table-overlap.font",
+          "sha256": "c4bcc457dbcc2accc5fb948b2a635250180d9bf0447a672bb795cc9281481a88"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-genuine-table-overlap.pdf",
+          "sha256": "019656518dd6cb56f9c41479791fa9228138379df0076277f1511f675da98f46"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 52,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 52,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-valid-looking-extra-tag",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-valid-looking-extra-tag.contract.json",
+          "sha256": "7fe88b2e6f82ff03ee447e5e5f9966f339e65a0d34d8a27462f8cd24a9f60d7a"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-valid-looking-extra-tag.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-valid-looking-extra-tag.font",
+          "sha256": "b57e29ee971b572e82aca2a299bd428b45acc5969edc8e569f2b74cb0e35414f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-valid-looking-extra-tag.pdf",
+          "sha256": "c2fac0d905183b5cc8a22986c01e95ccf5b5ec3c7c6c7d2867794777e7924af6"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 52,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 52,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-first-payload-gap",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-first-payload-gap.contract.json",
+          "sha256": "030b88edee24ef625bd010a645921d845fa81ff8e2dd0dcd5db1140d7fb61e5c"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-first-payload-gap.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-first-payload-gap.font",
+          "sha256": "d0d868d78e8e7aaeedfb59c1ad81c3d5fd8f801490b29e448585265e54f9216b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-first-payload-gap.pdf",
+          "sha256": "c7d48b5ebf6ef41f63e5e492375d6d77ef88e3e201c92b98908a2fc18ffee7bf"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 52,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 52,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 52,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-missing-head",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-missing-head.contract.json",
+          "sha256": "486115296c2758e3986b148749d523fbdead30bb69645b718a39c6e68a978ceb"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-missing-head.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-missing-head.font",
+          "sha256": "bd68d92162a5c4c44af9a348eba79d2e2b72764485e18015c2fa1e003aaf1079"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-missing-head.pdf",
+          "sha256": "9181a40602fea3c5a44447da85948d955b4f7aac53fcdcf818ee2158bb9536ab"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 132,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 132,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 132,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 132,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 132,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 132,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-missing-glyf",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-missing-glyf.contract.json",
+          "sha256": "6d77a4a3416a0bc286c59bc05e1ea46b52c320737b5d11375250e3564a387334"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-missing-glyf.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-missing-glyf.font",
+          "sha256": "0f0bf8795ea0a14fe6621dcab4d5dd2358aad1f7167857463bc16bb67e31bfac"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-missing-glyf.pdf",
+          "sha256": "c8c3ca2627939a2643209db8146eac55f9c4c4493f3d4fac92cd0fe3e135e451"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 36,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 36,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 36,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 36,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 36,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 36,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-mixed-cff",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-mixed-cff.contract.json",
+          "sha256": "61036ab4e4ea580f8770e68a6d1a9ed6cacef721c95cac249de179c568440b32"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-mixed-cff.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-mixed-cff.font",
+          "sha256": "911b3da5f55e6c547390197c86647f5664e5164d81f31e05dcbfcfbd08418bfd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-mixed-cff.pdf",
+          "sha256": "125a7398ec5e1b169ed7cf85051014d663c71133e1f7658bab7aee04dfb7dc4f"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 68,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 68,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 68,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 68,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 68,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 68,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/ttf-ttc-outer",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/ttf-ttc-outer.contract.json",
+          "sha256": "8dc817eb1ca917ef40c6743a48f545f7ae01b494e8f36d97a613f7aca036c13d"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/ttf-ttc-outer.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/ttf-ttc-outer.font",
+          "sha256": "756e892ccd7a860d84da76345eaf0174ffe81214d65ba84f896cb422c6d1a94a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/ttf-ttc-outer.pdf",
+          "sha256": "6861aa7a8d5b43164667dcaa27d621c8758831fe7540f546133ebdf110af0183"
+        }
+      },
+      "format": "truetype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 68,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "font collection name not found",
+        "position": 12,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 68,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "font collection name not found",
+              "position": 12,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 68,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "font collection name not found",
+              "position": 12,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-genuine-table-overlap",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-genuine-table-overlap.contract.json",
+          "sha256": "23edb77678b3661eab614c96021d6321c8faacf9591814d54ff8287c8595674b"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-genuine-table-overlap.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-genuine-table-overlap.font",
+          "sha256": "20cc11f12295f90adc1a8c653e07ca436b77de5cd67ce2bb76a5df564e269016"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-genuine-table-overlap.pdf",
+          "sha256": "58a738757c3756b4cabbf3c3ebf09dd2ffa2af57011a6a4fe1f5a4af71244eee"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 20,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 20,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-valid-looking-extra-tag",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-valid-looking-extra-tag.contract.json",
+          "sha256": "e8f56765d04e2cb5c3cef64e587987ab3eb3412188b6fc50829b58c99ba231b5"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-valid-looking-extra-tag.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-valid-looking-extra-tag.font",
+          "sha256": "2a6ab2c8122a81c3bc64697c7c9ea9e26e9e4718592eb1a7df475d4ba0897aaf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-valid-looking-extra-tag.pdf",
+          "sha256": "364c04109d95263ae476c40e995588eab786bed65e3371e35bf5066d6ad7f968"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 20,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 20,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-first-payload-gap",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-first-payload-gap.contract.json",
+          "sha256": "de3e8bdd1cc219dab9f79d59149bc5049e27c9ace676d708c6ccc189eac44705"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-first-payload-gap.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-first-payload-gap.font",
+          "sha256": "f4e5ebdd80a3c99b670be9c2800ae78b2bc388b1b392d2224659b279500e5ce4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-first-payload-gap.pdf",
+          "sha256": "646c68faab6fc615ac994d1f7f0ec30bc98e2dd7cb9de673465eac8b09a7bf34"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 20,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 20,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-missing-cff",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-missing-cff.contract.json",
+          "sha256": "51bbc3d3b8c15c20cf03d408c0ffd2d891b7f2f40ee04dc1aebed93e52ddcc8d"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-missing-cff.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-missing-cff.font",
+          "sha256": "b666e9edd8eec768dcbc0b325fdd9f9634a6ff1592405de5fb044c8458b5db2f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-missing-cff.pdf",
+          "sha256": "2d4ab2ab84947ca5cdf007c4614d522cc2c9f70ee66d0f5381d8ef2041442573"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 20,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 20,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-cff2",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-cff2.contract.json",
+          "sha256": "5afc05bb419134ac4d869a55a88a2e982543dd69de03b2f66f3cfdf11cfa3478"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-cff2.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-cff2.font",
+          "sha256": "1006f9c93482c17b27d4cbace9d1fd213e1ef9fd72528322dc7aee16180da672"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-cff2.pdf",
+          "sha256": "00ac57ce1852bef855a759072bb63dd81baca510b4637a9703d6fbb59cb680cf"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 20,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 20,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-mixed-glyf",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-mixed-glyf.contract.json",
+          "sha256": "1967d2022a1724eabf38edbde4e7e205a540093ed678ac752ab558de9547a9a0"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-mixed-glyf.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-mixed-glyf.font",
+          "sha256": "fadc0df600b8bc4833ce52a9772b9f12c3ad903f842dd4a332b574f7e8aeecdf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-mixed-glyf.pdf",
+          "sha256": "178bfa8dbf8194ba4c7f25b3827ed9601486f88e1651aed140caec9afde8ee7f"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 20,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "position": 20,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 20,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    },
+    {
+      "id": "font_directory/cff-cid-ttc-outer",
+      "kind": "vector",
+      "description": "Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair",
+      "requirements": [
+        "font-sfnt-directory-count"
+      ],
+      "files": {
+        ".contract.json": {
+          "path": "corpus/generated/font_directory/cff-cid-ttc-outer.contract.json",
+          "sha256": "d1bd68086aba8f55db5fe56968690dfb91e4f538bc064b8ed4980963a029425e"
+        },
+        ".expect": {
+          "path": "corpus/generated/font_directory/cff-cid-ttc-outer.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font_directory/cff-cid-ttc-outer.font",
+          "sha256": "f4d56545e04a7e3eff170a7d056869c323acc15ce996b9703b58544b921d37e5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font_directory/cff-cid-ttc-outer.pdf",
+          "sha256": "498a0962e04dda27861632a46f59585978517a30095b947968bd38039d25c9bb"
+        }
+      },
+      "format": "opentype",
+      "explicit_repair_api": true,
+      "legacy_strict_first_scan_discovery": false,
+      "expected_repair_render": "refused",
+      "strict": {
+        "kind": "Syntax",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
+        "diagnostics": [],
+        "buffer_position": 36,
+        "status": "refused"
+      },
+      "strict_scope": "standalone-font-program",
+      "pdf_strict": {
+        "kind": "Syntax",
+        "message": "font collection name not found",
+        "position": 12,
+        "repair": "font.embedded-unusable",
+        "diagnostics": [],
+        "object": [
+          7,
+          0
+        ],
+        "status": "refused"
+      },
+      "portable_contracts": {
+        "strict": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 36,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "font collection name not found",
+              "position": 12,
+              "repair": "font.embedded-unusable",
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        },
+        "repair": {
+          "font": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "sfnt table overlaps directory",
+              "position": 36,
+              "repair": null,
+              "diagnostics": [],
+              "object": null
+            },
+            "diagnostics": []
+          },
+          "render": {
+            "status": "refused",
+            "error": {
+              "kind": "Syntax",
+              "message": "font collection name not found",
+              "position": 12,
+              "repair": null,
+              "diagnostics": [],
+              "object": [
+                7,
+                0
+              ]
+            },
+            "diagnostics": []
+          }
+        }
+      }
+    }
+  ]
+}
