@@ -144,13 +144,15 @@ def recovery_cases():
                repairs=('content.operands-unused',), strict_valid=False,
                oracle=opaque_rectangles(8, 8, full),
                extra={'api': 'compile_page', 'scan_recovery': 'repair',
+                      'mode_errors': {'strict': {'kind': 'Syntax', 'feature': None, 'repair': None,
+                                                'message': 'content sequence ends with unfinished state'}},
                       'strict_error_text': strict_error(
                           'content sequence ends with unfinished state', len(unused))})
     for label, command in [('compatibility', b'BX 1 2'), ('text', b'BT 1 2'),
                            ('path', b'0 0 m 1 2'), ('clip', b'0 0 8 8 re W 1 2')]:
         yield Case('unused-operands-open-' + label, page(command), OPEN,
                    ('content-reported-recovery',), 'Unused operands cannot close unfinished state',
-                   strict_valid=False, extra={'api': 'compile_page', 'render_error': 'Syntax'})
+                   extra={'api': 'compile_page', 'render_error': 'Syntax'})
     # Malformed operands get the object parser's repairs, as document objects
     # do, read in place or through the parser; its reference repairs stay
     # errors, since content operands are direct (7.8.2).
@@ -159,7 +161,11 @@ def recovery_cases():
                            ('hex-digit', b'/Span << /Alt <4!1> >> BDC ' + red + b' EMC'),
                            ('name-escape', b'/Span#zz BMC ' + red + b' EMC')]:
         tag = 'syntax.' + label.removesuffix('-array')
-        extra = {'api': 'compile_page', 'scan_recovery': 'repair'}
+        message = ('invalid name escape retained as a literal hash' if label == 'name-escape'
+                   else 'invalid hexadecimal string' if label == 'hex-digit' else 'invalid number')
+        extra = {'api': 'compile_page', 'scan_recovery': 'repair',
+                 'mode_errors': {'strict': {'kind': 'Syntax', 'feature': None, 'message': message,
+                                           'repair': tag if label == 'name-escape' else None}}}
         if label.startswith('number-sign'):
             extra['strict_error_text'] = strict_error('invalid number', command.index(b'-'))
         elif label == 'hex-digit':
