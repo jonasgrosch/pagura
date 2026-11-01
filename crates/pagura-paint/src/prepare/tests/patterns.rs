@@ -61,6 +61,17 @@ fn opaque_cover_composites_outer_alpha_once() {
 }
 
 #[test]
+fn opaque_cover_in_a_folded_group_applies_each_alpha_once() {
+    let mut b = opaque_cover_scene(0.0, 0.5, 1);
+    let children = std::mem::take(&mut b.scene.groups[0].children);
+    let half = b.state(|state| state.alpha = 0.5);
+    let group = b.transparency(GroupId(0), GroupAttributes::default(), mark(half));
+    b.scene.groups[group.index()].children = children;
+    // Half-opacity black in a half-opacity group covers white by one quarter.
+    assert_eq!(b.render_page(), [191, 191, 191, 255].repeat(64));
+}
+
+#[test]
 fn opaque_cover_preserves_nonblack_and_translucent_cell_limits() {
     let mut b = opaque_cover_scene(0.25, 1.0, 1);
     let request = b.request(b.page(), 3);

@@ -81,6 +81,7 @@ impl Planner<'_> {
         inner.crop = false;
         inner.bounds = bounds;
         inner.plain = false;
+        inner.alpha = 1.0;
         inner.records = false;
         inner.depth += 1;
         // This replaces a cell walk, which ordinarily checks the same depth.
@@ -298,7 +299,7 @@ impl Planner<'_> {
         }
         self.use_mask(mask, covered.bounds, budget)?;
         let compositing = Compositing {
-            alpha: state.alpha,
+            alpha: state.alpha * scope.alpha,
             blend: state.blend,
             alpha_is_shape: state.alpha_is_shape,
             mask,

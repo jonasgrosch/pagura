@@ -107,6 +107,7 @@ impl Planner<'_> {
             bounds: culling,
             layout,
             plain: false,
+            alpha: 1.0,
             records: false,
             separated: false,
             masked: true,
