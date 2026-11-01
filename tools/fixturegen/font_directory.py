@@ -8,6 +8,7 @@ import json
 import struct
 from dataclasses import dataclass
 from fractions import Fraction as F
+from typing import Any
 from .font import truetype, cff_font
 from .model import Vector
 from .pdf import document, stream
@@ -110,7 +111,7 @@ def make(kind,fault):
   inner=serialize(bytes(b),rows,n+1)
   return b'ttcf'+struct.pack('>III',0x10000,1,16)+inner
  return bytes(b)
-def original_contract(b,repair,operation='font'):
+def original_contract(b,repair,operation='font') -> dict[str, Any]:
  # Current-base TTC dispatch precedes sfnt parsing. These controls keep the
  # exact parent refusal; the standalone count proof never applies to TTC.
  base=0
@@ -125,6 +126,9 @@ def original_contract(b,repair,operation='font'):
    # requires a unique original FontName/BaseFont match, never face zero.
    return dict(kind='Syntax',message='font collection name not found',position=12,repair=None,diagnostics=[])
  n=int.from_bytes(b[base+4:base+6],'big');end=base+12+16*n;diags=[];seen=set()
+ # The shared parent reader frames the complete record slice before walking
+ # records, so truncated claimed headers keep its earlier exact refusal.
+ if len(b)<end:return dict(kind='Syntax',message='truncated font data',position=base+12,repair=None,diagnostics=[])
  for i in range(n):
   tag,_,start,size=struct.unpack_from('>4sIII',b,base+12+16*i);at=base+12+16*i+8
   assert size<=256*1024**2

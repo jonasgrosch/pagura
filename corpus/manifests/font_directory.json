@@ -827,7 +827,7 @@
       "files": {
         ".contract.json": {
           "path": "corpus/generated/font_directory/ttf-truncated-extra-header.contract.json",
-          "sha256": "a081f9bf96826ed70ea4be1bba9bfb58a00163fc0f6ebda62f32306d19a482c1"
+          "sha256": "38e24b7d3f19934d2c266cfd1a093ff5e719ed4d47804c94dd4b6ca16eac482b"
         },
         ".expect": {
           "path": "corpus/generated/font_directory/ttf-truncated-extra-header.expect",
@@ -859,9 +859,9 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table exceeds available data",
-              "position": 20,
-              "repair": "font.table-bounds",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": null,
               "diagnostics": [],
               "object": null
             },
@@ -871,9 +871,9 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table exceeds available data",
-              "position": 20,
-              "repair": "font.table-bounds",
+              "message": "truncated font data",
+              "position": 12,
+              "repair": "font.embedded-unusable",
               "diagnostics": [],
               "object": [
                 7,
@@ -888,36 +888,28 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 52,
+              "message": "truncated font data",
+              "position": 12,
               "repair": null,
-              "diagnostics": [
-                "font.table-bounds"
-              ],
+              "diagnostics": [],
               "object": null
             },
-            "diagnostics": [
-              "font.table-bounds"
-            ]
+            "diagnostics": []
           },
           "render": {
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 52,
+              "message": "truncated font data",
+              "position": 12,
               "repair": null,
-              "diagnostics": [
-                "font.table-bounds"
-              ],
+              "diagnostics": [],
               "object": [
                 7,
                 0
               ]
             },
-            "diagnostics": [
-              "font.table-bounds"
-            ]
+            "diagnostics": []
           }
         }
       }
@@ -1667,7 +1659,7 @@
       "files": {
         ".contract.json": {
           "path": "corpus/generated/font_directory/cff-cid-truncated-extra-header.contract.json",
-          "sha256": "d3f4beabef29d28d3d7f303c611f9e50933165328fca0c967f745d40ec762cdc"
+          "sha256": "97b6aea2b43765667ef3fab7d9f244c8bfd0084b2ce7fe613bbe4bf150a6c59b"
         },
         ".expect": {
           "path": "corpus/generated/font_directory/cff-cid-truncated-extra-header.expect",
@@ -1699,8 +1691,8 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 20,
+              "message": "truncated font data",
+              "position": 12,
               "repair": null,
               "diagnostics": [],
               "object": null
@@ -1711,8 +1703,8 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 20,
+              "message": "truncated font data",
+              "position": 12,
               "repair": "font.embedded-unusable",
               "diagnostics": [],
               "object": [
@@ -1728,8 +1720,8 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 20,
+              "message": "truncated font data",
+              "position": 12,
               "repair": null,
               "diagnostics": [],
               "object": null
@@ -1740,8 +1732,8 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 20,
+              "message": "truncated font data",
+              "position": 12,
               "repair": null,
               "diagnostics": [],
               "object": [
