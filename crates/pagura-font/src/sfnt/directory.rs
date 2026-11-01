@@ -115,11 +115,11 @@ pub(super) fn parse(
     header_end: usize,
     work: &mut Work<'_>,
 ) -> Result<Directory> {
-    let records = records(data, offset, work)?;
-    let count = (records.range.len() - OFFSET_TABLE) / TABLE_RECORD;
-    let signature = records.signature;
+    let entries = records(data, offset, work)?;
+    let count = (entries.range.len() - OFFSET_TABLE) / TABLE_RECORD;
+    let signature = entries.signature;
     work.entries(count, Position::Buffer(offset))?;
-    match read_tables(data, records, header_end, work) {
+    match read_tables(data, entries, header_end, work) {
         Ok(directory) => Ok(directory),
         Err(error)
             if offset == 0
