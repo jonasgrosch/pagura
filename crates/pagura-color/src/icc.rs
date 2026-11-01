@@ -259,6 +259,18 @@ impl Profile {
         cie::linear_srgb(self.relative(xyz, intent))
     }
 
+    /// [`Self::linear_curved`] of a matrix/TRC model resolved once: its
+    /// matrix and, under the absolute intent, the factor each XYZ value is
+    /// scaled by ([`Self::relative`]). `None` for other transforms.
+    pub(crate) fn curved_matrix(&self, intent: Intent) -> Option<(cie::Matrix, Option<[f64; 3]>)> {
+        let Ok(Forward::Matrix { matrix, .. }) = self.forward(intent) else {
+            return None;
+        };
+        let scale =
+            (intent == Intent::Absolute).then(|| std::array::from_fn(|i| self.white[i] / D50[i]));
+        Some((*matrix, scale))
+    }
+
     /// [`Self::linear_total`] of several colours, `count` components each,
     /// into `out`, three values each. A matrix/TRC model is applied a stage
     /// at a time: each curve over every colour, then the matrices colour by

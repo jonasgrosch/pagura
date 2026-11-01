@@ -160,7 +160,8 @@ pub(super) trait Rows {
 /// Runs of background (`false`) and other samples of a row.
 pub(super) type Runs = Vec<(usize, usize, bool)>;
 
-/// Source rows kept between spans, by row, over the samples they hold.
+/// Source rows kept between spans, by row, over the samples they hold,
+/// and by how their values were made ([`Self::select`]).
 #[derive(Debug)]
 pub(super) struct RowCache<V> {
     entries: Vec<Kept<V>>,
@@ -180,16 +181,32 @@ impl<V> Default for RowCache<V> {
     }
 }
 
-/// One kept row: values of samples `first..end` of row `row`.
+/// One kept row: values of samples `first..end` of the row `row` keys.
 #[derive(Debug)]
 struct Kept<V> {
-    row: usize,
+    /// The row's index, below 2^32 (images are at most `u32::MAX` rows
+    /// high), where its values were made as the cache's rows are read now;
+    /// otherwise with bits above that no index has ([`RowCache::select`]).
+    /// `u64::MAX` for none.
+    row: u64,
     first: usize,
     end: usize,
     values: Vec<V>,
 }
 
 impl<V: Copy + Default> RowCache<V> {
+    /// Reads rows made the `to` way from now on, where rows were read
+    /// the `from` way. A kept row's key moves by the bits of the two ways
+    /// above its index ([`Kept::row`]), so rows made otherwise stay, out of
+    /// every lookup's reach, and serve again once their way returns;
+    /// lookups compare indices alone.
+    fn select(&mut self, from: u8, to: u8) {
+        let flip = u64::from(from ^ to) << 32;
+        for kept in &mut self.entries {
+            kept.row ^= flip;
+        }
+    }
+
     /// The `n` values per sample of samples `first..end` of row `y`: from a
     /// kept row that holds them, else filled by `fill` (which returns
     /// whether it could) into a new or the next replaced entry.
@@ -199,21 +216,23 @@ impl<V: Copy + Default> RowCache<V> {
         n: usize,
         fill: impl FnOnce(&mut [V], &mut Runs) -> bool,
     ) -> &[V] {
+        debug_assert!(u32::try_from(y).is_ok(), "row {y} of an image");
+        let row = u64::try_from(y).unwrap_or(u64::MAX);
         let found = self
             .entries
             .iter()
-            .position(|kept| kept.row == y && kept.first <= first && end <= kept.end);
+            .position(|kept| kept.row == row && kept.first <= first && end <= kept.end);
         let index = found.unwrap_or_else(|| {
             let index = self.next % self.entries.len().max(1);
             self.next = index + 1;
             if let Some(kept) = self.entries.get_mut(index) {
                 // Filling writes every value.
                 if fill(grown(&mut kept.values, (end - first) * n), &mut self.runs) {
-                    (kept.row, kept.first, kept.end) = (y, first, end);
+                    (kept.row, kept.first, kept.end) = (row, first, end);
                 } else {
                     // A row that cannot be read is not kept.
                     kept.values.clear();
-                    (kept.row, kept.first, kept.end) = (usize::MAX, 0, 0);
+                    (kept.row, kept.first, kept.end) = (u64::MAX, 0, 0);
                 }
             }
             index
@@ -331,7 +350,7 @@ impl Layout {
         let mut entries = allocate(self.rows)?;
         for _ in 0..self.rows {
             entries.push(Kept {
-                row: usize::MAX,
+                row: u64::MAX,
                 first: 0,
                 end: 0,
                 values: allocate(source)?,
@@ -376,11 +395,18 @@ impl Scratch {
     pub(super) fn reset(&mut self) {
         fn clear<V>(entries: &mut [Kept<V>]) {
             for kept in entries {
-                kept.row = usize::MAX;
+                kept.row = u64::MAX;
             }
         }
         clear(&mut self.codes.cache.entries);
         clear(&mut self.texels.cache.entries);
+    }
+
+    /// Reads texel rows made the `to` way from now on, where they were
+    /// read the `from` way; rows kept otherwise stay, and serve again when
+    /// their way returns.
+    pub(super) fn select(&mut self, from: u8, to: u8) {
+        self.texels.cache.select(from, to);
     }
 }
 

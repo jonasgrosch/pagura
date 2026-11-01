@@ -21,7 +21,8 @@ mod space;
 
 pub use components::Components;
 pub use convert::{
-    Colorants, Conversion, Converter, Encoder, MAX_CHANNELS, Painted, Process, RgbEncoding, Target,
+    Colorants, Conversion, Converter, CurvedRgb, Encoder, MAX_CHANNELS, Painted, Process,
+    RgbEncoding, Target,
     luminosity,
 };
 pub use function::{

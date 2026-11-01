@@ -126,8 +126,8 @@ fn pixels(prepared: &PreparedScene) -> Vec<u8> {
 /// samples in a matrix/TRC ICC space), followed by an image that must hold
 /// far more (1024×1024 gray samples), prepares at the budget its own storage
 /// needs, without the curve values, and fails one byte below it. The curve
-/// values take only what the page leaves, and the pixels are the same with
-/// and without them.
+/// values, then their RGB conversion, take only what the page leaves, and
+/// the pixels are the same with and without them.
 #[test]
 fn optional_curve_values_never_raise_the_budget_a_page_needs() {
     let mut b = Build::new(96.0, 64.0);
@@ -177,7 +177,15 @@ fn optional_curve_values_never_raise_the_budget_a_page_needs() {
     assert_eq!((held(&tight), tight.charges().render_bytes()), (0, needed));
     let short = b.prepare(&request, &limits(needed - 1)).unwrap_err();
     assert_eq!(short.kind, ErrorKind::Limit);
-    let partial = b.prepare(&request, &limits(needed + optional - 1)).unwrap();
+    // One byte short of both keeps the values alone, and one byte short of
+    // the values keeps neither.
+    let rgb = size_of::<pagura_color::CurvedRgb>();
+    let values = b.prepare(&request, &limits(needed + optional - 1)).unwrap();
+    assert_eq!(held(&values), optional - rgb);
+    let partial = b
+        .prepare(&request, &limits(needed + optional - rgb - 1))
+        .unwrap();
     assert_eq!(held(&partial), 0);
     assert_eq!(pixels(&tight), pixels(&roomy));
+    assert_eq!(pixels(&values), pixels(&roomy));
 }

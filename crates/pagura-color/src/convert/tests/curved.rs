@@ -1,11 +1,12 @@
 //! The per-component first stage of a conversion ([`Converter::curve`])
 //! and the conversion from it ([`Converter::convert_curved`]) give the
-//! whole conversion's values bit for bit.
+//! whole conversion's values bit for bit, and so does the conversion from it
+//! resolved once ([`Converter::curved_rgb`]).
 
 use super::*;
 use crate::function::tests::random::Rng;
 use crate::space::IccSpace;
-use pagura_core::Limits;
+use pagura_core::{Limits, Name};
 
 const D50: [f64; 3] = [0.9642, 1.0, 0.8249];
 const MATRIX: [f64; 9] = [
@@ -74,7 +75,7 @@ fn curve(kind: i32, parameters: &[f64]) -> Vec<u8> {
 /// An ICC v4 display profile of `count` (1 or 3) components with `trc`
 /// for every curve, after ICC.1:2010 7.2–7.4 as the fixture generator
 /// writes it.
-fn profile(count: usize, trc: &[u8]) -> Arc<Profile> {
+fn profile(count: usize, trc: &[u8], white: [f64; 3]) -> Arc<Profile> {
     let mluc = |text: &str| {
         let data: Vec<u8> = text.encode_utf16().flat_map(u16::to_be_bytes).collect();
         let mut tag = b"mluc\0\0\0\0".to_vec();
@@ -87,7 +88,7 @@ fn profile(count: usize, trc: &[u8]) -> Arc<Profile> {
         tag
     };
     let mut tags: Vec<([u8; 4], Vec<u8>)> = vec![
-        (*b"wtpt", xyz(D50)),
+        (*b"wtpt", xyz(white)),
         (*b"cprt", mluc("Public domain test data")),
         (*b"desc", mluc("Independent profile")),
     ];
@@ -103,7 +104,8 @@ fn profile(count: usize, trc: &[u8]) -> Arc<Profile> {
     tags.sort();
     let mut header = vec![0_u8; 128];
     header[8..12].copy_from_slice(&[4, 0x30, 0, 0]);
-    header[12..16].copy_from_slice(b"mntr");
+    // A display's media white is D50; an input device's may be any.
+    header[12..16].copy_from_slice(if white == D50 { b"mntr" } else { b"scnr" });
     header[16..20].copy_from_slice(if count == 3 { b"RGB " } else { b"GRAY" });
     header[20..24].copy_from_slice(b"XYZ ");
     for (i, part) in [2026_u16, 10, 17, 12, 0, 0].into_iter().enumerate() {
@@ -160,6 +162,16 @@ fn level(v: f64) -> u32 {
     truncated | u32::from(f64::from(nearest) != value)
 }
 
+/// The N16 word of `v`, as the paint crate keeps a word.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the rounding under test"
+)]
+fn word(v: f64) -> u32 {
+    (v * 65535.0).round().clamp(0.0, 65535.0) as u32
+}
+
 #[test]
 fn curved_conversions_are_whole_conversions() {
     let curves = [
@@ -191,7 +203,7 @@ fn curved_conversions_are_whole_conversions() {
     let mut checked = 0;
     for trc in &curves {
         for count in [1, 3] {
-            let space = icc(profile(count, trc), count);
+            let space = icc(profile(count, trc, D50), count);
             for process in [Process::Rgb, Process::Gray, Process::Cmyk] {
                 let target = Target::new(process);
                 let converter = Converter::new(&space, &target, &Conversion::default()).unwrap();
@@ -249,5 +261,77 @@ fn curved_conversions_are_whole_conversions() {
         lut,
     ] {
         assert!(converter.curve(0, 0.5).is_none());
+    }
+}
+
+#[test]
+fn resolved_curved_rgb_conversions_are_curved_conversions() {
+    let trc = curve(
+        4,
+        &[
+            2.4,
+            1.0 / 1.055,
+            0.055 / 1.055,
+            1.0 / 12.92,
+            0.04045,
+            0.0,
+            0.0,
+        ],
+    );
+    let rounds: [fn(f64) -> u32; 2] = [level, word];
+    let mut rng = Rng::new(0x5eed_0c4e);
+    let mut checked = 0;
+    for white in [D50, [0.9505, 1.0, 1.089]] {
+        for intent in [
+            Intent::Perceptual,
+            Intent::Relative,
+            Intent::Saturation,
+            Intent::Absolute,
+        ] {
+            let space = icc(profile(3, &trc, white), 3);
+            let conversion = Conversion {
+                intent,
+                ..Conversion::default()
+            };
+            let converter =
+                Converter::new(&space, &Target::new(Process::Rgb), &conversion).unwrap();
+            let rgb = converter.curved_rgb().unwrap();
+            for i in 0..4000 {
+                // Curved eight-bit codes, then curved values anywhere.
+                let curved: [f64; 3] = std::array::from_fn(|c| {
+                    if i < 2000 {
+                        let code = f64::from(u8::try_from(rng.below(256)).unwrap());
+                        converter.curve(c, code / 255.0).unwrap()
+                    } else {
+                        rng.range(-0.25, 1.25)
+                    }
+                });
+                for round in rounds {
+                    let mut want = [0.0; 3];
+                    converter.convert_curved_rounded(&curved, &mut want, round);
+                    let got = rgb.convert_rounded(curved, round);
+                    assert_eq!(
+                        want.map(f64::to_bits),
+                        got.map(f64::to_bits),
+                        "{curved:?} {intent:?}"
+                    );
+                    checked += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(checked, 2 * 4 * 4000 * 2);
+    // Gray profiles, other targets and targets with spots resolve none.
+    let rgb = icc(profile(3, &trc, D50), 3);
+    let spots: Vec<Name> = vec![Name::new(b"Orange")];
+    for (space, target) in [
+        (icc(profile(1, &trc, D50), 1), Target::new(Process::Rgb)),
+        (rgb.clone(), Target::new(Process::Gray)),
+        (rgb.clone(), Target::new(Process::Cmyk)),
+        (rgb, Target::separated(Process::Rgb, spots.into())),
+        (ColorSpace::DeviceRgb, Target::new(Process::Rgb)),
+    ] {
+        let converter = Converter::new(&space, &target, &Conversion::default()).unwrap();
+        assert!(converter.curved_rgb().is_none(), "{target:?}");
     }
 }
