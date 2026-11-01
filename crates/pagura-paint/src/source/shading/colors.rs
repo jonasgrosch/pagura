@@ -161,6 +161,11 @@ impl Colors {
         !self.ramp.is_empty()
     }
 
+    /// The ramp of a one-input stage, where it holds pieces.
+    pub(super) fn ramp(&self) -> Option<&Ramp> {
+        (!self.ramp.is_empty()).then_some(&self.ramp)
+    }
+
     /// Owned conversion storage and function handles; function data stays shared.
     pub(super) fn bytes(&self) -> usize {
         self.converter.owned_bytes()

@@ -479,9 +479,139 @@ pub(crate) fn level(value: f64) -> f32 {
     f32::from_bits(truncated | u32::from(f64::from(nearest) != value))
 }
 
+/// The F32 level ([`level`]) of every value within `radius` of `value`
+/// (as real numbers), for a `radius` of at most 1, where they all have the
+/// same one; `None` otherwise. It rounds `value`'s scaled level once, as
+/// [`level`] does.
+///
+/// With `s` the scaled `fl(255·clamp(value))` and `a < b` the consecutive
+/// F32 values around it (`a` its F32 truncation, so `a ≥ 0` for `s ≥ 0`),
+/// the level is certain where `fl(s − m) > a` and `fl(s + m) < b` for the
+/// margin `m = fl(255·radius) + 2⁻⁴³`:
+///
+/// - A value `x` within `radius` of `value` scales to `s_x`, and if `x` lies
+///   in `0..1`, then `|s_x − s| ≤ 255·radius + 2⁻⁴⁵`: both products are
+///   below 256, so each rounds by at most `2⁻⁴⁶`. Each test rounds by at
+///   most `2⁻⁴⁶` too, and `m` exceeds `255·radius + 2⁻⁴⁵ + 2⁻⁴⁶` (its own
+///   two roundings take far less than `2⁻⁴⁶` for such a radius), so every
+///   such `s_x` lies strictly between `a` and `b`.
+/// - No such `x` reaches `0` or `1`. `x ≤ 0` would put `value` within
+///   `radius` of `0`, so `s ≤ fl(255·radius) < m`, yet the tests need
+///   `s > a + m ≥ m`. `x ≥ 1` would put `s` at or above `255 − 255·radius −
+///   2⁻⁴⁶`, so the tests need `b > s + m > 255`; but F32 holds `255`, so
+///   `b ≤ 255` while `s < 255`, and `s = 255` is an F32 value itself.
+/// - So every `x` is in `0..1` and clamps to itself, every `s_x` lies strictly
+///   between consecutive F32 values (an inexact level, never `±0`), and
+///   [`level`] gives each the truncation `a` with its odd bit: `value`'s
+///   own level.
+///
+/// `NaN`, a scaled value of `±0` or `255`, and one on an F32 value fail the
+/// tests.
+#[inline]
+pub(crate) fn certified_level(value: f64, radius: f64) -> Option<f32> {
+    const SLACK: f64 = 1.0 / (1_u64 << 43) as f64;
+    let scaled = value.clamp(0.0, 1.0) * 255.0;
+    let nearest = single(scaled);
+    let truncated = nearest.to_bits() - u32::from(f64::from(nearest) > scaled);
+    let low = f64::from(f32::from_bits(truncated));
+    let high = f64::from(f32::from_bits(truncated.wrapping_add(1)));
+    let margin = 255.0 * radius + SLACK;
+    (scaled - margin > low && scaled + margin < high).then(|| f32::from_bits(truncated | 1))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Where [`certified_level`] gives a level, every value within its
+    /// radius has it: random unit values, values on and next to F32 cell
+    /// ends, `±0`, values near `0` and `1`, `NaN` and values outside `0..1`,
+    /// probed across each enclosure against [`level`].
+    #[test]
+    fn certified_levels_are_every_enclosed_value_level() {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        #[expect(clippy::cast_precision_loss, reason = "random fractions")]
+        let mut unit = move || (next() >> 11) as f64 / (1_u64 << 53) as f64;
+        let mut values = vec![
+            0.0,
+            -0.0,
+            1.0,
+            f64::MIN_POSITIVE,
+            1e-12,
+            1.0 - 1e-12,
+            f64::NAN,
+            -1e-300,
+            2.0,
+            f64::INFINITY,
+            128.0 / 255.0,
+        ];
+        let mut inside = 0;
+        for _ in 0..20_000 {
+            let value = unit() * 1.2 - 0.1;
+            inside += usize::from(value > 0.0 && value < 1.0);
+            values.push(value);
+        }
+        let randoms = values.len();
+        for _ in 0..5_000 {
+            // A value whose scaled level is an F32 value, and its neighbours.
+            #[expect(clippy::cast_possible_truncation, reason = "a random F32 level")]
+            let cell = (unit() * 255.0) as f32;
+            let mut value = f64::from(cell) / 255.0;
+            for _ in 0..4 {
+                value = value.next_down();
+            }
+            for _ in 0..9 {
+                values.push(value);
+                value = value.next_up();
+            }
+        }
+        let approximate = pagura_color::APPROXIMATE;
+        let radii = [
+            0.0,
+            1e-300,
+            approximate / 1024.0,
+            approximate,
+            1e-7,
+            1e-3,
+            0.25,
+        ];
+        let (mut certified, mut random) = (0, 0);
+        for (i, &value) in values.iter().enumerate() {
+            for &radius in &radii {
+                let Some(found) = certified_level(value, radius) else {
+                    continue;
+                };
+                certified += 1;
+                random += usize::from(i < randoms && radius == approximate / 1024.0);
+                assert_eq!(found.to_bits(), level(value).to_bits(), "{value} {radius}");
+                assert!(value > 0.0 && value < 1.0, "{value} {radius}");
+                let mut probes = vec![value, value.next_up(), value.next_down()];
+                for t in [1.0 - 1e-9, 0.5, 1e-9] {
+                    probes.extend([value - radius * t, value + radius * t]);
+                }
+                for x in probes.into_iter().filter(|x| (x - value).abs() <= radius) {
+                    assert_eq!(level(x).to_bits(), found.to_bits(), "{value} {radius}: {x}");
+                }
+            }
+        }
+        // Nearly every random value inside `0..1` is certain at a radius
+        // rows reach: `2R + S·error` of lines and close cubics stays far
+        // below the bound pieces admit.
+        assert!(
+            random * 1000 > inside * 999,
+            "{random} of {inside} certified"
+        );
+        assert!(certified > random);
+        for value in [0.0, -0.0, 1.0, f64::NAN, 128.0 / 255.0] {
+            assert_eq!(certified_level(value, approximate), None, "{value}");
+        }
+    }
 
     #[test]
     fn stores_by_stretches_match_stores_by_pixel() {

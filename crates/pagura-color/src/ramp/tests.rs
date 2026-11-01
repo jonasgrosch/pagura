@@ -284,3 +284,62 @@ fn grid_boundaries_split_at_once() {
         assert!(certified * 10 > 4001 * 9, "{certified} certified");
     }
 }
+
+/// Every piece a row may approximate by writes, for an input within the
+/// error of a sample, values within the piece's radius, at most
+/// [`APPROXIMATE`], of the sample's exact conversion; none whose sRGB power
+/// is bounded per sample approximates.
+#[test]
+fn pieces_approximate_within_their_bound() {
+    let mut rng = Rng::new(0xa991_0c5e);
+    let (mut approximated, mut margins) = (0_usize, 0_usize);
+    for case in 0..400 {
+        let (space, target) = space(&mut rng);
+        let components = space.components();
+        let converter = Converter::new(&space, &target, &Conversion::default()).unwrap();
+        let function = function(&mut rng, components);
+        let stage = RampStage::Single(&function);
+        let inputs = function.domain()[0];
+        let ramp = Ramp::new(
+            stage,
+            components,
+            &converter,
+            (inputs, 2048),
+            &mut Meter::new(usize::MAX, "ramp test"),
+        );
+        let error = [0.0, 1e-12, 1e-9][rng.below(3)];
+        let mut out = vec![0.0; target.channels()];
+        let mut hint = 0;
+        for i in 0..2000 {
+            let x = inputs[0] + (inputs[1] - inputs[0]) * (f64::from(i) / 2000.0);
+            let Some(piece) = ramp.piece(x, error, &mut hint) else {
+                continue;
+            };
+            let at = (x + rng.range(-error, error)).clamp(inputs[0], inputs[1]);
+            piece.evaluate(at, &mut out);
+            approximated += 1;
+            let start = ramp
+                .pieces
+                .iter()
+                .position(|&[low, high]| low <= x && x <= high)
+                .unwrap();
+            margins += usize::from(
+                ramp.terms[start * ramp.channels..(start + 1) * ramp.channels]
+                    .iter()
+                    .any(|term| term.margin != 0.0),
+            );
+            let expected = exact(stage, &converter, components, x);
+            for (c, (&got, &want)) in out.iter().zip(&expected).enumerate() {
+                let radius = piece.radius(c);
+                assert!(
+                    (got - want).abs() <= radius && radius <= APPROXIMATE,
+                    "case {case}, x {x}, channel {c}: {got} vs {want} within {radius} ({stage:?})"
+                );
+            }
+        }
+    }
+    assert!(
+        approximated > 100_000 && margins == 0,
+        "{approximated} approximated, {margins} through powers bounded per sample"
+    );
+}
