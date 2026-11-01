@@ -110,6 +110,23 @@ overflow-checks = false
 [profile.release.package.pagura-paint]
 overflow-checks = false
 
+# Keep command dispatch and parsing/control code compact at process startup;
+# image, coverage and paint kernels retain the ordinary speed optimization.
+[profile.release.package.pagura-cli]
+opt-level = "s"
+
+[profile.release.package.pagura-core]
+opt-level = "s"
+
+[profile.release.package.pagura-document]
+opt-level = "s"
+
+[profile.release.package.pagura-interpret]
+opt-level = "s"
+
+[profile.release.package.pagura-render]
+opt-level = "s"
+
 [profile.bench]
 inherits = "release"
 debug = 1
