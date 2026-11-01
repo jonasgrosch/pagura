@@ -5,7 +5,7 @@ use crate::{
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use pagura_document::Prefix;
-use pagura_font::{FontFormat, FontProgram};
+use pagura_font::{FontFace, FontFormat, FontProgram};
 
 /// Loads the embedded program of `descriptor`. `metrics_font` is the simple
 /// font itself, or the CIDFont of a Type 0 font: its subtype selects the
@@ -28,7 +28,16 @@ pub(crate) fn load(
         .get(key)
         .and_then(Value::as_reference)
         .ok_or_else(|| Error::syntax("embedded font must be a stream reference"))?;
-    load_stream(document, id, key, kind, metrics_font, rendering).map_err(|e| e.in_object(id))
+    load_stream(
+        document,
+        id,
+        key,
+        kind,
+        metrics_font,
+        descriptor.dictionary,
+        rendering,
+    )
+    .map_err(|e| e.in_object(id))
 }
 
 fn load_stream(
@@ -37,14 +46,20 @@ fn load_stream(
     key: &[u8],
     kind: FontKind,
     metrics_font: &Dictionary,
+    descriptor: &Dictionary,
     rendering: bool,
 ) -> Result<FontProgram> {
     let object = document.object(id)?;
     let dictionary = object
         .dictionary()
         .ok_or_else(|| Error::syntax("embedded font is not a stream"))?;
-    let format = format(document, dictionary, key, kind, metrics_font)?;
-    let prefix = if rendering && key == b"FontFile2" && format == FontFormat::TrueType {
+    let binding = format(document, dictionary, key, kind, metrics_font);
+    let prefix = if rendering
+        && key == b"FontFile2"
+        && binding
+            .as_ref()
+            .is_ok_and(|format| *format == FontFormat::TrueType)
+    {
         drawn_tables(document, object, dictionary)?
     } else {
         None
@@ -54,9 +69,15 @@ fn load_stream(
         Some(data) => std::borrow::Cow::Owned(data),
         None => document.stream_data_sized(object, declared_length(document, dictionary))?,
     };
+    let (format, repaired_binding) = cid_binding(binding, &data, kind, metrics_font)?;
     let report = Report::new(document);
-    // A prefix was checked against Length1 when it was decoded.
-    if whole && let Some(problem) = length_problem(document, dictionary, key, format, data.len())? {
+    // A prefix was checked against Length1 when it was decoded. Contradictory
+    // embedding labels have no usable format-specific Length bookkeeping;
+    // their complete decoded bytes must pass the actual program parser.
+    if whole
+        && !repaired_binding
+        && let Some(problem) = length_problem(document, dictionary, key, format, data.len())?
+    {
         // The decoded program describes its own extent; the Length entries
         // are bookkeeping that writers often get wrong (Table 125).
         report.diagnostic(Diagnostic::new(repairs::STREAM_LENGTHS, problem).in_object(id))?;
@@ -68,10 +89,20 @@ fn load_stream(
         offset: 0,
     };
     let mut diagnostics = Diagnostics::new(document.recovery());
+    // PDF Table 124 supplies no collection index. Measured reader policy:
+    // prefer exact FontName/BaseFont matches, then their 9.9.2 subset names;
+    // require a unique face instead of silently using the first directory.
+    let collection = data.starts_with(b"ttcf");
+    let names = if collection {
+        collection_names(document, descriptor, metrics_font)?
+    } else {
+        [b"".as_slice(); 4]
+    };
     // Shared storage made straight from the stream data: one copy at most.
-    let result = FontProgram::parse_with_diagnostics(
+    let result = FontProgram::parse_with_face(
         std::sync::Arc::<[u8]>::from(data),
         format,
+        FontFace::PostScriptNames(&names),
         &document.limits(),
         &mut diagnostics,
     );
@@ -81,7 +112,101 @@ fn load_stream(
             .into_iter()
             .map(|diagnostic| diagnostic.within(start).in_object(id)),
     )?;
-    result.map_err(|error| error.within(start))
+    let program = result.map_err(|error| error.within(start))?;
+    if repaired_binding {
+        report.diagnostic(
+            Diagnostic::new(
+                repairs::PROGRAM_BINDING,
+                "CIDFontType0 embedding label disagrees with the intact CFF or sfnt program; program glyph identities and PDF metrics retained",
+            )
+            .at(start)
+            .in_object(id),
+        )?;
+    }
+    if collection {
+        collection_family(&program, kind, metrics_font).map_err(|error| error.within(start))?;
+        report.diagnostic(
+            Diagnostic::new(
+                repairs::COLLECTION_FACE,
+                "embedded font collection uses the unique PDF FontName/BaseFont match; PDF does not define a collection face index",
+            )
+            .at(start)
+            .in_object(id),
+        )?;
+    }
+    Ok(program)
+}
+
+/// Recover only complete, self-identifying CIDFontType0 programs. CFF's
+/// charset defines CIDs or direct GIDs; sfnt defines GIDs. Type 1 dictionaries
+/// have no corresponding CID order and therefore keep their binding error.
+fn cid_binding(
+    declared: Result<FontFormat>,
+    data: &[u8],
+    kind: FontKind,
+    font: &Dictionary,
+) -> Result<(FontFormat, bool)> {
+    if declared
+        .as_ref()
+        .is_err_and(|error| error.kind != pagura_core::ErrorKind::Syntax)
+    {
+        return declared.map(|format| (format, false));
+    }
+    if kind == FontKind::Type0 && font.is_name(b"Subtype", b"CIDFontType0") {
+        let actual = if data.starts_with(b"\x01\x00") {
+            Some(FontFormat::Cff)
+        } else if data.starts_with(b"OTTO") {
+            Some(FontFormat::OpenType)
+        } else if data.starts_with(b"\x00\x01\x00\x00")
+            && (font.get(b"CIDToGIDMap").is_none() || font.is_name(b"CIDToGIDMap", b"Identity"))
+        {
+            Some(FontFormat::TrueType)
+        } else {
+            None
+        };
+        if let Some(actual) = actual
+            && !declared.as_ref().is_ok_and(|format| *format == actual)
+        {
+            return Ok((actual, true));
+        }
+    }
+    declared.map(|format| (format, false))
+}
+
+/// Table 124 and 9.7.4.2 give the outline family and glyph namespace of
+/// each PDF subtype. Validate new collection admissions before the face
+/// policy is reported; in particular, a CID-CFF charset cannot replace a
+/// written CIDFontType2 CIDToGIDMap. Standalone admission is unchanged.
+fn collection_family(program: &FontProgram, kind: FontKind, font: &Dictionary) -> Result<()> {
+    let cff = matches!(kind, FontKind::Type1 | FontKind::MmType1)
+        || font.is_name(b"Subtype", b"CIDFontType0");
+    if program.has_cff_outlines() != cff || (kind != FontKind::Type0 && program.is_cid_keyed()) {
+        return Err(Error::syntax(
+            "font collection face disagrees with PDF font subtype",
+        ));
+    }
+    Ok(())
+}
+
+fn collection_names<'a>(
+    document: &'a Document,
+    descriptor: &'a Dictionary,
+    font: &'a Dictionary,
+) -> Result<[&'a [u8]; 4]> {
+    let descriptor = match optional(document, descriptor, b"FontName")? {
+        Some(value) => value
+            .as_name()
+            .ok_or_else(|| Error::syntax("invalid FontName"))?
+            .as_bytes(),
+        None => b"",
+    };
+    let base = crate::encoding::font_name(document, font)?;
+    Ok([
+        descriptor,
+        base,
+        crate::encoding::without_subset_tag(descriptor),
+        crate::encoding::without_subset_tag(base),
+    ])
 }
 
 /// The program length a font stream's `Length1` to `Length3` declare, as an

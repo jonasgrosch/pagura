@@ -20,7 +20,8 @@ pub(crate) struct Prepared {
     pub(crate) key: u32,
     /// The pixels it can cover or keep.
     pub(crate) bounds: DeviceRect,
-    /// Rasterization work units at most (shapes only).
+    /// Rasterization admission; curved shapes/clips include cumulative
+    /// preparation proofs. Ordinary clips keep their existing zero value.
     pub(crate) work: usize,
 }
 
@@ -289,6 +290,48 @@ impl<'a> ShapeBuilder<'a> {
             key,
             bounds: clip.bounds(),
             work: 0,
+        };
+        bytes.charge(clip.retained_bytes())?;
+        if let Err(error) = bytes.reserve_capacity(&mut self.clips, 1) {
+            let released = clip.retained_bytes() + 2 * size_of::<usize>();
+            drop(clip);
+            bytes.refund(released);
+            return Err(error);
+        }
+        self.clips.push(clip);
+        Ok(prepared)
+    }
+
+    /// As `ClipShape::new`.
+    pub(crate) fn clip_sources(
+        &mut self,
+        paths: &[pagura_raster::ClipSource<'_>],
+        options: &ShapeOptions<'_>,
+        bytes: &mut Meter,
+    ) -> Result<Prepared> {
+        // ClipShape's retained payload counts Inner and its geometry; its
+        // shared allocation also owns two Arc reference counters.
+        bytes.charge_items::<usize>(2)?;
+        let limits = Limits {
+            render_bytes: bytes.remaining(),
+            ..*options.limits
+        };
+        let options = ShapeOptions {
+            area: options.area,
+            limits: &limits,
+        };
+        let clip = match ClipShape::from_sources(paths, &options) {
+            Ok(clip) => clip,
+            Err(error) => {
+                bytes.refund(2 * size_of::<usize>());
+                return Err(error);
+            }
+        };
+        let key = index(self.clips.len())?;
+        let prepared = Prepared {
+            key,
+            bounds: clip.bounds(),
+            work: clip.work(),
         };
         bytes.charge(clip.retained_bytes())?;
         if let Err(error) = bytes.reserve_capacity(&mut self.clips, 1) {

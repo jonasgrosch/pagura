@@ -91,6 +91,12 @@ pub use pagura_document::forms;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
+/// Reported recovery of literal null members in page annotation arrays.
+pub use pagura_document::repairs::ANNOTATION_NULL as PAGES_ANNOTATION_NULL;
+/// Reported repair of contradicting JBIG2 page capability declarations.
+pub use pagura_image::jbig2::repairs::PAGE_CAPABILITIES as JBIG2_PAGE_CAPABILITIES;
+/// Reported repair of an unused JBIG2 Huffman aggregation-table selector.
+pub use pagura_image::jbig2::repairs::UNUSED_AGGREGATION_TABLE as JBIG2_UNUSED_AGGREGATION_TABLE;
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,
@@ -100,6 +106,8 @@ pub use pagura_appearance as form_appearance;
 pub use pagura_document::{
     Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenOptions, Page, Rotation,
 };
+/// Reported viewing repair for unboxed JPEG 2000 with explicit PDF colour.
+pub use pagura_image::repairs::JPX_CODESTREAM as JPX_CODESTREAM_REPAIR;
 pub use pagura_raster::{Pixmap, Point, Rgba8};
 pub use pagura_render::{
     Completion, OverprintPreview, RenderContext, RenderOptions, Scene, Tile, device_size,
@@ -122,6 +130,19 @@ pub mod tags {
     /// `shading.`, `transparency.` and `xobject.`: content interpretation
     /// and painting.
     pub use pagura_interpret::features as content;
+}
+
+/// Reported terminal empty EOF1 association after the sole closed JBIG2 page.
+pub use pagura_image::jbig2::repairs::EOF_PAGE_ASSOCIATION as JBIG2_EOF_PAGE_ASSOCIATION;
+/// Reported complete declared single-page JBIG2 file packaging (ADR 0003).
+pub use pagura_image::jbig2::repairs::FILE_WRAPPER as JBIG2_FILE_WRAPPER;
+
+/// Stable reported-repair tags, grouped by their owning parser.
+pub mod repairs {
+    /// `jpx.`: image container repairs.
+    pub use pagura_image::repairs as image;
+    /// `inline.`: inline content framing.
+    pub use pagura_interpret::inline_repairs as inline;
 }
 
 use provider::{Provider, default_provider};

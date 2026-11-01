@@ -321,6 +321,7 @@ impl Fixture {
     ) {
         let bounds = self.groups[group as usize].bounds;
         let kind = ItemKind::Group(GroupUse {
+            stencil: None,
             group,
             cover: None,
             compositing,

@@ -26,6 +26,13 @@ impl Point {
         self.x.is_finite() && self.y.is_finite()
     }
 
+    /// Whether this point satisfies scan conversion's existing coordinate
+    /// working range. The same policy checks both stored path coordinates
+    /// and mapped vertices; this is independent of any viewport or clip.
+    pub fn within_working_range(self) -> bool {
+        crate::flatten::bounded(self).is_ok()
+    }
+
     /// The dot product of two vectors.
     pub fn dot(self, other: Self) -> f64 {
         self.x * other.x + self.y * other.y
@@ -158,6 +165,20 @@ impl Transform {
     /// An axis-aligned scaling.
     pub const fn scale(x: f64, y: f64) -> Self {
         Self::new(x, 0.0, 0.0, y, 0.0, 0.0)
+    }
+
+    /// Maps default user space to the view of `box_`: its displayed upper
+    /// left is the origin, y grows downwards and `rotation` turns clockwise.
+    /// This is unscaled; callers apply `UserUnit` and device resolution
+    /// separately (ISO 32000-2, 8.3.2.3 and Table 31).
+    pub fn page_view(box_: pagura_core::Rect, rotation: pagura_core::Rotation) -> Self {
+        use pagura_core::Rotation;
+        match rotation {
+            Rotation::None => Self::new(1.0, 0.0, 0.0, -1.0, -box_.x0(), box_.y1()),
+            Rotation::Clockwise90 => Self::new(0.0, 1.0, 1.0, 0.0, -box_.y0(), -box_.x0()),
+            Rotation::Clockwise180 => Self::new(-1.0, 0.0, 0.0, 1.0, box_.x1(), -box_.y0()),
+            Rotation::Clockwise270 => Self::new(0.0, -1.0, -1.0, 0.0, box_.y1(), box_.x1()),
+        }
     }
 
     /// The transform that applies `self` first and then `next`.
@@ -333,6 +354,24 @@ mod tests {
         assert!((length / 5e200 - 1.0).abs() < 1e-15);
         let huge = Point::new(f64::MAX, -f64::MAX);
         assert_eq!(huge.midpoint(huge), huge);
+    }
+
+    #[test]
+    fn coordinate_query_keeps_the_scan_conversion_boundary() {
+        let limit = crate::flatten::MAX_COORDINATE;
+        for value in [0.0, limit.next_down(), limit, -limit, -limit.next_down()] {
+            assert!(Point::new(value, value).within_working_range());
+        }
+        for value in [
+            limit.next_up(),
+            -limit.next_up(),
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ] {
+            assert!(!Point::new(value, 0.0).within_working_range());
+            assert!(!Point::new(0.0, value).within_working_range());
+        }
     }
 
     #[test]

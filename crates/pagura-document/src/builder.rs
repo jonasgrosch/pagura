@@ -26,7 +26,7 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 /// from it, once from reconstructed data (ADR 0003).
 pub(crate) fn open(bytes: Arc<[u8]>, options: &OpenOptions) -> Result<Document> {
     let mut diagnostics = Diagnostics::new(options.recovery);
-    let header = xref::header(&bytes, &mut diagnostics)?;
+    let header = xref::header(&bytes, &options.limits, &mut diagnostics)?;
     let mut attempt = Diagnostics::new(options.recovery);
     let primary = xref::read(&bytes, header, &options.limits, &mut attempt).and_then(|table| {
         let reported = diagnostics

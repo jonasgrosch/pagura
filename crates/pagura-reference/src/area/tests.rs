@@ -197,3 +197,58 @@ fn empty_regions_and_no_regions() {
     assert_eq!(empty.rect(), DeviceRect::default());
     assert_eq!(empty.get(0, 0), 0.0);
 }
+
+#[test]
+fn independently_refined_quadratic_regions_intersect_under_distinct_affine_maps() {
+    use crate::flatten::glyph_region;
+    use crate::glyph::Reference;
+    use pagura_core::Limits;
+    use pagura_raster::{PathBuilder, Transform};
+
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(0.0, 0.0));
+    path.quad_to(Point::new(0.5, 1.0), Point::new(1.0, 0.0))
+        .expect("current point");
+    path.close();
+    let outline = path.finish();
+    let make = |linear| {
+        glyph_region(
+            &outline,
+            linear,
+            Point::new(0.0, 0.0),
+            Reference::Curve,
+            &Limits::default(),
+        )
+        .expect("independent true-curve region")
+    };
+    let first = make(Transform::IDENTITY);
+    let second = make(Transform {
+        a: 1.0,
+        b: -0.5,
+        c: 0.0,
+        d: 1.5,
+        e: 0.0,
+        f: 0.0,
+    });
+    // First: 0 <= y <= 2x-2x². Second: -.5x <= y <= 2.5x-3x².
+    // Their upper curves cross at x=1/2; the latter reaches y=0 at x=5/6.
+    // ∫[0,1/2](2x-2x²)dx + ∫[1/2,5/6](2.5x-3x²)dx = 29/108.
+    let expected = quantize_unit(29.0 / 108.0);
+    for regions in [
+        vec![first.clone(), second.clone()],
+        vec![second.clone(), first.clone()],
+        vec![first.clone(), second.clone(), first.clone()],
+    ] {
+        let actual = rounded_areas(&regions, window(0, 0, 1, 1))
+            .expect("joint independent curve intervals resolve");
+        assert_eq!(quantize_unit(actual.get(0, 0)), expected);
+    }
+    // This exact rectangular clip ends before the crossing: ∫[0,2/5]
+    // (2x-2x²)dx = 44/375. It exercises unequal local curve row endpoints.
+    let actual = rounded_areas(
+        &[first, second, rectangle(0.0, 0.0, 0.4, 1.0)],
+        window(0, 0, 1, 1),
+    )
+    .expect("clipped independent curve intervals resolve");
+    assert_eq!(quantize_unit(actual.get(0, 0)), quantize_unit(44.0 / 375.0));
+}

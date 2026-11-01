@@ -7,6 +7,9 @@ use pagura_core::Repair;
 pub const TRAILING_BYTES: Repair = Repair::new("file.trailing-bytes");
 /// A page tree `/Count` that disagrees with the leaves found.
 pub const PAGE_COUNT: Repair = Repair::new("pages.count-mismatch");
+/// Table 31; 12.5.2: skip only literal null members of a page Annots array.
+/// This is reported reader policy, not the dictionary-null rule of 7.3.9.
+pub const ANNOTATION_NULL: Repair = Repair::new("pages.annotation-null");
 /// Header found after leading junk (ADR 0003).
 pub const HEADER_OFFSET: Repair = Repair::new("file.header-offset");
 /// Cross-reference data reconstructed from unambiguous indirect objects.
@@ -19,6 +22,9 @@ pub const LENGTH_CORRECTED: Repair = Repair::new("stream.length-corrected");
 pub const TRAILER_RECONSTRUCTED: Repair = Repair::new("trailer.reconstructed");
 /// Nonstandard data between the PDF version and its line terminator (7.5.2).
 pub const HEADER_FORMAT: Repair = Repair::new("file.header-format");
+/// 7.5.2: a complete leading Catalog identifies a headerless PDF body;
+/// no version is inferred, and all normal structural checks still run.
+pub const HEADER_ABSENT: Repair = Repair::new("file.header-absent");
 /// Permissions written as an unsigned 32-bit integer rather than signed (7.6).
 pub const PERMISSIONS_UNSIGNED: Repair = Repair::new("security.permissions-unsigned");
 /// Binary security fields recovered without literal-string EOL normalization.
@@ -134,12 +140,14 @@ pub const FORM_FIELDS: Repair = Repair::new("form.fields");
 pub const ALL: &[Repair] = &[
     TRAILING_BYTES,
     PAGE_COUNT,
+    ANNOTATION_NULL,
     HEADER_OFFSET,
     XREF_REBUILT,
     OFFSET_CORRECTED,
     LENGTH_CORRECTED,
     TRAILER_RECONSTRUCTED,
     HEADER_FORMAT,
+    HEADER_ABSENT,
     PERMISSIONS_UNSIGNED,
     LITERAL_HASH,
     HASH_PADDING,

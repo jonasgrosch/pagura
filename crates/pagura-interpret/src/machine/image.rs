@@ -155,6 +155,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         data: &[u8],
         resources: &Dictionary,
         scope: &mut Scope,
+        framing: Option<&Dictionary>,
     ) -> Result<()> {
         let stencil = dictionary
             .get(b"ImageMask")
@@ -163,6 +164,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .unwrap_or(false);
         if (scope.uncolored_glyph() && !stencil) || !self.needs().images {
             return Ok(());
+        }
+        if let Some(framing) = framing {
+            pagura_image::validate_inline_samples(framing, data, &self.session.limits)?;
         }
         let (stream, offset) = match self.position {
             Position::Stream { object, offset } => (Some(object), offset),

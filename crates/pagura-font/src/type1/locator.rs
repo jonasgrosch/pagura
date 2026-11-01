@@ -89,7 +89,12 @@ impl Locator {
     /// This converts coordinates; it adds no context, so it replaces the
     /// offset instead of using the context builders.
     pub(super) fn place(&self, mut error: Error, space: Space) -> Error {
-        if let Position::Buffer(offset) = error.position {
+        // Type 1 repair sinks receive input coordinates so recorded diagnostics
+        // and strict rejections name the same original byte. Their tagged
+        // errors must not pass through the copy-to-input map a second time.
+        if error.repair.is_none()
+            && let Position::Buffer(offset) = error.position
+        {
             error.position = self.position(offset, space);
         }
         error

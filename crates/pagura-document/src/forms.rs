@@ -9,6 +9,7 @@
 //! the document's retained-cache budget (ADR 0012). No partial result is returned
 //! on failure. Names are display/lookup data, never unique object identities.
 mod attributes;
+mod display;
 mod fill;
 mod model;
 mod names;
@@ -25,9 +26,9 @@ pub use fill::{
 
 pub use model::{
     AcroForm, AdditionalAction, ButtonKind, ChoiceOption, ChoiceStyle, Field, FieldFlags,
-    FieldKind, FieldValue, Justification, Widget,
+    FieldKind, FieldValue, Justification, Widget, WidgetField,
 };
-use pagura_core::Result;
+use pagura_core::{Dictionary, Result};
 
 impl Document {
     /// Starts an in-memory form session, or returns None without an AcroForm.
@@ -39,6 +40,43 @@ impl Document {
         self.acro_form()?
             .map(|form| FormFiller::new(self, form))
             .transpose()
+    }
+
+    /// Proves a requested widget's Parent/Fields/Kids membership without reading
+    /// field contents, DA, resources, XFA payloads or unrelated field subtrees.
+    /// Returns false when AcroForm is absent or null. This permits an empty
+    /// widget's geometry to remain independent of unused text-generation data.
+    ///
+    /// # Errors
+    /// Syntax for inconsistent membership, Cycle for repeated or cyclic ancestry,
+    /// and the same metered reference, traversal, depth and allocation limits as
+    /// [`Self::widget_field`]. This does not validate a full field model.
+    pub fn widget_field_membership(&self, annotation: &Dictionary) -> Result<bool> {
+        display::membership(self, annotation)
+    }
+
+    /// Reads only the appearance source data of `annotation` (12.7.4.3–12.7.5).
+    ///
+    /// Parent ancestry must agree with Fields/Kids membership. Only those
+    /// membership arrays, selected ancestors and owning-field child names are
+    /// visited; unrelated field subtrees, actions and default values are not
+    /// read. Returns None without AcroForm or
+    /// for a field type other than Tx/Ch/Btn. Call after stored/hidden appearance
+    /// selection, so unused field data stays lazy.
+    ///
+    /// # Errors
+    /// Syntax for inconsistent membership or malformed selected
+    /// entries, Cycle for cyclic Parent ancestry, and existing reference,
+    /// traversal, depth and result-memory Limit errors. Resolved objects retain
+    /// their source locations; a caller-supplied dictionary has no known location.
+    /// This narrow view does not search the whole tree to repair inconsistent
+    /// backlinks; [`Self::acro_form`]
+    /// retains its full-tree repair contract.
+    pub fn widget_field<'a>(
+        &'a self,
+        annotation: &'a Dictionary,
+    ) -> Result<Option<WidgetField<'a>>> {
+        display::read(self, annotation)
     }
 
     /// Reads the AcroForm and its field/widget tree (12.7.3–12.7.5).

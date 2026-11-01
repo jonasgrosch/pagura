@@ -58,6 +58,18 @@ pub(crate) fn font_name<'a>(document: &'a Document, font: &'a Dictionary) -> Res
         .map_or(b"", Name::as_bytes))
 }
 
+/// A PDF subset tag is exactly six uppercase ASCII letters and `+` (9.9.2).
+pub(crate) fn without_subset_tag(name: &[u8]) -> &[u8] {
+    match name.split_first_chunk::<7>() {
+        Some((prefix, rest))
+            if prefix[6] == b'+' && prefix[..6].iter().all(u8::is_ascii_uppercase) =>
+        {
+            rest
+        }
+        _ => name,
+    }
+}
+
 /// The predefined simple-font encodings of Annex D (Tables D.2, D.4–D.6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(

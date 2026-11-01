@@ -6,7 +6,10 @@ use pagura_core::Feature;
 /// ICC profile processing outside the supported forward matrix/TRC and LUT subset.
 pub const ICC_BASED: Feature = Feature::new("colorspace.ICCBased");
 
-/// Nonzero calibrated black points require black-point compensation.
+/// Former nonzero calibrated-black rejection tag, retained for API stability.
+///
+/// Valid diffuse-black metadata is supported with compensation disabled.
+/// Explicit compensation remains `extgstate.UseBlackPtComp`.
 pub const BLACK_POINT: Feature = Feature::new("colorspace.BlackPoint");
 
 /// Colour space families outside Table 61, which a later PDF version or an

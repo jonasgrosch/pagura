@@ -2,6 +2,8 @@
 //! as one group, each with its own exact geometry, on the device lattice
 //! the pattern's spacing asks for.
 
+mod cover;
+
 use super::{Planner, Scope};
 use crate::format::Format;
 use crate::plan::{GroupPlan, Start, intersect};
@@ -31,14 +33,31 @@ impl Planner<'_> {
         let cell = scene
             .group(tiling.cell)
             .ok_or(Error::invalid_argument("scene group out of range"))?;
-        let transform = fit(tiling.matrix.then(scope.transform), tiling)?;
+        let transform = fit(tiling.matrix.then(scope.transform), tiling);
         let inverse = transform.inverse().ok_or(Error::unsupported(
             pagura_interpret::features::PATTERN_TILING,
             "singular tiling transform",
         ))?;
         let (columns, rows) = instances(bounds, inverse, tiling)?;
         let count = (columns.1 - columns.0 + 1).saturating_mul(rows.1 - rows.0 + 1);
-        if usize::try_from(count).map_or(true, |n| n > self.limits.display_commands) {
+        let over_budget = usize::try_from(count).map_or(true, |n| n > self.limits.display_commands);
+        // Ordinary pattern coverage composites once outside this buffer. A
+        // stencil instead clips each cell's leaves, whose repeated partial
+        // coverage cannot be replaced by a constant source here.
+        let constant = if over_budget && scope.paint.is_none() && scope.stencil_clip.is_none() {
+            cover::fill(
+                scene,
+                tiling,
+                transform,
+                (columns, rows),
+                bounds,
+                self.limits,
+                budget,
+            )?
+        } else {
+            None
+        };
+        if over_budget && constant.is_none() {
             return Err(Error::limit("tiling instance budget exceeded"));
         }
         let override_paint = match tiling.colors {
@@ -52,50 +71,34 @@ impl Planner<'_> {
             2 * size_of::<usize>() + size_of::<Paint>() + color.components.heap_bytes()
         });
         let prepared = (|| {
-            let transparent = self
-                .storage
-                .cells
-                .get(&(paint.pattern, scope.layout.process))
-                .copied()
-                .unwrap_or(false);
-            let group = self.new_group(
-                GroupPlan {
-                    bounds,
-                    items: Vec::new(),
-                    order: Vec::new(),
-                    layout: scope.layout,
-                    format: Format::F64,
-                    knockout: false,
-                    start: if transparent {
-                        Start::Transparent
-                    } else {
-                        Start::Backdrop
-                    },
-                },
-                budget,
-            )?;
+            let group = self.pattern_group(scope, paint, bounds, budget)?;
             let [x_step, y_step] = tiling.step;
-            for j in rows.0..=rows.1 {
-                for i in columns.0..=columns.1 {
-                    #[expect(
-                        clippy::cast_precision_loss,
-                        reason = "instance indices are below 2^53"
-                    )]
-                    let offset = Transform::translate(i as f64 * x_step, j as f64 * y_step);
-                    let inner = Scope {
-                        group,
-                        transform: offset.then(transform),
-                        crop: false,
-                        bounds,
-                        layout: scope.layout,
-                        plain: false,
-                        records: false,
-                        separated: scope.separated,
-                        masked: scope.masked,
-                        paint: override_paint.clone().or_else(|| scope.paint.clone()),
-                        depth: scope.depth + 1,
-                    };
-                    self.children(&inner, &cell.children, budget)?;
+            if let Some(fill) = constant {
+                self.constant_pattern_fill(scope, group, fill, bounds, budget)?;
+            } else {
+                for j in rows.0..=rows.1 {
+                    for i in columns.0..=columns.1 {
+                        #[expect(
+                            clippy::cast_precision_loss,
+                            reason = "instance indices are below 2^53"
+                        )]
+                        let offset = Transform::translate(i as f64 * x_step, j as f64 * y_step);
+                        let inner = Scope {
+                            group,
+                            transform: offset.then(transform),
+                            crop: false,
+                            bounds,
+                            layout: scope.layout,
+                            plain: false,
+                            records: false,
+                            separated: scope.separated,
+                            masked: scope.masked,
+                            paint: override_paint.clone().or_else(|| scope.paint.clone()),
+                            stencil_clip: scope.stencil_clip,
+                            depth: scope.depth + 1,
+                        };
+                        self.children(&inner, &cell.children, budget)?;
+                    }
                 }
             }
             let content = intersect(self.content(group), bounds);
@@ -107,6 +110,38 @@ impl Planner<'_> {
         drop(override_paint);
         budget.bytes.refund(temporary);
         prepared
+    }
+
+    /// The ordinary pattern buffer, preserving its surveyed backdrop policy.
+    fn pattern_group(
+        &mut self,
+        scope: &Scope,
+        paint: &TilingPaint,
+        bounds: DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<u32> {
+        let transparent = self
+            .storage
+            .cells
+            .get(&(paint.pattern, scope.layout.process))
+            .copied()
+            .unwrap_or(false);
+        self.new_group(
+            GroupPlan {
+                bounds,
+                items: Vec::new(),
+                order: Vec::new(),
+                layout: scope.layout,
+                format: Format::F64,
+                knockout: false,
+                start: if transparent {
+                    Start::Transparent
+                } else {
+                    Start::Backdrop
+                },
+            },
+            budget,
+        )
     }
 
     /// One temporary, shared colour override for an uncoloured cell.
@@ -167,12 +202,14 @@ fn instances(
 
 /// The device transform of a tiling pattern's cells (Table 74): constant
 /// spacing rounds the lattice vectors `XStep·(a, b)` and `YStep·(c, d)` to
-/// whole pixels, a vanishing one to a unit step along its larger component;
-/// `TilingType 1` refuses a cell corner moved by more than a pixel, and
-/// `TilingType 2` keeps the exact transform.
-fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
-    if tiling.spacing == TilingSpacing::NoDistortion {
-        return Ok(t);
+/// whole pixels, a vanishing one to a unit step along its larger component.
+/// `TilingType 2` keeps the exact transform, as do a singular one, which has
+/// no lattice to fit, rounded vectors that are parallel, and under
+/// `TilingType 1` a cell corner the rounding would move by more than a pixel
+/// (ADR 0004 section 2).
+fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Transform {
+    if tiling.spacing == TilingSpacing::NoDistortion || t.inverse().is_none() {
+        return t;
     }
     let vector = |x: f64, y: f64| {
         let (mut a, mut b) = (x.round(), y.round());
@@ -189,11 +226,10 @@ fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
     let (a, b) = vector(t.a * x_step, t.b * x_step);
     let (c, d) = vector(t.c * y_step, t.d * y_step);
     let fitted = Transform::new(a / x_step, b / x_step, c / y_step, d / y_step, t.e, t.f);
+    // Without a whole-pixel lattice that serves, the exact TilingType 2
+    // lattice places the cells (ADR 0004 section 2).
     if fitted.inverse().is_none() {
-        return Err(Error::unsupported(
-            pagura_interpret::features::PATTERN_TILING,
-            "device lattice collapses the pattern",
-        ));
+        return t;
     }
     if tiling.spacing == TilingSpacing::Constant {
         let b = tiling.bbox;
@@ -206,14 +242,11 @@ fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
             let p = pagura_raster::Point::new(x, y);
             let (exact, moved) = (t.apply(p), fitted.apply(p));
             if (exact.x - moved.x).hypot(exact.y - moved.y) > 1.0 + 1e-12 {
-                return Err(Error::unsupported(
-                    pagura_interpret::features::PATTERN_TILING,
-                    "constant spacing requires excessive cell distortion",
-                ));
+                return t;
             }
         }
     }
-    Ok(fitted)
+    fitted
 }
 
 /// The integers `k` for which `[b0, b1] + k·step` meets `[lo, hi]`.

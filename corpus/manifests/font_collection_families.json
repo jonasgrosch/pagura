@@ -1,0 +1,238 @@
+{
+  "schema": 2,
+  "area": "font_collection_families",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "font_collection_families/glyf-cid2-map0",
+      "kind": "pdf",
+      "description": "glyf cid2 map0",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/glyf-cid2-map0.pdf",
+      "sha256": "10f42e3a2ae456e013c5864cbeed13ef5c604dde18f23f2ff513e8aa32798c71",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.collection-face"
+      ],
+      "oracle": "corpus/generated/font_collection_families/glyf-cid2-map0.ppm",
+      "oracle_sha256": "e87bc5fc5f56f073ef852ce251041c4f186fd847c39789a72424920e1285c75e",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collection_families/cid-cff-as-cid2-map0",
+      "kind": "pdf",
+      "description": "Contradictory selected outline family/namespace; explicit glyph maps cannot be discarded",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/cid-cff-as-cid2-map0.pdf",
+      "sha256": "911c6e9cb404ba49680bbd1730ce95e86f2da064f87db08adf3c3df245a600ee",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_collection_families/name-cff-as-cid2-map0",
+      "kind": "pdf",
+      "description": "Contradictory selected outline family/namespace; explicit glyph maps cannot be discarded",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/name-cff-as-cid2-map0.pdf",
+      "sha256": "06992b96da9c91831af930f9663134dd96a1387575c2a2eae0175f7671b590a1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_collection_families/glyf-as-cid0-map0",
+      "kind": "pdf",
+      "description": "Contradictory selected outline family/namespace; explicit glyph maps cannot be discarded",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/glyf-as-cid0-map0.pdf",
+      "sha256": "20a0c1083c1fb95bfe28410f4c72e0710d7c674c6750af231d308fb4152aae15",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_collection_families/glyf-cid2-map1",
+      "kind": "pdf",
+      "description": "glyf cid2 map1",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/glyf-cid2-map1.pdf",
+      "sha256": "9c3fe4347efac9929551a1e12d13dd96325ef32df58a287f5626d8efc7fee5ca",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.collection-face"
+      ],
+      "oracle": "corpus/generated/font_collection_families/glyf-cid2-map1.ppm",
+      "oracle_sha256": "77ce9d611ba10776864749f8a7404dafbcf61e440dca86d97003484c7854c627",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collection_families/cid-cff-as-cid2-map1",
+      "kind": "pdf",
+      "description": "Contradictory selected outline family/namespace; explicit glyph maps cannot be discarded",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/cid-cff-as-cid2-map1.pdf",
+      "sha256": "8fde86c8d650643ef576b9fc13dc880077952fb02a84fe9ebb377479b477448d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_collection_families/name-cff-as-cid2-map1",
+      "kind": "pdf",
+      "description": "Contradictory selected outline family/namespace; explicit glyph maps cannot be discarded",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/name-cff-as-cid2-map1.pdf",
+      "sha256": "f33a0e5c68911d004362d8c8d54e76305f3766891ea80b5c634ecab64d625e82",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_collection_families/glyf-as-cid0-map1",
+      "kind": "pdf",
+      "description": "Contradictory selected outline family/namespace; explicit glyph maps cannot be discarded",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/glyf-as-cid0-map1.pdf",
+      "sha256": "0b8b7b7fe713ffb2bfd8f0f3a2b0cc0ba31496ef5ae24204fc3131f2dd3f322f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_collection_families/glyf-as-simple-type1",
+      "kind": "pdf",
+      "description": "Contradictory selected outline family/namespace; explicit glyph maps cannot be discarded",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/glyf-as-simple-type1.pdf",
+      "sha256": "461b669325b3cbd7fccd29526d6735130ac913c415b44108b2954025ca509a57",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_collection_families/cid-cff-as-simple-type1",
+      "kind": "pdf",
+      "description": "Contradictory selected outline family/namespace; explicit glyph maps cannot be discarded",
+      "expected": "open",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/cid-cff-as-simple-type1.pdf",
+      "sha256": "72d2bdd4c6fe83f082957822cb29ae86c64225940ebce707e8f71dec37ebc893",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "font_collection_families/name-cff-simple-type1",
+      "kind": "pdf",
+      "description": "name cff simple type1",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/name-cff-simple-type1.pdf",
+      "sha256": "91f1fd4a2331bbedae63cd9adffe9b426b838f6c4bd403e2d54fe6852c6abdec",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.collection-face"
+      ],
+      "oracle": "corpus/generated/font_collection_families/name-cff-simple-type1.ppm",
+      "oracle_sha256": "77ce9d611ba10776864749f8a7404dafbcf61e440dca86d97003484c7854c627",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collection_families/name-cff-cid0-direct-gid",
+      "kind": "pdf",
+      "description": "name cff cid0 direct gid",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/name-cff-cid0-direct-gid.pdf",
+      "sha256": "b81bf13d7e3b1a1eec4d89e7e5db0e39c019688b7e8096e2195ce3b46ab2b388",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.collection-face"
+      ],
+      "oracle": "corpus/generated/font_collection_families/name-cff-cid0-direct-gid.ppm",
+      "oracle_sha256": "77ce9d611ba10776864749f8a7404dafbcf61e440dca86d97003484c7854c627",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    },
+    {
+      "id": "font_collection_families/cid-cff-cid0-charset",
+      "kind": "pdf",
+      "description": "cid cff cid0 charset",
+      "expected": "render",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "path": "corpus/generated/font_collection_families/cid-cff-cid0-charset.pdf",
+      "sha256": "c15d458d72e8aa64fe357e3edf743e51bda9a556842e72328355ff719fafdc2c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.collection-face"
+      ],
+      "oracle": "corpus/generated/font_collection_families/cid-cff-cid0-charset.ppm",
+      "oracle_sha256": "77ce9d611ba10776864749f8a7404dafbcf61e440dca86d97003484c7854c627",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 0
+    }
+  ]
+}

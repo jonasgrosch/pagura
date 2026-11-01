@@ -286,17 +286,20 @@ impl Function {
     ///
     /// The operand stack holds at most [`Limits::CALCULATOR_STACK`] entries
     /// (Annex C). The counts of `copy`, `index` and `roll` must be known
-    /// before evaluation (integer literals, or integer arithmetic on them),
-    /// and both branches of `ifelse` (or the branch of `if` and its absence)
-    /// must leave the same stack depth and operand kinds (boolean or number).
+    /// before evaluation. The original stack/type proof is retained. An
+    /// additional proof can carry at most two intermediate stack depths,
+    /// using finite validated, evaluator-clamped `Domain` facts and literal
+    /// bounds for comparisons. Arithmetic discards unproved bounds. Every
+    /// surviving endpoint must have exactly the declared numeric results.
     ///
     /// # Errors
     ///
     /// Returns `Syntax` for a malformed program (unknown operators, invalid
     /// numbers, unbalanced braces, stack underflow, operands of the wrong
     /// kind, a result count other than the range's), `Unsupported` for a
-    /// program whose stack effect or operand kinds depend on its data and so
-    /// cannot be validated, and a `Limit` error for a program nested deeper
+    /// program not proved within the bounded static subset (unknown stack
+    /// counts, incompatible kinds or more than two concurrent depths), and a
+    /// `Limit` error for a program nested deeper
     /// than `depth`, with more than `value_nodes` instructions, or deeper
     /// than the operand stack. Positions are
     /// [`Position::Buffer`](pagura_core::Position) offsets in the program.
@@ -309,7 +312,7 @@ impl Function {
         let domain = intervals(&domain)?;
         let range = intervals(&range)?;
         let outputs = dimensions(domain.len(), range.len())?;
-        let program = calculator::Program::new(&program, domain.len(), outputs, limits)?;
+        let program = calculator::Program::new(&program, &domain, outputs, limits)?;
         Ok(Self {
             retained: 0,
             domain,

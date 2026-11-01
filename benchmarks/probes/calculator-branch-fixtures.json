@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "cases": [
+    "calculator_branches/piecewise-endpoints",
+    "calculator_branches/two-depth-endpoints",
+    "calculator_branches/bounded-ge",
+    "calculator_branches/bounded-le",
+    "calculator_branches/bounded-gt",
+    "calculator_branches/bounded-lt",
+    "calculator_branches/clamped-domain-red",
+    "calculator_branches/existing-same-depth",
+    "calculator_branches/piecewise-axial",
+    "calculator_branches/output-mismatch",
+    "calculator_branches/negative-domain-empty-path",
+    "calculator_branches/unknown-copy",
+    "calculator_branches/unknown-index",
+    "calculator_branches/numeric-underflow",
+    "calculator_branches/wrong-result-type",
+    "calculator_branches/wrong-condition-type",
+    "calculator_branches/stack-overflow",
+    "calculator_branches/piecewise-square",
+    "calculator_branches/piecewise-square-direct-twin",
+    "calculator_branches/shared-function-pages"
+  ],
+  "vectors": [
+    "calculator_branches/three-depths",
+    "calculator_branches/branch-type-mismatch",
+    "calculator_branches/arithmetic-facts-unproved"
+  ],
+  "scope": "TwentyPDFcontracts plus explicit later-page oracle at72/144DPI and three separate public Function API refusal vectors. Complete independent opaque RGB/RGBA, source hashes and native/SIMD/scalar refusal parity. No performance or public corpus admission claim."
+}

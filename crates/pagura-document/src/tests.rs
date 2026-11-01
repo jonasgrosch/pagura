@@ -425,7 +425,7 @@ mod reconstruction {
             let bytes = fixture("document", &format!("{name}.pdf"));
             let limits = pagura_core::Limits::default();
             let mut diagnostics = Diagnostics::new(Recovery::Repair);
-            let header = crate::xref::header(&bytes, &mut diagnostics).unwrap();
+            let header = crate::xref::header(&bytes, &limits, &mut diagnostics).unwrap();
             let primary = crate::xref::read(
                 &bytes,
                 header,

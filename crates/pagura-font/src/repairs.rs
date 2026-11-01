@@ -38,6 +38,10 @@ pub const TYPE1_DUPLICATE_GLYPH: Repair = Repair::new("font.type1-duplicate-glyp
 /// (TN 5176 section 12, Tables 14/15).
 pub const CFF_ENCODING_SUPPLEMENT: Repair = Repair::new("font.cff-encoding-supplement");
 
+/// Retain unassigned Type 1 Subrs slots as unavailable; calls remain malformed.
+/// No subroutine is synthesized and declared indexes remain unchanged.
+pub const TYPE1_SPARSE_SUBRS: Repair = Repair::new("font.type1-sparse-subrs");
+
 /// Every repair tag of this crate.
 pub const ALL: &[Repair] = &[
     SFNT_VERSION,
@@ -53,5 +57,6 @@ pub const ALL: &[Repair] = &[
     CFF_DICT_OPERATOR,
     CFF_DICT_OPERANDS,
     TYPE1_DUPLICATE_GLYPH,
+    TYPE1_SPARSE_SUBRS,
     CFF_ENCODING_SUPPLEMENT,
 ];

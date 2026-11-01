@@ -36,7 +36,18 @@ pub enum ButtonValue<'a> {
 #[non_exhaustive]
 pub enum FillValue<'a> {
     /// Plain text. CR and CRLF are normalized to LF before length validation.
+    /// RichText fields require an explicit [`Self::RichText`] replacement.
     Text(&'a str),
+    /// Inert XFA rich text for a RichText field (12.7.4.3, Table 231).
+    /// XML, formatting, character limits and layout are validated by appearance
+    /// preparation, not by the document layer. Saving derives plain V from this
+    /// same parser. No actions or external resources are evaluated.
+    RichText {
+        /// Complete rich text XML, retained as RV.
+        xml: &'a str,
+        /// Replacement DS; None preserves the source field's local DS.
+        default_style: Option<&'a str>,
+    },
     /// Check box or radio selection.
     Button(ButtonValue<'a>),
     /// Choice options or an editable combo's text.
@@ -49,6 +60,14 @@ pub enum FillValue<'a> {
 pub enum FilledValue {
     /// Plain Unicode text; passwords remain only in caller-owned memory.
     Text(String),
+    /// Bounded inert rich replacement; appearance preparation validates its
+    /// XML, formatting and field constraints before preview or persistence.
+    RichText {
+        /// Complete rich text XML for RV.
+        xml: String,
+        /// Replacement DS, or None to preserve the original entry.
+        default_style: Option<String>,
+    },
     /// The V name, including Off (12.7.5.2).
     Button(Name),
     /// Display values for V and sorted option indexes (Table 234).
@@ -90,7 +109,7 @@ impl FilledField {
         self.field
     }
 
-    /// The validated replacement for V.
+    /// The bounded replacement for V, or rich RV awaiting appearance validation.
     pub fn value(&self) -> &FilledValue {
         &self.value
     }
@@ -107,7 +126,8 @@ impl FilledField {
 /// Names are lookup/display data; use field and widget indexes for identity.
 /// Result storage is caller-owned, separately bounded by `document_bytes`
 /// (ADR 0012); it is not published to the document's retained cache. Saving,
-/// XFA, rich text, calculation and validation actions are outside this API.
+/// XFA, calculation and validation actions are outside this API. Rich text is
+/// retained as inert data; the appearance layer parses and lays it out.
 pub struct FormFiller<'a> {
     document: &'a Document,
     form: AcroForm<'a>,
@@ -211,7 +231,8 @@ impl<'a> FormFiller<'a> {
     /// buttons, groups, wrong input kinds, excess length and invalid or
     /// ambiguous selections; `Syntax` for field structure that cannot hold the
     /// value (such as a button whose Opt and widgets disagree); `Unsupported`
-    /// for XFA, rich text and signature or extension fields; `Limit` for
+    /// for XFA, plain replacements of rich fields and signature or extension
+    /// fields; `Limit` for
     /// input and aggregate replacement-storage budgets. A missing field index
     /// returns `InvalidArgument` without invented source context.
     pub fn set(&mut self, index: usize, input: FillValue<'_>) -> Result<&FilledField> {
@@ -263,6 +284,12 @@ impl<'a> FormFiller<'a> {
                 &self.document.limits(),
                 budget,
             )?),
+            (
+                FieldKind::Text {
+                    rich_text: true, ..
+                },
+                FillValue::RichText { xml, default_style },
+            ) => text::rich(xml, default_style, &self.document.limits(), budget)?,
             (
                 FieldKind::Button {
                     kind,

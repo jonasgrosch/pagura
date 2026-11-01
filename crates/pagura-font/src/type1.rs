@@ -6,7 +6,7 @@ use crate::budget::Work;
 use crate::cff::strings;
 use crate::memory::{encoding, names, vector};
 use crate::read::{self, glyph_id, here, syntax, unsupported};
-use crate::{GlyphId, features};
+use crate::{GlyphId, features, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Name, Position, Result};
@@ -102,6 +102,11 @@ impl Charstring {
         Ok(read::cursor(self.bytes(plain)?).with_base(self.at()))
     }
 
+    /// Bytes reserved for this charstring's lazy decrypted copy.
+    const fn decrypted_bytes(&self) -> usize {
+        if self.discard.is_some() { self.len } else { 0 }
+    }
+
     /// The plaintext offset after the interpreted bytes.
     const fn end(&self) -> usize {
         self.start.saturating_add(self.len)
@@ -114,7 +119,7 @@ pub(crate) struct Type1 {
     plain: Vec<u8>,
     glyphs: Vec<Charstring>,
     glyph_count: u32,
-    subrs: Vec<Charstring>,
+    subrs: Vec<Option<Charstring>>,
     names: BTreeMap<Name, GlyphId>,
     glyph_names: Vec<Option<Name>>,
     encoding: Box<[Option<Name>; 256]>,
@@ -193,7 +198,14 @@ impl Type1 {
     pub(crate) fn heap_bytes(&self) -> usize {
         vector(&self.plain)
             .saturating_add(charstrings(&self.glyphs))
-            .saturating_add(charstrings(&self.subrs))
+            .saturating_add(
+                self.subrs
+                    .iter()
+                    .flatten()
+                    .fold(vector(&self.subrs), |sum, c| {
+                        sum.saturating_add(c.decrypted_bytes())
+                    }),
+            )
             .saturating_add(names(&self.names))
             .saturating_add(crate::names::heap_bytes(&self.glyph_names))
             .saturating_add(encoding(&self.encoding))
@@ -205,7 +217,7 @@ impl Type1 {
 /// decrypted from it, at most one copy each.
 fn charstrings(values: &Vec<Charstring>) -> usize {
     values.iter().fold(vector(values), |sum, c| {
-        sum.saturating_add(if c.discard.is_some() { c.len } else { 0 })
+        sum.saturating_add(c.decrypted_bytes())
     })
 }
 
@@ -391,7 +403,7 @@ fn computed(r: &Tokens<'_, '_, '_>, message: &'static str) -> pagura_core::Error
 
 /// The Private dictionary's subroutines and the CharStrings dictionary.
 struct Private {
-    subrs: Vec<Charstring>,
+    subrs: Vec<Option<Charstring>>,
     charstrings: CharStrings,
 }
 
@@ -426,7 +438,7 @@ fn private(
                 if subrs.is_some() {
                     return Err(syntax(r.position(), "duplicate Type 1 Subrs array"));
                 }
-                subrs = Some(subroutines(&mut r, len_iv, &aliases)?);
+                subrs = Some(subroutines(&mut r, len_iv, &aliases, locator)?);
             }
             b"/CharStrings" => {
                 if charstrings.is_some() {
@@ -462,7 +474,8 @@ fn subroutines(
     r: &mut Tokens<'_, '_, '_>,
     len_iv: Option<usize>,
     aliases: &Aliases,
-) -> Result<Vec<Charstring>> {
+    locator: &Locator,
+) -> Result<Vec<Option<Charstring>>> {
     let count = r.integer()?;
     let at = r.position();
     r.work().entries(count, at)?;
@@ -484,9 +497,18 @@ fn subroutines(
         *slot = Some(program);
         aliases.finish(r, Assignment::Put)?;
     }
-    let mut subrs = Vec::with_capacity(count);
-    for slot in slots {
-        subrs.push(slot.ok_or_else(|| syntax(r.position(), "incomplete Type 1 Subrs array"))?);
+    // Type 1 6/8 requires charstrings in Subrs. Retain unassigned slots as
+    // unavailable, without compacting indexes or inventing return programs.
+    if slots.iter().any(Option::is_none) {
+        let input_at = match at {
+            Position::Buffer(offset) => locator.position(offset, Space::Plain),
+            other => other,
+        };
+        r.work().repair(
+            repairs::TYPE1_SPARSE_SUBRS,
+            "unassigned Type 1 subroutines retained as unavailable",
+            input_at,
+        )?;
     }
-    Ok(subrs)
+    Ok(slots)
 }

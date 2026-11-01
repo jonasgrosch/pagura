@@ -1,0 +1,893 @@
+{
+  "schema": 2,
+  "area": "relief_annotations",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "relief_annotations/Link-B-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Link-B-72.pdf",
+      "sha256": "ccead02285025b179c424c9cf24857c09879bbfb8774847fa8828371b04bd0ed",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Link-B-72.ppm",
+      "oracle_sha256": "122b7845551a3758a7bafabbf813dd821069b61fef1c5c01fb3ee7fa4ab1b9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Square-B-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Square-B-72.pdf",
+      "sha256": "2fd1b5b33871220bb71be0bc960480c95187d81fb7646aded68770dc6b9e66f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Square-B-72.ppm",
+      "oracle_sha256": "122b7845551a3758a7bafabbf813dd821069b61fef1c5c01fb3ee7fa4ab1b9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Widget-B-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Widget-B-72.pdf",
+      "sha256": "2ffb564038d9dd9ec3237b1a75d6ebe3777b1bb6b17f453fbfb8bfb2bd901453",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Widget-B-72.ppm",
+      "oracle_sha256": "122b7845551a3758a7bafabbf813dd821069b61fef1c5c01fb3ee7fa4ab1b9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/FreeText-B-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/FreeText-B-72.pdf",
+      "sha256": "71b05d59fdd8d68edc24c2c42b981c1eb5bf3622ac394fe4659ad488bc3930b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/FreeText-B-72.ppm",
+      "oracle_sha256": "122b7845551a3758a7bafabbf813dd821069b61fef1c5c01fb3ee7fa4ab1b9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/stored-B-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/stored-B-72.pdf",
+      "sha256": "a60d2fb9acfdde067c5e7825566a1afeb79e41bb44b4b3398101e056db3b5296",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/stored-B-72.ppm",
+      "oracle_sha256": "122b7845551a3758a7bafabbf813dd821069b61fef1c5c01fb3ee7fa4ab1b9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Link-B-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Link-B-144.pdf",
+      "sha256": "ccead02285025b179c424c9cf24857c09879bbfb8774847fa8828371b04bd0ed",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Link-B-144.ppm",
+      "oracle_sha256": "562fa7fd0f3a060281a93f77c2dd44882f4c71f9f33c80fec35eff06f689a8c6",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Square-B-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Square-B-144.pdf",
+      "sha256": "2fd1b5b33871220bb71be0bc960480c95187d81fb7646aded68770dc6b9e66f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Square-B-144.ppm",
+      "oracle_sha256": "562fa7fd0f3a060281a93f77c2dd44882f4c71f9f33c80fec35eff06f689a8c6",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Widget-B-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Widget-B-144.pdf",
+      "sha256": "2ffb564038d9dd9ec3237b1a75d6ebe3777b1bb6b17f453fbfb8bfb2bd901453",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Widget-B-144.ppm",
+      "oracle_sha256": "562fa7fd0f3a060281a93f77c2dd44882f4c71f9f33c80fec35eff06f689a8c6",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/FreeText-B-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/FreeText-B-144.pdf",
+      "sha256": "71b05d59fdd8d68edc24c2c42b981c1eb5bf3622ac394fe4659ad488bc3930b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/FreeText-B-144.ppm",
+      "oracle_sha256": "562fa7fd0f3a060281a93f77c2dd44882f4c71f9f33c80fec35eff06f689a8c6",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/stored-B-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/stored-B-144.pdf",
+      "sha256": "a60d2fb9acfdde067c5e7825566a1afeb79e41bb44b4b3398101e056db3b5296",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/stored-B-144.ppm",
+      "oracle_sha256": "562fa7fd0f3a060281a93f77c2dd44882f4c71f9f33c80fec35eff06f689a8c6",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/filled-B",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/filled-B.pdf",
+      "sha256": "0df61a25c8736105daab0f29341952b8cba11048254161d2f8a9afd8138815b6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/filled-B.ppm",
+      "oracle_sha256": "e59b0dc5a0fa65a190e18f52c2ccea5d706aaa2291b0836b5e2141b0b44f51e8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/gray-B",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/gray-B.pdf",
+      "sha256": "154a133ec6bd1295594ebbfe6e725dd586fe33a06c09fc292b674e28068cb341",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/gray-B.ppm",
+      "oracle_sha256": "4166d87be4a1133166f908dfea14f9fce3b9b4693db12299ae49fcbc8833bd88",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Link-I-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Link-I-72.pdf",
+      "sha256": "343334345f7122b50f77bc360364686e8fa00707cfb154ae943f4a136416b1a0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Link-I-72.ppm",
+      "oracle_sha256": "ac363d83c6ad50e8b8983575627f27946e10fb1690e9c2cb9798254966096631",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Square-I-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Square-I-72.pdf",
+      "sha256": "58bd01ce45de6960dcc70b1faba529b688e5fc88abd43fbd4ecea8cf11dfc7f3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Square-I-72.ppm",
+      "oracle_sha256": "ac363d83c6ad50e8b8983575627f27946e10fb1690e9c2cb9798254966096631",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Widget-I-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Widget-I-72.pdf",
+      "sha256": "bfec858e4dbb2cad33ef54637b67a848cf8da480e998653620d8c9ee706f9cee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Widget-I-72.ppm",
+      "oracle_sha256": "ac363d83c6ad50e8b8983575627f27946e10fb1690e9c2cb9798254966096631",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/FreeText-I-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/FreeText-I-72.pdf",
+      "sha256": "ddbdb390503fabc03feb559dfe4c2b4e0c2e9e9f681e1d5a187a30054baa5f7e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/FreeText-I-72.ppm",
+      "oracle_sha256": "ac363d83c6ad50e8b8983575627f27946e10fb1690e9c2cb9798254966096631",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/stored-I-72",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/stored-I-72.pdf",
+      "sha256": "b42c0f4c63ab01cc7cc7240db4bf9bd40c12b73b66d584cb5495f6e984c0709a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/stored-I-72.ppm",
+      "oracle_sha256": "ac363d83c6ad50e8b8983575627f27946e10fb1690e9c2cb9798254966096631",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Link-I-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Link-I-144.pdf",
+      "sha256": "343334345f7122b50f77bc360364686e8fa00707cfb154ae943f4a136416b1a0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Link-I-144.ppm",
+      "oracle_sha256": "f0c7751017b4b80a8d931ac5060c5a450be53c82536c15e4e314cedf061c7e96",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Square-I-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Square-I-144.pdf",
+      "sha256": "58bd01ce45de6960dcc70b1faba529b688e5fc88abd43fbd4ecea8cf11dfc7f3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Square-I-144.ppm",
+      "oracle_sha256": "f0c7751017b4b80a8d931ac5060c5a450be53c82536c15e4e314cedf061c7e96",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/Widget-I-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/Widget-I-144.pdf",
+      "sha256": "bfec858e4dbb2cad33ef54637b67a848cf8da480e998653620d8c9ee706f9cee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/Widget-I-144.ppm",
+      "oracle_sha256": "f0c7751017b4b80a8d931ac5060c5a450be53c82536c15e4e314cedf061c7e96",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/FreeText-I-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/FreeText-I-144.pdf",
+      "sha256": "ddbdb390503fabc03feb559dfe4c2b4e0c2e9e9f681e1d5a187a30054baa5f7e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/FreeText-I-144.ppm",
+      "oracle_sha256": "f0c7751017b4b80a8d931ac5060c5a450be53c82536c15e4e314cedf061c7e96",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/stored-I-144",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/stored-I-144.pdf",
+      "sha256": "b42c0f4c63ab01cc7cc7240db4bf9bd40c12b73b66d584cb5495f6e984c0709a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/stored-I-144.ppm",
+      "oracle_sha256": "f0c7751017b4b80a8d931ac5060c5a450be53c82536c15e4e314cedf061c7e96",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/filled-I",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/filled-I.pdf",
+      "sha256": "0cab802710335dbefd92f029e92c8b89e10dc1de5ac72486a095ad842716e3af",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/filled-I.ppm",
+      "oracle_sha256": "9c54c287436da292976348cae677c19b7b37b4a3b5a56c90cadaf79e7a184490",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/gray-I",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/gray-I.pdf",
+      "sha256": "072ccad2f95528d3ed041167e9af1160550778491979a49069fde71c13fddc16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/gray-I.ppm",
+      "oracle_sha256": "cf2b14836c68b1d27ca75519f8c356249bff369ac7f64fbd77e3db1ac0c9551c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/separate-opacity-Square",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/separate-opacity-Square.pdf",
+      "sha256": "068c6fee91958d02de34084bb38bdf669ae1f4b2725d9f7878c88512e50e3092",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/separate-opacity-Square.ppm",
+      "oracle_sha256": "e33d1c5572835476b6d5f4bac69b41c60a533b77a5237fa3c7daed704676fcf4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/opaque-border-Square",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/opaque-border-Square.pdf",
+      "sha256": "3e45d9c8c7d3e7df328a6fa7f875f8f67e20ee29ae8f6095324960ed00312469",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/opaque-border-Square.ppm",
+      "oracle_sha256": "490fe0955e604f5fe009d99f7715c19fbe0cbb5c541111f63124d09a0172328f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/separate-opacity-Widget",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/separate-opacity-Widget.pdf",
+      "sha256": "a69768d5d8b664cd46f8ada4ccec15b725bdfb578b28e9ff0cc52301e33f3555",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/separate-opacity-Widget.ppm",
+      "oracle_sha256": "722ade8eb23671b21a8c603224418ca4bf015ce89a6347c0559da5e915fc08b3",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/opaque-border-Widget",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/opaque-border-Widget.pdf",
+      "sha256": "ab574af0f4b52c66cde545dd9249e902fd3d039e9462d14e59a25ba3f0ce15c0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/opaque-border-Widget.ppm",
+      "oracle_sha256": "ccdcbb00762e4370bfd5a131ece0dd583b99e9c335cae971968dfb55f3773371",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/separate-opacity-FreeText",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/separate-opacity-FreeText.pdf",
+      "sha256": "7048150fc0c890908deb958680e363f789f92d46e9ccc6f6cd100b77c31842c1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/separate-opacity-FreeText.ppm",
+      "oracle_sha256": "722ade8eb23671b21a8c603224418ca4bf015ce89a6347c0559da5e915fc08b3",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/opaque-border-FreeText",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/opaque-border-FreeText.pdf",
+      "sha256": "885ba4553b23b16dc0a7c8ee88597447cfc7a67351147ed365c269b210f92c03",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/opaque-border-FreeText.ppm",
+      "oracle_sha256": "ccdcbb00762e4370bfd5a131ece0dd583b99e9c335cae971968dfb55f3773371",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/fractional",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/fractional.pdf",
+      "sha256": "6426983c70c4af25cd3a6bb9e9d46e229e1d56c41f1eb099779b411aa77c4b51",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/fractional.ppm",
+      "oracle_sha256": "6fb306c5ea9015c371e7dbc70291da51548c526be83abb49bb95bdee2814e3e4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/rotated",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/rotated.pdf",
+      "sha256": "124b3ccb8f686ccb5896db9481aa097495c7a6b4cfcbc4a801ed6eb49082adfd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/rotated.ppm",
+      "oracle_sha256": "76b3d21f1b0de60e16f40cc2b87b47a59b791cf824e005a530f8528a57e6a548",
+      "dpi": 144,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/rd",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/rd.pdf",
+      "sha256": "7bae94972d9e38fa01c5999b3ff2648ec5add3b1fba99651e996af4dc603b025",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/rd.ppm",
+      "oracle_sha256": "4c36e226264e571dab61183d4ac0d7bf0af0c5ac544c62c3b2fd5cd983df76b7",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/wide",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/wide.pdf",
+      "sha256": "ed960c24ba7c5c4806d1335d7be043f91c733bd24609d08138ad445d2af5bbdc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/wide.ppm",
+      "oracle_sha256": "497a936193c4e1140652427dc63bd9ae4645450a5d9213b324ba913001e5b15a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/zero-width",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/zero-width.pdf",
+      "sha256": "df6ff60151f1dec1c7ac128a085b7e8971ff433a98bfd97667049ebc5ace85b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/zero-width.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/no-color",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/no-color.pdf",
+      "sha256": "c3b87770702e8f09200fa7e00d85cd5d9eb6ddb56658d939f606ccbbe9ed1c0a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/no-color.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/hidden",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/hidden.pdf",
+      "sha256": "5010b8fbd6e970b6760f250d94a8bdc9bf307959f643c48bb582049a96c12139",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/hidden.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/no-view",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/no-view.pdf",
+      "sha256": "41be41ad2db2179714a4536988f92a4145c7a060e746d6710d260885dc9c0c86",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/no-view.ppm",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/clamped-color",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/clamped-color.pdf",
+      "sha256": "58ec9e117717be62564d1b63ce216cd06331411b64139bebe19b3f377d4aa636",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/clamped-color.ppm",
+      "oracle_sha256": "ddd63b04e0596c508109c12443ec096eaa0335a4261828d651fbd6b5d581c903",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/bs-precedence",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/bs-precedence.pdf",
+      "sha256": "901b3c158bf988edd5fa65a79e88f3f994c289855c92bc8ac29b34820ce70002",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/bs-precedence.ppm",
+      "oracle_sha256": "122b7845551a3758a7bafabbf813dd821069b61fef1c5c01fb3ee7fa4ab1b9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/indirect",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/indirect.pdf",
+      "sha256": "722c08e76c1c88fc4ea6f817425e058c843084d7e4337ebfc1ff077c02f182b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/indirect.ppm",
+      "oracle_sha256": "122b7845551a3758a7bafabbf813dd821069b61fef1c5c01fb3ee7fa4ab1b9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/stored-ignores-style",
+      "kind": "pdf",
+      "description": "Independent trapezoid areas and per-fill coverage establish relief shading, paint order and opacity",
+      "expected": "render",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/stored-ignores-style.pdf",
+      "sha256": "a3322eba9c1467445c1faf45b8f6efb2276677d7a6737d0d383562d0a9621308",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/relief_annotations/stored-ignores-style.ppm",
+      "oracle_sha256": "122b7845551a3758a7bafabbf813dd821069b61fef1c5c01fb3ee7fa4ab1b9bd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "relief_annotations/negative-width",
+      "kind": "pdf",
+      "description": "Malformed widths validate before invisible output",
+      "expected": "open",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/negative-width.pdf",
+      "sha256": "d7054eb1f3466c60e5cbbbb5b3a3dcdd7ea8825b71ef2aa26ca6d1d3ada42c84",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "relief_annotations/width-type",
+      "kind": "pdf",
+      "description": "Malformed widths validate before invisible output",
+      "expected": "open",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/width-type.pdf",
+      "sha256": "f9f61ee047b871943865e890de964ac6557feb94450cf09431a3f350dba7ee0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "relief_annotations/nonrectangular",
+      "kind": "pdf",
+      "description": "Relief shading for nonrectangular paths requires explicit artwork",
+      "expected": "unsupported",
+      "requirements": [
+        "content-relief-borders"
+      ],
+      "path": "corpus/generated/relief_annotations/nonrectangular.pdf",
+      "sha256": "0c8dd8b447c54fcd96962d31052be5c340dc87632e828075570317f45841d345",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    }
+  ]
+}

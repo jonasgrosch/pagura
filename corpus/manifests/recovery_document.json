@@ -1,0 +1,113 @@
+{
+  "schema": 2,
+  "area": "recovery_document",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "recovery_document/header-absent",
+      "kind": "pdf",
+      "description": "A complete leading Catalog identifies a headerless PDF body without inventing a version",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/recovery_document/header-absent.pdf",
+      "sha256": "fdd42554fb59425e8b8497b4625e571cf690ce48f15fc0a72418a8f63dc50d36",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-absent"
+      ],
+      "oracle": "corpus/generated/recovery_document/header-absent.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "recovery_document/header-absent-binary-comment",
+      "kind": "pdf",
+      "description": "A complete leading Catalog identifies a headerless PDF body without inventing a version",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/recovery_document/header-absent-binary-comment.pdf",
+      "sha256": "540b1eba644d250bc4af5b112bf93ccb22bd78c3577eafc6305e67546bb34fc6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-absent"
+      ],
+      "oracle": "corpus/generated/recovery_document/header-absent-binary-comment.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "recovery_document/stream-length-crosses-next-object",
+      "kind": "pdf",
+      "description": "Overlong Length is corrected only to one complete terminator before the next physical object",
+      "expected": "render",
+      "requirements": [
+        "stream-boundary-recovery"
+      ],
+      "path": "corpus/generated/recovery_document/stream-length-crosses-next-object.pdf",
+      "sha256": "751c49933f694b1fe79094b1c213c8609b9f5772d956da0bb0b113f59dff68a1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/recovery_document/stream-length-crosses-next-object.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "recovery_document/stream-length-crosses-xref",
+      "kind": "pdf",
+      "description": "Overlong Length is corrected only to one complete terminator before the next physical object",
+      "expected": "render",
+      "requirements": [
+        "stream-boundary-recovery"
+      ],
+      "path": "corpus/generated/recovery_document/stream-length-crosses-xref.pdf",
+      "sha256": "3bd1f32769c3270b5aead6598f3eee324e60bb492ec7595f29339f9198add7aa",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/recovery_document/stream-length-crosses-xref.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "recovery_document/stream-length-crosses-EOF",
+      "kind": "pdf",
+      "description": "Overlong Length is corrected only to one complete terminator before the next physical object",
+      "expected": "render",
+      "requirements": [
+        "stream-boundary-recovery"
+      ],
+      "path": "corpus/generated/recovery_document/stream-length-crosses-EOF.pdf",
+      "sha256": "63cffc5f74020080a5f9d745bd827d542ed7af2dcba1fc4392430e335dd58445",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/recovery_document/stream-length-crosses-EOF.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    }
+  ]
+}

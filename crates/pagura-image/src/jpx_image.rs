@@ -1,6 +1,8 @@
 //! PDF JPEG 2000 adaptation: ISO 32000-2 7.4.9 and Table 87.
 use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, features, jpx, parameters};
-use pagura_core::{Dictionary, Error, Limits, Meter, Recovery, Result, Value};
+use pagura_core::{
+    Diagnostic, Diagnostics, Dictionary, Error, Limits, Meter, Position, Recovery, Result, Value,
+};
 
 /// How a PDF JPXDecode image is decoded: its `SMaskInData` mode and the
 /// container metadata it ignores (7.4.9, Table 87).
@@ -9,6 +11,7 @@ pub(crate) struct Jpx {
     pub(crate) mode: i64,
     options: jpx::Options,
     indexed: bool,
+    raw: bool,
 }
 
 /// A JPXDecode image's colour channels as decoding will return them,
@@ -25,17 +28,40 @@ pub(crate) struct Description {
 impl Jpx {
     /// Validates the dictionary entries and data framing that decoding
     /// checks before it reads the container.
-    pub(crate) fn read(data: &[u8], dictionary: &Dictionary, kind: &ImageKind) -> Result<Self> {
+    pub(crate) fn read(
+        data: &[u8],
+        dictionary: &Dictionary,
+        kind: &ImageKind,
+        recovery: Recovery,
+    ) -> Result<Self> {
         let mode = parameters::integer(dictionary, b"SMaskInData", 0)?;
         if !(0..=2).contains(&mode)
             || (mode != 0 && dictionary.get(b"SMask").is_some_and(|v| !v.is_null()))
         {
             return Err(Error::syntax("invalid SMaskInData or simultaneous SMask"));
         }
-        if data.starts_with(&[255, 79]) {
-            return Err(Error::syntax(
-                "PDF JPXDecode requires a full JPEG 2000 container",
-            ));
+        let raw = data.starts_with(&[255, 79]);
+        if raw {
+            // A raw codestream supplies dimensions and precision, but no
+            // colour/channel associations. Require the PDF to supply colour
+            // interpretation and refuse opacity that needs container metadata.
+            if mode != 0
+                || !matches!(
+                    kind,
+                    ImageKind::Color {
+                        color_space: Some(_)
+                    }
+                )
+            {
+                return Err(Error::syntax(
+                    "raw PDF JPX data requires an explicit colour space and no embedded opacity",
+                ));
+            }
+            // Description checks policy without reporting it. Decoding below
+            // forwards the repair to the caller's bounded diagnostic sink.
+            if recovery == Recovery::Strict {
+                report_raw(&mut Diagnostics::new(recovery))?;
+            }
         }
         let options = jpx::Options {
             ignore_color: !matches!(kind, ImageKind::Color { color_space: None }),
@@ -47,6 +73,7 @@ impl Jpx {
             mode,
             options,
             indexed,
+            raw,
         })
     }
 
@@ -55,10 +82,13 @@ impl Jpx {
         data: &[u8],
         image: &mut DecodedImage,
         limits: &Limits,
-        diagnostics: &mut pagura_core::Diagnostics,
+        diagnostics: &mut Diagnostics,
     ) -> Result<()> {
+        if self.raw {
+            report_raw(diagnostics)?;
+        }
         let mut decoded = jpx::decode_pdf(data, limits, &self.options, diagnostics, self.indexed)?;
-        if self.mode == 0 {
+        if self.mode == 0 && !self.raw {
             super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
         }
         adapt(decoded, self.mode, image, limits)
@@ -75,7 +105,7 @@ impl Jpx {
         mode: Recovery,
     ) -> Result<Description> {
         let mut decoded = jpx::describe_pdf(data, limits, &self.options, mode, self.indexed)?;
-        if self.mode == 0 {
+        if self.mode == 0 && !self.raw {
             super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
         }
         let jpx::Decoded {
@@ -141,6 +171,16 @@ impl Jpx {
             kind,
         })
     }
+}
+
+fn report_raw(diagnostics: &mut Diagnostics) -> Result<()> {
+    diagnostics.repair_once(
+        Diagnostic::new(
+            crate::repairs::JPX_CODESTREAM,
+            "unboxed JPEG 2000 data uses the explicit PDF colour space (7.4.9)",
+        )
+        .at(Position::Buffer(0)),
+    )
 }
 
 pub(crate) fn adapt(

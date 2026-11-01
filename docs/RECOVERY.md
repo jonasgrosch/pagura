@@ -24,6 +24,60 @@ older protocol diagnostic snapshots contain repairs only.
 
 Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
+- `pages.annotation-null` (Table 31; 12.5.2): skip a literal null member
+  of a page's Annots array after reporting recovery. Original annotation
+  references, order and raw-array budgets are preserved. References to
+  null or unavailable objects remain validation failures. Strict rejects
+  before skipping; this is not the dictionary-null rule of 7.3.9 and does
+  not normalize the whole Annots field. Rendering, links and signature-role
+  traversal share the document-owned member gate. Signature roles retain
+  the original-byte walk and treat repaired membership as ambiguous;
+  existing strict signed-source reopening and diagnostic guards keep
+  high-level modification analysis Inconclusive. No cryptographic result
+  or original signed byte is changed.
+
+- `jbig2.unused-aggregation-table` (T.88 7.4.2.1.1, bit 7): a Huffman
+  symbol dictionary with refinement/aggregation disabled may select an unused
+  aggregation table. Repair keeps that selector and still consumes, validates
+  and charges its custom table. Missing, extra, wrong-role or malformed tables,
+  other forbidden flag bits, active aggregation and arithmetic coding retain
+  their checks. The first occurrence in decoding order (Globals before page)
+  is reported; a reused diagnostic sink retains its first occurrence. PDF
+  diagnostics identify the actual Globals/image stream. Strict still rejects.
+  No partial bitmap is returned after any subsequent failure.
+
+- `jbig2.page-capabilities` (T.88 7.4.8.5, bits 1 and 5): complete
+  auxiliary/refinement region segments override contradicting page capability
+  declarations. This is a reported viewing policy, not conforming input.
+  Strict decoding rejects the contradiction. Region syntax, reference identity,
+  combination operators, framing, cycles and all work/storage budgets retain
+  their checks; failed decoding never returns a partial bitmap.
+
+- `jpx.raw-codestream` (7.4.9): viewing may decode an unboxed JPEG 2000
+  codestream using an explicit PDF image colour space. This is a reported
+  repair of the required full-file framing, not conforming JPX input.
+  Missing colour spaces and embedded-opacity requests stay errors. Dimensions,
+  components, sampling geometry, complete codestream syntax and all resource
+  limits retain their existing validation; no colour or opacity metadata is
+  guessed. Strict mode rejects the same unboxed input. An explicit PDF
+  colour space remains authoritative (7.4.9), including subsampled RGB;
+  T.800 A.5.1/B.2 component grid steps do not imply YCbCr. A reader that
+  infers YCbCr from sampling ratios can disagree and is not a pixel oracle
+  for this policy; the subsampled fixture derives pixels from stated RGB
+  sample arrays and grid placement.
+
+- `inline.ei-separator` (8.9.7): accept a complete `EI` token immediately
+  at the caller-framed image boundary when the intervening whitespace is
+  absent. The data bytes and following content tokens are preserved. This
+  repairs separation only: missing `EI`, an attached operator such as `EIQ`,
+  framing errors and resource/decoder limits remain errors. The tokenizer's
+  original entry point stays strict; its diagnostic-aware entry point and
+  the interpreter require explicit recovery permission. Before drawing a
+  repaired image, raw and general-filter data must supply the exact
+  row-padded sample bytes under the caller's limits; short-data padding is
+  not a completeness proof. Image-codec separator recovery remains refused
+  until completeness can share the ordinary per-image decode work budget.
+
 - `asn1.ber-set-order` (X.690 11.6; RFC 5652 5.1): retain BER SET OF source
   order with a diagnostic. Signed attributes, certificates and DER entry
   points remain strict. BER length, indefinite-container and OCTET STRING
@@ -99,6 +153,18 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   dingbat and unknown families, and fonts without such an encoding, still
   fail with `font.non-embedded`.
 
+- `font.program-binding` (PDF Table 124, ADR 0009): a CIDFontType0 embedding
+  key/subtype contradicts an intact self-identifying CFF1 or sfnt program.
+  Repair parses the complete bytes and preserves program charset CIDs/GIDs
+  and PDF widths. Strict rejects; ambiguous Type 1 CID order, conflicting
+  TrueType maps, malformed programs and resource failures stay errors.
+
+- `font.collection-face` (PDF Table 124, ADR 0009): PDF supplies no collection
+  face index. Repair selects one unique FontName/BaseFont PostScript-name
+  match from a valid TTC/OTC, including valid subset-tag removal, after
+  validating its selected outline family and glyph namespace (Table 124). Strict
+  rejects the PDF reader policy; the native font API accepts valid collections.
+
 - `font.embedded-unusable` (9.9; ADR 0009): an embedded program that still
   cannot be used after its parser's own repairs (syntax, binding or
   unsupported construct) is replaced by the substitute a non-embedded font with
@@ -126,7 +192,12 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   DICT operators are ignored with their operands; `font.cff-encoding-supplement`
   (CFF section 12): a supplement for a glyph absent from the main encoding is
   dropped; `font.type1-duplicate-glyph` (Type 1 chapters 6 and 10.3): the first
-  definition of a repeated glyph name is kept.
+  definition of a repeated glyph name is kept. `font.type1-sparse-subrs`
+  (Type 1 chapters 6 and 8) retains unassigned array entries as unavailable,
+  preserving declared indexes and original bytes. Strict rejects them. No
+  return program is invented; calling a hole remains malformed and follows
+  the existing reported `font.glyph-data` fallback in Repair mode. That
+  fallback does not reconstruct the missing outline.
 - Forms (7.9.2.2, 12.6.2, 12.7.3–12.7.4): `form.fields`, `form.name`,
   `form.duplicate-name`, `form.parent`, `form.cycle` and `form.structure` read a
   malformed field tree into a consistent model; equivalent duplicate names
@@ -183,6 +254,14 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 - `jpx.mapping-box-location` (T.800 I.5.3.4–I.5.3.5): a sole mapping box before
   the codestream supplies the header palette's missing mapping; duplicate or
   late mappings and missing palettes stay errors.
+- `jpx.palette-padding` (T.800 I.5.3.4, Tables I.12–I.13): clear only unused
+  high bits above a palette column's declared precision. Low-order sample
+  bits, the sign bit and signed-offset interpretation remain authoritative;
+  stored octets do not imply a wider precision. The first affected sample
+  position is reported once per codec invocation. Strict rejects the repair.
+  Complete tables/codestreams, mapping/opacity rules and existing budgets
+  still apply. Explicit PDF Indexed colours use their own lookup and the
+  original codestream indices; this adds no container-palette opacity support.
 - `image.xobject-type` (8.9.5, Table 87): `Subtype /Image` identifies an image
   XObject despite a malformed optional `Type`; invalid subtypes remain errors.
 - `image.filter-mismatch` (7.4.4, 7.4.8): a purported JPEG with predictor
@@ -201,3 +280,26 @@ is the project reading of 7.10.2. Transfer-region selection follows
 default transfer, including through indirect references. A fractional boundary involving a nondefault
 transfer still fails explicitly: averaging colour before region selection would
 lose the correlation needed for nonlinear transfer functions.
+
+- `content.graphics-unmatched`, `content.text-unmatched` (8.4.2, 9.4.1):
+  unmatched `Q` or `ET` leaves the current graphics and text states unchanged.
+  These viewing policies report every deviation. Strict rejects them, and
+  incomplete operands, text objects, paths and compatibility sections, unknown
+  operators, crossed boundaries and resource limits remain errors. Readers may
+  disagree on malformed state boundaries.
+
+- `file.header-absent` (7.5.2): a complete explicitly typed Catalog with a
+  Pages reference in the first 1024 bytes can identify a headerless body.
+  No PDF version is inferred. Explicit unknown/truncated PDF declarations
+  remain errors, and normal page-tree, cross-reference and security validation
+  still applies. Strict rejects the absence. `stream.length-corrected` may
+  also correct an overlong declaration crossing a following object, but its
+  repaired extent must end at one unambiguous complete terminator before the
+  next physical object/revision boundary; it never consumes that object.
+
+- `content.marked-unmatched` (14.6): an `EMC` with no open marked-content
+  sequence in the current scope is a reported no-op in Repair. Visibility,
+  text/graphics/path/clip state and the structure device stack are retained;
+  no synthetic begin or device end is emitted. A form cannot close its
+  caller's sequence. Strict rejects, and later syntax/resource/cycle/limit
+  failures remain errors without successful partial output.

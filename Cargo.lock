@@ -31,6 +31,7 @@ dependencies = [
  "pagura-core",
  "pagura-data",
  "pagura-document",
+ "pagura-raster",
  "pagura-testkit",
  "pagura-text",
  "pagura-write",

@@ -404,7 +404,15 @@ impl Survey<'_> {
                 // is not its shape unless AIS.
                 Node::Image(image) => (
                     &image.mark,
-                    Kind::Varying,
+                    match image
+                        .stencil
+                        .filter(|_| image.image.space.is_none())
+                        .map(|id| self.paint(id))
+                        .transpose()?
+                    {
+                        Some(kind @ Kind::Pattern(_)) => kind,
+                        _ => Kind::Varying,
+                    },
                     1,
                     !matches!(
                         image.image.mask,

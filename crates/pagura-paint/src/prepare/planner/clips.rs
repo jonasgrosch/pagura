@@ -22,6 +22,7 @@ pub(crate) struct Key {
     crop: bool,
     transform: [u64; 6],
     extra: Option<(u32, [u64; 6])>,
+    stencil: Option<u32>,
 }
 
 /// A path that clips a mark besides its clipping path chain: a shading
@@ -46,10 +47,17 @@ pub(crate) struct Link {
     /// Owned path allocation of an extra rectangle; scene/crop paths have
     /// their owning phase and contribute no second payload charge here.
     owned: usize,
+    kind: Kind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Kind {
+    Fill,
+    Glyph,
 }
 
 /// The paths of a clip state, outermost first.
-type Chain = Vec<Link>;
+pub(super) type Chain = Vec<Link>;
 
 /// Prepared clips by the hash of their chains. Content often sets the same
 /// clipping path again as a new clip; clip states with equal chains share
@@ -82,6 +90,7 @@ impl Planner<'_> {
             crop: scope.crop,
             transform: scope.transform_bits(),
             extra: extra.map(|e| (e.paint, bits(e.transform))),
+            stencil: scope.stencil_clip,
         }
     }
 
@@ -94,7 +103,20 @@ impl Planner<'_> {
         extra: bool,
         mut visit: impl FnMut(Link) -> Result<()>,
     ) -> Result<()> {
-        let mut count = usize::from(extra);
+        let inherited = scope
+            .stencil_clip
+            .and_then(|id| self.stencil_clips.get(index(id)))
+            .map_or(&[][..], Vec::as_slice);
+        let mut count = usize::from(extra).saturating_add(inherited.len());
+        if count > self.limits.mask_sources {
+            return Err(Error::limit("clip path budget exceeded"));
+        }
+        for link in inherited {
+            visit(Link {
+                owned: 0,
+                ..link.clone()
+            })?;
+        }
         let mut current = clip;
         while let Some(id) = current {
             if count >= self.limits.mask_sources {
@@ -113,6 +135,7 @@ impl Planner<'_> {
                 rule: node.rule,
                 transform: scope.transform,
                 owned: 0,
+                kind: Kind::Fill,
             })?;
             count += 1;
             current = node.parent;
@@ -123,9 +146,98 @@ impl Planner<'_> {
                 rule: FillRule::NonZero,
                 transform: self.request.transform,
                 owned: 0,
+                kind: Kind::Fill,
             })?;
         }
         Ok(())
+    }
+
+    /// Keeps the mask and the mark's complete clip chain for pattern cell
+    /// children. Both are intersected with the children's geometry before
+    /// coverage is quantized, rather than multiplying area averages.
+    pub(super) fn stencil_clip(
+        &mut self,
+        scope: &Scope,
+        clip: Option<ClipId>,
+        path: &Path,
+        budget: &mut Budget,
+    ) -> Result<u32> {
+        self.pattern_clip(
+            scope,
+            clip,
+            path,
+            (FillRule::NonZero, scope.transform),
+            budget,
+        )
+    }
+
+    /// Adds a pattern-painted mark to the inherited device-space geometry.
+    /// Fill rules and the mark's own transform remain authoritative at
+    /// every nesting level; descendants integrate this full intersection.
+    pub(super) fn pattern_clip(
+        &mut self,
+        scope: &Scope,
+        clip: Option<ClipId>,
+        path: &Path,
+        (rule, transform): (FillRule, Transform),
+        budget: &mut Budget,
+    ) -> Result<u32> {
+        let mut chain = self.chain(scope, (clip, None), &mut budget.bytes)?;
+        if chain.len() >= self.limits.mask_sources {
+            return Err(Error::limit("clip path budget exceeded"));
+        }
+        budget.bytes.reserve_capacity(&mut chain, 1)?;
+        budget
+            .bytes
+            .charge(2 * size_of::<usize>() + size_of::<Path>())?;
+        let path = path.transformed_with_bytes(transform, &mut budget.bytes)?;
+        let owned = 2 * size_of::<usize>() + size_of::<Path>() + path.retained_bytes();
+        chain.push(Link {
+            path: Arc::new(path),
+            rule,
+            transform: Transform::IDENTITY,
+            owned,
+            kind: Kind::Fill,
+        });
+        let id = u32::try_from(self.stencil_clips.len())
+            .map_err(|_| Error::limit("stencil clip count exceeds u32"))?;
+        budget.bytes.reserve_capacity(&mut self.stencil_clips, 1)?;
+        self.stencil_clips.push(chain);
+        Ok(id)
+    }
+
+    /// Keeps the glyph's original controls and complete placement, rather
+    /// than treating its quadratics as ordinary flattened clipping paths.
+    pub(super) fn pattern_glyph(
+        &mut self,
+        scope: &Scope,
+        clip: Option<ClipId>,
+        path: &Path,
+        transform: Transform,
+        budget: &mut Budget,
+    ) -> Result<u32> {
+        let mut chain = self.chain(scope, (clip, None), &mut budget.bytes)?;
+        if chain.len() >= self.limits.mask_sources {
+            return Err(Error::limit("clip path budget exceeded"));
+        }
+        budget.bytes.reserve_capacity(&mut chain, 1)?;
+        budget
+            .bytes
+            .charge(2 * size_of::<usize>() + size_of::<Path>())?;
+        let path = path.transformed_with_bytes(Transform::IDENTITY, &mut budget.bytes)?;
+        let owned = 2 * size_of::<usize>() + size_of::<Path>() + path.retained_bytes();
+        chain.push(Link {
+            path: Arc::new(path),
+            rule: FillRule::NonZero,
+            transform,
+            owned,
+            kind: Kind::Glyph,
+        });
+        let id = u32::try_from(self.stencil_clips.len())
+            .map_err(|_| Error::limit("stencil clip count exceeds u32"))?;
+        budget.bytes.reserve_capacity(&mut self.stencil_clips, 1)?;
+        self.stencil_clips.push(chain);
+        Ok(id)
     }
 
     /// Conservative bounds of the pixels `clip` keeps in `scope`.
@@ -254,6 +366,9 @@ impl Planner<'_> {
                 return Err(error);
             }
         };
+        // Curved clips carry their cumulative interval-preparation and
+        // emission admission; an empty result still spent that proof work.
+        budget.work.charge(prepared.work)?;
         let clipping = if prepared.bounds.is_empty() {
             Clipping::Empty
         } else {
@@ -285,6 +400,7 @@ impl Planner<'_> {
                     rule: FillRule::NonZero,
                     transform: extra.transform,
                     owned,
+                    kind: Kind::Fill,
                 });
             }
             self.walk_chain(scope, clip, extra.is_some(), |link| {
@@ -309,6 +425,25 @@ impl Planner<'_> {
         chain: &[Link],
         bytes: &mut Meter,
     ) -> Result<Prepared> {
+        if chain.iter().any(|link| link.kind == Kind::Glyph) {
+            let mut sources = Vec::new();
+            bytes.reserve_capacity(&mut sources, chain.len())?;
+            sources.extend(chain.iter().map(|link| match link.kind {
+                Kind::Fill => {
+                    pagura_raster::ClipSource::fill(&link.path, link.rule, link.transform)
+                }
+                Kind::Glyph => pagura_raster::ClipSource::glyph(&link.path, link.transform),
+            }));
+            let options = ShapeOptions {
+                area: self.area,
+                limits: self.limits,
+            };
+            let result = self.shapes.clip_sources(&sources, &options, bytes);
+            let released = sources.capacity() * size_of::<pagura_raster::ClipSource<'_>>();
+            drop(sources);
+            bytes.refund(released);
+            return result;
+        }
         let uniform = chain.iter().all(|link| link.transform == scope.transform);
         if uniform {
             let mut paths = Vec::new();
@@ -390,6 +525,11 @@ fn chain_bytes(chain: &Chain) -> usize {
     chain.capacity() * size_of::<Link>() + chain.iter().map(|link| link.owned).sum::<usize>()
 }
 
+/// Unique ownership retained by inherited stencil clips.
+pub(super) fn stencil_bytes(chains: &Vec<Chain>) -> usize {
+    chains.capacity() * size_of::<Chain>() + chains.iter().map(chain_bytes).sum::<usize>()
+}
+
 /// The bits of `t`.
 fn bits(t: Transform) -> [u64; 6] {
     [t.a, t.b, t.c, t.d, t.e, t.f].map(f64::to_bits)
@@ -399,6 +539,7 @@ fn bits(t: Transform) -> [u64; 6] {
 fn chain_hash(chain: &Chain) -> u64 {
     let mut hasher = FastHasher::default();
     for link in chain {
+        link.kind.hash(&mut hasher);
         link.rule.hash(&mut hasher);
         bits(link.transform).hash(&mut hasher);
         for segment in link.path.segments() {
@@ -412,7 +553,8 @@ fn chain_hash(chain: &Chain) -> u64 {
 fn same_chain(a: &Chain, b: &Chain) -> bool {
     a.len() == b.len()
         && a.iter().zip(b).all(|(a, b)| {
-            a.rule == b.rule
+            a.kind == b.kind
+                && a.rule == b.rule
                 && bits(a.transform) == bits(b.transform)
                 && (Arc::ptr_eq(&a.path, &b.path)
                     || a.path == b.path
@@ -485,6 +627,7 @@ mod tests {
             separated: false,
             masked: false,
             paint: None,
+            stencil_clip: None,
             depth: 0,
         };
         test(planner, scope, budget);

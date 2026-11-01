@@ -50,7 +50,8 @@
         "recovery/widget-rotated-border",
         "recovery/widget-invalid-rotation"
       ],
-      "rule": "Empty text and unsigned signature widgets paint only their specified MK background and border. Field types and values inherit through Parent; null means absent. Nonempty values remain explicit unsupported appearances. Rotated backgrounds are invariant; rotated borders remain unsupported. Rotation must be a multiple of 90 degrees."
+      "rule": "Empty text and unsigned signature widgets paint only their specified MK background and border. Field types and values inherit through Parent; null means absent. Nonempty values remain explicit unsupported appearances. Rotated backgrounds are invariant; rotated borders remain unsupported. Rotation must be a multiple of 90 degrees.",
+      "gaps": " The unchanged rotated-widget-border input now has an independent literal-strip oracle; standalone no-AcroForm value inheritance retains its original annotation.appearance refusal."
     },
     {
       "id": "recovery-transfer",
@@ -179,6 +180,224 @@
         "recovery/pattern-coloured-base-no-operands"
       ],
       "rule": "Coloured patterns paint in their intrinsic colours and accept only their name even if the Pattern colour space declares a base. A reported repair discards extra numeric operands of the selected underlying colour space; wrong types and counts remain syntax errors. The underlying space is retained for later uncoloured patterns."
+    },
+    {
+      "id": "recovery-jbig2-page-capabilities",
+      "reference": "itu-t88-2000",
+      "clauses": [
+        "7.4.8.5"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/jbig2-page-capabilities-auxiliary",
+        "recovery/jbig2-page-capabilities-refinement",
+        "recovery/jbig2-page-capabilities-both",
+        "recovery/jbig2-page-capabilities-prediction-centre-t0",
+        "recovery/jbig2-page-capabilities-prediction-centre-t1"
+      ],
+      "rule": "Reported viewing policy: complete auxiliary/refinement regions override contradicting page capability bits 5/1. Strict mode rejects the deviation. Actual segment syntax, referrals, combination operators, complete decoding, and all resource bounds remain authoritative. Expected bitmaps are geometric and encoded independently of product code."
+    },
+    {
+      "id": "recovery-jpx-codestream",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "8.9.5.1 Table 87"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/jpx-raw-gray",
+        "recovery/jpx-raw-rgb",
+        "recovery/jpx-raw-gray-no-space",
+        "recovery/jpx-raw-rgb-no-space",
+        "recovery/jpx-raw-gray-opacity",
+        "recovery/jpx-raw-rgb-opacity",
+        "recovery/jpx-raw-gray-truncated",
+        "recovery/jpx-raw-rgb-truncated",
+        "recovery/jpx-raw-rgb-subsampled"
+      ],
+      "rule": "Reported viewing policy: a raw T.800 codestream may use an explicit PDF colour space with SMaskInData zero. Strict mode still requires full JPX framing. No colour or opacity metadata is inferred. Dimensions, channel count, precision, geometry, syntax and resource limits remain authoritative. Explicit PDF RGB remains RGB even when component sampling ratios resemble chroma subsampling; T.800 A.5.1/B.2 supply reference-grid sample placement, not a replacement colour-space declaration."
+    },
+    {
+      "id": "recovery-content-state",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.8.2",
+        "8.4.2",
+        "9.4.1"
+      ],
+      "status": "reported viewing repairs; strict rejects",
+      "tests": [
+        "recovery_state/unmatched-Q-prefix",
+        "recovery_state/unmatched-Q-suffix",
+        "recovery_state/unmatched-ET-prefix",
+        "recovery_state/unmatched-ET-suffix",
+        "recovery_state/unmatched-Q-in-text",
+        "recovery_state/unmatched-ET-in-saved-state",
+        "recovery_state/balanced-control",
+        "recovery_state/unmatched-retains-state",
+        "recovery_state/closed-text-glyph-control",
+        "content/syntax-Q",
+        "paint/text-end-without-begin"
+      ],
+      "rule": "Unmatched Q and ET leave state unchanged only under reported Repair permission. Unfinished operands, text objects, paths and compatibility sections, unknown operators, crossed state boundaries and resource limits still fail."
+    },
+    {
+      "id": "recovery-jbig2-unused-aggregation",
+      "reference": "itu-t88-2000",
+      "clauses": [
+        "7.4.2.1.1"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery_jbig2_tables/native-gray-valid",
+        "recovery_jbig2_tables/gray-valid",
+        "recovery_jbig2_tables/native-gray-unused",
+        "recovery_jbig2_tables/gray-unused",
+        "recovery_jbig2_tables/native-all-custom-valid",
+        "recovery_jbig2_tables/all-custom-valid",
+        "recovery_jbig2_tables/native-all-custom-unused",
+        "recovery_jbig2_tables/all-custom-unused",
+        "recovery_jbig2_tables/native-stencil-valid",
+        "recovery_jbig2_tables/stencil-valid",
+        "recovery_jbig2_tables/native-stencil-unused",
+        "recovery_jbig2_tables/stencil-unused",
+        "recovery_jbig2_tables/native-globals-valid",
+        "recovery_jbig2_tables/globals-valid",
+        "recovery_jbig2_tables/native-globals-unused",
+        "recovery_jbig2_tables/globals-unused",
+        "recovery_jbig2_tables/native-used-aggregation-custom",
+        "recovery_jbig2_tables/used-aggregation-custom",
+        "recovery_jbig2_tables/native-hostile-missing-table",
+        "recovery_jbig2_tables/hostile-missing-table",
+        "recovery_jbig2_tables/native-hostile-extra-table",
+        "recovery_jbig2_tables/hostile-extra-table",
+        "recovery_jbig2_tables/native-hostile-non-table-referral",
+        "recovery_jbig2_tables/hostile-non-table-referral",
+        "recovery_jbig2_tables/native-hostile-reserved-table",
+        "recovery_jbig2_tables/hostile-reserved-table",
+        "recovery_jbig2_tables/native-hostile-truncated-table",
+        "recovery_jbig2_tables/hostile-truncated-table",
+        "recovery_jbig2_tables/native-hostile-oob-unused-table",
+        "recovery_jbig2_tables/hostile-oob-unused-table",
+        "recovery_jbig2_tables/native-hostile-context-used",
+        "recovery_jbig2_tables/hostile-context-used",
+        "recovery_jbig2_tables/native-hostile-arithmetic-selector",
+        "recovery_jbig2_tables/hostile-arithmetic-selector",
+        "recovery_jbig2_tables/native-hostile-used-missing-table",
+        "recovery_jbig2_tables/hostile-used-missing-table",
+        "recovery_jbig2_tables/native-repeated-main-valid",
+        "recovery_jbig2_tables/repeated-main-valid",
+        "recovery_jbig2_tables/native-repeated-main-unused",
+        "recovery_jbig2_tables/repeated-main-unused",
+        "recovery_jbig2_tables/native-repeated-both-valid",
+        "recovery_jbig2_tables/repeated-both-valid",
+        "recovery_jbig2_tables/native-repeated-both-unused",
+        "recovery_jbig2_tables/repeated-both-unused",
+        "recovery_jbig2_tables/native-hostile-repeated-missing-table",
+        "recovery_jbig2_tables/hostile-repeated-missing-table"
+      ],
+      "rule": "Reported viewing policy: only Huffman symbol dictionaries with SDREFAGG=0 may retain the otherwise invalid, unused bit7 aggregation-table selector. Strict rejects it. Its raw selector still selects and validates a referenced custom table, including OOB eligibility, exact table counts and ordinary referral rules; parse, retained storage and work remain charged. Genuine aggregation and all other flag restrictions are unchanged. The first occurrence per diagnostics sink is reported in decode order (Globals before page); reuse coalesces the tag and preserves its first source location. Independent literal matrices cover main/Globals, repeated dictionaries, grayscale/stencils, genuine aggregation and malformed/limited controls."
+    },
+    {
+      "id": "recovery-marked-closure",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "14.6",
+        "14.6.1"
+      ],
+      "status": "Reported no-op for unmatched EMC; Strict rejects",
+      "tests": [
+        "recovery_marked/balanced-control",
+        "recovery_marked/unmatched-prefix",
+        "recovery_marked/unmatched-suffix",
+        "recovery_marked/retains-state",
+        "recovery_marked/retains-path",
+        "recovery_marked/retains-pending-clip",
+        "recovery_marked/actual-text",
+        "recovery_marked/form-keeps-caller-marked",
+        "recovery_marked/hidden-form-keeps-visibility",
+        "recovery_marked/split-content-sequence",
+        "recovery_marked/unfinished-text",
+        "recovery_marked/undefined-resource",
+        "recovery_marked/required-cycle",
+        "recovery_marked/repeated-before-paint",
+        "recovery_marked/within-text",
+        "recovery_marked/within-save",
+        "recovery_marked/after-balanced",
+        "recovery_marked/after-nested",
+        "recovery_marked/unfinished-path",
+        "recovery_marked/unfinished-clip",
+        "recovery_marked/unfinished-operands",
+        "recovery_marked/unfinished-compatibility",
+        "recovery_marked/unknown-operator",
+        "compatibility_union/direct-twin-72",
+        "compatibility_union/off-72",
+        "compatibility_union/default-72",
+        "compatibility_union/reverse-order-72",
+        "compatibility_union/clip-kept-72",
+        "compatibility_union/form-keeps-caller-72",
+        "compatibility_union/required-resource-72",
+        "compatibility_union/required-cycle-72",
+        "compatibility_union/sparse-stays-limit-72",
+        "compatibility_union/compensation-on-refused-72",
+        "compatibility_union/later-page-72",
+        "compatibility_union/direct-twin-144",
+        "compatibility_union/off-144",
+        "compatibility_union/default-144",
+        "compatibility_union/reverse-order-144",
+        "compatibility_union/clip-kept-144",
+        "compatibility_union/form-keeps-caller-144",
+        "compatibility_union/required-resource-144",
+        "compatibility_union/required-cycle-144",
+        "compatibility_union/sparse-stays-limit-144",
+        "compatibility_union/compensation-on-refused-144",
+        "compatibility_union/later-page-144"
+      ],
+      "rule": "An EMC with no open marked-content sequence in the current content scope is malformed. Repair reports content.marked-unmatched and retains visibility, graphics/text/path/clip state and device structure without inventing a matching begin or sending a device End. Strict rejects. A form cannot consume caller marked content. Every operator is still metered; later incomplete state, unknown operators, required resources, cycles and limits remain errors."
+    },
+    {
+      "id": "recovery-jpx-palette-padding",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "8.9.5.1",
+        "Table 87"
+      ],
+      "codec_reference": "ITU-T T.800 (06/2019), I.5.3.4, Tables I.12-I.13, I.5.3.5-I.5.3.6",
+      "status": "Explicit reported repair policy; execution qualification pending",
+      "tests": [
+        "jp2_palette/gray-signed1-conforming",
+        "jp2_palette/gray-signed1-padding",
+        "jp2_palette/gray-unsigned4-conforming",
+        "jp2_palette/gray-unsigned4-padding",
+        "jp2_palette/rgb-mixed-small-conforming",
+        "jp2_palette/rgb-mixed-small-padding",
+        "jp2_palette/rgb-mixed-wide-conforming",
+        "jp2_palette/rgb-mixed-wide-padding",
+        "jp2_palette/rgb-full16-conforming",
+        "jp2_palette/rgb-full16-meaningful-high-conforming",
+        "jp2_palette/indexed-override-conforming",
+        "jp2_palette/indexed-override-padding",
+        "jp2_palette/mixed-padding-external-alpha",
+        "jp2_palette/raw-index-opacity-control",
+        "jp2_palette/short-palette-conforming",
+        "jp2_palette/short-palette-padding",
+        "jp2_palette/missing-mapping-conforming",
+        "jp2_palette/missing-mapping-padding",
+        "jp2_palette/missing-eoc-conforming",
+        "jp2_palette/missing-eoc-padding",
+        "jp2_palette/bad-component-conforming",
+        "jp2_palette/bad-component-padding",
+        "jp2_palette/opacity-1-conforming",
+        "jp2_palette/opacity-1-padding",
+        "jp2_palette/opacity-2-conforming",
+        "jp2_palette/opacity-2-padding",
+        "jp2_palette/opacity-2-premultiplied-conforming",
+        "jp2_palette/opacity-2-premultiplied-padding"
+      ],
+      "rule": "Strict rejects nonzero high padding above a JP2 palette column precision. Repair clears only those unused bits, retaining every declared low-order bit, precision and signed-offset interpretation, and reports the first affected position. Meaningful 8/16-bit high bits, complete table/codestream validation, mapping rules, opacity refusals and all limits remain authoritative. PDF Indexed uses its own lookup and the original codestream index precision; stored palette octets do not imply a wider precision.",
+      "gaps": "No inferred palette precision, incomplete-table/codestream recovery, or new Indexed container-palette opacity support. Public-page credit, full-source exact-head native/WASM, performance/memory and integration qualification remain pending."
     }
   ]
 }
