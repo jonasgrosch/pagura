@@ -187,8 +187,19 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     drop_definitions(definitions, &mut budget.bytes);
     let spots = spots?;
     let direct = order(&mut parts)? && spots.is_empty();
-    let charged = needs(&parts, rows, &mut budget.bytes)?;
-    let stack = needs(&parts, band_rows, &mut budget.bytes)?;
+    // Direct page marks have neither child buffers nor soft masks, so both
+    // stack bounds are zero without allocating and walking analysis memos.
+    let (charged, stack) = if direct {
+        (
+            crate::execute::Tops::default(),
+            crate::execute::Tops::default(),
+        )
+    } else {
+        (
+            needs(&parts, rows, &mut budget.bytes)?,
+            needs(&parts, band_rows, &mut budget.bytes)?,
+        )
+    };
     let layout = parts.groups.first().map_or(
         Layout {
             process: Process::Rgb,
