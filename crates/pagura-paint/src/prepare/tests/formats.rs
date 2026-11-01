@@ -6,9 +6,10 @@ use pagura_color::Process;
 use pagura_core::Limits;
 use pagura_interpret::{
     BlendMode, GlyphSource, GlyphsNode, GroupAttributes, GroupId, MaskKind, Node, OutlineKey,
-    Placement, StateId,
+    Placement, StateId, Transfer,
 };
 use pagura_raster::{Point, Transform};
+use std::sync::Arc;
 
 const PAGE: GroupId = GroupId(0);
 
@@ -329,5 +330,66 @@ fn knockout_groups_of_opaque_members_fold_with_their_plain_groups() {
     let group = b.transparency(PAGE, knockout, mark(StateId(0)));
     b.rect(group, [0.5, 0.5, 4.25, 3.25], a, mark(multiply));
     b.rect(group, [2.75, 1.5, 6.0, 4.0], c, mark(multiply));
+    check(&b);
+}
+
+#[test]
+fn groups_that_paint_nothing_leave_their_parents_narrow() {
+    let knockout = GroupAttributes {
+        isolated: false,
+        knockout: true,
+        space: None,
+    };
+    let invisible = |b: &mut Build, parent: GroupId| {
+        let red = b.rgb([0.9, 0.2, 0.1]);
+        let clear = b.state(|s| s.alpha = 0.0);
+        let text = b.transparency(parent, knockout, mark(StateId(0)));
+        b.rect(text, [1.0, 1.0, 4.0, 3.0], red, mark(clear));
+        b.rect(text, [2.0, 0.0, 5.0, 2.0], red, mark(clear));
+    };
+    let mut b = Build::new(6.0, 4.0);
+    let back = b.rgb([0.1, 0.5, 0.9]);
+    b.rect(PAGE, [0.5, 0.5, 5.5, 3.5], back, mark(StateId(0)));
+    // A knockout group of alpha-0 members changes only its parent's shape:
+    // it is left out, and the page stays N16.
+    invisible(&mut b, PAGE);
+    assert_eq!(formats(&b), [Format::N16]);
+    let prepared = b
+        .prepare(&b.request(b.page(), 32), &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(prepared.plan.groups.len(), 1);
+    check(&b);
+    // Under a knockout parent its shape knocks the parent's members out.
+    let mut b = Build::new(6.0, 4.0);
+    let back = b.rgb([0.1, 0.5, 0.9]);
+    let half = b.state(|s| s.alpha = 0.5);
+    let outer = b.transparency(PAGE, knockout, mark(StateId(0)));
+    b.rect(outer, [0.5, 0.5, 5.5, 3.5], back, mark(half));
+    invisible(&mut b, outer);
+    let found = formats(&b);
+    assert_eq!(found.len(), 3);
+    assert!(found.iter().all(|&f| f == Format::F64));
+    check(&b);
+    // Alpha-0 marks still select transfer functions: with one on the page,
+    // the group stays.
+    let mut b = Build::new(6.0, 4.0);
+    let back = b.rgb([0.1, 0.5, 0.9]);
+    let identity = Arc::new(Transfer::All(Arc::new(
+        pagura_color::Function::exponential(pagura_color::ExponentialFunction {
+            domain: [0.0, 1.0],
+            range: None,
+            c0: vec![0.0],
+            c1: vec![1.0],
+            exponent: 1.0,
+        })
+        .unwrap_or_else(|e| panic!("{e}")),
+    )));
+    let transferred = b.state(|s| s.transfer = Some(identity));
+    b.rect(PAGE, [0.0, 0.0, 6.0, 4.0], back, mark(transferred));
+    invisible(&mut b, PAGE);
+    let prepared = b
+        .prepare(&b.request(b.page(), 32), &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(prepared.plan.groups.len(), 2);
     check(&b);
 }

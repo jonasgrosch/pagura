@@ -213,6 +213,7 @@ mod tests {
                 pixels: build.page(),
                 user_unit: 1.0,
             },
+            skips: true,
             buffers: Vec::new(),
             groups: FastMap::default(),
             masks: FastMap::default(),
