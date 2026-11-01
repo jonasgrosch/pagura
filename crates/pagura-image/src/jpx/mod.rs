@@ -15,10 +15,11 @@
 //! ICC bytes and enumerated colour identifiers are preserved for the caller.
 //!
 //! `Limits::stream_bytes` caps encoded input, `pixels` caps the reference-grid
-//! image, `decoded_bytes` conservatively caps cumulative allocations (including
-//! scratch buffers), `objects` and `decode_work` cap tiles, and `decode_work`
-//! caps parsing, tag-tree and coefficient-pass work. All allocations are
-//! charged first.
+//! image, `decode_bytes` caps the working allocations live at once (headers,
+//! packets, coefficients, subbands and component planes, each returned to it
+//! as it is freed), `decoded_bytes` caps the output samples, `objects` and
+//! `decode_work` cap tiles, and `decode_work` caps parsing, tag-tree and
+//! coefficient-pass work. All allocations are charged first.
 
 mod boxes;
 mod codestream;
