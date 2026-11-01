@@ -1,6 +1,7 @@
 //! Session lifetime, version gating and request dispatch.
 
 mod documents;
+mod png;
 mod render;
 mod transport;
 
@@ -149,6 +150,9 @@ impl Session {
     fn execute(&mut self, request: Request<'_>) -> Result<Response> {
         let version = self.require(request.kind().since())?;
         match request {
+            Request::Reauthenticate { document, password } => {
+                self.documents.reauthenticate(document, password)
+            }
             Request::Hello(_) => Ok(Response::Hello(version)),
             Request::Open {
                 bytes,
@@ -157,6 +161,7 @@ impl Session {
             } => self.documents.open(bytes, recovery, password),
             Request::PageInfo(page) => self.documents.page_info(page),
             Request::RenderTile(tile) => self.render(tile, None),
+            Request::PagePng(request) => self.page_png(request).map(Response::PagePng),
             Request::Generation {
                 document,
                 generation,
@@ -202,6 +207,9 @@ impl Session {
     fn reading(&mut self, request: reading::Request<'_>) -> Result<reading::Response> {
         let cap = self.config.session.reading_response_bytes;
         match request {
+            reading::Request::Service { document, request } => {
+                reading::service(self.documents.document(document)?, request, cap)
+            }
             reading::Request::Text(page) => {
                 let text = self.documents.text(page)?;
                 reading::page_text(&text, cap)
@@ -225,6 +233,46 @@ impl Session {
             }
             reading::Request::Bounds(page) => {
                 reading::bounds(self.documents.content_bounds(page)?, cap)
+            }
+            reading::Request::Metadata(handle) => {
+                reading::metadata(self.documents.document(handle)?, cap)
+            }
+            reading::Request::Attachments(handle) => {
+                reading::attachments(self.documents.document(handle)?, cap)
+            }
+            reading::Request::MetadataBytes(handle) => {
+                reading::metadata_bytes(self.documents.document(handle)?, cap)
+            }
+            reading::Request::AttachmentCheck {
+                document,
+                index,
+                key,
+            } => reading::attachment_check(self.documents.document(document)?, index, key, cap),
+            reading::Request::AttachmentBytes {
+                document,
+                index,
+                key,
+            } => reading::attachment_bytes(self.documents.document(document)?, index, key, cap),
+            reading::Request::PageAttachments(page) => {
+                reading::page_attachments(self.documents.document(page.document)?, page.page, cap)
+            }
+            reading::Request::PageAttachmentBytes { page, index, key } => {
+                reading::page_attachment_bytes(
+                    self.documents.document(page.document)?,
+                    page.page,
+                    index,
+                    key,
+                    cap,
+                )
+            }
+            reading::Request::PageAttachmentCheck { page, index, key } => {
+                reading::page_attachment_check(
+                    self.documents.document(page.document)?,
+                    page.page,
+                    index,
+                    key,
+                    cap,
+                )
             }
         }
     }

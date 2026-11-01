@@ -14,6 +14,14 @@ pub(crate) enum CryptSelection {
     Named(pagura_core::Name),
 }
 
+/// A stream reached through an EF/RF entry remains an embedded file even when
+/// its optional Type is absent (Tables 20 and 44).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Usage {
+    Declared,
+    EmbeddedFile,
+}
+
 pub(crate) fn raw<'a>(document: &'a Document, object: &IndirectObject) -> Result<&'a [u8]> {
     let range = object
         .stream_range()
@@ -32,6 +40,22 @@ pub(crate) fn decoded<'a>(
 ) -> Result<Cow<'a, [u8]>> {
     let (data, chain) = document.prepare_stream(object, &mut Vec::new())?;
     decode(document, object.id(), data, &chain, size)
+}
+
+pub(crate) fn embedded_decoded<'a>(
+    document: &'a Document,
+    object: &IndirectObject,
+) -> Result<Cow<'a, [u8]>> {
+    let parameters = object
+        .dictionary()
+        .and_then(|dictionary| dictionary.get(b"DecodeParms"));
+    let (data, chain) = document.prepare_stream_with_parameters(
+        object,
+        parameters,
+        &mut Vec::new(),
+        Usage::EmbeddedFile,
+    )?;
+    decode(document, object.id(), data, &chain, 0)
 }
 
 /// Applies `chain` to the data of stream `id`, reporting its repairs for
@@ -84,8 +108,12 @@ pub(crate) fn image<'a>(
     parameters: Option<&Value>,
     size: usize,
 ) -> Result<ImageStream<'a>> {
-    let (data, mut chain) =
-        document.prepare_stream_with_parameters(object, parameters, &mut Vec::new())?;
+    let (data, mut chain) = document.prepare_stream_with_parameters(
+        object,
+        parameters,
+        &mut Vec::new(),
+        Usage::Declared,
+    )?;
     let codec = chain.split_image();
     let size = if codec.is_some() { 0 } else { size };
     let data = decode(document, object.id(), data, &chain, size)?;
@@ -104,6 +132,7 @@ impl Document {
                 .dictionary()
                 .and_then(|dictionary| dictionary.get(b"DecodeParms")),
             path,
+            Usage::Declared,
         )
     }
 
@@ -112,6 +141,7 @@ impl Document {
         object: &IndirectObject,
         parameters: Option<&Value>,
         path: &mut Vec<ObjectId>,
+        usage: Usage,
     ) -> Result<(Cow<'a, [u8]>, FilterChain)> {
         let id = object.id();
         let raw = self.raw_stream_data(object)?;
@@ -135,7 +165,7 @@ impl Document {
         validate_crypt(filter.as_ref(), params.as_ref()).map_err(|error| error.in_object(id))?;
         let mut chain = FilterChain::from_entries(filter.as_ref(), params.as_ref())
             .map_err(|error| error.in_object(id))?;
-        let decrypted = decrypt(self, object, raw, &mut chain)?;
+        let decrypted = decrypt(self, object, raw, &mut chain, usage)?;
         Ok((decrypted, chain))
     }
 }
@@ -145,6 +175,7 @@ fn decrypt<'a>(
     object: &IndirectObject,
     raw: &'a [u8],
     chain: &mut FilterChain,
+    usage: Usage,
 ) -> Result<Cow<'a, [u8]>> {
     let explicit = chain.take_crypt();
     if chain
@@ -183,7 +214,7 @@ fn decrypt<'a>(
         Some(Some(name)) => CryptSelection::Named(name),
     };
     let method = security
-        .stream_method(document, object, selection)
+        .stream_method(document, object, selection, usage)
         .map_err(|error| error.in_object(object.id()))?;
     if method == CryptMethod::Identity {
         return Ok(Cow::Borrowed(raw));

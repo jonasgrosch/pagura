@@ -1,12 +1,16 @@
 //! The wire constants as an ECMAScript module (`web/protocol_constants.mjs`).
 
 use super::{
-    ActionCode, DiagnosticCode, ErrorCategory, FitCode, OpenFlags, OutlineStyle, PositionKind,
-    RequestKind, ResponseKind, SearchFlags, TileStatus, Version,
+    ActionCode, AttachmentCheckStatus, AttachmentKey, DiagnosticCode, ErrorCategory, FileScopeCode,
+    FitCode, ImageAssetCode, ImageTransferCode, MetadataOwnerCode, OpenFlags, OutlineStyle,
+    PayloadKind, PngBackground, PositionKind, RequestKind, ResponseKind, SearchFlags, TileStatus,
+    Version,
 };
 use crate::SessionLimits;
 use crate::editing;
-use crate::reading::{MAX_PAGE_CHARACTERS, MAX_QUERY_BYTES, MAX_SEARCH_MATCHES, MAX_SEARCH_PAGES};
+use crate::reading::{
+    MAX_ATTACHMENTS, MAX_PAGE_CHARACTERS, MAX_QUERY_BYTES, MAX_SEARCH_MATCHES, MAX_SEARCH_PAGES,
+};
 use pagura::Limits;
 use std::fmt::{self, Write};
 
@@ -71,7 +75,7 @@ fn write_module(out: &mut String) -> fmt::Result {
     Ok(())
 }
 
-fn tables() -> [Item<Vec<(&'static str, String)>>; 12] {
+fn tables() -> [Item<Vec<(&'static str, String)>>; 20] {
     let versions = Version::ALL
         .iter()
         .map(|version| (version.name(), format!("{:#010x}", version.code())))
@@ -84,6 +88,21 @@ fn tables() -> [Item<Vec<(&'static str, String)>>; 12] {
         ),
         ("RequestKind", "Request kind bytes.", codes!(RequestKind)),
         ("ResponseKind", "Response kind bytes.", codes!(ResponseKind)),
+        (
+            "PngBackground",
+            "Background of an exported PNG page (1.9).",
+            codes!(PngBackground),
+        ),
+        (
+            "AttachmentCheckStatus",
+            "Attachment parameter observations (1.10).",
+            codes!(AttachmentCheckStatus),
+        ),
+        (
+            "AttachmentKey",
+            "Explicit embedded-file filename keys (1.8).",
+            codes!(AttachmentKey),
+        ),
         (
             "ErrorCategory",
             "Error categories of response kind 255.",
@@ -125,10 +144,35 @@ fn tables() -> [Item<Vec<(&'static str, String)>>; 12] {
             flags!(SearchFlags),
         ),
         ("OutlineStyle", "Outline style bits.", flags!(OutlineStyle)),
+        (
+            "FileScopeCode",
+            "File collection selectors (1.12).",
+            codes!(FileScopeCode),
+        ),
+        (
+            "MetadataOwnerCode",
+            "Metadata and thumbnail owners (1.12).",
+            codes!(MetadataOwnerCode),
+        ),
+        (
+            "PayloadKind",
+            "File payload selectors (1.12).",
+            codes!(PayloadKind),
+        ),
+        (
+            "ImageTransferCode",
+            "Image transfer modes (1.12).",
+            codes!(ImageTransferCode),
+        ),
+        (
+            "ImageAssetCode",
+            "Image object selection (1.12).",
+            codes!(ImageAssetCode),
+        ),
     ]
 }
 
-fn numbers() -> [Item<String>; 11] {
+fn numbers() -> [Item<String>; 12] {
     let engine = Limits::default();
     let session = SessionLimits::default();
     [
@@ -171,6 +215,11 @@ fn numbers() -> [Item<String>; 11] {
             "MAX_PAGE_CHARACTERS",
             "Most semantic characters in one page text response.",
             MAX_PAGE_CHARACTERS.to_string(),
+        ),
+        (
+            "MAX_ATTACHMENTS",
+            "Most catalog attachments in one listing (1.8).",
+            MAX_ATTACHMENTS.to_string(),
         ),
         (
             "MAX_FORM_FIELDS",

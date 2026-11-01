@@ -13,6 +13,7 @@ mod original_records;
 
 mod font_descriptor;
 mod overprint;
+mod png;
 mod provider;
 mod render;
 mod selected_fonts;
