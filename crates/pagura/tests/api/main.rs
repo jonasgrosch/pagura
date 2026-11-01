@@ -6,6 +6,7 @@ mod document;
 mod editing;
 mod facade;
 mod overprint;
+mod packed_masks;
 mod provider;
 mod render;
 mod signatures;

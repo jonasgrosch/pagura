@@ -167,7 +167,7 @@ fn groups(page: &TextPage, plan: &Plan<'_>, budget: &mut Budget) -> Result<Vec<V
     for atom in atoms(
         &page.positioned,
         crate::LayoutOptions::default(),
-        page.limits,
+        &page.limits,
     )? {
         let owner = if let Some(first) = atom.geometry {
             if page.glyphs()[first]

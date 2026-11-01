@@ -59,6 +59,34 @@ impl Meter {
         Ok(())
     }
 
+    /// Replaces a reservation for work that has not been executed.
+    ///
+    /// The caller must prove that `old_unexecuted` is charged to this meter
+    /// and has not been spent. Decoding, preparation and other completed work
+    /// cannot be cancelled. The meter cannot establish that semantic proof;
+    /// callers should own reservations in a private type until execution.
+    /// This is separate from returning released memory with [`Self::refund`].
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidArgument` if the old reservation exceeds the charged
+    /// total, or `Limit` with the meter's message if the replacement overflows
+    /// or exceeds the maximum. Every failure leaves the meter unchanged.
+    pub fn replace_reservation(&mut self, old_unexecuted: usize, new: usize) -> Result<()> {
+        let spent = self
+            .used
+            .checked_sub(old_unexecuted)
+            .ok_or(Error::invalid_argument(
+                "unexecuted reservation exceeds charged work",
+            ))?;
+        let used = spent
+            .checked_add(new)
+            .filter(|&used| used <= self.max)
+            .ok_or(Error::limit(self.message))?;
+        self.used = used;
+        Ok(())
+    }
+
     /// Charges `count × unit`, for example pixels times work per pixel.
     ///
     /// # Errors
@@ -256,5 +284,31 @@ mod tests {
         values.pop();
         meter.reserve_capacity(&mut values, 1).unwrap();
         assert_eq!(meter.used(), 20, "spare capacity was already charged");
+    }
+
+    #[test]
+    fn replacing_only_unexecuted_reservations_is_checked_and_atomic() {
+        let mut meter = Meter::new(10, MESSAGE);
+        meter.charge(8).unwrap();
+        meter.replace_reservation(5, 2).unwrap();
+        assert_eq!(meter.used(), 5);
+        meter.replace_reservation(2, 7).unwrap();
+        assert_eq!(meter.used(), 10);
+        let before = meter.clone();
+        let error = meter.replace_reservation(11, 0).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::InvalidArgument);
+        assert_eq!(meter, before);
+        let error = meter.replace_reservation(2, 3).unwrap_err();
+        assert_eq!((error.kind, error.message), (ErrorKind::Limit, MESSAGE));
+        assert_eq!(meter, before);
+        assert_eq!(
+            meter.replace_reservation(0, usize::MAX).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+        assert_eq!(meter, before);
+        meter.replace_reservation(10, 0).unwrap();
+        assert_eq!(meter.used(), 0);
+        meter.replace_reservation(0, 10).unwrap();
+        assert_eq!(meter.used(), 10);
     }
 }

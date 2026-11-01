@@ -7,7 +7,7 @@ use crate::plan::area;
 use crate::prepare::Budget;
 use crate::prepare::index;
 use crate::prepare::planner::{ImageKey, Planner, Scope, SolidKey};
-use crate::source::{ImageBudgets, PaintContext, ScratchLayout, Source};
+use crate::source::{ImageBudgets, PaintContext, ScratchLayout, Source, TiledAdmission};
 use pagura_color::Painted;
 use pagura_core::{Error, Result};
 use pagura_interpret::{Composite, Paint, PaintId};
@@ -102,6 +102,10 @@ impl Planner<'_> {
                         bytes: &mut budget.bytes,
                         work: &mut budget.work,
                         functions: &mut budget.functions,
+                    },
+                    TiledAdmission {
+                        owners: &mut budget.tiles,
+                        prior: Some(&mut self.parts.paints),
                     },
                 );
                 let released = stencil

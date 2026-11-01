@@ -68,8 +68,8 @@ mod stream;
 mod transpose;
 
 pub use source::{
-    DecodeRequest, Decoded, ImageId, ImageSource, Layout, Orientation, Reduce, SampleRect,
-    SourceMask,
+    DecodeRequest, Decoded, DecodedTiles, ImageId, ImageSource, ImageTile, Layout, Orientation,
+    Reduce, SampleRect, SourceMask, TileLayout,
 };
 
 /// How an image's samples are interpreted.

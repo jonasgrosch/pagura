@@ -47,11 +47,14 @@ fn rgb_codes_drop_the_original_converter_and_tables() {
         None,
         None,
         64,
-        ImageBudgets {
-            bytes: &mut bytes,
-            work: &mut meter(),
-            functions: &mut functions,
-        },
+        (
+            ImageBudgets {
+                bytes: &mut bytes,
+                work: &mut meter(),
+                functions: &mut functions,
+            },
+            None,
+        ),
     )
     .unwrap();
     assert!(matches!(plan, Plan::Codes(_)));
@@ -79,11 +82,14 @@ fn non_affine_stencil_keeps_its_selected_bilinear_separable() {
         None,
         Some((&[f64::INFINITY, 0.5, 0.0], Painted(7))),
         64,
-        ImageBudgets {
-            bytes: &mut bytes,
-            work: &mut meter(),
-            functions: &mut meter(),
-        },
+        (
+            ImageBudgets {
+                bytes: &mut bytes,
+                work: &mut meter(),
+                functions: &mut meter(),
+            },
+            None,
+        ),
     )
     .unwrap();
     assert!(matches!(
@@ -111,11 +117,14 @@ fn work_refusal_precedes_stencil_recolouring_allocation() {
         None,
         None,
         1,
-        ImageBudgets {
-            bytes: &mut bytes,
-            work: &mut meter(),
-            functions: &mut meter(),
-        },
+        (
+            ImageBudgets {
+                bytes: &mut bytes,
+                work: &mut meter(),
+                functions: &mut meter(),
+            },
+            None,
+        ),
     )
     .unwrap();
     let before_recolouring = plan.bytes() + table;
@@ -129,11 +138,14 @@ fn work_refusal_precedes_stencil_recolouring_allocation() {
             None,
             Some((&[0.25, 0.5, 0.75], Painted(7))),
             1,
-            ImageBudgets {
-                bytes: &mut bytes,
-                work: &mut Meter::new(work_limit, "work admission"),
-                functions: &mut meter(),
-            },
+            (
+                ImageBudgets {
+                    bytes: &mut bytes,
+                    work: &mut Meter::new(work_limit, "work admission"),
+                    functions: &mut meter(),
+                },
+                None,
+            ),
         )
         .unwrap_err();
         assert_eq!(error.message, message);
@@ -200,11 +212,14 @@ fn code_table_function_fees_remain_after_converter_is_dropped() {
             Some((convert, false)),
             None,
             64,
-            ImageBudgets {
-                bytes: &mut bytes,
-                work: &mut meter(),
-                functions: &mut functions,
-            },
+            (
+                ImageBudgets {
+                    bytes: &mut bytes,
+                    work: &mut meter(),
+                    functions: &mut functions,
+                },
+                None,
+            ),
         );
         if admit {
             let prepared = result.unwrap();

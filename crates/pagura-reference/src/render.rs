@@ -16,7 +16,7 @@ use crate::request::{Overprint, Rendering, Request};
 use crate::shapes::{self, Coverage};
 use pagura_color::{Process, Target};
 use pagura_core::{Error, Limits, Result, ResultExt};
-use pagura_image::DecodedImage;
+use pagura_image::{DecodedImage, DecodedTiles};
 use pagura_interpret::{
     Color, Composite, FillNode, GlyphsNode, GroupRole, ImageNode, MarkInfo, MaskId, Node, NodeId,
     Paint, Scene, ShadingNode, StrokeNode,
@@ -131,6 +131,8 @@ pub(crate) struct Renderer<'s> {
     /// The reference of each glyph outline under each linear map.
     glyph_references: HashMap<(usize, [u64; 4]), crate::glyph::Reference>,
     images: HashMap<usize, Rc<DecodedImage>>,
+    tiled_masks: HashMap<usize, Rc<DecodedTiles>>,
+    tiled_mask_work: pagura_core::Meter,
 }
 
 impl std::fmt::Debug for Renderer<'_> {
@@ -170,6 +172,11 @@ impl<'s> Renderer<'s> {
             masks: HashMap::new(),
             glyph_references: HashMap::new(),
             images: HashMap::new(),
+            tiled_masks: HashMap::new(),
+            tiled_mask_work: pagura_core::Meter::new(
+                limits.render_work,
+                "reference packed-mask sampling budget exceeded",
+            ),
         })
     }
 
@@ -412,7 +419,8 @@ impl<'s> Renderer<'s> {
         let mut regions = vec![shapes::unit_square(to_device, self.limits)?];
         regions.extend(self.clips(node.mark.clip, context)?);
         let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization)?;
-        let sources = self.image_source(node, stencil.as_ref(), to_device, state, context)?;
+        let sources =
+            self.image_source(node, stencil.as_ref(), to_device, state, context, &coverage)?;
         let eligible = if matches!(
             node.image.mask,
             pagura_interpret::ImageMask::Soft { .. } | pagura_interpret::ImageMask::Embedded
@@ -595,6 +603,28 @@ impl<'s> Renderer<'s> {
         )?;
         let decoded = Rc::new(decoded.image);
         self.images.insert(key, Rc::clone(&decoded));
+        Ok(decoded)
+    }
+
+    /// Packed mask decode is cached once on its immutable source identity.
+    /// Rows are deliberately used regardless of the product sampler's orientation.
+    pub(crate) fn tiled_mask(
+        &mut self,
+        image: &pagura_interpret::Image,
+    ) -> Result<Rc<DecodedTiles>> {
+        let orientation = pagura_image::Orientation::Rows;
+        image.source.tile_height(orientation, self.limits)?;
+        let key = Arc::as_ptr(&image.source) as usize;
+        if let Some(decoded) = self.tiled_masks.get(&key) {
+            pagura_core::Meter::new(
+                self.limits.decoded_bytes,
+                "reference tiled mask byte budget exceeded",
+            )
+            .charge(decoded.retained_bytes())?;
+            return Ok(Rc::clone(decoded));
+        }
+        let decoded = Rc::new(image.source.decode_tiles(orientation, self.limits)?);
+        self.tiled_masks.insert(key, Rc::clone(&decoded));
         Ok(decoded)
     }
 

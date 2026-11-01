@@ -15,6 +15,11 @@ pub(crate) fn decode(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
+    // A deferred tiled descriptor is never materialized as an oversized
+    // DecodedImage, even when a later caller raises its own limits.
+    if matches!(header.codec, Codec::TiledMask(_)) {
+        return Err(Error::limit("image sample budget exceeded"));
+    }
     let transposed = orientation == Orientation::Transposed;
     let mut exchanged = false;
     let deferred = layout == Layout::Native;
@@ -32,6 +37,7 @@ pub(crate) fn decode(
         interpolate: false,
     };
     match &header.codec {
+        Codec::TiledMask(_) => return Err(Error::limit("image sample budget exceeded")),
         Codec::None if deferred && bits == 1 && components == 1 => {
             image.samples = p::packed(data, width, height, limits, diagnostics)?;
         }

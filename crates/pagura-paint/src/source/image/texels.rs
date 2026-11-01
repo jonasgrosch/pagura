@@ -16,8 +16,8 @@ use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
 use super::scratch::allocate;
 use crate::source::copy_values;
 use pagura_color::{ColorSpace, Converter};
-use pagura_core::{Meter, Result};
-use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
+use pagura_core::{Error, Meter, Result};
+use pagura_image::{DecodedImage, DecodedTiles, ImageKind, MaskKind, Samples};
 use std::cell::RefCell;
 use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -344,6 +344,23 @@ enum OpacityKind {
 }
 
 impl Opacity {
+    /// A one-bit mask's exact decode endpoints, clipped before reconstruction.
+    /// Avoid subtracting large opposite endpoints: each code is an endpoint.
+    pub(super) fn tiled(decode: [f64; 2], bytes: &mut Meter) -> Result<Self> {
+        if decode.iter().any(|value| !value.is_finite()) {
+            return Err(Error::syntax("invalid tiled mask Decode range"));
+        }
+        let mut table = super::reserved(2, bytes)?;
+        table.extend(decode.map(|value| value.clamp(0.0, 1.0)));
+        Ok(Self {
+            kind: OpacityKind::Soft {
+                decode,
+                maximum: 1.0,
+            },
+            table: Some(table),
+        })
+    }
+
     /// The opacities of `mask`, decoded with `decode`.
     pub(super) fn new(mask: &DecodedImage, decode: [f64; 2], bytes: &mut Meter) -> Result<Self> {
         let kind = match mask.kind {
@@ -362,6 +379,23 @@ impl Opacity {
             opacity.table = Some(table);
         }
         Ok(opacity)
+    }
+
+    /// Canonical raw positive-zero/one Decode endpoints only. Clipped
+    /// arbitrary intervals and signed zeros retain the old sampling route.
+    pub(super) fn polarity(&self) -> Option<super::column_index::Polarity> {
+        const ONE: u64 = 1.0_f64.to_bits();
+        let OpacityKind::Soft { decode, maximum } = self.kind else {
+            return None;
+        };
+        if maximum.to_bits() != ONE || self.table.as_ref()?.len() != 2 {
+            return None;
+        }
+        match decode.map(f64::to_bits) {
+            [0, ONE] => Some(super::column_index::Polarity::Forward),
+            [ONE, 0] => Some(super::column_index::Polarity::Reverse),
+            _ => None,
+        }
     }
 
     /// Heap bytes held by its opacity table.
@@ -758,6 +792,105 @@ impl Texels for OpacityTexels<'_> {
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
         if let Some(value) = sum.first_mut() {
             *value += self.opacity.at(self.mask, index) * weight;
+        }
+    }
+}
+
+#[cfg(test)]
+std::thread_local! {
+    static TILED_QUERY_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+pub(super) fn reset_tiled_query_reads() {
+    TILED_QUERY_READS.set(0);
+}
+
+#[cfg(test)]
+pub(super) fn tiled_query_reads() -> usize {
+    TILED_QUERY_READS.get()
+}
+
+#[cfg(test)]
+fn query_reads(count: usize) {
+    TILED_QUERY_READS.set(TILED_QUERY_READS.get().saturating_add(count));
+}
+
+/// Opacity samples on a complete logical grid of bounded packed surfaces.
+/// A row crosses no artificial geometry edge; only logical width is sampled.
+pub(super) struct TiledOpacityTexels<'a> {
+    pub(super) mask: &'a DecodedTiles,
+    pub(super) opacity: &'a Opacity,
+    pub(super) index: Option<&'a super::column_index::ColumnIndex>,
+    pub(super) polarity: Option<super::column_index::Polarity>,
+}
+
+impl TiledOpacityTexels<'_> {
+    fn at(&self, index: usize) -> f64 {
+        #[cfg(test)]
+        query_reads(1);
+        let width = sample_index(u64::from(self.mask.width()));
+        let code = index
+            .checked_div(width)
+            .and_then(|row| {
+                let x = u32::try_from(index.checked_rem(width)?).ok()?;
+                let y = u32::try_from(row).ok()?;
+                self.mask.get(x, y)
+            })
+            .unwrap_or(0);
+        self.opacity.code(code)
+    }
+}
+
+impl Texels for TiledOpacityTexels<'_> {
+    fn reduce_rows(
+        &self,
+        across: &super::geometry::Footprint,
+        columns: (usize, usize),
+        out: &mut [f64],
+    ) -> bool {
+        if let (Some(index), Some(polarity)) = (self.index, self.polarity) {
+            #[cfg(test)]
+            query_reads(out.len());
+            index.reduce(across, columns, polarity, out);
+            true
+        } else {
+            debug_assert!(self.index.is_none());
+            false
+        }
+    }
+
+    fn lanes(&self) -> usize {
+        1
+    }
+
+    fn row(&self, (row, width): (u32, u32), (first, end): (u32, u32), out: &mut [f64]) {
+        #[cfg(test)]
+        query_reads(out.len());
+        if width != self.mask.width()
+            || end > width
+            || out.len() != sample_index(u64::from(end.saturating_sub(first)))
+        {
+            sample_row(self, (row, width), (first, end), out);
+            return;
+        }
+        let bits = self.mask.row(row).unwrap_or(&[]);
+        for (out, x) in out.iter_mut().zip(first..end) {
+            let x = sample_index(u64::from(x));
+            let code = bits.get(x / 8).map_or(0, |byte| (byte >> (7 - x % 8)) & 1);
+            *out = self.opacity.code(u16::from(code));
+        }
+    }
+
+    fn get(&self, index: usize, out: &mut [f64]) {
+        if let Some(value) = out.first_mut() {
+            *value = self.at(index);
+        }
+    }
+
+    fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
+        if let Some(value) = sum.first_mut() {
+            *value += self.at(index) * weight;
         }
     }
 }

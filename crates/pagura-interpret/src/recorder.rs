@@ -329,7 +329,11 @@ impl Device for SceneRecorder {
             .map(|paint| self.paint(Some(paint)))
             .transpose()?;
         let info = self.mark(&mark.state)?;
-        self.bytes.charge(owned::image(mark.image))?;
+        owned::image(
+            mark.image,
+            &mut self.interner.tiled_sources,
+            &mut self.bytes,
+        )?;
         self.interner
             .profiles
             .charge(owned::image_spaces(mark.image), &mut self.bytes)?;

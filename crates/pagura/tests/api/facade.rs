@@ -22,9 +22,9 @@ struct Forwarding {
 }
 
 impl Forwarding {
-    fn new(limits: Limits) -> Self {
+    fn new(limits: &Limits) -> Self {
         Self {
-            inner: default_provider(limits),
+            inner: default_provider(*limits),
             requests: AtomicUsize::new(0),
         }
     }
@@ -69,7 +69,7 @@ impl Provider for Forwarding {
 fn a_facade_only_provider_matches_the_default() {
     let bytes = fixture("paint", "bundled-helvetica.pdf");
     let document = Arc::new(open(bytes.clone()).unwrap());
-    let provider = Arc::new(Forwarding::new(document.limits()));
+    let provider = Arc::new(Forwarding::new(&document.limits()));
     let custom = pagura::render_context_with_provider(document, Some(provider.clone()));
     let default = pagura::render_context(Arc::new(open(bytes).unwrap()));
     let options = RenderOptions::default();

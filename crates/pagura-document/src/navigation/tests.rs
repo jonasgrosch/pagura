@@ -169,11 +169,11 @@ fn independent_navigation_structures_and_reported_repairs() {
         let params = std::fs::read_to_string(&path).unwrap();
         let params: BTreeMap<_, _> = params.lines().map(|l| l.split_once('=').unwrap()).collect();
         let expected = String::from_utf8(fixture("document", &format!("{name}.expected"))).unwrap();
-        let strict = open(name, Recovery::Strict, Limits::default());
+        let strict = open(name, Recovery::Strict, &Limits::default());
         let actual = snapshot(&strict, params["view"]);
         if let Some(error) = params.get("error") {
             assert_eq!(actual.unwrap_err().kind.name(), *error, "{name}");
-            let repaired = open(name, Recovery::Repair, Limits::default());
+            let repaired = open(name, Recovery::Repair, &Limits::default());
             assert_eq!(
                 snapshot(&repaired, params["view"]).unwrap_err().kind.name(),
                 *error,
@@ -193,7 +193,7 @@ fn independent_navigation_structures_and_reported_repairs() {
             assert!(error.object.is_some(), "{name}: {error}");
             assert_ne!(error.position, Position::Unknown, "{name}: {error}");
         }
-        let document = open(name, Recovery::Repair, Limits::default());
+        let document = open(name, Recovery::Repair, &Limits::default());
         assert_eq!(
             snapshot(&document, params["view"]).unwrap(),
             expected,
@@ -238,7 +238,7 @@ fn independent_navigation_structures_and_reported_repairs() {
 
 #[test]
 fn lookup_uses_limits_and_both_named_destination_locations() {
-    let document = open("navigation-tree-wide", Recovery::Strict, Limits::default());
+    let document = open("navigation-tree-wide", Recovery::Strict, &Limits::default());
     let value = document
         .name_tree(root(&document))
         .get(b"k073")
@@ -261,7 +261,7 @@ fn lookup_uses_limits_and_both_named_destination_locations() {
     let document = open(
         "navigation-destinations",
         Recovery::Strict,
-        Limits::default(),
+        &Limits::default(),
     );
     for value in [
         Value::Name(Name::new(b"alias")),
@@ -284,7 +284,7 @@ fn tree_action_outline_and_result_budgets_return_no_partial_views() {
         ("navigation-outlines", "outlines"),
         ("navigation-links-actions", "links"),
     ] {
-        let mut document = open(name, Recovery::Repair, Limits::default());
+        let mut document = open(name, Recovery::Repair, &Limits::default());
         for id in document.object_ids() {
             document.object(id).unwrap();
         }
@@ -296,7 +296,7 @@ fn tree_action_outline_and_result_budgets_return_no_partial_views() {
             "{name}"
         );
     }
-    let document = open("navigation-tree-wide", Recovery::Repair, Limits::default());
+    let document = open("navigation-tree-wide", Recovery::Repair, &Limits::default());
     let before = document.retained.used();
     let _ = snapshot(&document, "trees").unwrap();
     let retained = document.retained.used();
@@ -323,7 +323,7 @@ fn actions_retain_base_files_scripts_and_next_order_as_inert_data() {
     let document = open(
         "navigation-links-actions",
         Recovery::Strict,
-        Limits::default(),
+        &Limits::default(),
     );
     let links = document.pages().unwrap()[0].links(&document).unwrap();
     let Some(Target::Actions(sequence)) = &links[3].target else {
@@ -358,7 +358,7 @@ fn actions_retain_base_files_scripts_and_next_order_as_inert_data() {
 
 #[test]
 fn lookup_query_does_not_borrow_for_the_tree_lifetime_and_labels_are_bounded() {
-    let document = open("navigation-tree-wide", Recovery::Strict, Limits::default());
+    let document = open("navigation-tree-wide", Recovery::Strict, &Limits::default());
     let tree = document.name_tree(root(&document));
     {
         let query = String::from("k073");
@@ -368,7 +368,7 @@ fn lookup_query_does_not_borrow_for_the_tree_lifetime_and_labels_are_bounded() {
     let document = open(
         "navigation-link-border-array",
         Recovery::Strict,
-        Limits::default(),
+        &Limits::default(),
     );
     let links = document.pages().unwrap()[0].links(&document).unwrap();
     assert_eq!(links[0].border.horizontal_radius, 4.0);
@@ -377,7 +377,7 @@ fn lookup_query_does_not_borrow_for_the_tree_lifetime_and_labels_are_bounded() {
     let mut document = open(
         "navigation-page-labels",
         Recovery::Strict,
-        Limits::default(),
+        &Limits::default(),
     );
     assert_eq!(document.page_label(0).unwrap(), "Intro");
     document.limits.string_bytes = 4;
@@ -393,7 +393,7 @@ fn parsed_label_view_reuses_ranges_for_lookup_and_linear_iteration() {
     let document = open(
         "navigation-page-labels",
         Recovery::Strict,
-        Limits::default(),
+        &Limits::default(),
     );
     let labels = document.page_labels().unwrap();
     let expected =
@@ -425,7 +425,7 @@ fn indirect_null_is_absence_for_optional_navigation_metadata() {
     let document = open(
         "navigation-optional-null",
         Recovery::Strict,
-        Limits::default(),
+        &Limits::default(),
     );
     assert_eq!(document.outlines().unwrap(), []);
     assert_eq!(document.named_destinations().unwrap(), []);

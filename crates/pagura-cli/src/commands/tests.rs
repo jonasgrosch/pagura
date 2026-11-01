@@ -65,7 +65,7 @@ fn streamed_ppm_header_and_payload_keep_pixel_order_across_chunks_and_calls() {
         u32::try_from(pixels.len() / 4).unwrap(),
         1,
         pixels,
-        pagura::Limits::default(),
+        &pagura::Limits::default(),
     )
     .unwrap()
     .to_rgb_over(pagura::Rgba8::WHITE);

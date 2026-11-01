@@ -76,7 +76,7 @@ struct Line {
 pub(super) fn build(
     source: Arc<PositionedText>,
     options: LayoutOptions,
-    limits: Limits,
+    limits: &Limits,
     source_retained: Option<usize>,
 ) -> Result<TextPage> {
     validate(&source, options, limits)?;
@@ -93,7 +93,7 @@ pub(super) fn build(
         text: String::new(),
         lines: Vec::new(),
         words: Vec::new(),
-        limits,
+        limits: *limits,
         retained: 0,
         source_retained,
         options,
@@ -158,7 +158,7 @@ const REPLACEMENT_TEXT_BYTES: usize = '\u{fffd}'.len_utf8();
 
 /// Checks the records and charges an upper estimate of the layout's work,
 /// storage and text before any of it is built.
-fn validate(source: &PositionedText, options: LayoutOptions, limits: Limits) -> Result<()> {
+fn validate(source: &PositionedText, options: LayoutOptions, limits: &Limits) -> Result<()> {
     let count = validate_records(source, options, limits)?;
     let mut work = Meter::new(limits.text_work, "text layout work budget exceeded");
     let mut bytes = Meter::new(limits.document_bytes, "text page retained budget exceeded");
@@ -206,7 +206,7 @@ fn validate(source: &PositionedText, options: LayoutOptions, limits: Limits) -> 
 fn validate_records(
     source: &PositionedText,
     options: LayoutOptions,
-    limits: Limits,
+    limits: &Limits,
 ) -> Result<usize> {
     if [
         options.space_gap,
@@ -246,7 +246,7 @@ fn validate_records(
 pub(super) fn atoms(
     source: &PositionedText,
     options: LayoutOptions,
-    limits: Limits,
+    limits: &Limits,
 ) -> Result<Vec<Atom>> {
     let mut replacements = BTreeMap::new();
     let mut selected = BTreeSet::new();

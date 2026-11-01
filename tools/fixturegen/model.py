@@ -11,6 +11,24 @@ INVALID = "invalid"          # opening fails even with recovery
 
 
 @dataclass(frozen=True)
+class RenderPage:
+    """One independently oracled positive page of a complete page contract."""
+    page: int
+    oracle: bytes
+    tolerance: int = 0
+
+
+@dataclass(frozen=True)
+class RefusedPage:
+    """One page's exact typed refusal, including explicit absent tags."""
+    page: int
+    kind: str
+    message: str
+    feature: str | None = None
+    repair: str | None = None
+
+
+@dataclass(frozen=True)
 class Case:
     name: str
     pdf: bytes
@@ -22,9 +40,10 @@ class Case:
     pages: int | None = 1
     feature: str | None = None           # Feature tag for UNSUPPORTED cases
     repairs: tuple[str, ...] = ()        # Repair tags expected in recovery mode
-    strict_valid: bool = True            # whether Recovery::Strict also opens it
+    strict_valid: bool = True            # whether the end-to-end CLI Strict audit needs no repair
     extra: dict = field(default_factory=dict)
     information: tuple[str, ...] = ()     # Informational tags in either mode
+    page_outcomes: tuple[RenderPage | RefusedPage, ...] = ()
 
 
 @dataclass(frozen=True)

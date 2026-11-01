@@ -13,7 +13,8 @@ import pkgutil
 from pathlib import Path
 
 import fixturegen
-from fixturegen.model import RENDER, UNSUPPORTED, Case, Vector
+from conformance import page_outcomes
+from fixturegen.model import RENDER, UNSUPPORTED, Case, RefusedPage, RenderPage, Vector
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATED = ROOT / "corpus/generated"
@@ -38,6 +39,31 @@ def area_modules():
             yield module
 
 
+
+def page_entries(case: Case, area: str, directory: Path, files: dict[Path, bytes]) -> list[dict]:
+    """Serialize a complete, typed page contract without losing positive oracles."""
+    entries = []
+    for row in case.page_outcomes:
+        if isinstance(row, RenderPage):
+            suffix = "" if row.page == 0 else f".p{row.page}"
+            path = directory / f"{case.name}{suffix}.ppm"
+            files[path] = row.oracle
+            width, height = ppm_size(row.oracle)
+            entries.append({"page": row.page, "expected": RENDER,
+                            "oracle": f"corpus/generated/{area}/{path.name}",
+                            "oracle_sha256": sha256(row.oracle), "width": width,
+                            "height": height, "tolerance": row.tolerance})
+        elif isinstance(row, RefusedPage):
+            entries.append({"page": row.page, "expected": "refused",
+                            "error": {"kind": row.kind, "message": row.message,
+                                      "feature": row.feature, "repair": row.repair}})
+        else:
+            raise SystemExit("unknown page outcome type")
+    metadata = {"expected": case.expected, "pages": case.pages, "dpi": case.dpi,
+                "page_outcomes": entries}
+    return page_outcomes(metadata)
+
+
 def render_area(module) -> dict[Path, bytes]:
     area, files, entries = module.AREA, {}, []
     directory = GENERATED / area
@@ -50,7 +76,12 @@ def render_area(module) -> dict[Path, bytes]:
             if case.information:
                 entry["information"] = list(case.information)
             files[directory / f"{case.name}.pdf"] = case.pdf
-            if case.expected == RENDER:
+            if case.page_outcomes:
+                if any(key in case.extra for key in ("page_outcomes", "oracle", "oracle_sha256", "width", "height", "dpi", "pages", "expected")):
+                    raise SystemExit("extra cannot override page-contract metadata")
+                entry["page_outcomes"] = page_entries(case, area, directory, files)
+                entry["dpi"] = case.dpi
+            elif case.expected == RENDER:
                 if case.oracle is None:
                     raise SystemExit(f"{entry['id']}: render cases need an oracle")
                 files[directory / f"{case.name}.ppm"] = case.oracle

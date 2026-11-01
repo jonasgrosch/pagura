@@ -17,6 +17,7 @@
 /// | Document structure | `objects`, `revisions`, `pages`, `traversal_work`, `document_bytes` |
 /// | Streams | `stream_bytes`, `decoded_bytes` |
 /// | Image codecs | `decode_work`, `decode_bytes` |
+/// | Tiled image collections | `tiled_images`: [`TiledImageLimits`] |
 /// | Fonts and CMaps | `font_work`, `font_entries` |
 /// | Content and rendering | `operations`, `display_commands`, `path_segments`, `raster_work`, `mask_sources`, `pixels`, `render_bytes`, `render_work` |
 /// | Page text | `text_items`, `text_work` |
@@ -30,10 +31,10 @@
 /// fields keep their defaults. Functions take `&Limits`; only a constructor
 /// that stores the limits takes them by value.
 ///
-/// The struct stays within 256 bytes, the size up to which clippy accepts
-/// `Copy` values passed by value: a domain with many budgets of its own gets
-/// a nested group of `u32` fields, as [`SignatureLimits`] does, rather than
-/// more top-level fields. A unit test enforces the size.
+/// The struct stays within 264 bytes on 64-bit targets and 156 bytes on
+/// wasm32. Domain groups use `u32` fields rather than growing every budget
+/// to a native address width (ADR 0016). Non-storing functions borrow limits;
+/// constructors retaining them keep ownership. Unit tests enforce these bounds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Limits {
     /// Maximum input file size in bytes.
@@ -63,7 +64,9 @@ pub struct Limits {
     /// signed revisions and DocMDP/FieldMDP change analysis of signature
     /// inspection (12.8).
     pub traversal_work: usize,
-    /// Maximum number of pixels in one rendered surface.
+    /// Maximum width × height of one declared rendered or decoded surface.
+    /// Storage layout does not change this bound. An explicit collection of
+    /// bounded surfaces additionally obeys `tiled_images` aggregate limits.
     pub pixels: usize,
     /// Maximum number of content-stream tokens interpreted per page.
     pub operations: usize,
@@ -114,8 +117,43 @@ pub struct Limits {
     /// function. Reserved during preparation through the prepared sources
     /// that evaluate them.
     pub function_work: usize,
+    /// Aggregate budgets of one explicit tiled image collection (ADR 0010).
+    pub tiled_images: TiledImageLimits,
     /// Budgets of signature validation (ADR 0015).
     pub signatures: SignatureLimits,
+}
+
+// These are reviewed record-layout bounds, not a Clippy threshold override.
+// Compile-time checks cover wasm builds that do not execute Rust unit tests.
+#[cfg(target_pointer_width = "64")]
+const _: [(); 264] = [(); size_of::<Limits>()];
+#[cfg(target_pointer_width = "32")]
+const _: [(); 156] = [(); size_of::<Limits>()];
+
+/// Aggregate budgets of one explicit tiled image collection.
+///
+/// Every field is `u32`, including on native targets. The record supports
+/// functional update syntax so callers can lower one domain independently.
+/// Every tile still obeys [`Limits::pixels`], and the whole collection shares
+/// [`Limits::decoded_bytes`] output and [`Limits::decode_bytes`] scratch caps.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TiledImageLimits {
+    /// Maximum logical component sample codes in the complete collection,
+    /// summed once over its tiles; never a fresh allowance per tile.
+    pub samples: u32,
+    /// Maximum work constructing the complete collection: one unit per
+    /// sample-code read/write, packed byte read/write/initialization and
+    /// processed tile or row record. Filter entropy work is not included.
+    pub work: u32,
+}
+
+impl Default for TiledImageLimits {
+    fn default() -> Self {
+        Self {
+            samples: 256 * 1024 * 1024,
+            work: 512 * 1024 * 1024,
+        }
+    }
 }
 
 impl Limits {
@@ -224,6 +262,7 @@ impl Default for Limits {
             text_items: 1_000_000,
             text_work: 50_000_000,
             function_work: WORK,
+            tiled_images: TiledImageLimits::default(),
             signatures: SignatureLimits::default(),
         }
     }
@@ -231,7 +270,7 @@ impl Default for Limits {
 
 #[cfg(test)]
 mod tests {
-    use super::{Limits, SignatureLimits};
+    use super::{Limits, SignatureLimits, TiledImageLimits};
 
     #[test]
     fn defaults_fit_a_32_bit_address_space() {
@@ -264,8 +303,11 @@ mod tests {
             text_items,
             text_work,
             function_work,
+            tiled_images: TiledImageLimits { samples, work },
             signatures: _,
         } = Limits::default();
+        assert!(usize::try_from(samples).is_ok());
+        assert!(usize::try_from(work).is_ok());
         for value in [
             file_bytes,
             document_bytes,
@@ -299,9 +341,13 @@ mod tests {
     }
 
     #[test]
-    fn limits_stay_small_enough_to_pass_by_value() {
-        // clippy's large_types_passed_by_value default threshold.
-        assert!(size_of::<Limits>() <= 256, "{}", size_of::<Limits>());
+    fn limits_record_size_is_bounded_on_native_and_wasm32() {
+        // An explicit eight-byte domain expansion, without a lint threshold
+        // override or narrowing any existing custom usize budget.
+        let maximum = if size_of::<usize>() == 8 { 264 } else { 156 };
+        assert_eq!(size_of::<Limits>(), maximum);
+        assert_eq!(size_of::<TiledImageLimits>(), 8);
+        assert_eq!(Limits::default().tiled_images, TiledImageLimits::default());
         assert_eq!(Limits::default().signatures, SignatureLimits::default());
     }
 

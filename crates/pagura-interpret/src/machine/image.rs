@@ -16,9 +16,40 @@ use std::sync::Arc;
 /// an image reads (named and `Default` spaces, 8.6.5.6).
 #[derive(Debug, Default)]
 pub(crate) struct Images {
-    entries: HashMap<(ObjectId, usize), Arc<Image>>,
+    entries: HashMap<(ObjectId, usize), CachedImage>,
     /// The `ColorSpace` entries of the resources met.
     spaces: Vec<Option<Value>>,
+}
+
+/// The original immutable document's surface admission is part of cache
+/// identity: a tiled mask must never become an ordinary image cache hit.
+#[derive(Debug)]
+enum CachedImage {
+    Whole(Arc<Image>),
+    TiledMask(Arc<Image>),
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Purpose {
+    Whole,
+    SoftMask,
+}
+
+impl CachedImage {
+    fn new(image: Arc<Image>) -> Self {
+        if image.source.is_tiled_mask() {
+            Self::TiledMask(image)
+        } else {
+            Self::Whole(image)
+        }
+    }
+
+    fn image(&self, purpose: Purpose) -> Option<&Arc<Image>> {
+        match (self, purpose) {
+            (Self::TiledMask(_), Purpose::Whole) => None,
+            (Self::Whole(image) | Self::TiledMask(image), _) => Some(image),
+        }
+    }
 }
 
 impl Images {
@@ -85,6 +116,26 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         resources: &Dictionary,
         stack: &mut Vec<ObjectId>,
     ) -> Result<Arc<Image>> {
+        self.image_for(id, resources, stack, Purpose::Whole)
+    }
+
+    /// An unmatted soft mask can use explicitly bounded packed surfaces.
+    fn soft_mask_image(
+        &mut self,
+        id: ObjectId,
+        resources: &Dictionary,
+        stack: &mut Vec<ObjectId>,
+    ) -> Result<Arc<Image>> {
+        self.image_for(id, resources, stack, Purpose::SoftMask)
+    }
+
+    fn image_for(
+        &mut self,
+        id: ObjectId,
+        resources: &Dictionary,
+        stack: &mut Vec<ObjectId>,
+        purpose: Purpose,
+    ) -> Result<Arc<Image>> {
         if stack.contains(&id) {
             return Err(Error::cycle("recursive image mask").in_object(id));
         }
@@ -92,18 +143,32 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             return Err(Error::limit("image mask nesting exceeded"));
         }
         let key = (id, self.session.images.spaces(resources)?);
-        if let Some(image) = self.session.images.entries.get(&key) {
+        if let Some(image) = self
+            .session
+            .images
+            .entries
+            .get(&key)
+            .and_then(|image| image.image(purpose))
+        {
             return Ok(Arc::clone(image));
         }
         stack.push(id);
         let document = self.document();
         let object = document.object(id)?;
-        let source = ImageSource::from_xobject(document, object).map_err(|e| e.in_object(id))?;
+        let source = match purpose {
+            Purpose::Whole => ImageSource::from_xobject(document, object),
+            Purpose::SoftMask => ImageSource::from_xobject_with_tiling(document, object),
+        }
+        .map_err(|error| error.in_object(id))?;
         let image = self
             .describe(source, resources, stack)
             .map_err(|e| e.in_object(id))?;
         stack.pop();
-        self.session.images.entries.insert(key, Arc::clone(&image));
+        // Bounded sources always keep their original whole-image namespace.
+        // An oversized source is tagged only by the explicit tiling factory;
+        // the ordinary constructor still refuses it before this insertion.
+        let entry = CachedImage::new(Arc::clone(&image));
+        self.session.images.entries.insert(key, entry);
         Ok(image)
     }
 
@@ -252,4 +317,97 @@ fn device_name(count: usize) -> Result<Value> {
 
 fn has_mask(image: &Image) -> bool {
     !matches!(image.mask, crate::model::ImageMask::None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CachedImage, Image, Purpose};
+    use crate::model::ImageMask;
+    use pagura_color::ColorSpace;
+    use pagura_core::{Limits, ObjectId};
+    use pagura_document::{Document, OpenOptions};
+    use pagura_image::ImageSource;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    fn image(pixels: usize) -> Arc<Image> {
+        let document = Document::open(
+            pagura_testkit::fixture("packed_mask_tiles", "small-flate.pdf"),
+            &OpenOptions {
+                limits: Limits {
+                    pixels,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let source = ImageSource::from_xobject_with_tiling(
+            &document,
+            document.object(ObjectId::new(6, 0)).unwrap(),
+        )
+        .unwrap();
+        Arc::new(Image {
+            source: Arc::new(source),
+            space: Some(Arc::new(ColorSpace::DeviceGray)),
+            decode: vec![[0.0, 1.0]].into(),
+            interpolate: false,
+            intent: None,
+            mask: ImageMask::None,
+        })
+    }
+
+    #[test]
+    fn source_admission_tags_control_cache_purpose() {
+        let whole = image(70);
+        let tiled = image(10);
+        assert!(!whole.source.is_tiled_mask());
+        assert!(tiled.source.is_tiled_mask());
+        for purpose_order in [
+            [Purpose::SoftMask, Purpose::Whole],
+            [Purpose::Whole, Purpose::SoftMask],
+        ] {
+            let ordinary = CachedImage::new(Arc::clone(&whole));
+            let mask = CachedImage::new(Arc::clone(&tiled));
+            for purpose in purpose_order {
+                assert!(Arc::ptr_eq(ordinary.image(purpose).unwrap(), &whole));
+                if matches!(purpose, Purpose::Whole) {
+                    assert!(mask.image(purpose).is_none());
+                } else {
+                    assert!(Arc::ptr_eq(mask.image(purpose).unwrap(), &tiled));
+                }
+            }
+            // Refusing an ordinary lookup never overwrites the admitted mask.
+            assert!(Arc::ptr_eq(mask.image(Purpose::SoftMask).unwrap(), &tiled));
+        }
+    }
+
+    #[test]
+    fn purpose_cache_layout_and_actual_map_capacity() {
+        type Key = (ObjectId, usize);
+        let mut entries = HashMap::<Key, CachedImage>::new();
+        assert_eq!(entries.capacity(), 0);
+        let whole = image(70);
+        for number in 0..4 {
+            entries.insert(
+                (ObjectId::new(number, 0), 0),
+                CachedImage::new(Arc::clone(&whole)),
+            );
+        }
+        assert_eq!(entries.len(), 4);
+        assert!(entries.capacity() >= entries.len());
+        assert!(size_of::<CachedImage>() >= size_of::<Arc<Image>>());
+        assert!(size_of::<CachedImage>() <= 2 * size_of::<Arc<Image>>());
+        println!(
+            "purpose-cache-layout pointer={} old_value={} value={} old_entry={} entry={} map={} capacity={} entries={}",
+            size_of::<usize>(),
+            size_of::<Arc<Image>>(),
+            size_of::<CachedImage>(),
+            size_of::<(Key, Arc<Image>)>(),
+            size_of::<(Key, CachedImage)>(),
+            size_of::<HashMap<Key, CachedImage>>(),
+            entries.capacity(),
+            entries.len(),
+        );
+    }
 }

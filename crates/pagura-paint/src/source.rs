@@ -17,7 +17,7 @@ use pagura_raster::{DeviceRect, Transform};
 mod image;
 mod shading;
 
-pub(crate) use image::{ImageBudgets, ImageSampler, ScratchLayout};
+pub(crate) use image::{HeldTiles, ImageBudgets, ImageSampler, ScratchLayout, TiledAdmission};
 pub(crate) use shading::{BBoxUse, ShadingSource};
 
 /// Working colours of one span: `channels` values per pixel in the target's
@@ -265,6 +265,7 @@ impl Source {
         stencil: Option<(&[f64], Painted)>,
         (context, pixels): (&PaintContext<'_>, usize),
         budgets: ImageBudgets<'_>,
+        mut tiles: TiledAdmission<'_>,
     ) -> Result<Self> {
         let ImageBudgets {
             bytes: remaining,
@@ -282,6 +283,7 @@ impl Source {
                 work,
                 functions: &mut *functions,
             },
+            &mut tiles,
         )?;
         let mut bytes = Meter::new(remaining.remaining(), "render memory budget exceeded");
         bytes.charge(sampler.bytes())?;

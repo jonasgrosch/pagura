@@ -31,6 +31,7 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 | `images.codecs` / R03 | PDF image codec variants | partial / partial / partial / partial | JPEG sequential/progressive with Huffman/arithmetic, CCITT G3/G4, JBIG2 regions and JPEG 2000 Part 1. | Residual JPEG, CCITT, JBIG2 and JPX subvariants are enumerated in the tag dispositions; baseline-supported valid cases still need G01 fixtures. |
 | `images.jpx-alpha` / R02 | JPX embedded straight/premultiplied alpha | implemented / implemented / implemented / implemented | SMaskInData 1/2 decode and compositing, including alpha normalization/unpremultiplication; explicit PDF Indexed spaces retain direct index/opacity channels without a container palette, including first/last opacity order. | Opacity combined with an explicit PDF Indexed space and a JPX container palette still requires channel mapping; broader colour/layout interactions remain R02 work. |
 | `images.jpx-colour` / R02 | JPX embedded colour interpretation | partial / partial / partial / partial | Explicit PDF colour spaces and embedded Gray/RGB/CMYK mapping; embedded ICC forward profiles use the bounded cache and existing transforms (Gray/RGB pixel fixtures); eight-bit unsigned sYCC converts through the IEC Annex F matrix with explicit PDF override and alpha fixtures. | Other/mixed sYCC precisions, Lab-input profiles, multiple-colour precedence and unsupported selected-transform fallback; remaining channel/layout and interaction coverage. |
+| `images.packed-masks` / R02 | Bounded complete packed Gray1 soft-mask collections | partial / partial / partial / partial | Complete raw or single-Flate unmatted Gray1 soft masks can use individually bounded tiles on their original logical grid. Separate tiled sample/work domains, strict completeness, source/caller admission, purpose-isolated caches and held-source accounting retain resource bounds. Optional separable positive-zero/one minification uses an exact old-step column index; other admitted tiled sampling keeps the existing route. | This is an explicit ADR0010/0016 admission-policy expansion, not resource equivalence from unchanged caps. General colour/precision/filter/codec/matted/nested image forms keep whole-surface limits. Clean-head three-OS/runtime/API/parity/performance/memory and selected-integration qualification are pending; no certified new public-page admission, universal-DPI guarantee or competitor family result. |
 | `colour.transparency` / R05 | Group colour, transparency and overprint | partial / partial / partial / partial | Gray/RGB/CMYK groups, knockout, blend modes, masks, forward ICC and process/spot overprint display. | Destination/inverse ICC, calibrated group destinations, black-point compensation and transfer-region combinations. |
 | `render.graphics` / R06 | Graphics combinations and exact rendering | partial / partial / partial / partial | One interpreter, prepared scenes, per-buffer formats and one exact band executor; paths, clips, shadings and patterns. | Singular-transform/pattern compatibility cases and independent accuracy evidence for difficult geometry. |
 | `annotations.appearances` / V01 | Annotation appearance synthesis | partial / partial / partial / partial | Stored appearances, Link/Square borders, Text icons and supported empty widgets. | Other subtype appearances, richer borders, nonempty/rotated widgets and interaction states. |
@@ -71,16 +72,16 @@ they are not executable/binary identities. Regeneration never refreshes evidence
 
 | Baseline | Unprobed capability cells |
 |---|---:|
-| pdfium | 43 |
-| mupdf | 43 |
-| pdfjs | 43 |
-| poppler | 43 |
-| hayro | 43 |
-| quartz | 43 |
+| pdfium | 44 |
+| mupdf | 44 |
+| pdfjs | 44 |
+| poppler | 44 |
+| hayro | 44 |
+| quartz | 44 |
 
 ## Requirement ownership
 
-All 335 registered requirement IDs map to capability rows in the ledger.
+All 336 registered requirement IDs map to capability rows in the ledger.
 Ownership does not change normative verification status or certify the linked tests.
 
 ## Baseline API discovery

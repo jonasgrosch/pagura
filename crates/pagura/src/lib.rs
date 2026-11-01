@@ -84,7 +84,7 @@ pub mod text {
 pub use pagura_core::convert;
 pub use pagura_core::{
     Diagnostic, DiagnosticKind, Dictionary, Error, ErrorKind, Feature, Limits, Name, ObjectId,
-    Position, Recovery, Rect, Repair, Result, SignatureLimits, Value,
+    Position, Recovery, Rect, Repair, Result, SignatureLimits, TiledImageLimits, Value,
 };
 /// Interactive form source views and in-memory filling (12.7). Actions are inert data.
 pub use pagura_document::forms;

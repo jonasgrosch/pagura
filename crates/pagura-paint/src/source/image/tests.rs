@@ -56,11 +56,14 @@ fn prepared_with_budget(
         convert,
         color.map(|color| (color, Painted(7))),
         1,
-        super::ImageBudgets {
-            bytes,
-            work: &mut meter(),
-            functions: &mut meter(),
-        },
+        (
+            super::ImageBudgets {
+                bytes,
+                work: &mut meter(),
+                functions: &mut meter(),
+            },
+            None,
+        ),
     )?;
     Ok(ImageSampler::new(
         Some(Box::new(prepared)),
@@ -115,16 +118,19 @@ fn masks_own_a_plan_only_for_independent_sampling() {
                     },
                     alpha_is_shape: false,
                 },
-                (decoded, Some(mask)),
+                (decoded, Some(super::mask::DecodedMask::Whole(mask))),
                 (Transform::scale(0.05, 0.1), (0, 20), Orientation::Rows),
                 Some(converter(&ColorSpace::DeviceGray, 3)),
                 None,
                 1,
-                super::ImageBudgets {
-                    bytes: budget,
-                    work,
-                    functions: &mut meter(),
-                },
+                (
+                    super::ImageBudgets {
+                        bytes: budget,
+                        work,
+                        functions: &mut meter(),
+                    },
+                    None,
+                ),
             )
         };
         let mut bytes = meter();
@@ -316,18 +322,24 @@ fn prepared_sampler(case: &Case, unit_to_device: Transform, target: usize) -> Im
     };
     let prepared = Prepared::new(
         &description,
-        (Arc::new(Decoded::from(image)), mask.map(|(m, _)| m)),
+        (
+            Arc::new(Decoded::from(image)),
+            mask.map(|(m, _)| super::mask::DecodedMask::Whole(m)),
+        ),
         (inverse, (window.0, window.2), orientation),
         convert,
         case.stencil_color
             .as_deref()
             .map(|color| (color, Painted(7))),
         usize::try_from((window.2 - window.0) * (window.3 - window.1)).unwrap(),
-        super::ImageBudgets {
-            bytes: &mut meter(),
-            work: &mut meter(),
-            functions: &mut meter(),
-        },
+        (
+            super::ImageBudgets {
+                bytes: &mut meter(),
+                work: &mut meter(),
+                functions: &mut meter(),
+            },
+            None,
+        ),
     )
     .unwrap();
     ImageSampler::new(
@@ -852,7 +864,8 @@ fn minified_masks_with_their_own_interpolate_average_with_the_image() {
             let (x0, y0, x1, y1) = window(unit_to_device);
             let orientation = Orientation::of(unit_to_device);
             let inverse = unit_to_device.inverse().unwrap();
-            let geometry = super::placement(&masked.image.image, inverse, orientation).unwrap();
+            let geometry =
+                super::placement(masked.image.whole().unwrap(), inverse, orientation).unwrap();
             let plan = super::Sampling::new(&geometry, (x0, x1), &mut meter()).unwrap();
             masked.independent = Some((geometry, plan));
             let len = usize::try_from(x1 - x0).unwrap();
@@ -952,7 +965,7 @@ fn upright_bilinear_rows_add_as_single_texels_do() {
         let fused = super::texels::Fused {
             texels: &general,
             mask: OpacityTexels {
-                mask: &mask.image.image,
+                mask: mask.image.whole().unwrap(),
                 opacity: &mask.opacity,
             },
             values: std::cell::RefCell::new(&mut values),
@@ -1196,20 +1209,20 @@ fn rows_and_tables_sum_as_samples_do() {
                 let (x0, y0, x1, y1) = window(unit_to_device);
                 let len = usize::try_from(x1 - x0).unwrap();
                 let opacity = OpacityTexels {
-                    mask: &mask.image.image,
+                    mask: mask.image.whole().unwrap(),
                     opacity: &mask.opacity,
                 };
                 let matte = colors
                     .matte
                     .as_ref()
-                    .map(|_| (&mask.image.image, &mask.opacity));
+                    .map(|_| (mask.image.whole().unwrap(), &mask.opacity));
                 let texels = SampleTexels::new(&prepared.image.image, colors, matte);
                 // A mask on the image's grid averages ahead of the texels.
                 let mut fused_values = Vec::new();
                 let texels = super::texels::Fused {
                     texels: &texels,
                     mask: OpacityTexels {
-                        mask: &mask.image.image,
+                        mask: mask.image.whole().unwrap(),
                         opacity: &mask.opacity,
                     },
                     values: std::cell::RefCell::new(&mut fused_values),

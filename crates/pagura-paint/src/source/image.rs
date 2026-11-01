@@ -10,17 +10,21 @@
 //! colour is unpremultiplied for the executor.
 
 mod codes;
+mod column_index;
 mod contour;
 mod geometry;
+mod mask;
 mod sampling;
 mod scratch;
 mod separable;
 #[cfg(test)]
 mod tests;
 mod texels;
+mod tiles;
 
 use super::{PaintContext, Pixels, SpanColors};
 use geometry::{Geometry, Mode, Texels};
+use mask::{DecodedMask, MaskSampling};
 use pagura_color::{ColorSpace, Converter, Painted, Process};
 use pagura_core::{Built, Diagnostic, Error, Meter, Result, StoreKey};
 use pagura_image::{
@@ -33,9 +37,10 @@ use sampling::Sampling;
 pub(crate) use scratch::{Layout as ScratchLayout, Scratch as ImageScratch};
 use std::sync::Arc;
 use texels::{
-    ByteCodes, Colors, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes, RgbTexels,
+    ByteCodes, Colors, Fused, Lookup, MemoTexels, OpacityTexels, PackedCodes, RgbTexels,
     SampleTexels, Strategy, TableTexels, TexelMode, WordCodes,
 };
+pub(crate) use tiles::{HeldTiles, TiledAdmission};
 
 /// An image prepared for one render: decoded (through the store) and ready
 /// to sample. A stencil mask samples alpha only, or takes its solid colour
@@ -44,6 +49,40 @@ use texels::{
 pub(crate) struct ImageSampler {
     prepared: Option<Box<Prepared>>,
     channels: usize,
+}
+
+/// The local live peak and outer retained owner budget of one preparation.
+struct IndexAdmission<'a, 'b> {
+    tiles: &'a mut TiledAdmission<'b>,
+    retained: &'a mut Meter,
+    context: &'a PaintContext<'a>,
+}
+
+impl IndexAdmission<'_, '_> {
+    fn reserve(
+        admission: Option<&mut Self>,
+        geometry: &Geometry,
+        mask: Option<&mut MaskSampling>,
+        pixels: usize,
+        (work, bytes): (&mut Meter, &mut Meter),
+    ) -> Result<()> {
+        if let Some(admission) = admission {
+            admission.tiles.reserve(
+                geometry,
+                mask,
+                pixels,
+                work,
+                (bytes, admission.retained),
+                admission.context,
+            )?;
+        } else {
+            let cost = geometry
+                .cost()
+                .saturating_add(mask.as_deref().map_or(0, |mask| mask.cost(geometry)));
+            work.charge_product(pixels, cost)?;
+        }
+        Ok(())
+    }
 }
 
 /// The budgets preparing an image charges.
@@ -133,10 +172,10 @@ impl Plan {
         (mut paint, mut painted): (Paint, Painted),
         image: &DecodedImage,
         (geometry, columns): (&Geometry, (u32, u32)),
-        mask: Option<&MaskSampling>,
+        mask: Option<&mut MaskSampling>,
         stencil: Option<(&[f64], Painted)>,
         pixels: usize,
-        budgets: ImageBudgets<'_>,
+        (budgets, admission): (ImageBudgets<'_>, Option<&mut IndexAdmission<'_, '_>>),
     ) -> Result<(Self, Painted)> {
         // Only construction holds both the source paint and its copied code
         // lanes. The returned plan owns exactly the resources it executes.
@@ -149,7 +188,7 @@ impl Plan {
             work,
             functions,
         } = budgets;
-        let codes = match mask {
+        let codes = match mask.as_deref() {
             None => match fast_lanes(&paint, image, bytes)? {
                 Some(lanes) => codes::Codes::new(lanes, image, geometry, columns, bytes)?,
                 None => None,
@@ -169,7 +208,7 @@ impl Plan {
             // The memo holds at most a key per texel read.
             layout.bound(pixels.saturating_mul(geometry.cost()));
             let opaque = layout.opaque();
-            let mask = mask.map(|mask| &mask.image.image);
+            let mask = mask.as_deref().and_then(|mask| mask.image.whole());
             if let Some(indexed) = layout.fit(image, mask, work, bytes)? {
                 let source = (&paint.0, usize::from(image.components), opaque);
                 paint.1 = indexed.strategy(source, bytes, functions)?;
@@ -177,12 +216,7 @@ impl Plan {
         }
         // Keep work and function admission before stencil recolouring, as
         // when the caller applied its solid colour after preparation.
-        let per_pixel = geometry.cost().saturating_add(mask.map_or(0, |mask| {
-            mask.independent
-                .as_ref()
-                .map_or(geometry.cost(), |(geometry, _)| geometry.cost())
-        }));
-        work.charge_product(pixels, per_pixel)?;
+        IndexAdmission::reserve(admission, geometry, mask, pixels, (work, bytes))?;
         if let Paint::Colors(paint) = &paint {
             let (colors, strategy) = paint.as_ref();
             let planes = matches!(selected, Selected::Texels(_))
@@ -245,18 +279,6 @@ impl Plan {
     }
 }
 
-#[derive(Debug)]
-struct MaskSampling {
-    image: Arc<Decoded>,
-    opacity: Opacity,
-    /// Whether the mask's opacity also scales shape: an explicit stencil
-    /// mask, or alpha is shape.
-    scales_shape: bool,
-    /// A mask with its own grid or reconstruction; otherwise opacity
-    /// averages over the image's footprints together with the texels.
-    independent: Option<(Geometry, Sampling)>,
-}
-
 /// A decoded image in the store: the source and the request (layout and
 /// orientation).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -309,6 +331,7 @@ impl ImageSampler {
         pixels: usize,
         stencil: Option<(&[f64], Painted)>,
         budgets: &mut ImageBudgets<'_>,
+        tiles: &mut TiledAdmission<'_>,
     ) -> Result<Self> {
         if !unit_to_device.is_finite() {
             return Err(Error::limit("image transform overflow"));
@@ -344,37 +367,36 @@ impl ImageSampler {
             unit_to_device,
             context,
         );
-        let (mask, description) = match &image.mask {
-            ImageMask::Stencil(mask) => (Some(mask), MaskDescription::Stencil),
-            ImageMask::Soft { mask, matte } => (
-                Some(mask),
-                MaskDescription::Soft {
-                    decode: mask.decode.first().copied().unwrap_or([0.0, 1.0]),
-                    matte: matte.as_deref(),
-                },
-            ),
-            ImageMask::None | ImageMask::ColorKey(_) | ImageMask::Embedded => {
-                (None, MaskDescription::None)
-            }
-        };
+        let (mask, description) = mask::description(&image.mask);
         let orientation = Orientation::of(unit_to_device);
-        let decoded = decode(&image.source, (planes, orientation), context)?;
-        let mask = mask
-            .map(|mask| decode_request(&mask.source, (Layout::Native, orientation), context))
+        // New tiled admission precedes every parent-image cache/decode. A
+        // refused mask request cannot publish the parent's decoded samples.
+        let tiled = mask
+            .filter(|mask| mask.source.is_tiled_mask())
+            .map(|mask| {
+                mask::decode_tiles(
+                    &mask.source,
+                    description,
+                    orientation,
+                    context,
+                    (tiles, budgets.bytes, budgets.work),
+                )
+            })
             .transpose()?;
+        let decoded = decode(&image.source, (planes, orientation), context)?;
+        let mask = if let Some(tiled) = tiled {
+            Some(tiled)
+        } else {
+            mask.map(|mask| {
+                decode_request(&mask.source, (Layout::Native, orientation), context)
+                    .map(DecodedMask::Whole)
+            })
+            .transpose()?
+        };
         let mut memory = Meter::new(budgets.bytes.remaining(), "render memory budget exceeded");
         memory.charge(decoded_bytes(&decoded.image))?;
-        memory.charge(mask.as_ref().map_or(0, |mask| decoded_bytes(&mask.image)))?;
-        let description = Description {
-            space: image.space.as_deref(),
-            decode: &image.decode,
-            key: match &image.mask {
-                ImageMask::ColorKey(ranges) => Some(ranges),
-                _ => None,
-            },
-            mask: description,
-            alpha_is_shape: context.composite.alpha_is_shape,
-        };
+        memory.charge(mask.as_ref().map_or(0, DecodedMask::owned_bytes))?;
+        let description = Description::of(image, description, context.composite);
         let convert = match description.space {
             Some(space) => {
                 let mut conversion = context.composite.conversion.clone();
@@ -396,13 +418,71 @@ impl ImageSampler {
             convert,
             stencil,
             pixels,
-            ImageBudgets {
-                bytes: &mut memory,
-                work: budgets.work,
-                functions: budgets.functions,
-            },
+            (
+                ImageBudgets {
+                    bytes: &mut memory,
+                    work: budgets.work,
+                    functions: budgets.functions,
+                },
+                Some(&mut IndexAdmission {
+                    tiles,
+                    retained: budgets.bytes,
+                    context,
+                }),
+            ),
         )?;
         Ok(Self::new(Some(Box::new(prepared)), channels))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_tiled_test_counts() {
+        texels::reset_tiled_query_reads();
+        column_index::reset_construction_count();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn tiled_test_counts() -> (usize, usize) {
+        (
+            texels::tiled_query_reads(),
+            column_index::construction_count(),
+        )
+    }
+
+    fn validate_index_owner(
+        &self,
+        token: tiles::OwnerToken,
+        decoded: &Arc<pagura_image::DecodedTiles>,
+    ) -> Result<()> {
+        let Some(mask) = self.prepared.as_deref().and_then(|p| p.mask.as_ref()) else {
+            return Ok(());
+        };
+        if let Some((owner, actual, _)) = mask.index_candidate(0)
+            && owner == token
+            && !Arc::ptr_eq(actual, decoded)
+        {
+            return Err(Error::invalid_argument("tiled sampler owner mismatch"));
+        }
+        Ok(())
+    }
+
+    fn attach_index(&mut self, token: tiles::OwnerToken, index: &Arc<column_index::ColumnIndex>) {
+        let Some(mask) = self.prepared.as_deref_mut().and_then(|p| p.mask.as_mut()) else {
+            return;
+        };
+        if mask
+            .index_candidate(0)
+            .is_some_and(|(owner, _, _)| owner == token)
+        {
+            mask.attach_index(Arc::clone(index));
+        }
+    }
+
+    pub(crate) fn finish_tile_tokens(&mut self) {
+        if let Some(mask) = self.prepared.as_deref_mut().and_then(|p| p.mask.as_mut())
+            && let DecodedMask::Tiles { owner, .. } = &mut mask.image
+        {
+            *owner = None;
+        }
     }
 
     /// Keeps the values of each component's codes through the conversion's
@@ -514,13 +594,24 @@ impl ImageSampler {
     }
 
     /// Bytes the sampler holds for the render: the decoded samples of the
-    /// image and its mask, texel tables and the footprint plan. They are
-    /// the same whether the decoded image came from the store or was
-    /// decoded for this render.
+    /// image and its whole mask, texel tables and the footprint plan. A tiled
+    /// mask collection is charged once by HeldTiles instead. Charges do not
+    /// depend on whether decoding used persistent Store values.
     pub(crate) fn bytes(&self) -> usize {
         self.prepared
             .as_ref()
             .map_or(0, |prepared| prepared.bytes())
+    }
+
+    /// Actual shared tiled collection for independent ownership tests. Its
+    /// physical payload is charged by HeldTiles rather than once per sampler.
+    #[cfg(test)]
+    pub(crate) fn tiled_mask(&self) -> Option<&Arc<pagura_image::DecodedTiles>> {
+        let mask = self.prepared.as_ref()?.mask.as_ref()?;
+        match &mask.image {
+            DecodedMask::Tiles { decoded, .. } => Some(decoded),
+            DecodedMask::Whole(_) => None,
+        }
     }
 
     /// Bytes the optional curve values hold ([`Self::admit_curves`]).
@@ -643,15 +734,9 @@ impl ImageSampler {
         let fused = mask.is_some_and(|mask| mask.independent.is_none());
         out.alpha.resize(len, 0.0);
         if let Some(mask) = mask
-            && let Some((geometry, plan)) = &mask.independent
+            && let Some(storage) = &mut scratch.mask
         {
-            let texels = OpacityTexels {
-                mask: &mask.image.image,
-                opacity: &mask.opacity,
-            };
-            if let Some(storage) = &mut scratch.mask {
-                plan.fill(geometry, pixels, storage, &texels, &mut out.alpha);
-            }
+            mask.fill(pixels, storage, &mut out.alpha);
         }
         let stride = lanes + usize::from(fused);
         let mut storage = std::mem::take(&mut scratch.summed);
@@ -814,12 +899,17 @@ impl Prepared {
         texels: &impl Texels,
         out: &mut [f64],
     ) {
-        match self.mask.as_ref().filter(|mask| mask.independent.is_none()) {
-            Some(mask) => {
+        let mask = self
+            .mask
+            .as_ref()
+            .filter(|mask| mask.independent.is_none())
+            .and_then(|mask| mask.image.whole().map(|image| (mask, image)));
+        match mask {
+            Some((mask, image)) => {
                 let fused = Fused {
                     texels,
                     mask: OpacityTexels {
-                        mask: &mask.image.image,
+                        mask: image,
                         opacity: &mask.opacity,
                     },
                     values: std::cell::RefCell::new(&mut *buffers.fused),
@@ -988,7 +1078,10 @@ impl Prepared {
                 }
                 Strategy::Memo(_) => {
                     let colors = &paint.0;
-                    let mask = self.mask.as_ref().map(|m| (&m.image.image, &m.opacity));
+                    let mask = self
+                        .mask
+                        .as_ref()
+                        .and_then(|mask| mask.image.whole().map(|image| (image, &mask.opacity)));
                     match memo
                         .as_deref_mut()
                         .and_then(|memo| MemoTexels::new(image, colors, mask, memo))
@@ -1019,7 +1112,7 @@ impl Prepared {
             .mask
             .as_ref()
             .filter(|_| colors.matte.is_some())
-            .map(|mask| (&mask.image.image, &mask.opacity));
+            .and_then(|mask| mask.image.whole().map(|image| (image, &mask.opacity)));
         let texels = SampleTexels::new(&self.image.image, colors, matte);
         self.sample(plan, pixels, buffers, &texels, out);
     }
@@ -1229,6 +1322,25 @@ enum MaskDescription<'a> {
     },
 }
 
+impl<'a> Description<'a> {
+    fn of(
+        image: &'a Image,
+        mask: MaskDescription<'a>,
+        composite: &pagura_interpret::Composite,
+    ) -> Self {
+        Self {
+            space: image.space.as_deref(),
+            decode: &image.decode,
+            key: match &image.mask {
+                ImageMask::ColorKey(ranges) => Some(ranges),
+                _ => None,
+            },
+            mask,
+            alpha_is_shape: composite.alpha_is_shape,
+        }
+    }
+}
+
 impl Prepared {
     /// Prepares sampling `decoded` (and its `mask`) under the device-to-unit
     /// square `inverse`, converting colours with `convert` (and per channel
@@ -1236,12 +1348,12 @@ impl Prepared {
     /// and table conversions before construction.
     fn new(
         description: &Description<'_>,
-        (decoded, mask): (Arc<Decoded>, Option<Arc<Decoded>>),
+        (decoded, mask): (Arc<Decoded>, Option<DecodedMask>),
         (inverse, columns, orientation): (Transform, (u32, u32), Orientation),
         convert: Option<(Converter, bool)>,
         stencil: Option<(&[f64], Painted)>,
         pixels: usize,
-        budgets: ImageBudgets<'_>,
+        (budgets, admission): (ImageBudgets<'_>, Option<&mut IndexAdmission<'_, '_>>),
     ) -> Result<Self> {
         let ImageBudgets {
             bytes,
@@ -1251,34 +1363,16 @@ impl Prepared {
         bytes.charge_items::<Self>(1)?;
         validate(&decoded.image)?;
         let geometry = placement(&decoded.image, inverse, orientation)?;
-        let mask = match (mask, description.mask) {
+        let mut mask = match (mask, description.mask) {
             (Some(image), MaskDescription::Stencil | MaskDescription::Soft { .. }) => {
-                validate(&image.image)?;
-                let (decode, scales_shape) = match description.mask {
-                    MaskDescription::Soft { decode, .. } => (decode, description.alpha_is_shape),
-                    _ => ([0.0, 1.0], true),
-                };
-                // On the image's grid and sampled alike: the same samples
-                // and the same reconstruction (a mask has its own
-                // `Interpolate`, which an area average does not read).
-                // Every value averages alone, so the opacity is the same
-                // either way.
-                let fused = (image.image.width, image.image.height)
-                    == (decoded.image.width, decoded.image.height)
-                    && (image.image.interpolate == decoded.image.interpolate
-                        || geometry.mode() == Mode::Area);
-                Some(MaskSampling {
-                    opacity: Opacity::new(&image.image, decode, bytes)?,
-                    independent: if fused {
-                        None
-                    } else {
-                        let geometry = placement(&image.image, inverse, orientation)?;
-                        let plan = Sampling::new(&geometry, columns, bytes)?;
-                        Some((geometry, plan))
-                    },
+                Some(MaskSampling::new(
                     image,
-                    scales_shape,
-                })
+                    description,
+                    &decoded.image,
+                    (inverse, orientation),
+                    (&geometry, columns),
+                    bytes,
+                )?)
             }
             _ => None,
         };
@@ -1292,7 +1386,7 @@ impl Prepared {
                     &decoded.image,
                     &colors,
                     rgb,
-                    mask.as_ref().map(|mask| &mask.image.image),
+                    mask.as_ref().and_then(|mask| mask.image.whole()),
                     bytes,
                     functions,
                 )?;
@@ -1310,14 +1404,17 @@ impl Prepared {
             (paint, painted),
             &decoded.image,
             (&geometry, columns),
-            mask.as_ref(),
+            mask.as_mut(),
             stencil,
             pixels,
-            ImageBudgets {
-                bytes,
-                work,
-                functions,
-            },
+            (
+                ImageBudgets {
+                    bytes,
+                    work,
+                    functions,
+                },
+                admission,
+            ),
         )?;
         Ok(Self {
             image: decoded,
@@ -1337,7 +1434,8 @@ impl Prepared {
                 .independent
                 .as_ref()
                 .map_or(0, |(_, plan)| plan.bytes());
-            decoded_bytes(&mask.image.image)
+            mask.image
+                .owned_bytes()
                 .saturating_add(mask.opacity.bytes())
                 .saturating_add(plan)
         });
@@ -1432,8 +1530,11 @@ fn colors(
             },
             Some(mask),
         ) => {
-            if (mask.image.image.width, mask.image.image.height) != (decoded.width, decoded.height)
-            {
+            let mask = mask
+                .image
+                .whole()
+                .ok_or(Error::syntax("Matte cannot be applied to a tiled source"))?;
+            if (mask.width, mask.height) != (decoded.width, decoded.height) {
                 return Err(Error::syntax("Matte mask dimensions differ from image"));
             }
             Some(copied(matte, bytes)?)

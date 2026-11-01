@@ -108,7 +108,7 @@ impl<'a> Renderer<'a> {
         let region = prepared.region();
         let (width, height) = (region.width(), region.height());
         let limits = self.document.limits();
-        let bytes = surface_bytes(width, height, limits)?;
+        let bytes = surface_bytes(width, height, &limits)?;
         let mut rendering = prepared.with_scratch(scratch)?;
         // Rendered rows are written whole, so the surface is collected band
         // by band rather than filled with the background first; rows a stop
@@ -122,7 +122,7 @@ impl<'a> Renderer<'a> {
         if let Some(rest) = data.get_mut(rendered..) {
             rest.as_chunks_mut::<4>().0.fill(prepared.background());
         }
-        let pixmap = Pixmap::from_premultiplied(width, height, data, limits)?;
+        let pixmap = Pixmap::from_premultiplied(width, height, data, &limits)?;
         Ok((pixmap, completion))
     }
 
@@ -150,7 +150,7 @@ impl<'a> Renderer<'a> {
 
 /// The bytes of a `width × height` surface, which must be within both the
 /// pixel and the byte budget, as [`Pixmap::from_premultiplied`] requires.
-fn surface_bytes(width: u32, height: u32, limits: Limits) -> Result<usize> {
+fn surface_bytes(width: u32, height: u32, limits: &Limits) -> Result<usize> {
     let pixels = usize::try_from(u64::from(width) * u64::from(height))
         .ok()
         .filter(|&pixels| pixels <= limits.pixels)

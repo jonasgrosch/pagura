@@ -4,11 +4,11 @@ use pagura_core::{ErrorKind, Limits, Recovery};
 use pagura_testkit::{fixture, fixture_path};
 use std::fmt::Write;
 
-fn open(name: &str, limits: Limits) -> Document {
+fn open(name: &str, limits: &Limits) -> Document {
     Document::open(
         fixture("signatures", &format!("{name}.pdf")),
         &OpenOptions {
-            limits,
+            limits: *limits,
             ..OpenOptions::default()
         },
     )
@@ -119,7 +119,7 @@ fn independent_structures() {
         count += 1;
         let name = path.file_stem().unwrap().to_str().unwrap();
         let expected = std::fs::read_to_string(&path).unwrap();
-        let doc = open(name, Limits::default());
+        let doc = open(name, &Limits::default());
         let result = doc.signatures();
         if expected.starts_with("field-error|") {
             assert_eq!(
@@ -203,18 +203,18 @@ fn independent_structures() {
 
 #[test]
 fn budgets_fail_without_partial_results() {
-    let doc = open("multiple-revisions", Limits::default());
+    let doc = open("multiple-revisions", &Limits::default());
     // Read source objects first so result limits, rather than lazy cache
     // admission, are exercised independently.
     doc.signatures().unwrap();
     let mut limited = doc;
     limited.limits.traversal_work = 1;
     assert_eq!(limited.signatures().unwrap_err().kind, ErrorKind::Limit);
-    let mut doc = open("multiple-revisions", Limits::default());
+    let mut doc = open("multiple-revisions", &Limits::default());
     doc.signatures().unwrap();
     doc.limits.document_bytes = 1;
     assert_eq!(doc.signatures().unwrap_err().kind, ErrorKind::Limit);
-    let mut doc = open("multiple-revisions", Limits::default());
+    let mut doc = open("multiple-revisions", &Limits::default());
     doc.signatures().unwrap();
     doc.limits.file_bytes = 1;
     assert_eq!(doc.signatures().unwrap_err().kind, ErrorKind::Limit);

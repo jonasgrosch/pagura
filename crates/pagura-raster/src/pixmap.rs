@@ -112,7 +112,7 @@ impl Pixmap {
         width: u32,
         height: u32,
         data: Vec<u8>,
-        limits: Limits,
+        limits: &Limits,
     ) -> Result<Self> {
         if width == 0 || height == 0 {
             return Err(Error::invalid_argument(
@@ -228,7 +228,7 @@ mod tests {
         data.extend_from_slice(&[128, 0, 0, 128, 0, 0, 255, 255]);
         let pointer = data.as_ptr();
         let surface =
-            Pixmap::from_premultiplied(2, 1, data, pagura_core::Limits::default()).unwrap();
+            Pixmap::from_premultiplied(2, 1, data, &pagura_core::Limits::default()).unwrap();
         assert_eq!(surface.data().as_ptr(), pointer);
         assert_eq!(surface.data(), [128, 0, 0, 128, 0, 0, 255, 255]);
         let mut spare = Vec::with_capacity(32);
@@ -238,23 +238,23 @@ mod tests {
                 2,
                 1,
                 spare,
-                pagura_core::Limits {
+                &pagura_core::Limits {
                     decoded_bytes: 8,
                     ..pagura_core::Limits::default()
                 }
             )
             .is_err()
         );
-        assert!(Pixmap::from_premultiplied(0, 1, vec![], pagura_core::Limits::default()).is_err());
+        assert!(Pixmap::from_premultiplied(0, 1, vec![], &pagura_core::Limits::default()).is_err());
         assert!(
-            Pixmap::from_premultiplied(2, 1, vec![0; 4], pagura_core::Limits::default()).is_err()
+            Pixmap::from_premultiplied(2, 1, vec![0; 4], &pagura_core::Limits::default()).is_err()
         );
         assert!(
             Pixmap::from_premultiplied(
                 2,
                 1,
                 vec![0; 8],
-                pagura_core::Limits {
+                &pagura_core::Limits {
                     decoded_bytes: 7,
                     ..pagura_core::Limits::default()
                 }
@@ -266,7 +266,7 @@ mod tests {
                 2,
                 1,
                 vec![0; 8],
-                pagura_core::Limits {
+                &pagura_core::Limits {
                     pixels: 1,
                     ..pagura_core::Limits::default()
                 }

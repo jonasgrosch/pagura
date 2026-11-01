@@ -217,8 +217,8 @@ mod tests {
     use pagura_core::{Limits, Value};
 
     /// The object parser's string or name and the offset after it.
-    fn parsed(data: &[u8], limits: Limits) -> Option<(Value, usize)> {
-        let mut parser = Parser::new(data, Origin::Buffer, limits);
+    fn parsed(data: &[u8], limits: &Limits) -> Option<(Value, usize)> {
+        let mut parser = Parser::new(data, Origin::Buffer, *limits);
         parser.parse().ok().map(|value| (value, parser.offset()))
     }
 
@@ -261,7 +261,7 @@ mod tests {
             b"<41",
             b"<>",
         ] {
-            let expected = parsed(data, limits).map(|(value, end)| match value {
+            let expected = parsed(data, &limits).map(|(value, end)| match value {
                 Value::String(bytes) => (bytes, end),
                 other => panic!("{other:?}"),
             });
@@ -275,7 +275,7 @@ mod tests {
             let (bytes, end) = name(data, 0, 6).unwrap();
             assert_eq!(
                 Some((Value::name(bytes), end)),
-                parsed(data, Limits::default()),
+                parsed(data, &Limits::default()),
                 "{data:?}"
             );
         }

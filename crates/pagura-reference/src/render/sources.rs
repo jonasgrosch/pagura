@@ -275,6 +275,36 @@ impl Renderer<'_> {
         }))
     }
 
+    /// Lazy opacity values stay on the original logical grid, independently
+    /// of the product sampler's physical orientation or cache identity.
+    fn packed_mask_samples(
+        &mut self,
+        image: &pagura_interpret::Image,
+        to_device: Transform,
+        state: &Composite,
+        coverage: &crate::shapes::Coverage,
+    ) -> Result<Option<MaskSamples>> {
+        let ImageMask::Soft { mask, matte: None } = &image.mask else {
+            return Ok(None);
+        };
+        if !mask.source.is_tiled_mask() {
+            return Ok(None);
+        }
+        let decoded = self.tiled_mask(mask)?;
+        let sampler = Sampler::new(
+            (decoded.width(), decoded.height()),
+            magnify(mask),
+            to_device,
+        )
+        .ok_or(Error::invalid_argument("singular image mask"))?;
+        sampler.charge_packed_work(coverage.pixels(), &mut self.tiled_mask_work)?;
+        Ok(Some(MaskSamples {
+            sampler,
+            values: Values::packed(decoded, mask.decode.first().copied().unwrap_or([0.0, 1.0]))?,
+            scales_shape: state.alpha_is_shape,
+        }))
+    }
+
     /// Prepares an image (or stencil mask painted with `stencil`) drawn
     /// under `to_device` (its unit square to device).
     pub(super) fn image_source(
@@ -284,6 +314,7 @@ impl Renderer<'_> {
         to_device: Transform,
         state: &Composite,
         context: &Context<'_>,
+        coverage: &crate::shapes::Coverage,
     ) -> Result<Sources<'static>> {
         let image = node.image.as_ref();
         let decoded = self.decoded(image)?;
@@ -329,7 +360,9 @@ impl Renderer<'_> {
             Some(indexed) => self.colors.prepare(&indexed.base, target, &conversion)?,
             None => self.colors.prepare(space, target, &conversion)?,
         };
+        let packed_mask = self.packed_mask_samples(image, to_device, state, coverage)?;
         let mask = match &image.mask {
+            ImageMask::Soft { mask, matte: None } if mask.source.is_tiled_mask() => None,
             ImageMask::Stencil(mask) | ImageMask::Soft { mask, .. } => {
                 Some((mask, self.decoded(mask)?))
             }
@@ -357,8 +390,10 @@ impl Renderer<'_> {
         let values = Values::build(dims, channels + 2, MAX_IMAGE_VALUES, |i, out| {
             samples.value(i, out)
         })?;
-        let mask = mask
-            .map(|(mask, decoded)| -> Result<MaskSamples> {
+        let mask = if let Some(mask) = packed_mask {
+            Some(mask)
+        } else {
+            mask.map(|(mask, decoded)| -> Result<MaskSamples> {
                 Ok(MaskSamples {
                     sampler: Sampler::new(
                         (decoded.width, decoded.height),
@@ -371,7 +406,8 @@ impl Renderer<'_> {
                         || state.alpha_is_shape,
                 })
             })
-            .transpose()?;
+            .transpose()?
+        };
         Ok(Sources::Image(ImageSamples {
             sampler,
             values,

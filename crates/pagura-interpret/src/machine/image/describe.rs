@@ -36,7 +36,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         }
         let mask = match source.mask() {
             SourceMask::Soft { object, matte } => {
-                let mask = self.xobject_image(*object, resources, stack)?;
+                let mask = if matte.is_none() {
+                    self.soft_mask_image(*object, resources, stack)?
+                } else {
+                    self.xobject_image(*object, resources, stack)?
+                };
                 let matte = matte
                     .as_deref()
                     .map(|matte| check_matte(matte, space.as_deref(), &source, &mask))

@@ -37,6 +37,12 @@ pub(super) trait Texels {
     /// Adds `weight` times the texel of sample `index` to `sum`.
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]);
 
+    /// Optional exact vertical reduction; true means every line was written.
+    fn reduce_rows(&self, across: &Footprint, columns: (usize, usize), out: &mut [f64]) -> bool {
+        let _ = (across, columns, out);
+        false
+    }
+
     /// Writes the texels of samples `first..end` of row `row` of an image
     /// `width` samples wide into `out`, as [`Self::get`] gives them, an
     /// equal share of `out` each.
@@ -265,6 +271,18 @@ impl Geometry {
     /// Stored samples per row and rows.
     pub(super) fn size(&self) -> (u32, u32) {
         (self.width, self.height)
+    }
+
+    /// Conservative columns reached by an axis-aligned area footprint.
+    pub(super) fn column_cost(&self) -> usize {
+        let t = self.inverse;
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "finite nonnegative extent clamped to the declared u32 grid"
+        )]
+        let cells = (t.a.abs() + t.c.abs()).ceil().min(f64::from(self.width)) as usize;
+        cells.saturating_add(2)
     }
 
     /// An upper bound of the texels one device pixel reads.

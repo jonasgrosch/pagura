@@ -285,11 +285,14 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSam
         convert,
         None,
         usize::try_from(u64::from(placed.rect.width()) * u64::from(placed.rect.height())).unwrap(),
-        super::super::ImageBudgets {
-            bytes: &mut super::meter(),
-            work: &mut super::meter(),
-            functions: &mut super::meter(),
-        },
+        (
+            super::super::ImageBudgets {
+                bytes: &mut super::meter(),
+                work: &mut super::meter(),
+                functions: &mut super::meter(),
+            },
+            None,
+        ),
     )
     .ok()?;
     Some(ImageSampler::new(

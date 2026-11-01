@@ -193,6 +193,12 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
         },
         |page| page.layout,
     );
+    // Private append-only pool tokens must not escape this preparation.
+    for source in &mut parts.paints {
+        if let crate::source::Source::Image(image) = source {
+            image.finish_tile_tokens();
+        }
+    }
     let mut plan = Plan {
         _names: names,
         area,

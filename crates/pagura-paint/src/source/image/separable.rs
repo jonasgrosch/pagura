@@ -143,6 +143,12 @@ pub(super) trait Rows {
         cache: &'c mut RowCache<Self::Value>,
     ) -> &'c [Self::Value];
 
+    /// Optional total exact column reduction, without per-bit traversal.
+    fn reduce_rows(&self, across: &Footprint, columns: (usize, usize), out: &mut [f64]) -> bool {
+        let _ = (across, columns, out);
+        false
+    }
+
     /// Where the source knows its background: the background's values,
     /// with `runs` of source columns `first..end` whose samples hold it in
     /// every row `top..=bottom` (`false`) or may not (`true`).
@@ -1099,6 +1105,9 @@ fn reduce_rows<R: Rows>(
     }: Work<'_, R::Value>,
     lines: &mut [f64],
 ) {
+    if rows.reduce_rows(across, (first, end), lines) {
+        return;
+    }
     let n = rows.width();
     let length = (end - first) * n;
     // The first row, or a background run, assigns every line.
@@ -1296,4 +1305,15 @@ fn extent(feet: &[Footprint]) -> Option<(usize, usize)> {
 /// A sample coordinate as an index.
 pub(super) fn index(value: u32) -> usize {
     usize::try_from(value).unwrap_or(usize::MAX)
+}
+
+/// Exposes the actual old reducer only to independent index comparison tests.
+#[cfg(test)]
+pub(super) fn old_step_for_index_test(
+    rows: (usize, usize, usize),
+    weights: (f64, f64),
+    sums: (&mut [f64], &mut [f64]),
+    values: &[f64],
+) {
+    step(rows, weights, sums, values);
 }

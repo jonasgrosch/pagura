@@ -156,7 +156,7 @@ fn opaque_white_outputs_pack_exactly_like_rgb_over_white_in_every_page_format() 
         let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
         let mut rgba = Vec::new();
         rendering.render(&mut rgba);
-        let pixmap = Pixmap::from_premultiplied(7, 70, rgba, Limits::default()).unwrap();
+        let pixmap = Pixmap::from_premultiplied(7, 70, rgba, &Limits::default()).unwrap();
         let mut band = Vec::with_capacity(rendering.band_bytes().unwrap());
         let mut rgb = Vec::new();
         rendering

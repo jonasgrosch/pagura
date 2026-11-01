@@ -2,7 +2,7 @@
 
 use crate::{Document, IndirectObject, features, repairs};
 use pagura_codec::{Filter, FilterChain, ImageCodec};
-use pagura_core::{Diagnostics, Dictionary, Error, ObjectId, Result, Value};
+use pagura_core::{Diagnostics, Dictionary, Error, ObjectId, Recovery, Result, Value};
 use pagura_crypto::standard::CryptMethod;
 use std::borrow::Cow;
 
@@ -44,11 +44,31 @@ pub(crate) fn decode<'a>(
     chain: &FilterChain,
     size: usize,
 ) -> Result<Cow<'a, [u8]>> {
-    let mut diagnostics = Diagnostics::new(document.recovery());
+    decode_with_recovery(
+        document,
+        id,
+        data,
+        chain,
+        (size, document.limits().decoded_bytes),
+        document.recovery(),
+    )
+}
+
+/// Shared filter application; choosing strict filters does not change how
+/// the document resolved/decrypted the original stream.
+fn decode_with_recovery<'a>(
+    document: &Document,
+    id: ObjectId,
+    data: Cow<'a, [u8]>,
+    chain: &FilterChain,
+    (size, cap): (usize, usize),
+    recovery: Recovery,
+) -> Result<Cow<'a, [u8]>> {
+    let mut diagnostics = Diagnostics::new(recovery);
     let decoded = chain
         .decode_sized(
             &data,
-            document.limits().decoded_bytes,
+            cap.min(document.limits().decoded_bytes),
             size,
             &mut diagnostics,
         )
@@ -84,11 +104,27 @@ pub(crate) fn image<'a>(
     parameters: Option<&Value>,
     size: usize,
 ) -> Result<ImageStream<'a>> {
+    image_with_recovery(
+        document,
+        object,
+        parameters,
+        (size, document.limits().decoded_bytes),
+        document.recovery(),
+    )
+}
+
+pub(crate) fn image_with_recovery<'a>(
+    document: &'a Document,
+    object: &IndirectObject,
+    parameters: Option<&Value>,
+    (size, cap): (usize, usize),
+    recovery: Recovery,
+) -> Result<ImageStream<'a>> {
     let (data, mut chain) =
         document.prepare_stream_with_parameters(object, parameters, &mut Vec::new())?;
     let codec = chain.split_image();
     let size = if codec.is_some() { 0 } else { size };
-    let data = decode(document, object.id(), data, &chain, size)?;
+    let data = decode_with_recovery(document, object.id(), data, &chain, (size, cap), recovery)?;
     Ok(ImageStream { data, codec })
 }
 
@@ -275,7 +311,7 @@ mod tests {
             "image",
             name,
             Recovery::Strict,
-            Limits {
+            &Limits {
                 decoded_bytes,
                 ..Limits::default()
             },

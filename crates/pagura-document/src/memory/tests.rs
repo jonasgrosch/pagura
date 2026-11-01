@@ -6,7 +6,7 @@ fn open(name: &str, bytes: usize) -> Document {
     crate::tests::document(
         name,
         pagura_core::Recovery::default(),
-        Limits {
+        &Limits {
             document_bytes: bytes,
             ..Limits::default()
         },

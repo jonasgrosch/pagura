@@ -9,9 +9,18 @@
 
 use crate::color::Prepared;
 use pagura_core::{Error, Result};
-use pagura_image::{DecodedImage, MaskKind};
+use pagura_image::{DecodedImage, DecodedTiles, MaskKind};
 use pagura_interpret::{Image, ImageMask};
 use pagura_raster::{Point, Transform};
+use std::rc::Rc;
+
+#[cfg(test)]
+std::thread_local! {
+    static PACKED_VISITS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+mod packed_work_tests;
 
 /// Values per sample of an image, row by row from the top.
 #[derive(Debug, Clone, PartialEq)]
@@ -19,7 +28,18 @@ pub(crate) struct Values {
     width: u32,
     height: u32,
     stride: usize,
-    data: Vec<f64>,
+    data: ValuesData,
+}
+
+/// Dense converted values retain the established arithmetic. Packed opacity
+/// reads present logical source bits lazily, independently of physical tiles.
+#[derive(Debug, Clone, PartialEq)]
+enum ValuesData {
+    Dense(Vec<f64>),
+    Packed {
+        tiles: Rc<DecodedTiles>,
+        endpoints: [f64; 2],
+    },
 }
 
 impl Values {
@@ -50,18 +70,119 @@ impl Values {
             width,
             height,
             stride,
-            data,
+            data: ValuesData::Dense(data),
         })
     }
 
-    fn at(&self, column: f64, row: f64) -> &[f64] {
+    /// A complete Gray1 soft mask without one f64 allocation per source bit.
+    pub(crate) fn packed(tiles: Rc<DecodedTiles>, decode: [f64; 2]) -> Result<Self> {
+        if decode.iter().any(|value| !value.is_finite()) {
+            return Err(Error::syntax("invalid tiled mask Decode range"));
+        }
+        Ok(Self {
+            width: tiles.width(),
+            height: tiles.height(),
+            stride: 1,
+            data: ValuesData::Packed {
+                tiles,
+                endpoints: decode.map(|value| value.clamp(0.0, 1.0)),
+            },
+        })
+    }
+
+    /// Exact rectangle integral of the piecewise-constant logical bit grid.
+    /// Only packed opacity uses this byte-counting path; converted dense
+    /// samples retain their polygon integration and arithmetic unchanged.
+    fn rectangle_mean(&self, low: Point, high: Point) -> Option<f64> {
+        let ValuesData::Packed { tiles, endpoints } = &self.data else {
+            return None;
+        };
+        let x0 = low.x.max(0.0);
+        let x1 = high.x.min(f64::from(self.width));
+        let y0 = low.y.max(0.0);
+        let y1 = high.y.min(f64::from(self.height));
+        if x1 <= x0 || y1 <= y0 {
+            return Some(0.0);
+        }
+        let left = clamp_index(x0.floor(), self.width);
+        let right = clamp_index(x1.ceil() - 1.0, self.width);
+        let top = clamp_index(y0.floor(), self.height);
+        let bottom = clamp_index(y1.ceil() - 1.0, self.height);
+        let lx = f64::from(u32::try_from(left).ok()?);
+        let rx = f64::from(u32::try_from(right).ok()?);
+        let mut sum = Sum::default();
+        for row in top..=bottom {
+            let y = u32::try_from(row).ok()?;
+            let line = tiles.row(y)?;
+            let bit = |x: usize| {
+                #[cfg(test)]
+                PACKED_VISITS.set(PACKED_VISITS.get().saturating_add(1));
+                line.get(x / 8)
+                    .map(|byte| u32::from((byte >> (7 - x % 8)) & 1))
+            };
+            let ones = if left == right {
+                f64::from(bit(left)?) * (x1 - x0)
+            } else {
+                f64::from(bit(left)?) * (lx + 1.0 - x0)
+                    + f64::from(bit(right)?) * (x1 - rx)
+                    + f64::from(logical_ones(line, left + 1, right)?)
+            };
+            let height = y1.min(f64::from(y) + 1.0) - y0.max(f64::from(y));
+            sum.add(ones * height);
+        }
+        let area = (x1 - x0) * (y1 - y0);
+        Some((endpoints[0] * (area - sum.value()) + endpoints[1] * sum.value()) / area)
+    }
+
+    fn visit(&self, column: f64, row: f64, consume: impl FnOnce(&[f64])) {
         let x = clamp_index(column, self.width);
         let y = clamp_index(row, self.height);
-        let start = (y * self.width as usize + x) * self.stride;
-        self.data
-            .get(start..start + self.stride)
-            .unwrap_or_default()
+        match &self.data {
+            ValuesData::Dense(data) => {
+                let start = (y * self.width as usize + x) * self.stride;
+                consume(data.get(start..start + self.stride).unwrap_or_default());
+            }
+            ValuesData::Packed { tiles, endpoints } => {
+                let code = u32::try_from(x)
+                    .ok()
+                    .zip(u32::try_from(y).ok())
+                    .and_then(|(x, y)| tiles.get(x, y));
+                let value = code
+                    .and_then(|code| endpoints.get(usize::from(code)))
+                    .copied()
+                    .unwrap_or(0.0);
+                consume(&[value]);
+            }
+        }
     }
+}
+
+/// Count only logical cells in a half-open source-row interval. Complete
+/// byte spans use popcount; partial leading/trailing bytes exclude padbits.
+fn logical_ones(row: &[u8], mut start: usize, end: usize) -> Option<u32> {
+    let mut ones = 0_u32;
+    while start < end && !start.is_multiple_of(8) {
+        #[cfg(test)]
+        PACKED_VISITS.set(PACKED_VISITS.get().saturating_add(1));
+        ones = ones.checked_add(u32::from((row.get(start / 8)? >> (7 - start % 8)) & 1))?;
+        start += 1;
+    }
+    if start < end {
+        let boundary = end / 8;
+        for byte in row.get(start / 8..boundary)? {
+            #[cfg(test)]
+            PACKED_VISITS.set(PACKED_VISITS.get().saturating_add(1));
+            ones = ones.checked_add(byte.count_ones())?;
+        }
+        start = boundary * 8;
+        while start < end {
+            #[cfg(test)]
+            PACKED_VISITS.set(PACKED_VISITS.get().saturating_add(1));
+            ones = ones.checked_add(u32::from((row.get(start / 8)? >> (7 - start % 8)) & 1))?;
+            start += 1;
+        }
+    }
+    Some(ones)
 }
 
 /// An index within `0..size`, from a coordinate clamped into range.
@@ -118,6 +239,70 @@ impl Sampler {
         t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9
     }
 
+    /// Admit packed-mask reconstruction visits cumulatively before sampling.
+    /// The sole caller supplies complete Packed values with these dimensions.
+    /// Axis-aligned area uses the existing byte-counting rectangle integral;
+    /// other modes retain their complete logical-cell bounds. No meter resets
+    /// per row, tile or repeated image instance.
+    pub(crate) fn charge_packed_work(
+        &self,
+        pixels: impl Iterator<Item = (u32, u32, f64)>,
+        work: &mut pagura_core::Meter,
+    ) -> Result<()> {
+        let area = self.minifies();
+        let t = self.inverse;
+        if [t.a, t.b, t.c, t.d, t.e, t.f]
+            .iter()
+            .any(|v| !v.is_finite())
+        {
+            return Err(Error::limit("reference packed-mask transform overflow"));
+        }
+        let cells = |span: f64, size: u32| -> Result<usize> {
+            if !span.is_finite() || span < 0.0 || size == 0 {
+                return Err(Error::limit("reference packed-mask footprint overflow"));
+            }
+            clamp_index(span.ceil() + 1.0, size)
+                .checked_add(1)
+                .ok_or(Error::limit("reference packed-mask footprint overflow"))
+        };
+        let cost = if area {
+            let columns = cells(t.a.abs() + t.c.abs(), self.width)?;
+            let rows = cells(t.b.abs() + t.d.abs(), self.height)?;
+            let columns = if (t.a == 0.0 && t.d == 0.0) || (t.b == 0.0 && t.c == 0.0) {
+                // Endpoint bits + at most fourteen partial-byte bits, then
+                // one visit per complete byte. Both bounds remain valid.
+                columns.min(
+                    columns
+                        .div_ceil(8)
+                        .checked_add(16)
+                        .ok_or(Error::limit("reference packed-mask footprint overflow"))?,
+                )
+            } else {
+                columns
+            };
+            columns
+                .checked_mul(rows)
+                .ok_or(Error::limit("reference packed-mask footprint overflow"))?
+        } else if self.interpolate {
+            4
+        } else {
+            1
+        };
+        for (x, y, _) in pixels {
+            work.charge(cost)?;
+            let (x, y) = (f64::from(x), f64::from(y));
+            for (x, y) in [(x, y), (x + 1.0, y), (x, y + 1.0), (x + 1.0, y + 1.0)] {
+                let point = Point::new(x, y) * t;
+                if !point.x.is_finite() || !point.y.is_finite() {
+                    return Err(Error::limit(
+                        "reference packed-mask sample position overflow",
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// The value of device pixel `(x, y)`, written into `out`.
     pub(crate) fn sample(&self, values: &Values, (x, y): (u32, u32), out: &mut [f64]) {
         out.fill(0.0);
@@ -127,7 +312,7 @@ impl Sampler {
             self.bilinear(values, (x, y), out);
         } else {
             let c = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse;
-            add(out, values.at(c.x.floor(), c.y.floor()), 1.0);
+            values.visit(c.x.floor(), c.y.floor(), |sample| add(out, sample, 1.0));
         }
     }
 
@@ -142,7 +327,7 @@ impl Sampler {
             (left, top + 1.0, (1.0 - fx) * fy),
             (left + 1.0, top + 1.0, fx * fy),
         ] {
-            add(out, values.at(column, row), weight);
+            values.visit(column, row, |sample| add(out, sample, weight));
         }
     }
 
@@ -158,6 +343,15 @@ impl Sampler {
         let high = polygon
             .iter()
             .fold(polygon[0], |m, p| Point::new(m.x.max(p.x), m.y.max(p.y)));
+        let t = self.inverse;
+        if ((t.a == 0.0 && t.d == 0.0) || (t.b == 0.0 && t.c == 0.0))
+            && let Some(value) = values.rectangle_mean(low, high)
+        {
+            if let Some(out) = out.first_mut() {
+                *out = value;
+            }
+            return;
+        }
         let columns = low.x.floor().max(0.0)..high.x.ceil().min(f64::from(self.width));
         let rows = low.y.floor().max(0.0)..high.y.ceil().min(f64::from(self.height));
         // Footprints can hold millions of samples: compensated sums keep
@@ -170,9 +364,11 @@ impl Sampler {
             while column < columns.end {
                 let area = clipped_area(&polygon, column, row);
                 if area > 0.0 {
-                    for (sum, v) in sums.iter_mut().zip(values.at(column, row)) {
-                        sum.add(v * area);
-                    }
+                    values.visit(column, row, |sample| {
+                        for (sum, v) in sums.iter_mut().zip(sample) {
+                            sum.add(v * area);
+                        }
+                    });
                     weight.add(area);
                 }
                 column += 1.0;
@@ -452,5 +648,83 @@ mod tests {
         bilinear.sample(&values, (4, 0), &mut out);
         assert!((out[0] - 0.625).abs() < 1e-12);
         assert!(Sampler::new((2, 1), Magnify::Nearest, Transform::scale(0.0, 1.0)).is_none());
+    }
+    #[test]
+    fn packed_opacity_matches_independent_logical_bits_for_all_sampling_modes() {
+        use pagura_core::{Limits, ObjectId};
+        use pagura_document::{Document, OpenOptions};
+        use pagura_image::{ImageSource, Orientation};
+        use pagura_testkit::fixture;
+        use std::rc::Rc;
+        let limits = Limits {
+            pixels: 10,
+            ..Limits::default()
+        };
+        let document = Document::open(
+            fixture("packed_mask_tiles", "small-flate.pdf"),
+            &OpenOptions {
+                limits,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let source = ImageSource::from_xobject_with_tiling(
+            &document,
+            document.object(ObjectId::new(6, 0)).unwrap(),
+        )
+        .unwrap();
+        let tiles = Rc::new(source.decode_tiles(Orientation::Rows, &limits).unwrap());
+        assert_eq!(tiles.tiles().len(), 7);
+        for decode in [[0.0_f64, 1.0], [1.0, 0.0], [-100.0, 100.0], [1e300, -1e300]] {
+            let packed = Values::packed(Rc::clone(&tiles), decode).unwrap();
+            // Literal independent rectangle, excluding all nonzero padbits.
+            let dense = Values::build((10, 7), 1, 70, |index, out| {
+                let code =
+                    usize::from((2..8).contains(&(index % 10)) && (1..6).contains(&(index / 10)));
+                out[0] = decode[code].clamp(0.0, 1.0);
+                Ok(())
+            })
+            .unwrap();
+            for unit in [
+                Transform::scale(20.0, 20.0),
+                Transform::scale(2.0, 2.0),
+                Transform::new(-20.0, 0.0, 0.0, 20.0, 20.0, 0.0),
+                Transform::new(0.0, 20.0, -20.0, 0.0, 20.0, 0.0),
+            ] {
+                for magnify in [Magnify::Nearest, Magnify::Bilinear] {
+                    let sampler = Sampler::new((10, 7), magnify, unit).unwrap();
+                    // Scalar mathematical samples; no20x20rendered surface
+                    // is allocated or admitted under the10pixel budget.
+                    for row in 0..20 {
+                        for column in 0..20 {
+                            let (mut a, mut b) = ([0.0], [0.0]);
+                            sampler.sample(&packed, (column, row), &mut a);
+                            sampler.sample(&dense, (column, row), &mut b);
+                            assert_eq!(
+                                a, b,
+                                "decode{decode:?} transform{unit:?} {magnify:?} ({column},{row})"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert!(Values::packed(tiles, [f64::NAN, 1.0]).is_err());
+    }
+
+    #[test]
+    fn complete_byte_counts_never_include_logical_row_padding() {
+        let row = [0b1010_1100, 0b0101_1111];
+        let bits = [1_u32, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1];
+        for start in 0..=bits.len() {
+            for end in start..=bits.len() {
+                assert_eq!(
+                    logical_ones(&row, start, end),
+                    Some(bits[start..end].iter().sum()),
+                    "interval{start}..{end}"
+                );
+            }
+        }
+        assert_eq!(logical_ones(&row, 0, 13), Some(7));
     }
 }

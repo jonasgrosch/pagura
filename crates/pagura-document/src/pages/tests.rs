@@ -36,7 +36,7 @@ mod retained_tests {
         let document = crate::tests::document(
             "pages-shared-resources",
             pagura_core::Recovery::default(),
-            Limits {
+            &Limits {
                 document_bytes: bytes,
                 ..Limits::default()
             },

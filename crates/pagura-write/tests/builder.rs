@@ -10,8 +10,8 @@ fn catalog() -> NewObject {
     NewObject::Value(Value::Dictionary(dictionary))
 }
 
-fn builder(limits: Limits) -> Builder {
-    let mut builder = Builder::new(limits);
+fn builder(limits: &Limits) -> Builder {
+    let mut builder = Builder::new(*limits);
     let inserted = builder.insert(ObjectId::new(1, 0), catalog());
     assert_eq!(inserted, Ok(()));
     builder
@@ -55,7 +55,7 @@ fn names_exclude_nul_in_values_and_keys() {
         dictionary.insert(Name::new(b"bad\0key"), Value::Null);
         Value::Dictionary(dictionary)
     }] {
-        let mut output = builder(Limits::default());
+        let mut output = builder(&Limits::default());
         output
             .insert(ObjectId::new(2, 0), NewObject::Value(value))
             .unwrap();
@@ -68,7 +68,7 @@ fn names_exclude_nul_in_values_and_keys() {
 #[test]
 fn sparse_cross_reference_ranges_are_bounded_before_serializing() {
     for number in [u32::MAX, u32::MAX - 1, 4_000_000] {
-        let mut output = builder(Limits::default());
+        let mut output = builder(&Limits::default());
         output
             .insert(ObjectId::new(number, 0), NewObject::Value(Value::Null))
             .unwrap();
@@ -81,7 +81,7 @@ fn sparse_cross_reference_ranges_are_bounded_before_serializing() {
 
 #[test]
 fn xref_entries_free_chain_and_trailer_match_independent_offsets() {
-    let mut output = builder(Limits::default());
+    let mut output = builder(&Limits::default());
     output
         .insert(ObjectId::new(3, 0), NewObject::Value(Value::Null))
         .unwrap();
@@ -110,7 +110,7 @@ fn xref_entries_free_chain_and_trailer_match_independent_offsets() {
 
 #[test]
 fn streams_beyond_the_stream_budget_fail() {
-    let mut output = builder(Limits {
+    let mut output = builder(&Limits {
         stream_bytes: 2,
         ..Limits::default()
     });
@@ -132,7 +132,7 @@ fn streams_beyond_the_stream_budget_fail() {
 #[test]
 fn the_file_budget_admits_exactly_the_written_size() {
     let finish = |file_bytes| {
-        let mut output = builder(Limits {
+        let mut output = builder(&Limits {
             file_bytes,
             ..Limits::default()
         });
@@ -155,7 +155,7 @@ fn the_value_budget_applies_per_object() {
         value_nodes: 1000,
         ..Limits::default()
     };
-    let mut output = builder(limits);
+    let mut output = builder(&limits);
     for number in 2..=11 {
         let array = Value::Array(vec![Value::Null; 999]);
         output
@@ -178,7 +178,7 @@ fn nesting_beyond_the_depth_limit_fails() {
     };
     let nested = |levels| (0..levels).fold(Value::Null, |inner, _| Value::Array(vec![inner]));
     for (levels, fits) in [(2, true), (3, false)] {
-        let mut output = builder(limits);
+        let mut output = builder(&limits);
         output
             .insert(ObjectId::new(2, 0), NewObject::Value(nested(levels)))
             .unwrap();
@@ -195,7 +195,7 @@ fn stream_dictionaries_are_checked_as_written() {
         ..Limits::default()
     };
     let stream = |entries: &[(&[u8], Value)]| {
-        let mut output = builder(limits);
+        let mut output = builder(&limits);
         let dictionary = entries
             .iter()
             .map(|(key, value)| (Name::new(key), value.clone()))
@@ -220,7 +220,7 @@ fn stream_dictionaries_are_checked_as_written() {
 
 #[test]
 fn insert_and_root_errors_name_the_object() {
-    let mut output = builder(Limits::default());
+    let mut output = builder(&Limits::default());
     for id in [ObjectId::new(0, 0), ObjectId::new(1, 0)] {
         let error = output
             .insert(id, NewObject::Value(Value::Null))

@@ -393,7 +393,7 @@ mod direct_tests {
         crate::tests::document(
             "direct-stream-array",
             Recovery::default(),
-            Limits {
+            &Limits {
                 document_bytes: bytes,
                 ..Limits::default()
             },

@@ -192,11 +192,11 @@ fn independent_form_models_and_reported_repairs() {
         let params = std::fs::read_to_string(&path).unwrap();
         let params: BTreeMap<_, _> = params.lines().map(|l| l.split_once('=').unwrap()).collect();
         let expected = String::from_utf8(fixture("document", &format!("{name}.expected"))).unwrap();
-        let strict = open(name, Recovery::Strict, Limits::default());
+        let strict = open(name, Recovery::Strict, &Limits::default());
         let actual = snapshot(&strict);
         if !params["error"].is_empty() {
             assert_eq!(actual.unwrap_err().kind.name(), params["error"], "{name}");
-            let repaired = open(name, Recovery::Repair, Limits::default());
+            let repaired = open(name, Recovery::Repair, &Limits::default());
             assert_eq!(
                 snapshot(&repaired).unwrap_err().kind.name(),
                 params["error"],
@@ -216,7 +216,7 @@ fn independent_form_models_and_reported_repairs() {
             assert!(error.object.is_some(), "{name}");
             assert_ne!(error.position, Position::Unknown, "{name}");
         }
-        let repaired = open(name, Recovery::Repair, Limits::default());
+        let repaired = open(name, Recovery::Repair, &Limits::default());
         assert_eq!(snapshot(&repaired).unwrap(), expected, "{name}");
         if params["repair"].is_empty() {
             assert_eq!(repaired.diagnostics(), []);
@@ -252,7 +252,7 @@ fn form_budgets_and_absence() {
             ..Limits::default()
         },
     ] {
-        let document = open("forms-deep", Recovery::Repair, limits);
+        let document = open("forms-deep", Recovery::Repair, &limits);
         let error = document.acro_form().unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit, "{error}");
         assert!(error.object.is_some());
@@ -260,7 +260,7 @@ fn form_budgets_and_absence() {
     let document = open(
         "navigation-destinations",
         Recovery::Strict,
-        Limits::default(),
+        &Limits::default(),
     );
     assert!(document.acro_form().unwrap().is_none());
 }
@@ -270,7 +270,7 @@ fn resources_are_borrowed_and_cache_admission_is_not_repeated() {
     let document = open(
         "forms-types-inheritance",
         Recovery::Strict,
-        Limits::default(),
+        &Limits::default(),
     );
     let first = document.acro_form().unwrap().unwrap();
     let bytes = document.retained.used();
@@ -325,7 +325,7 @@ fn duplicate_comparison_shares_the_traversal_budget() {
     let document = open(
         "forms-duplicate-equivalent",
         Recovery::Strict,
-        Limits {
+        &Limits {
             traversal_work: 32,
             ..Limits::default()
         },

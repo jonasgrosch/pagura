@@ -2,6 +2,8 @@
 //! 8.9.6, 8.9.7, Tables 87–92): the checks a decode makes before and after
 //! decoding that need no samples, in their order.
 
+mod tiles;
+
 use super::SourceMask;
 use crate::jpx_image::Jpx;
 use crate::{ImageKind, MaskKind, dispatch, filter_rules, inline, mask, parameters as p, stream};
@@ -16,6 +18,8 @@ use std::sync::Arc;
 pub(crate) enum Codec {
     /// The data are the packed samples.
     None,
+    /// Complete packed mask data admitted only as a collection of surfaces.
+    TiledMask(Box<super::tiles::Admission>),
     /// `DCTDecode` with its parameters.
     Dct(Option<Dictionary>),
     /// `CCITTFaxDecode` with its parameters.
@@ -24,6 +28,15 @@ pub(crate) enum Codec {
     Jbig2(Option<Arc<[u8]>>),
     /// `JPXDecode`.
     Jpx(Jpx),
+}
+
+/// Direct, complete one-bit gray metadata may describe a collection. Every
+/// other XObject stays on the original whole-image admission path.
+pub(crate) fn tiled_mask<'a>(
+    document: &'a Document,
+    image: &IndirectObject,
+) -> Result<Option<(Header, Cow<'a, [u8]>)>> {
+    tiles::read(document, image)
 }
 
 /// What decoding needs and interpretation reads, without samples.

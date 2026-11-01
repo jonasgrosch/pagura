@@ -1,9 +1,13 @@
 """Unit tests for the corpus, scoreboard and conformance tooling."""
+from copy import deepcopy
+import hashlib
 import io
+import subprocess
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 import conformance
 import scoreboard
@@ -117,6 +121,113 @@ class ZipCorpusTests(unittest.TestCase):
             finally:
                 zipcorpus.MAX_MEMBER_BYTES = original
             self.assertFalse(target.exists())
+
+
+PPM = b'P6\n1 1\n255\n\xff\x00\x00'
+ERROR = {'kind': 'limit', 'message': 'image sample budget exceeded', 'feature': None, 'repair': None}
+
+
+class ProtocolTests(unittest.TestCase):
+    def setUp(self):
+        self.case = {'expected': 'open', 'path': 'case.pdf', 'pages': 2, 'dpi': 72, 'page_outcomes': [
+            {'page': 0, 'expected': 'render', 'oracle': 'page.ppm', 'oracle_sha256': hashlib.sha256(PPM).hexdigest(),
+             'width': 1, 'height': 1, 'tolerance': 0},
+            {'page': 1, 'expected': 'refused', 'error': deepcopy(ERROR)}]}
+        self.report = {'pages': 2, 'rendered': 1, 'failures': [{'page': 1, 'error': deepcopy(ERROR)}]}
+
+    def test_complete_mixed_contract(self):
+        self.assertEqual(conformance.page_report_problems(self.case, self.report), [])
+
+    def test_all_invalid_failure_coverage(self):
+        variants = [[], self.report['failures'] * 2]
+        variants += [[{'page': page, 'error': deepcopy(ERROR)}] for page in (0, 2, -1, None, True)]
+        variants += [self.report['failures'] + [{'page': 0, 'error': ERROR}]]
+        for failures in variants:
+            with self.subTest(failures=failures):
+                report = deepcopy(self.report)
+                report['failures'] = failures
+                self.assertTrue(conformance.page_report_problems(self.case, report))
+
+    def test_each_error_field_is_exact(self):
+        for field in ERROR:
+            report = deepcopy(self.report)
+            report['failures'][0]['error'][field] = 'other'
+            with self.subTest(field=field):
+                self.assertTrue(conformance.page_report_problems(self.case, report))
+
+    def test_rendered_count_and_actual_page_count(self):
+        for key, value in [('rendered', 0), ('rendered', 2), ('rendered', True), ('pages', 1), ('pages', True)]:
+            report = deepcopy(self.report)
+            report[key] = value
+            self.assertTrue(conformance.page_report_problems(self.case, report))
+
+    def test_expected_indices_complete_and_integer(self):
+        for rows in (self.case['page_outcomes'][:1], self.case['page_outcomes'] * 2):
+            case = deepcopy(self.case)
+            case['page_outcomes'] = rows
+            with self.assertRaises(AssertionError):
+                conformance.page_outcomes(case)
+        for page in (0, 2, -1, None, True):
+            case = deepcopy(self.case)
+            case['page_outcomes'][1]['page'] = page
+            with self.assertRaises(AssertionError):
+                conformance.page_outcomes(case)
+
+    def test_render_document_cannot_hide_refusal(self):
+        case = deepcopy(self.case)
+        case['expected'] = 'render'
+        with self.assertRaises(AssertionError):
+            conformance.page_outcomes(case)
+
+    def call(self, case=None, *, bad_pixels=False, negative_exit=1, partial=False, positive_exit=0):
+        case = case or self.case
+        calls = []
+        def fake(*args):
+            self.assertEqual(args[0], 'render')
+            self.assertEqual(args[-2], '72')
+            page = int(args[-1])
+            calls.append(page)
+            output = Path(args[-3])
+            row = next(row for row in case['page_outcomes'] if row['page'] == page)
+            if row['expected'] == 'render':
+                if positive_exit == 0:
+                    output.write_bytes(PPM[:-1] + b'\x01' if bad_pixels else PPM)
+                return subprocess.CompletedProcess(args, positive_exit, b'', b'failed')
+            if partial:
+                output.write_bytes(b'')
+            return subprocess.CompletedProcess(args, negative_exit, b'', b'image sample budget exceeded (object 7 0)')
+        report = deepcopy(self.report)
+        refused = next(row['page'] for row in case['page_outcomes'] if row['expected'] == 'refused')
+        report['failures'][0]['page'] = refused
+        with tempfile.TemporaryDirectory() as directory, patch.object(conformance, 'ROOT', Path(directory)), patch.object(conformance, 'pagura', fake):
+            (Path(directory) / 'page.ppm').write_bytes(PPM)
+            result = conformance.check_page_outcomes(case, report)
+        self.assertEqual(calls, [0, 1])
+        return result
+
+    def test_full_pixels_and_explicit_page_calls(self):
+        self.assertEqual(self.call(), [])
+        self.assertTrue(self.call(bad_pixels=True))
+        self.assertTrue(self.call(positive_exit=1))
+
+    def test_negative_exit_and_even_empty_partial_file_fail(self):
+        self.assertTrue(self.call(negative_exit=0))
+        self.assertTrue(self.call(negative_exit=2))
+        self.assertTrue(self.call(partial=True))
+
+    def test_reverse_order_keeps_later_positive_page(self):
+        case = deepcopy(self.case)
+        case['page_outcomes'][0]['page'] = 1
+        case['page_outcomes'][1]['page'] = 0
+        self.assertEqual(self.call(case), [])
+
+    def test_oracle_identity_checked_before_render(self):
+        for key, value in [('oracle_sha256', '0' * 64), ('width', 2), ('height', 2)]:
+            case = deepcopy(self.case)
+            case['page_outcomes'][0][key] = value
+            with self.subTest(key=key), self.assertRaises(AssertionError):
+                self.call(case)
+
 
 
 if __name__ == "__main__":

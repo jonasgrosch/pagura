@@ -4,12 +4,12 @@ use crate::{Document, OpenOptions};
 use pagura_core::{Limits, Recovery};
 
 /// Opens fixture `area/name.pdf`, panicking with its name if it fails.
-pub(crate) fn open(area: &str, name: &str, recovery: Recovery, limits: Limits) -> Document {
+pub(crate) fn open(area: &str, name: &str, recovery: Recovery, limits: &Limits) -> Document {
     pagura_testkit::open_fixture(area, &format!("{name}.pdf"), |bytes| {
         Document::open(
             bytes,
             &OpenOptions {
-                limits,
+                limits: *limits,
                 recovery,
                 ..OpenOptions::default()
             },
@@ -18,7 +18,7 @@ pub(crate) fn open(area: &str, name: &str, recovery: Recovery, limits: Limits) -
 }
 
 /// [`open`] for the `document` fixture area.
-pub(crate) fn document(name: &str, recovery: Recovery, limits: Limits) -> Document {
+pub(crate) fn document(name: &str, recovery: Recovery, limits: &Limits) -> Document {
     open("document", name, recovery, limits)
 }
 
@@ -663,7 +663,7 @@ mod page_ownership {
             super::document(
                 "navigation-links-actions",
                 Recovery::Repair,
-                Limits::default(),
+                &Limits::default(),
             )
         };
         let (first, second) = (open(), open());

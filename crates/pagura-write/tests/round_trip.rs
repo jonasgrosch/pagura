@@ -10,8 +10,8 @@ use pagura_write::Builder;
 const ROOT: ObjectId = ObjectId::new(1, 0);
 
 /// Writes `values` as objects 2, 3, … and parses each back from the file.
-fn round_trip(values: &[Value], limits: Limits) -> Result<Vec<Value>> {
-    let mut builder = Builder::new(limits);
+fn round_trip(values: &[Value], limits: &Limits) -> Result<Vec<Value>> {
+    let mut builder = Builder::new(*limits);
     let catalog: Dictionary = [(Name::new(b"Type"), Value::name(b"Catalog"))]
         .into_iter()
         .collect();
@@ -30,7 +30,7 @@ fn round_trip(values: &[Value], limits: Limits) -> Result<Vec<Value>> {
                 .position(|window| window == header.as_bytes())
                 .map(|offset| offset + header.len());
             let start = start.ok_or(pagura_core::Error::missing_object("object not written"))?;
-            Parser::with_offset(&file, start, Origin::File, limits)?.parse()
+            Parser::with_offset(&file, start, Origin::File, *limits)?.parse()
         })
         .collect()
 }
@@ -79,7 +79,7 @@ fn every_kind_of_value_parses_back_unchanged() {
             (b"Nested", dictionary(&[(b"A", Value::Null)])),
         ]),
     ];
-    let parsed = round_trip(&values, Limits::default()).unwrap();
+    let parsed = round_trip(&values, &Limits::default()).unwrap();
     assert_eq!(parsed, values);
 }
 
@@ -99,7 +99,7 @@ fn objects_at_every_limit_are_read_back_under_the_same_limits() {
         Value::String(vec![0xAB; 64]),
         Value::Name(Name::new(&[b'n'; 64])),
     ];
-    let parsed = round_trip(&values, limits).unwrap();
+    let parsed = round_trip(&values, &limits).unwrap();
     assert_eq!(parsed, values);
 
     // One more of each is refused when written, not left for the reader.
@@ -111,7 +111,7 @@ fn objects_at_every_limit_are_read_back_under_the_same_limits() {
         Value::Name(Name::new(&[b'n'; 65])),
     ];
     for value in over {
-        let error = round_trip(std::slice::from_ref(&value), limits).unwrap_err();
+        let error = round_trip(std::slice::from_ref(&value), &limits).unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit, "{value:?}");
     }
 }

@@ -9,6 +9,7 @@ use pagura_extract::TextRenderingMode;
 use pagura_raster::{Adjustment, PathBuilder, Stroke, Transform};
 
 mod ownership;
+mod tiled_sources;
 
 fn page() -> PageInfo {
     PageInfo {

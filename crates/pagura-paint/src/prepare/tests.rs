@@ -8,6 +8,10 @@ mod functions;
 mod images;
 mod invariance;
 mod mixed;
+mod packed_index;
+mod packed_masks;
+mod packed_owners;
+mod packed_profiles;
 mod patterns;
 mod runs;
 mod streaming;
@@ -102,7 +106,21 @@ fn plan_bytes(plan: &Plan) -> usize {
                 spot.convert.owned_bytes() + spot.inputs.capacity() * size_of::<(usize, usize)>()
             })
             .sum::<usize>();
+    // Independently inspect the retained physical Arc roots. Sampler::bytes
+    // excludes their payload because preparation charges each held owner once.
+    let mut tiled_roots = std::collections::BTreeSet::new();
+    let shared_tiles: usize = plan
+        .paints
+        .iter()
+        .filter_map(|source| match source {
+            Source::Image(image) => image.tiled_mask(),
+            _ => None,
+        })
+        .filter(|value| tiled_roots.insert(std::sync::Arc::as_ptr(value).addr()))
+        .map(|value| value.retained_bytes() + 2 * size_of::<usize>())
+        .sum();
     shared_names
+        + shared_tiles
         + spots
         + plan.output.transfers.capacity() * size_of::<[Option<Curve>; 3]>()
         + plan.paints.iter().map(Source::bytes).sum::<usize>()

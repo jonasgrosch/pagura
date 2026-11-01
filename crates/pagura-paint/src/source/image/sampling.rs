@@ -249,6 +249,15 @@ impl<T: Texels> Rows for TexelRows<'_, T> {
         self.values
     }
 
+    fn reduce_rows(
+        &self,
+        across: &super::geometry::Footprint,
+        columns: (usize, usize),
+        out: &mut [f64],
+    ) -> bool {
+        self.texels.reduce_rows(across, columns, out)
+    }
+
     fn row<'c>(
         &'c self,
         y: usize,

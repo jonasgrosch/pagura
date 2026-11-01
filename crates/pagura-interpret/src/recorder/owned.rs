@@ -3,8 +3,8 @@
 //! Interned table entries pay once per entry. Other shared roots pay per
 //! retained reference: this may overestimate aliases, but never depends on
 //! the Store, reference counts, or earlier recordings. ICC profiles are the
-//! exception: the interpretation hands every reference to one profile stream
-//! the same profile, so a scene pays for each once ([`Profiles`]). Child
+//! exceptions: ICC profiles ([`Profiles`]) and explicitly tiled mask source
+//! roots ([`TiledSources`]) pay once per held identity in this scene. Child
 //! value types supply their own retained estimates; this is not allocator
 //! telemetry.
 
@@ -15,6 +15,7 @@ use crate::model::{
 use pagura_color::{ColorSpace, Function, Profile};
 use pagura_core::hash::FastMap;
 use pagura_core::{Meter, Result};
+use pagura_image::ImageSource;
 use pagura_raster::Path;
 use std::sync::Arc;
 
@@ -51,6 +52,33 @@ impl Profiles {
     }
 
     /// The bytes of the index, which a finished scene does not keep.
+    pub(super) fn index_bytes(&self, bytes: &Meter) -> Result<usize> {
+        bytes.map_bytes(&self.0)
+    }
+}
+
+/// The distinct tiled source owners of a recording, independent of Store
+/// contents and Arc reference counts. Holding each root prevents address reuse
+/// even if a later mark fails; the finished scene keeps its source references.
+#[derive(Debug, Default)]
+pub(super) struct TiledSources(FastMap<usize, Arc<ImageSource>>);
+
+impl TiledSources {
+    fn charge(&mut self, source: &Arc<ImageSource>, bytes: &mut Meter) -> Result<()> {
+        let key = Arc::as_ptr(source).addr();
+        if self.0.contains_key(&key) {
+            return Ok(());
+        }
+        bytes.reserve_map_capacity(&mut self.0, 1)?;
+        // The source estimate includes its root/header/data estimates. These
+        // are their three Arc owner counters; the map's handle is in its slot.
+        bytes.charge((3 * ARC).saturating_add(source.retained_bytes()))?;
+        self.0.insert(key, Arc::clone(source));
+        Ok(())
+    }
+
+    /// Only the temporary identity index is released at finish. Source roots
+    /// remain charged once for the scene lifetime; aliases never alter it.
     pub(super) fn index_bytes(&self, bytes: &Meter) -> Result<usize> {
         bytes.map_bytes(&self.0)
     }
@@ -197,17 +225,26 @@ pub(super) fn shading(shading: &Shading) -> usize {
     .fold(0, usize::saturating_add)
 }
 
-pub(super) fn image(mut image: &Image) -> usize {
+pub(super) fn image(
+    mut image: &Image,
+    sources: &mut TiledSources,
+    bytes: &mut Meter,
+) -> Result<()> {
     let mut total = 0_usize;
     loop {
-        // ImageSource includes its root/header/data estimates. Keep the Arc
-        // counters of those three owners beside the model's own root.
+        // Whole sources retain the existing conservative per-reference
+        // policy. Tiled sources alone pay their shared owner once per scene.
+        let source = if image.source.is_tiled_mask() {
+            sources.charge(&image.source, bytes)?;
+            0
+        } else {
+            (3 * ARC).saturating_add(image.source.retained_bytes())
+        };
         total = [
             total,
             ARC,
             size_of::<Image>(),
-            3 * ARC,
-            image.source.retained_bytes(),
+            source,
             image.space.as_ref().map_or(0, |space| {
                 ARC.saturating_add(space.retained_bytes_without_profiles())
             }),
@@ -227,11 +264,13 @@ pub(super) fn image(mut image: &Image) -> usize {
                 image = mask;
             }
             ImageMask::ColorKey(ranges) => {
-                return total
-                    .saturating_add(ARC)
-                    .saturating_add(size_of_val(ranges.as_ref()));
+                return bytes.charge(
+                    total
+                        .saturating_add(ARC)
+                        .saturating_add(size_of_val(ranges.as_ref())),
+                );
             }
-            ImageMask::None | ImageMask::Embedded => return total,
+            ImageMask::None | ImageMask::Embedded => return bytes.charge(total),
         }
     }
 }

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict.",
+  "scope": "G01 initial render controls: independent synthetic RGB8 oracles, including JPX alpha. Pagura and six baseline engines at 72 DPI, first page, white backdrop. No timing, family support, optional-build or release-parity verdict. Added packed-mask probes cover only independently authored eligible source forms at unchanged 72-DPI/default resource policy; all family comparisons remain unprobed until separately executed. A refusal remains a recorded outcome, never a parity pass.",
   "cases": [
     {
       "id": "control.blank",
@@ -78,6 +78,97 @@
         "height": 32,
         "rgb_sha256": "f6fda891c1973279318185b5d8fad2cd741b9b124e5205ba53b8ec3f08056fb8",
         "tolerance": 0
+      }
+    },
+    {
+      "id": "packed-mask.default",
+      "capability": "images.packed-masks",
+      "operation": "render",
+      "fixture": "packed_mask_tiles/default-large",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 8,
+        "height": 8,
+        "rgb_sha256": "dce72e8cf918d706235ffb434e7a9bb35fd3927032eec67d97317872d3c9473f",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "packed-mask.quarter",
+      "capability": "images.packed-masks",
+      "operation": "render",
+      "fixture": "packed_mask_tiles/default-large-quarter-turn",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 8,
+        "height": 8,
+        "rgb_sha256": "c98ef9326a7ea9a0e2bc206b2d214ca56f9894221cd042c991f3bcb89b155731",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "packed-mask.inverse",
+      "capability": "images.packed-masks",
+      "operation": "render",
+      "fixture": "packed_mask_tiles/small-inverse",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 8,
+        "height": 8,
+        "rgb_sha256": "aa030fd2c6ef285e5a3d3ead67ec06b3b76b1933831d06e12160b4e27ddf80ed",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "packed-mask.minified40",
+      "capability": "images.packed-masks",
+      "operation": "render",
+      "fixture": "packed_mask_tiles/minified-forty-rows",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 144,
+        "height": 8,
+        "rgb_sha256": "a8855ce6f79d1b7ebfac9e26412250806a01aac623c25683ddfa7f7e4d56b3a5",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "packed-mask.mirror40",
+      "capability": "images.packed-masks",
+      "operation": "render",
+      "fixture": "packed_mask_tiles/minified-forty-mirror",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 144,
+        "height": 8,
+        "rgb_sha256": "5f76e1078d6440096998b24955557acbff6e94205c4407099bf57792f69dd35b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "packed-mask.canvas256",
+      "capability": "images.packed-masks",
+      "operation": "render",
+      "fixture": "packed_mask_tiles/minified-forty-256canvas",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 256,
+        "height": 256,
+        "rgb_sha256": "8b5a27160ca5814bf0e19dcd3f6d3acdd85d481a88e04a4884fa541cad48d78b",
+        "tolerance": 1
+      }
+    },
+    {
+      "id": "packed-mask.highwidth",
+      "capability": "images.packed-masks",
+      "operation": "render",
+      "fixture": "packed_mask_tiles/highwidth-short-crop",
+      "oracle": "rgb8",
+      "expected": {
+        "width": 8,
+        "height": 8,
+        "rgb_sha256": "9bbd8317eeb84e12c7d0765ef0459eff320d6acabe477f57862db1feba4dc550",
+        "tolerance": 1
       }
     }
   ]

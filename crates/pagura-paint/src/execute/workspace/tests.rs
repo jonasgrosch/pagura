@@ -247,6 +247,10 @@ fn image_source() -> Source {
                 work: &mut work,
                 functions: &mut functions,
             },
+            &mut crate::source::TiledAdmission {
+                owners: &mut crate::source::HeldTiles::default(),
+                prior: None,
+            },
         )
         .unwrap(),
     )

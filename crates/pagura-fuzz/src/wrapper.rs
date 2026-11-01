@@ -36,8 +36,8 @@ pub fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 /// Parses a direct dictionary such as an inline image dictionary.
-pub fn dictionary(data: &[u8], limits: Limits) -> Option<Dictionary> {
-    match super::checked(Parser::new(data, Origin::Buffer, limits).parse())? {
+pub fn dictionary(data: &[u8], limits: &Limits) -> Option<Dictionary> {
+    match super::checked(Parser::new(data, Origin::Buffer, *limits).parse())? {
         Value::Dictionary(dictionary) => Some(dictionary),
         _ => None,
     }

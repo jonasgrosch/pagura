@@ -206,3 +206,87 @@ refusal of one more. Newly admitted renders must match the unchanged
 renderer with only `function_work` raised; a prior refusal is not a
 performance baseline. Rendering arithmetic and per-sample charging are
 unchanged.
+
+## Amendment, 2026-10-31: explicit tiled image collections
+
+An image's source coordinate grid and a decoded raster surface are distinct.
+`pixels` means width × height of one declared rendered or decoded surface,
+regardless of storage layout. Whole-image decode still asks for one surface
+and retains its whole-grid gate. An explicit plural-surface operation may
+represent a larger source grid only through individually bounded decoded
+surfaces and aggregate bounds for the complete collection.
+
+`Limits::tiled_images: TiledImageLimits` adds two `u32` fields:
+
+| Field | Default | Domain |
+| --- | ---: | --- |
+| `samples` | 268,435,456 | Logical component sample codes represented by one complete tiled image collection, summed once over its tiles |
+| `work` | 536,870,912 | Construction/validation/partition/transpose operations of that collection: one unit per sample-code read/write, packed byte read/write/initialization and processed row/tile record |
+
+No meter resets at a tile boundary. This is a deliberate new admission policy,
+not resource equivalence inferred from keeping existing numeric caps unchanged.
+The existing `decode_work` coded-image/ICC domain is not borrowed for raw tile
+construction, and general-filter decoding keeps its own stream rules.
+
+The aggregate packed output, row padding and tile/layout metadata obey
+`decoded_bytes`. Retained decoded input, decoder scratch and transient
+repartitioning are conservatively included in aggregate live `decode_bytes`
+besides the output. Work and capacity reservations use `Meter` before the work
+or allocation. Actual retained capacities and all collection metadata feed
+Store/render accounting, independent of cache state. Individual tiles obey
+`pixels`; the collection cannot materialize an unchecked whole decoded surface.
+Original document admission limits remain binding if a source outlives its
+document or a later caller supplies larger limits.
+
+The explicit domain group adds eight bytes per owned `Limits` record. Its
+reviewed record bound is 264 bytes on 64-bit targets and 156 bytes on wasm32,
+replacing the former 256-byte native bound. Tests enforce those exact bounds,
+the eight-byte group and exhaustive default addressability. Existing numeric
+defaults and custom `usize` domains are unchanged. There is no Clippy threshold
+override or blanket lint allowance. Non-storing functions borrow `&Limits`;
+constructors whose returned owner retains limits and required `From<Limits>`
+conversions retain their ownership semantics. Further record growth requires
+another explicit review.
+
+Initial eligibility and exact sampling are specified in ADR 0010. Failed
+collection construction returns no partial tiles; preparation defers new pending
+decoded-tile publication until success. Unrelated legacy cache semantics remain
+unchanged. The representation never permits padding missing samples, ignoring
+excess rows or treating a filter repair as a completeness certificate.
+
+
+### Scene ownership of tiled source roots
+
+The recorder's existing conservative per-reference policy stays in force for
+whole images and every per-occurrence Image, Decode, colour-space, Matte and
+node record. Explicit tiled mask source roots are a second held-identity
+exception beside ICC profiles: one scene pays once for each identical held
+`Arc<ImageSource>` root, including its header/data/Admission owners. Equal bytes
+in distinct roots still pay separately. Neither Store state nor Arc reference
+counts participate in admission.
+
+A per-recording identity index holds the source Arc to prevent address reuse,
+reserving its key/handle/map capacity before allocation. Finishing drops and
+refunds only the proven temporary index capacity. Every distinct source payload
+remains charged once in the finished scene's byte estimate for its full lifetime.
+A new recorder pays again. An aborted recording returns no partial Scene; any
+held roots and index are dropped with the recorder. Continuing a Device after
+an error can conservatively retain earlier charges, as with the profile index;
+it never discounts a new source or authorizes partial renderer publication.
+
+## Amendment, 2026-11-01: indexed source ownership and reservations
+
+The optional index adds no numeric quota. In addition to global caller admission, its new operations intersect the source's captured original `render_bytes` and `render_work` allowances. The work allowance covers construction, indexed queries and source-root admission/retrofit scans. It is **not** a retroactive original-source cap on old-route queries, parent work or other pre-existing domains. The byte allowance bounds aggregate indexed/decoded owner payloads, retained capacities and charged owner/publication records across aliases of the same held SourceArc. Caller/original intersections and prospective live peaks are checked before decode/index allocation, then actual returned capacities are rechecked.
+
+A preparation-local bounded inline root ledger holds strong SourceArc identity through its existing owner keys. Equal encoded bytes, equal ImageIds or even a synthetic shared decoded Arc in distinct source roots never establish aliasing. Orientation and validated tile height identify each decoded owner. Root records conservatively aggregate each owner slot/payload; duplicate charging of shared decoded capacities across distinct owner keys is permitted and disclosed, with no unmetered dedup scan or cross-root discount. Store state and Arc reference counts do not affect admission. The temporary ledger and private owner tokens are cleared before PreparedScene publication.
+
+Every active-root comparison is precharged to both the caller and the visited root. Initial owner validation/alias propagation and prior-paint validation/attachment passes are separately pre-admitted before executing. Executed planning, decoding, coefficients, constructor and parent work are never refunded. For a first index the traversal envelope is `32*(owner_entries+prior_paints)+32`, plus actual root comparisons; later aliases/indexes retain their applicable bounds. The constructor's checked bound is `6*logical_bits + 8*vertical_words + 16*rows + 8*blocks + width`; each indexed query reserves 64 times the conservative column count per covered pixel. These are explicit bounds on the actual algorithms, not claims about benchmark speed.
+
+A private typed owner ledger may replace only previously charged **unexecuted mask query reservations**, before rendering. `Meter::replace_reservation` checks old<=used, checked subtraction/addition and the unchanged cap, with no mutation on error. Its public caller contract cannot itself prove unexecutedness; paint's `ReservedMaskQueries` type and call boundaries provide that proof. No memory refund or per-root/tile meter reset is used. Completed sampler precomputation and all constructor/planning work remain charged, including after a later failure.
+
+Real bookkeeping growth is charged and disclosed. Measured native/wasm layouts are `Entry` 104/56 bytes and `HeldTiles` 64/32 bytes. The intermediate packed implementation before indexing had `Entry` 32/20 and `HeldTiles` 56/28; these are not cc99 baseline types, which did not exist there. Actual vector capacity and overlapping growth are reserved before allocation. Native frozen low-budget controls observed +8charged bytes for five single-owner positives and +320 for the forty-use positive; the current wasm controls also passed all nine literal contracts, both backgrounds of all five independent full-pixel cases, and the literal word/range/Fraction controls. Current supported-target layouts and actual charged bytes were measured. No intermediate pre-index wasm byte baseline was measured, so no wasm growth delta is inferred from native results. Those are observations, not universal byte deltas or equivalence inferred from unchanged caps. `Limits` is 264 native/156 wasm bytes versus the actual cc99 baseline of 256/148 bytes, an explicit eight-byte per-owned-record cost.
+
+Pending decoded-tile publication is deferred until successful preparation, and failed collection construction returns no partial tiles. Existing whole-image/font/colour cache failure semantics remain intact; this is not a globally transactional Store or a claim about allocations after PreparedScene creation. Draw receives a fully prepared, bounded index and no mutable source ledger.
+
+
+These are bounded observations, not a universal-DPI or memory-neutrality claim. An exploratory full-page 72-DPI render of the motivating source passed the default work limit and independently authored clear-region checks; that single diagnostic is not full-public accuracy, compatibility admission or PR qualification. Higher-DPI/default-limit outcomes, clean source CI, full conformance/reference, runtime parity and cost/memory qualification remain separate gates. No numeric cap, authored oracle or tolerance changes with this index.

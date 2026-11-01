@@ -453,7 +453,7 @@ impl TextPage {
         options: LayoutOptions,
         limits: Limits,
     ) -> Result<Self> {
-        layout::build(Arc::new(text), options, limits, None)
+        layout::build(Arc::new(text), options, &limits, None)
     }
     /// Explicitly chooses geometric layout, sharing the original records.
     /// The logical view and fallback cause are preserved. Logical separators
@@ -466,7 +466,7 @@ impl TextPage {
         let mut page = layout::build(
             Arc::clone(&self.positioned),
             options,
-            self.limits,
+            &self.limits,
             Some(self.source_retained),
         )?;
         page.logical.clone_from(&self.logical);

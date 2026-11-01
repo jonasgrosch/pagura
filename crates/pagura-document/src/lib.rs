@@ -385,6 +385,41 @@ impl Document {
         stream::image(self, object, parameters, size)
     }
 
+    /// Applies an image stream's general-purpose filters strictly, even in
+    /// a repair-mode document. Decryption, original parameters, source bytes
+    /// and document stream limits are shared with [`Self::image_stream`].
+    /// `decoded_bytes` bounds the general-filter output, clamped to the
+    /// document's own decoded-stream cap. It is also an allocation hint.
+    ///
+    /// A caller requiring complete sample rows must additionally validate
+    /// their exact length and any returned image codec. This operation does
+    /// not certify already parsed stream metadata or an image codec's data.
+    /// It never retries a predictor or reports a tolerated filter repair.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::image_stream`]; any required filter repair is rejected
+    /// with its original repair tag and object context.
+    pub fn image_stream_with_strict_filters<'a>(
+        &'a self,
+        object: &IndirectObject,
+        decoded_bytes: usize,
+    ) -> Result<ImageStream<'a>> {
+        let stream = stream::image_with_recovery(
+            self,
+            object,
+            object
+                .dictionary()
+                .and_then(|dictionary| dictionary.get(b"DecodeParms")),
+            (decoded_bytes, decoded_bytes),
+            Recovery::Strict,
+        )?;
+        if stream.data.len() > decoded_bytes.min(self.limits().decoded_bytes) {
+            return Err(Error::limit("image stream decoded bound exceeded").in_object(object.id()));
+        }
+        Ok(stream)
+    }
+
     /// All pages in document order. The page tree is walked once and cached.
     ///
     /// # Errors

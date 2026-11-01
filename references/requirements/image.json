@@ -806,6 +806,37 @@
         }
       ],
       "verdict": "Implemented at the JPEG and PDF image adapter boundary."
+    },
+    {
+      "id": "image-packed-tiles",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.3",
+        "8.9.4",
+        "11.6.5.2",
+        "Table 143"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document/tests/strict_image_stream.rs",
+        "pagura-image/tests/tiles.rs",
+        "pagura-paint source::image::column_index::frozen_tests::all_literal_words_ranges_and_fraction_rois",
+        "pagura-paint prepare::tests::packed_profiles (five full-pixel cases, both backgrounds and nine frozen budgets)",
+        "pagura-reference image::packed_work_tests (independent storage visits/cumulative work)",
+        "packed_mask_tiles independently authored PDF/RGBA/literal-word/Fraction cases"
+      ],
+      "gaps": "The implemented bounded complete Gray1 unmatted soft-mask collection and optional exact separable column index have passed native authored/conformance/unfiltered-reference/resource gates. Exact clean-head three-OS, native/SIMD/scalar/API/resource/performance/memory and selected integration qualification remain pending; no new public admission is certified. Other image forms retain their whole-surface gates.",
+      "review": [
+        {
+          "locator": "8.9.3-8.9.4;11.6.5.2/Table143",
+          "rule": "Packed row padding is not sample data; top-row-first samples and independent unmatted soft-mask dimensions retain their source coordinate interpretation. Tiled storage cannot change sampling. Numeric tile/sample/work caps are explicit ADR0010/0016 policy, not ISO limits.",
+          "verdict": "agree",
+          "evidence": "Repository-owned nonzero-padding literal words/ranges, direct-per-bit Fraction footprints, both orientations/Decode polarities, actual old-step bit identity, independent full RGB/RGBA cases and lower-budget/refusal controls. Independent reference uses its existing packed-row visit algorithm, not the product column index.",
+          "implementation_agreement": "Implemented for the stated strict complete raw/single-Flate Gray1 source subset with retained source/caller budgets, logical-grid sampling, purpose isolation and held-source ownership. Optional exact positive-zero/one separable index preserves old per-column operations. Native source gates passed; broad PR/runtime qualification remains pending.",
+          "expectation_agreement": "Independent authored sample and pixel identities frozen before implementation."
+        }
+      ],
+      "external_primary_text_review": []
     }
   ]
 }

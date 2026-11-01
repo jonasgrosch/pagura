@@ -7,11 +7,11 @@ use pagura::{
 use pagura_testkit::fixture;
 use std::sync::Arc;
 
-fn context(limits: Limits) -> pagura::Result<RenderContext> {
+fn context(limits: &Limits) -> pagura::Result<RenderContext> {
     Ok(RenderContext::new(Arc::new(Document::open(
         fixture("classic", "rectangle.pdf"),
         &OpenOptions {
-            limits,
+            limits: *limits,
             ..OpenOptions::default()
         },
     )?)))
@@ -19,7 +19,7 @@ fn context(limits: Limits) -> pagura::Result<RenderContext> {
 
 #[test]
 fn streamed_regions_equal_collectors_cold_warm_and_after_stops_or_sink_errors() {
-    let context = context(Limits::default()).unwrap();
+    let context = context(&Limits::default()).unwrap();
     let scene = context.record(context.document().page(0).unwrap()).unwrap();
     let tile = Some(Tile {
         x: 3,
@@ -100,7 +100,7 @@ fn streamed_regions_equal_collectors_cold_warm_and_after_stops_or_sink_errors() 
 
 #[test]
 fn stream_caps_its_output_band_and_collector_caps_its_full_surface() {
-    let expected_context = context(Limits::default()).unwrap();
+    let expected_context = context(&Limits::default()).unwrap();
     let scene = expected_context
         .record(expected_context.document().page(0).unwrap())
         .unwrap();
@@ -108,7 +108,7 @@ fn stream_caps_its_output_band_and_collector_caps_its_full_surface() {
     let expected = expected_context
         .render_scene(&scene, &options, None)
         .unwrap();
-    let context = context(Limits {
+    let context = context(&Limits {
         decoded_bytes: 64 * 32 * 4,
         ..Limits::default()
     })
@@ -150,7 +150,7 @@ fn region_budgets_and_strict_preparation_fail_before_any_consumer_call() {
             ..Limits::default()
         },
     ] {
-        let context = context(limits).unwrap();
+        let context = context(&limits).unwrap();
         let scene = context.record(context.document().page(0).unwrap()).unwrap();
         let mut calls = 0;
         let error = context

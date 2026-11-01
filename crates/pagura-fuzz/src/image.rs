@@ -228,8 +228,8 @@ fn inline(data: &[u8], recovery: Recovery) {
     };
     let limits = document.limits();
     if let (Some(resources), Some(dictionary)) = (
-        wrapper::dictionary(RESOURCES, limits),
-        wrapper::dictionary(dictionary, limits),
+        wrapper::dictionary(RESOURCES, &limits),
+        wrapper::dictionary(dictionary, &limits),
     ) {
         if let Some(length) = super::checked(pagura_image::inline_data_length(&dictionary, samples))
         {

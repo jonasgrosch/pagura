@@ -6,6 +6,7 @@ mod codec;
 mod header;
 #[cfg(test)]
 mod tests;
+mod tiles;
 
 use crate::{DecodedImage, ImageKind};
 use header::{Codec, Header};
@@ -14,6 +15,14 @@ use pagura_core::{
 };
 use pagura_document::{Document, IndirectObject};
 use std::sync::Arc;
+
+pub use tiles::{DecodedTiles, ImageTile, TileLayout};
+
+#[derive(Debug, Clone, Copy)]
+enum XobjectPurpose {
+    Whole,
+    TiledMask,
+}
 
 /// The identity of an image source within one document: never an address
 /// that can be reused, so it can key decoded images in a `Store`.
@@ -215,10 +224,47 @@ impl ImageSource {
     /// unsupported codecs or features, and a `Limit` error for an image
     /// beyond `document.limits()`.
     pub fn from_xobject(document: &Document, image: &IndirectObject) -> Result<Self> {
+        Self::xobject(document, image, XobjectPurpose::Whole)
+    }
+
+    /// Reads an XObject for an unmatted one-bit gray soft mask, admitting
+    /// direct, complete metadata/data as bounded surfaces when its logical
+    /// grid exceeds the document's whole-surface pixel cap (ADR 0010).
+    ///
+    /// Other sources follow [`Self::from_xobject`] unchanged. Initial tiled
+    /// metadata has direct dimensions, DeviceGray/one-bit precision, Decode,
+    /// interpolation/intent and no filters or one FlateDecode without
+    /// DecodeParms. Unused dictionary entries are not copied. General filters
+    /// are strict and every padded row must be present exactly.
+    ///
+    /// This is a metadata source, never an oversized `DecodedImage`. Its
+    /// whole-image [`Self::decode`] still refuses; use [`Self::decode_tiles`]
+    /// only when [`Self::is_tiled_mask`] is true. The renderer reserves this
+    /// entry point for soft masks with no Matte.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::from_xobject`], with explicit aggregate sample/source-byte
+    /// limits and refusal of incomplete or repaired filter data. Collection
+    /// construction work is checked by [`Self::decode_tiles`].
+    pub fn from_xobject_with_tiling(document: &Document, image: &IndirectObject) -> Result<Self> {
+        Self::xobject(document, image, XobjectPurpose::TiledMask)
+    }
+
+    fn xobject(
+        document: &Document,
+        image: &IndirectObject,
+        purpose: XobjectPurpose,
+    ) -> Result<Self> {
         let mut diagnostics = Diagnostics::new(document.recovery());
         let origin = image.source().position();
         let id = image.id();
-        let result = header::xobject(document, image, &mut diagnostics);
+        let result = match purpose {
+            XobjectPurpose::Whole => header::xobject(document, image, &mut diagnostics),
+            XobjectPurpose::TiledMask => header::tiled_mask(document, image).and_then(|tiled| {
+                tiled.map_or_else(|| header::xobject(document, image, &mut diagnostics), Ok)
+            }),
+        };
         document.report(
             diagnostics
                 .take()
@@ -345,6 +391,96 @@ impl ImageSource {
         &self.header.mask
     }
 
+    /// Whether this validated source requires an explicit tile collection.
+    pub fn is_tiled_mask(&self) -> bool {
+        matches!(self.header.codec, Codec::TiledMask(_))
+    }
+
+    /// Decodes a complete admitted tiled mask in `orientation`. Every
+    /// individual surface and the complete collection obey their original
+    /// document limits intersected with `limits`, including retained source
+    /// storage and source stream length. Row padding never becomes samples.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidArgument` for a source that was not admitted for
+    /// tiling, and `Limit` before exceeding a surface or aggregate budget.
+    /// A failure returns no partial collection or decoded repair.
+    pub fn decode_tiles(&self, orientation: Orientation, limits: &Limits) -> Result<DecodedTiles> {
+        self.tile_plan(orientation, limits)
+            .and_then(|(plan, effective)| {
+                plan.decode(&self.header, &self.data, orientation, &effective)
+            })
+            .map_err(|error| self.tile_error(error))
+    }
+
+    /// Validates complete tiled admission without allocating or decoding and
+    /// returns the positive height of each full surface. The last is shorter.
+    ///
+    /// All aggregate sample, construction-work and retained/auxiliary byte
+    /// checks use the intersection of the original and requested limits.
+    /// A cache must include this height and `orientation` in its key, validate
+    /// admission before lookup, and recheck the found value's actual capacity.
+    /// No surface is made one row high when its width exceeds the pixel cap.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidArgument` for an ordinary whole-image source, `Syntax`
+    /// for incomplete rows, or `Limit` when any original/requested gate fails.
+    pub fn tile_height(&self, orientation: Orientation, limits: &Limits) -> Result<u32> {
+        self.tile_layout(orientation, limits)
+            .map(|layout| layout.height())
+    }
+
+    /// Validates complete original/caller admission and reports bounded new
+    /// allocation/storage requirements without allocating or decoding. Source
+    /// input remains in the image layer's auxiliary admission; it is not the
+    /// same allocation as the returned collection's newly partitioned samples.
+    ///
+    /// # Errors
+    ///
+    /// The same original/requested source, surface and aggregate errors as
+    /// [`Self::tile_height`]. Decoding still revalidates its complete request.
+    pub fn tile_layout(&self, orientation: Orientation, limits: &Limits) -> Result<TileLayout> {
+        self.tile_plan(orientation, limits)
+            .map(|(plan, limits)| plan.layout(&limits))
+            .map_err(|error| self.tile_error(error))
+    }
+
+    fn tile_plan(
+        &self,
+        orientation: Orientation,
+        limits: &Limits,
+    ) -> Result<(tiles::Plan, Limits)> {
+        let Codec::TiledMask(admission) = &self.header.codec else {
+            return Err(Error::invalid_argument("image source is not a tiled mask"));
+        };
+        let effective = admission.limits_for(limits)?;
+        // Match the source/header/data shared-owner model of recorded
+        // images, including counters even when this caller owns the root.
+        let retained = self
+            .retained_bytes()
+            .checked_add(6 * size_of::<usize>())
+            .ok_or(Error::limit("tiled image retained source size overflow"))?;
+        let plan = tiles::Plan::new(
+            &self.header,
+            tiles::InputSize {
+                data: self.data.len(),
+                retained,
+            },
+            orientation,
+            &effective,
+        )?;
+        Ok((plan, effective))
+    }
+
+    fn tile_error(&self, error: Error) -> Error {
+        match (self.id, self.origin) {
+            (ImageId::Object(id), Some(origin)) => place_error(error, id, origin),
+            _ => error,
+        }
+    }
+
     /// Bytes this source retains.
     pub fn retained_bytes(&self) -> usize {
         let header = &self.header;
@@ -365,6 +501,7 @@ impl ImageSource {
             _ => 0,
         };
         let codec = match &header.codec {
+            Codec::TiledMask(_) => size_of::<tiles::Admission>(),
             Codec::Dct(Some(params)) | Codec::Ccitt(Some(params)) => params.retained_bytes(),
             Codec::Jbig2(Some(globals)) => globals.len(),
             _ => 0,

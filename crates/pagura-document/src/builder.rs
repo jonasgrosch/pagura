@@ -73,7 +73,7 @@ impl DocumentBuilder {
         let retained = Arc::new(memory::Budget::new(options.limits.document_bytes));
         Self::assemble(
             bytes.into(),
-            options.limits,
+            &options.limits,
             options.recovery,
             table,
             reported,
@@ -91,7 +91,7 @@ impl DocumentBuilder {
         let retained = Arc::new(memory::Budget::child(Arc::clone(&source.retained)));
         Self::assemble(
             bytes,
-            source.limits,
+            &source.limits,
             Recovery::Strict,
             table,
             Vec::new(),
@@ -102,7 +102,7 @@ impl DocumentBuilder {
     /// Charges the table's eager metadata, then builds the slot map from it.
     fn assemble(
         bytes: history::Bytes,
-        limits: Limits,
+        limits: &Limits,
         recovery: Recovery,
         table: XrefTable,
         reported: Vec<Diagnostic>,
@@ -140,7 +140,7 @@ impl DocumentBuilder {
         }
         Ok(Self {
             bytes,
-            limits,
+            limits: *limits,
             recovery,
             trailer: table.trailer,
             slots,

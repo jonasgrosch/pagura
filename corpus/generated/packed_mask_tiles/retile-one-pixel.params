@@ -1,0 +1,38 @@
+{
+  "pdf_case": "packed_mask_tiles/small-flate",
+  "original_pixels": 30,
+  "tiled_samples": 70,
+  "tiled_work": 1000,
+  "decoded_bytes": 65536,
+  "decode_bytes": 65536,
+  "requested_pixel_orders": [
+    [
+      30,
+      20,
+      10,
+      9,
+      20,
+      30
+    ],
+    [
+      10,
+      20,
+      30,
+      9,
+      10
+    ]
+  ],
+  "tile_heights": {
+    "30": 3,
+    "20": 2,
+    "10": 1,
+    "9": "limit"
+  },
+  "dpi": 9,
+  "store_capacities": [
+    0,
+    67108864
+  ],
+  "opacity_exact": "3/7",
+  "scope": "Already recorded source, original/requested limit intersection; failed tiled admission leaves Store unchanged before parent decode."
+}

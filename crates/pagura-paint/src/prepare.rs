@@ -21,6 +21,7 @@ pub(crate) use shapes::{Prepared, ShapeBuilder, Shapes};
 use crate::execute::{Rendering, Scratch};
 use crate::plan::{MAX_BAND_HEIGHT, Plan};
 use crate::request::RenderRequest;
+use crate::source::HeldTiles;
 use pagura_core::{Diagnostic, Error, Limits, Meter, Result, Store};
 use pagura_interpret::Scene;
 use pagura_raster::{Area, DeviceRect};
@@ -90,6 +91,8 @@ pub(crate) struct Budget {
     pub(crate) work: Meter,
     /// `function_work`.
     pub(crate) functions: Meter,
+    /// Shared tiled owners and pending publication for this preparation only.
+    pub(crate) tiles: HeldTiles,
 }
 
 impl Budget {
@@ -98,6 +101,7 @@ impl Budget {
             bytes: Meter::new(limits.render_bytes, "render memory budget exceeded"),
             work: Meter::new(limits.render_work, "render work budget exceeded"),
             functions: Meter::new(limits.function_work, "function work budget exceeded"),
+            tiles: HeldTiles::default(),
         }
     }
 
@@ -133,6 +137,12 @@ pub fn prepare(
     let planner =
         planner::Planner::new(scene, request, (store, limits), area, shapes, &mut budget)?;
     let finished = finish::finish(planner, &mut budget)?;
+    // Discover every fallible index-size error before optional publication.
+    let index_bytes = budget.tiles.index_bytes(&budget.bytes)?;
+    let tiles = std::mem::take(&mut budget.tiles);
+    tiles.publish(store);
+    drop(tiles);
+    budget.bytes.refund(index_bytes);
     Ok(PreparedScene {
         plan: finished.plan,
         shapes: finished.shapes,

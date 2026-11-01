@@ -15,7 +15,7 @@
 //! selector byte picks the format, decoder or recovery mode where a target
 //! has more than one. `fuzz/README.md` documents each layout.
 
-use pagura_core::{Diagnostic, Error, Limits, Recovery, Result};
+use pagura_core::{Diagnostic, Error, Limits, Recovery, Result, TiledImageLimits};
 
 pub mod cmap;
 pub mod content;
@@ -89,6 +89,12 @@ pub fn limits() -> Limits {
         function_work: 50_000_000,
         // The default ratio: 32 units per pixel at the pixel cap.
         decode_work: 32 << 18,
+        // Separate logical-sample/raw-tile domains at the default ratios,
+        // scaled for bounded fuzz executions. Existing budgets stay unchanged.
+        tiled_images: TiledImageLimits {
+            samples: 4 << 18,
+            work: 8 << 18,
+        },
         mask_sources: 32,
         display_commands: 10_000,
         font_work: 100_000,
