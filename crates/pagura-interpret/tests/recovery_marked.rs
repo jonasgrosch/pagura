@@ -161,7 +161,7 @@ fn unused_operands_compose_with_the_reported_unmatched_ending() {
         repaired
             .diagnostics()
             .iter()
-            .map(|d| d.tag())
+            .map(pagura_core::Diagnostic::tag)
             .collect::<Vec<_>>(),
         ["content.marked-unmatched", "content.operands-unused"]
     );
