@@ -306,3 +306,34 @@ The separate ZapfDingbats glyph-name list applies only to recognized
 ZapfDingbats/Dingbats base fonts, including their supported subset/style
 spellings (Annex D.6). Other fonts use AGL alone; names such as `a12` do not
 acquire a Dingbats meaning. Glyph-name index errors retain the source offset.
+
+## Exact sfnt directory-count recovery
+
+Explicit `Recovery::Repair` accepts a count that includes exactly one extra
+record only when the intact record prefix is unique, ordered, bounded and
+non-overlapping, and its exact first payload boundary contains the original
+`head` or CFF header. `font.sfnt-directory-count` reports the effective count;
+no table offset, length, glyph ID, outline, width or program byte changes.
+The full required-table and glyph pipeline still runs. TTC, unknown flavors,
+CFF2 and ambiguous/truncated prefixes are outside this repair. Proof work uses
+`font_work`; the original declared `font_entries` charge is retained.
+
+Strict and default `FontProgram::parse` preserve the original untagged
+`sfnt table overlaps directory` error. Consequently the legacy Strict-first
+CLI scan does not discover this repair. The authored vector/API tests request
+Repair explicitly; they do not claim a new scan mode. A missing required CFF
+`cmap`, unrelated invalid font data and resource limits remain failures.
+
+The record layout follows the Microsoft OpenType TableDirectory/TableRecord
+primary specification; accepting the invalid count is reported project policy
+(ADR0003), with independently authored glyph and full pixel oracles.
+
+`font-directory-parity` is a separate source-owned explicit-mode contract
+workflow. Its font/render probe covers native, SIMD and scalar calls, full
+white/transparent output and extraction, all-glyph counterpart identity,
+literal refusal envelopes, negative countercontrols and resource Limits.
+The build helper requires a clean source checkout, freezes each module before
+reclaiming its one compiler cache, and records the actual compiler/profile/flags.
+The controller preserves pending and completed raw calls before inspecting
+outputs. Adding that workflow does not establish that its checks have passed;
+exact-source results belong to the qualification receipts.

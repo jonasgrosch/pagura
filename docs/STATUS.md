@@ -180,3 +180,14 @@ requirement entry and this page together. Record library, renderer, CLI, host
 and viewer availability separately. Replace a historical scoreboard only with
 an actual run that records the new source/binary/corpus identities. Unknown or
 untested competitor cells remain open in the parity plan; they are never a pass.
+
+### Exact sfnt directory-count repair scope
+
+Explicit Repair has a bounded `font.sfnt-directory-count` recovery for exactly
+one excess record with an intact unique bounded directory and an original
+first head/CFF payload header. Strict/default parsing keeps the full original
+error. Full required program/glyph validation and caller limits remain. Legacy
+Strict-first scan cannot discover this repair; direct Repair API tests provide
+its rendering evidence. This does not add TTC, missing CFF cmap, alternate
+font binding or glyph-location inference. No feature-completeness or public
+corpus admission count is established by this source entry.

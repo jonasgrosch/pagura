@@ -2096,6 +2096,62 @@
         "implementation": "Only the optional positioned-text recorder performs fallback. Existing Unicode, including an explicit empty string, is retained. Otherwise an outline glyph can supply a program name to the same AGL converter the text decoder already uses. No recovered text is passed back to glyph selection, metrics or painting. Name-processing work and retained output bytes are separately bounded. Composite collection mappings retain priority before program-name fallback. AGL and ZapfDingbats names are separate lists. The latter is used only for a recognized ZapfDingbats/Dingbats base font, including recognized subset/style names; other fonts and absent base names get AGL alone. This policy also applies to encoding-name conversion. ToUnicode remains authoritative.",
         "expectations": "Independent pairs cover both-set and valid Symbolic flags with and without post names, AGL suffix/component and supplementary-scalar rules, authoritative ToUnicode, authoritative encoding names and unknown names. Exact pixels and glyph IDs remain fixed; decoded glyph text and positioned fallback text are checked separately. Independent a12/a19 vectors cover ordinary and Dingbats fonts on raw and named routes. Annex D.6 gives the hand and check-mark identities; those names are absent from the local AGL. All vectors retain exact rectangle pixels and metrics."
       }
+    },
+    {
+      "id": "font-sfnt-directory-count",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9.1/Table 124"
+      ],
+      "status": "Explicit Repair can recover an exact one-record sfnt directory-count excess from an intact unique bounded record prefix and the original first head/CFF header. Strict/default parsing retains the full original overlap error.",
+      "tests": [
+        "font_directory/ttf-valid",
+        "font_directory/ttf-count-plus-one",
+        "font_directory/cff-valid",
+        "font_directory/cff-count-plus-one",
+        "font_directory/cff-cid-valid",
+        "font_directory/cff-cid-count-plus-one",
+        "font_directory/ttf-count-plus-two",
+        "font_directory/cff-cid-count-plus-two",
+        "font_directory/ttf-first-offset-inside-record",
+        "font_directory/cff-cid-first-offset-inside-record",
+        "font_directory/ttf-duplicate-prefix-tag",
+        "font_directory/cff-cid-duplicate-prefix-tag",
+        "font_directory/ttf-wrong-first-payload-header",
+        "font_directory/cff-cid-wrong-first-payload-header",
+        "font_directory/ttf-prefix-out-of-bounds",
+        "font_directory/cff-cid-prefix-out-of-bounds",
+        "font_directory/ttf-unknown-signature",
+        "font_directory/cff-cid-unknown-signature",
+        "font_directory/ttf-truncated-extra-header",
+        "font_directory/cff-cid-truncated-extra-header",
+        "font_directory/literal-72",
+        "font_directory/literal-73",
+        "font_directory/literal-144",
+        "font_directory/ttf-genuine-table-overlap",
+        "font_directory/ttf-valid-looking-extra-tag",
+        "font_directory/ttf-first-payload-gap",
+        "font_directory/ttf-missing-head",
+        "font_directory/ttf-missing-glyf",
+        "font_directory/ttf-mixed-cff",
+        "font_directory/ttf-ttc-outer",
+        "font_directory/cff-cid-genuine-table-overlap",
+        "font_directory/cff-cid-valid-looking-extra-tag",
+        "font_directory/cff-cid-first-payload-gap",
+        "font_directory/cff-cid-missing-cff",
+        "font_directory/cff-cid-cff2",
+        "font_directory/cff-cid-mixed-glyf",
+        "font_directory/cff-cid-ttc-outer"
+      ],
+      "gaps": "No TTC, unknown flavor, CFF2, inferred offsets/lengths or ambiguous record suffix. Full required font/glyph validation remains. Legacy Strict-first CLI scan cannot discover this repair because Strict retains repair=None; tests request Repair explicitly.",
+      "verification": {
+        "primary_text": "Microsoft OpenType 1.9.1 OpenType Font File TableDirectory/TableRecord and head; Adobe TN5176 CFF header; local ISO32000-2:2020 9.9.1/Table124",
+        "locator": "https://learn.microsoft.com/en-us/typography/opentype/spec/otff ; https://learn.microsoft.com/en-us/typography/opentype/spec/head ; TN5176 sections6/7",
+        "rule": "The sfnt directory contains numTables complete records. Its original record offsets identify table data; table contents and required metadata still have to be parsed.",
+        "verdict": "Wire layout reviewed from primary text. Count recovery is explicit ADR0003 reader policy, not a normative exception. Other sfnt layout claims retain their existing verification status.",
+        "implementation": "Only one excess record; full ordered unique bounded non-overlapping prefix, exact12+16*k first nonempty payload boundary, recognized original head/CFF header and non-record trailing tag. Original declared entry budget retained; constant-storage proof work is charged before each record/comparison; resource Limits propagate. No global flavor/CFF-cmap/loca repair.",
+        "expectations": "Independent TTF and CID/name-keyed CFF programs retain all five glyph IDs/outlines/advances and immutable source bytes. Literal RGB/white/transparent RGBA at72/73/144DPI, direct API Strict/errors/source/extraction and negative/resource controls. Original y8 half-coverage baseline characterization remains separately frozen; it is not a rewritten oracle. Additional independent genuine-overlap, valid-looking extra-tag, payload-gap, missing required head/CFF/glyf, CFF2/mixed-outline and true TTC-outer refusal controls retain exact existing errors. Explicit public font/render native/SIMD/scalar consumer has predeclared498 calls and full raw/no-output contracts; execution evidence remains separate."
+      }
     }
   ]
 }

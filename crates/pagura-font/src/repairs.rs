@@ -3,6 +3,9 @@ use pagura_core::Repair;
 
 /// Infer the sfnt flavor from intact required tables when its version is unknown.
 pub const SFNT_VERSION: Repair = Repair::new("font.sfnt-version");
+/// Recover an exact one-record excess proven by the first table's header and
+/// the complete, bounded directory prefix; no table offset or payload changes.
+pub const SFNT_DIRECTORY_COUNT: Repair = Repair::new("font.sfnt-directory-count");
 /// Read an sfnt table at its declared byte offset despite missing alignment.
 pub const TABLE_ALIGNMENT: Repair = Repair::new("font.table-alignment");
 /// Clamp an sfnt table to available bytes; required metadata must remain usable.
@@ -41,6 +44,7 @@ pub const CFF_ENCODING_SUPPLEMENT: Repair = Repair::new("font.cff-encoding-suppl
 /// Every repair tag of this crate.
 pub const ALL: &[Repair] = &[
     SFNT_VERSION,
+    SFNT_DIRECTORY_COUNT,
     TABLE_ALIGNMENT,
     TABLE_BOUNDS,
     CMAP_TRUNCATED,

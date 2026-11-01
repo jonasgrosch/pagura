@@ -91,6 +91,8 @@ pub use pagura_document::forms;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
+/// Repair for a proven one-record excess in an sfnt directory count.
+pub use pagura_font::repairs::SFNT_DIRECTORY_COUNT as FONT_SFNT_DIRECTORY_COUNT;
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,

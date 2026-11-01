@@ -1,11 +1,13 @@
 //! Bounded sfnt directory recovery; 9.9.1/Table 124 and the OpenType table
 //! directory.
+mod count;
+
 use super::{DIRECTORY, Tables};
 use crate::budget::Work;
 use crate::read::{cursor, here, limit, syntax};
 use crate::repairs;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Position, Result};
+use pagura_core::{ErrorKind, Position, Recovery, Result};
 
 /// sfnt versions: TrueType outlines, CFF outlines (`OTTO`), and Apple's
 /// original tag for the TrueType container (`true`).
@@ -43,6 +45,39 @@ pub(super) fn parse(data: &[u8], work: &mut Work<'_>) -> Result<Directory> {
     let count = usize::from(r.u16()?);
     work.entries(count, at)?;
     r.skip(6)?; // searchRange, entrySelector, rangeShift
+    let parsed = read_tables(data, count, work);
+    let (tables, clipped_post) = match parsed {
+        Ok(value) => value,
+        Err(error)
+            if error.kind == ErrorKind::Syntax
+                && error.message == "sfnt table overlaps directory"
+                && work.mode() == Recovery::Repair =>
+        {
+            let Some(actual) = count::prove(data, signature, count, work)? else {
+                return Err(error);
+            };
+            work.repair(
+                repairs::SFNT_DIRECTORY_COUNT,
+                "sfnt directory count includes the first table header",
+                at,
+            )?;
+            // The original declared entry charge covers this smaller directory.
+            // The failed attempt's table map has already been dropped.
+            read_tables(data, actual, work)?
+        }
+        Err(error) => return Err(error),
+    };
+    Ok(Directory {
+        flavor: flavor(signature, &tables, work)?,
+        tables,
+        clipped_post,
+    })
+}
+
+fn read_tables(data: &[u8], count: usize, work: &mut Work<'_>) -> Result<(Tables, bool)> {
+    let mut r = cursor(data);
+    r.skip(OFFSET_TABLE)?;
+    // A u16 count times sixteen plus twelve fits every supported usize.
     let directory_end = OFFSET_TABLE + TABLE_RECORD * count;
     let mut tables = Tables::new();
     let mut clipped_post = false;
@@ -89,11 +124,7 @@ pub(super) fn parse(data: &[u8], work: &mut Work<'_>) -> Result<Directory> {
             return Err(syntax(Position::Buffer(b.start), "overlapping sfnt tables"));
         }
     }
-    Ok(Directory {
-        flavor: flavor(signature, &tables, work)?,
-        tables,
-        clipped_post,
-    })
+    Ok((tables, clipped_post))
 }
 
 fn flavor(signature: u32, tables: &Tables, work: &mut Work<'_>) -> Result<Flavor> {
