@@ -47,6 +47,29 @@ enum Direct<'a> {
     F64(WideOut<'a>),
 }
 
+/// The constant-colour eligibility shared by storage admission and execution.
+pub(crate) fn direct_color<'a>(
+    paints: &'a [Source],
+    mark: &Mark,
+    layout: Layout,
+    knockout: bool,
+) -> Option<&'a [f64]> {
+    let compositing = &mark.compositing;
+    if mark.records
+        || knockout
+        || compositing.mask.is_some()
+        || compositing.blend != pagura_interpret::BlendMode::Normal
+        || compositing.overprint != 0
+    {
+        return None;
+    }
+    paints
+        .get(u32_to_usize(mark.paint))?
+        .constant()
+        .map(|(color, _)| color)
+        .filter(|color| color.len() >= layout.channels())
+}
+
 impl<'a> Direct<'a> {
     fn new(
         plan: &'a Plan,
@@ -54,20 +77,8 @@ impl<'a> Direct<'a> {
         mark: &Mark,
         frame: Frame,
     ) -> Option<Self> {
-        let compositing = &mark.compositing;
-        if mark.records
-            || frame.knockout
-            || compositing.mask.is_some()
-            || compositing.blend != pagura_interpret::BlendMode::Normal
-            || compositing.overprint != 0
-        {
-            return None;
-        }
-        let paint = plan.paints.get(u32_to_usize(mark.paint))?;
-        let (color, _) = paint
-            .constant()
-            .filter(|(color, _)| color.len() >= frame.layout.channels())?;
-        let alpha = compositing.alpha;
+        let color = direct_color(&plan.paints, mark, frame.layout, frame.knockout)?;
+        let alpha = mark.compositing.alpha;
         // A group's buffer stores as its span stores do; extents and the
         // background are the page's.
         let pixels = area(frame.rect);
