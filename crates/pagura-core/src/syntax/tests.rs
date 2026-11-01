@@ -354,6 +354,6 @@ fn new_operand_repairs_preserve_the_original_full_strict_errors() {
             strict.parse().unwrap_err(),
             Error::syntax(message).at(Position::File(offset))
         );
-        assert!(strict.take_diagnostics().is_empty());
+        assert_eq!(strict.take_diagnostics(), []);
     }
 }

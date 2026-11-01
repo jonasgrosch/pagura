@@ -28,7 +28,7 @@ use pagura_color::ColorSpace;
 use pagura_content::{Content, Op, Operation, Reader};
 use pagura_core::hash::FastMap;
 use pagura_core::{
-    Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store,
+    Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Recovery, Result, Store,
 };
 use pagura_document::{Document, Page};
 use pagura_raster::{FillRule, PathBuilder, Transform};

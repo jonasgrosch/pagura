@@ -419,7 +419,7 @@ fn failed_operand_retries_do_not_retain_parser_repairs() {
             reader.next(&mut tokens).unwrap_err().kind,
             ErrorKind::Syntax
         );
-        assert!(reader.parser.take_diagnostics().is_empty());
+        assert_eq!(reader.parser.take_diagnostics(), []);
         assert!(!reader.has_repairs());
     }
 }

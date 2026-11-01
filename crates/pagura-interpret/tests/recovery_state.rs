@@ -129,7 +129,7 @@ fn unused_operands_are_reported_without_changing_the_strict_error() {
             })
             .in_object(object)
     );
-    assert!(strict.diagnostics().is_empty());
+    assert_eq!(strict.diagnostics(), []);
     let repaired = document(content, &OpenOptions::default()).unwrap();
     Interpreter::new(&repaired)
         .scene(repaired.page(0).unwrap())
