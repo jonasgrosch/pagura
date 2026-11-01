@@ -264,7 +264,7 @@
     "crates/pagura-interpret/src/resources/optional.rs": "7f4b11d80f0458cdf4e9a1c01fdcb6869ef398fc44d5ed93337e1a7465e199b1",
     "crates/pagura-interpret/src/resources/pattern.rs": "f38e0ceeb427c250e4034f61d2bcdc13bf73b67ee7d5489b737611da3a1cb92d",
     "crates/pagura-interpret/src/resources/shading.rs": "cd81d6e8ffbb39d6ec4bcd0e12bd7319b12e0c417f19431f5ee1e0a742ec1d57",
-    "crates/pagura-interpret/tests/recovery_marked.rs": "3c925a7abe44c884944c333b68c6fe28cfcb483a12dc16b77911f0c6a510e957",
+    "crates/pagura-interpret/tests/recovery_marked.rs": "1550993d59a716e8f3de0a1e4e1baf338da761b6cfcf60de0c6813b9bd7ef351",
     "crates/pagura-paint/src/execute.rs": "5e49673385df9f1e2dd2068a7aa5c2c2e5d8cf9129a5fd2e1adff0a3197eb002",
     "crates/pagura-paint/src/execute/group.rs": "e14346fea5bb57d288d7ced527d02da57b081219b648d74775bcb03bcc0548b4",
     "crates/pagura-paint/src/execute/transfer.rs": "6dec2a2796f9c0260d076d11b04c070c8a3071adbce2a42b1efa7e5fd6308b50",
