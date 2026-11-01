@@ -43,6 +43,7 @@ impl Layout {
     }
 
     /// Allocates capacities whose bytes the caller has charged already.
+    #[inline(never)]
     pub(crate) fn make(self) -> Result<Scratch> {
         Ok(Scratch {
             layout: self,

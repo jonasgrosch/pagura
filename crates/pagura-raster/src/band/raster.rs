@@ -39,6 +39,8 @@ struct Run {
 }
 
 impl Run {
+    // Plans without glyph runs must not carry this constructor in scratch fitting.
+    #[inline(never)]
     fn new(width: usize, bytes: &mut Meter) -> Result<Self> {
         let mut run = Self::default();
         bytes.reserve(&mut run.slots, RUN_SHAPES)?;
