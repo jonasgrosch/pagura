@@ -2,6 +2,85 @@ use super::*;
 use pagura_color::{CalculatorFunction, DeviceN, Function, Indexed};
 use pagura_core::{Limits, Name};
 
+#[test]
+fn direct_page_stacks_are_zero_for_every_format_and_layout() {
+    use crate::format::Format;
+    use crate::plan::{Compositing, Cover, GroupPlan, Mark, Start};
+    use crate::source::Source;
+    use pagura_color::Painted;
+    use pagura_interpret::BlendMode;
+    use pagura_raster::DeviceRect;
+
+    for format in [Format::N16, Format::F32, Format::F64] {
+        for process in [Process::Gray, Process::Rgb, Process::Cmyk] {
+            for spots in [0, 1, crate::plan::MAX_SPOTS] {
+                let layout = Layout { process, spots };
+                for alpha in [0.5, 1.0] {
+                    for count in [0, 1] {
+                        let mut parts = Parts {
+                            groups: vec![GroupPlan {
+                                bounds: DeviceRect {
+                                    x0: 0,
+                                    y0: 0,
+                                    x1: 16,
+                                    y1: 8,
+                                },
+                                items: (0..count).collect(),
+                                order: Vec::new(),
+                                layout,
+                                format,
+                                knockout: false,
+                                start: Start::Transparent,
+                            }],
+                            paints: vec![Source::Solid {
+                                color: vec![0.5; layout.channels()].into_boxed_slice(),
+                                painted: Painted(u64::MAX),
+                            }],
+                            items: (0..count)
+                                .map(|_| Item {
+                                    bounds: DeviceRect::default(),
+                                    bands: [0, 0],
+                                    serial: 0,
+                                    position: pagura_core::Position::Unknown,
+                                    work: 0,
+                                    kind: ItemKind::Mark(Mark {
+                                        cover: Cover {
+                                            shape: None,
+                                            clip: None,
+                                        },
+                                        paint: 0,
+                                        scratch: 0,
+                                        compositing: Compositing {
+                                            alpha,
+                                            blend: BlendMode::Normal,
+                                            alpha_is_shape: false,
+                                            mask: None,
+                                            overprint: 0,
+                                        },
+                                        select: 0,
+                                        records: false,
+                                        boundary: Boundary::Absent,
+                                        words: None,
+                                    }),
+                                })
+                                .collect(),
+                            ..Parts::default()
+                        };
+                        let direct = order(&mut parts).unwrap();
+                        assert_eq!(direct, count == 0 || format != Format::F64 || alpha == 1.0);
+                        for rows in [1, 8, 256] {
+                            let mut bytes = Meter::new(1 << 20, "stack proof");
+                            let old = needs(&parts, rows, &mut bytes).unwrap();
+                            assert_eq!((old.wide, old.levels, old.rows), (0, 0, 0));
+                            assert_eq!(bytes.used(), 0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn precedence_scene() -> crate::testing::Build {
     use crate::testing::{Build, mark, rect_path};
     use pagura_color::{ExponentialFunction, Function};
