@@ -443,3 +443,72 @@ fn scan_labels_unreadable_input_as_io() {
         "{text}"
     );
 }
+
+#[test]
+fn scan_modes_keep_their_distinct_audit_schemas() {
+    let input = fixture_path("classic", "rectangle.pdf");
+    let legacy = pagura().arg("scan").arg(&input).output().unwrap();
+    assert!(legacy.status.success());
+    assert_eq!(
+        legacy.stdout,
+        b"{\"schema\":1,\"strict\":true,\"open\":null,\"pages\":1,\"rendered\":1,\"repairs\":[],\"information\":[],\"failures\":[]}\n"
+    );
+    let repair = pagura()
+        .args(["scan", "--repair"])
+        .arg(&input)
+        .output()
+        .unwrap();
+    assert!(repair.status.success());
+    assert_eq!(
+        repair.stdout,
+        b"{\"schema\":2,\"recovery\":\"repair\",\"strict\":null,\"open\":null,\"pages\":1,\"rendered\":1,\"repairs\":[],\"information\":[],\"suppressed_diagnostics\":0,\"failures\":[]}\n"
+    );
+    let empty = pagura()
+        .args(["scan", "--repair", "--max-pages", "0"])
+        .arg(input)
+        .output()
+        .unwrap();
+    assert!(empty.status.success());
+    assert!(
+        String::from_utf8(empty.stdout)
+            .unwrap()
+            .contains("\"pages\":1,\"rendered\":0")
+    );
+}
+
+#[test]
+fn explicit_repair_scan_reports_repairs_and_refusals_without_strict_claims() {
+    let (unsupported, feature) = unsupported_case();
+    for (input, expected) in [
+        (
+            fixture_path("paint", "text-late-font-repair.pdf"),
+            "font.stream-lengths".to_owned(),
+        ),
+        (
+            fixture_path("paint", "type3-recursion.pdf"),
+            "\"kind\":\"cycle\"".to_owned(),
+        ),
+        (
+            fixture_path("content", "icc-mft2-grid-budget.pdf"),
+            "\"kind\":\"limit\"".to_owned(),
+        ),
+        (unsupported, feature),
+        (
+            fixture_path("classic", "no-such-file.pdf"),
+            "\"kind\":\"io\"".to_owned(),
+        ),
+    ] {
+        let output = pagura()
+            .args(["scan", "--repair"])
+            .arg(input)
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let report = String::from_utf8(output.stdout).unwrap();
+        assert!(
+            report.starts_with("{\"schema\":2,\"recovery\":\"repair\",\"strict\":null,"),
+            "{report}"
+        );
+        assert!(report.contains(&expected), "{report}");
+    }
+}
