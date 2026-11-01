@@ -187,7 +187,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
       DIAGNOSTIC_RUNNER_SHA256: a9df6b1eb1c534aa1a2b11300e9267a44693590f05cecab8acb7cf32fc79ed67
     steps:
       - name: Require the isolated diagnostic infrastructure branch
@@ -215,8 +214,12 @@ jobs:
         with:
           node-version: 26.8.1
       - name: Install only the existing pinned PDF.js comparator
+        env:
+          PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
         run: python fixture-source/tools/competitors.py setup --engines pdfjs
       - name: Capture exactly four bounded synthetic render attempts
+        env:
+          PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
         run: python diagnostic-infra/tools/diagnose_packed_pdfjs.py --source "$GITHUB_WORKSPACE/fixture-source" --output "$RUNNER_TEMP/packed-pdfjs-diagnostic"
       - name: Preserve raw outcomes, FD3 traces and any returned synthetic pixels
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
