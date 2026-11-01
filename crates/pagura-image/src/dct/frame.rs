@@ -136,13 +136,13 @@ impl Frame {
             .ok_or(Error::syntax("missing JPEG components"))?;
         let mcu_cols = (width as usize).div_ceil(8 * max_h);
         let mcu_rows = (height as usize).div_ceil(8 * max_v);
-        // Progressive coefficients (four bytes) coexist with the native
-        // planes reconstructed from them and with the expanded samples.
-        // Sequential frames reconstruct native samples into their planes
-        // during the scans, so only planes and expanded samples coexist. For
-        // P=12 planes and samples are words, and the samples coexist with
-        // the final byte buffer as well. Colour conversion adds its rows
-        // (`ROW_BYTES` per pixel of width).
+        // `parameters::budget` admitted the output samples above against
+        // `decoded_bytes`; the working memory at its peak goes against
+        // `decode_bytes` (ADR 0016). Progressive coefficients (four bytes)
+        // coexist with the native planes reconstructed from them; sequential
+        // frames reconstruct into their planes during the scans. For P=12
+        // planes are words, and so are the samples expanded before the final
+        // bytes. Colour conversion adds its rows (`ROW_BYTES` per pixel).
         let progressive = matches!(process, 0xc2 | 0xca);
         let twelve_bit = data[0] == 12;
         let plane_bytes = u64::from(twelve_bit) + 1;
@@ -151,18 +151,18 @@ impl Frame {
         } else {
             plane_bytes
         };
-        let mut memory =
-            u64::from(width) * u64::from(height) * u64::from(n) * if twelve_bit { 3 } else { 1 }
-                + u64::from(width) * super::transform::ROW_BYTES as u64;
+        let words = if twelve_bit { 2 } else { 0 };
+        let mut working = words * u64::from(width) * u64::from(height) * u64::from(n)
+            + u64::from(width) * super::transform::ROW_BYTES as u64;
         for c in &mut components {
             c.stride = mcu_cols * c.h;
             c.rows = mcu_rows * c.v;
-            memory = memory
+            working = working
                 .checked_add((c.stride * c.rows) as u64 * 64 * per_sample)
                 .ok_or(Error::limit("JPEG allocation overflow"))?;
         }
-        if memory > limits.decoded_bytes as u64 {
-            return Err(Error::limit("JPEG coefficient and sample budget exceeded"));
+        if working > limits.decode_bytes as u64 {
+            return Err(Error::limit("JPEG plane and coefficient budget exceeded"));
         }
         Ok(Self {
             width,
