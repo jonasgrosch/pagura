@@ -94,7 +94,7 @@ allow_attributes = "deny"
 allow_attributes_without_reason = "deny"
 
 [profile.release]
-lto = "thin"
+lto = "fat"
 codegen-units = 1
 overflow-checks = true
 
