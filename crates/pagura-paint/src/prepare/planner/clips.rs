@@ -623,6 +623,8 @@ mod tests {
             bounds: b.page(),
             layout: planner.parts.groups[0].layout,
             plain: true,
+            alpha: 1.0,
+            mask: None,
             records: false,
             separated: false,
             masked: false,

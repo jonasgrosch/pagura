@@ -61,6 +61,37 @@ fn opaque_cover_composites_outer_alpha_once() {
 }
 
 #[test]
+fn opaque_cover_in_a_folded_group_applies_each_alpha_once() {
+    for masked in [false, true] {
+        let mut b = opaque_cover_scene(0.0, 0.5, 1);
+        let children = std::mem::take(&mut b.scene.groups[0].children);
+        let mask = masked.then(|| {
+            let (id, group) = b.mask(
+                pagura_interpret::MaskKind::Alpha,
+                GroupAttributes {
+                    isolated: true,
+                    ..GroupAttributes::default()
+                },
+                None,
+            );
+            let white = b.rgb([1.0; 3]);
+            let half = b.state(|state| state.alpha = 0.5);
+            b.rect(group, [0.0, 0.0, 8.0, 8.0], white, mark(half));
+            id
+        });
+        let half = b.state(|state| {
+            state.alpha = if masked { 1.0 } else { 0.5 };
+            state.soft_mask = mask;
+        });
+        let group = b.transparency(GroupId(0), GroupAttributes::default(), mark(half));
+        b.scene.groups[group.index()].children = children;
+        // Half-opacity black through half opacity or an alpha mask covers
+        // white by one quarter; the pattern cell does not apply it again.
+        assert_eq!(b.render_page(), [191, 191, 191, 255].repeat(64));
+    }
+}
+
+#[test]
 fn opaque_cover_preserves_nonblack_and_translucent_cell_limits() {
     let mut b = opaque_cover_scene(0.25, 1.0, 1);
     let request = b.request(b.page(), 3);

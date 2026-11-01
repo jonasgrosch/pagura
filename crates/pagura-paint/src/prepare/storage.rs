@@ -3,34 +3,51 @@
 //! buffer (the page, each transparency group, soft mask and tiling cell) by
 //! its stores, then formats are chosen from the innermost buffer outwards
 //! and widened from the outermost inwards. The same pass decides which
-//! groups composite as their members (flattening), which run from a
-//! transparent start, and whether the page selects transfer functions.
+//! groups composite as their members (flattening), which paint nothing,
+//! which run from a transparent start, and whether the page selects
+//! transfer functions.
 
 mod formats;
 mod hulls;
 
-use formats::{F64_STORE, FOOTPRINTS, MARGIN};
-use hulls::{Outlines, extent, hulls, unite};
+use formats::{APART_COMPARISONS, F64_STORE, FOOTPRINTS, MARGIN, disjoint_members};
+use hulls::{Outlines, extent, glyph_footprints, hulls, unite};
 
 use crate::format::Format;
 use crate::plan::Layout;
 use crate::prepare::bounds;
 use crate::prepare::index;
 use crate::prepare::overprint::{Keeping, Place};
+use crate::prepare::planner::view_transform;
 use pagura_color::Process;
 use pagura_core::hash::FastMap;
 use pagura_core::{Error, Meter, Result};
 use pagura_interpret::{
-    BlendMode, Composite, GroupAttributes, GroupId, GroupRole, ImageMask, MaskId, Node, Paint,
-    PatternId, Scene,
+    BlendMode, Composite, Group, GroupAttributes, GroupId, GroupRole, ImageMask, MaskId, Node,
+    Paint, PatternId, Scene,
 };
 use pagura_raster::{DeviceRect, Transform};
+
+/// How a transparency group reaches its parent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Route {
+    /// Through its own buffer.
+    Buffer,
+    /// Its members composite into the parent directly.
+    Flatten,
+    /// Its one member composites into the parent directly, at the group's
+    /// alpha times its own.
+    Fold,
+    /// Not at all: its result's alpha is 0 everywhere, which leaves the
+    /// parent's colour and alpha as they are, and no buffer it reaches
+    /// knocks out by its shape.
+    Skip,
+}
 
 /// What preparation needs to know about one transparency group.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Decision {
-    /// Its members composite into the parent directly.
-    pub(crate) flatten: bool,
+    pub(crate) route: Route,
     /// Its buffer's format.
     pub(crate) format: Format,
     /// It starts transparent: isolated, or non-isolated with Normal content,
@@ -108,6 +125,9 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs, bytes: &mut Meter) -> Result
     let survey = Survey {
         scene,
         inputs,
+        // A mark records the transfer selection of the pixels it covers
+        // whatever its alpha (11.7.5.2).
+        skips: scene.states.iter().all(|state| state.transfer.is_none()),
         buffers: Vec::new(),
         groups: FastMap::default(),
         masks: FastMap::default(),
@@ -115,6 +135,7 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs, bytes: &mut Meter) -> Result
         open: Vec::new(),
         outlines: Outlines::default(),
         transfers: false,
+        comparisons: APART_COMPARISONS,
     };
     let result = survey.finish(bytes);
     let retained = match &result {
@@ -146,8 +167,7 @@ impl Survey<'_> {
         let transfers = self.transfers;
         let transfer_gate = self.buffers[page].transfer;
         let buffer = &mut self.buffers[page];
-        buffer.forced |=
-            inputs.simulate || inputs.page.process != Process::Rgb || page_knockout || transfers;
+        buffer.forced |= inputs.simulate || page_knockout || transfers;
         let mut resolved = Vec::new();
         bytes.reserve_capacity(&mut resolved, self.buffers.len())?;
         resolved.resize(self.buffers.len(), None);
@@ -164,7 +184,7 @@ impl Survey<'_> {
         bytes.reserve_map_capacity(&mut groups, self.groups.len())?;
         for (&key, entry) in &self.groups {
             let decision = Decision {
-                flatten: entry.flatten,
+                route: entry.route,
                 format: format(entry.buffer),
                 transparent: entry.transparent,
                 knockout: entry.knockout,
@@ -200,6 +220,15 @@ struct Context {
     selects: bool,
     /// Soft-mask content.
     masked: bool,
+    /// A buffer enclosing the parent knocks out, or the content is a tiling
+    /// cell's, whose shape reaches wherever the pattern paints.
+    knockout: bool,
+    /// The alpha of a folded group, which its member's multiplies; 1
+    /// elsewhere.
+    alpha: f64,
+    /// The soft mask of a folded group, a buffer, which its member
+    /// composites through when it has none of its own.
+    mask: Option<usize>,
     /// Content space to device pixels.
     transform: Transform,
 }
@@ -209,14 +238,21 @@ impl Context {
         Self {
             selects: true,
             masked: false,
+            knockout: false,
+            alpha: 1.0,
+            mask: None,
             transform,
         }
     }
 
+    /// A soft mask's values are its group's colour and alpha, never shape.
     fn mask(self) -> Self {
         Self {
             selects: false,
             masked: true,
+            knockout: false,
+            alpha: 1.0,
+            mask: None,
             ..self
         }
     }
@@ -253,8 +289,12 @@ struct Buffer {
     opaque_members: bool,
     /// Every store's opacity after the first equals its shape.
     later_opaque: bool,
+    /// Its stores blend Normal and no two share a pixel.
+    apart_members: bool,
     /// Every store blends Normal.
     normal: bool,
+    /// Some store's alpha can be positive.
+    visible: bool,
     /// It provides the backdrop of a non-isolated child whose content is not
     /// all Normal.
     reads: bool,
@@ -272,6 +312,10 @@ struct Buffer {
     masks: Vec<(usize, usize)>,
     /// Its dynamic stores, by footprint.
     dynamics: Vec<Dynamic>,
+    /// In a knockout group, the pixels of each of `dynamics` that the
+    /// disjoint-member identity compares: a glyph placement's own, else its
+    /// `rect`. Kept until the identity is decided.
+    footprints: Vec<DeviceRect>,
     /// The device pixels its stores can reach.
     extent: Option<bounds::Hull>,
     /// Plain groups of opaque members that flatten into it if its knockout
@@ -283,12 +327,11 @@ struct Buffer {
 }
 
 impl Buffer {
-    /// Its members knock each other out: unless every store after the
-    /// first has opacity equal to its shape, where knockout is source-over
-    /// (11.4.6). The first store meets the initial backdrop, where it is
-    /// source-over at any opacity.
+    /// Its members knock each other out unless later stores are opaque
+    /// members, or no pixel has two members. Both identities composite as
+    /// source-over (11.4.6); the first store may have any opacity.
     fn knockout(&self) -> bool {
-        self.knockout_attribute && !self.later_opaque
+        self.knockout_attribute && !self.later_opaque && !self.apart_members
     }
 
     /// Normal content: compositing it onto a backdrop equals compositing
@@ -297,12 +340,22 @@ impl Buffer {
         self.normal && !self.knockout() && !self.reads
     }
 
+    /// Keeps a member's footprint only where knockout can read it.
+    fn keep_footprint(&mut self, rect: DeviceRect, bytes: &mut Meter) -> Result<()> {
+        if self.knockout_attribute {
+            bytes.reserve_capacity(&mut self.footprints, 1)?;
+            self.footprints.push(rect);
+        }
+        Ok(())
+    }
+
     fn merge(&mut self, other: &Self, bytes: &mut Meter) -> Result<()> {
         self.forced |= other.forced;
         self.opaque_members &= other.opaque_members;
         // Merged stores follow its own.
         self.later_opaque &= other.opaque_members;
         self.normal &= other.normal;
+        self.visible |= other.visible;
         self.reads |= other.reads;
         self.stores = self.stores.saturating_add(other.stores);
         self.dynamic = self.dynamic.saturating_add(other.dynamic);
@@ -323,7 +376,7 @@ impl Buffer {
 #[derive(Debug, Clone, Copy)]
 struct GroupEntry {
     buffer: usize,
-    flatten: bool,
+    route: Route,
     transparent: bool,
     knockout: bool,
 }
@@ -331,6 +384,8 @@ struct GroupEntry {
 struct Survey<'s> {
     scene: &'s Scene,
     inputs: Inputs,
+    /// Groups that paint nothing can be left out.
+    skips: bool,
     buffers: Vec<Buffer>,
     groups: FastMap<(GroupId, Process), GroupEntry>,
     masks: FastMap<(MaskId, Process), usize>,
@@ -339,6 +394,8 @@ struct Survey<'s> {
     /// Glyph outline hulls computed so far.
     outlines: Outlines,
     transfers: bool,
+    /// Footprint comparisons the disjoint-member identity has left.
+    comparisons: usize,
 }
 
 /// The kind of paint a store takes.
@@ -355,11 +412,13 @@ impl Survey<'_> {
         self.buffers.push(Buffer {
             layout,
             page: false,
-            forced: self.inputs.simulate || layout.process != Process::Rgb,
+            forced: self.inputs.simulate,
             knockout_attribute: knockout,
             opaque_members: true,
             later_opaque: true,
+            apart_members: false,
             normal: true,
+            visible: false,
             reads: false,
             stores: 0,
             dynamic: 0,
@@ -368,6 +427,7 @@ impl Survey<'_> {
             children: Vec::new(),
             masks: Vec::new(),
             dynamics: Vec::new(),
+            footprints: Vec::new(),
             extent: None,
             pending: Vec::new(),
             transfer: false,
@@ -425,10 +485,11 @@ impl Survey<'_> {
                     continue;
                 }
             };
-            let state = state(scene, mark.state)?;
+            let state = folded(state(scene, mark.state)?, context);
+            let state = &*state;
             // Footprints matter for dynamic stores, and the extent of a
             // group, whose result is a dynamic store of its parent.
-            let (hulls, extent) = if dynamic(kind, state) {
+            let (hulls, extent) = if dynamic(kind, state) || context.mask.is_some() {
                 let hulls = hulls(scene, node, context.transform, (&mut self.outlines, bytes))?;
                 let extent = hulls.iter().fold(None, |extent, &hull| unite(extent, hull));
                 (hulls, extent)
@@ -438,25 +499,50 @@ impl Survey<'_> {
                 let extent = extent(scene, node, context.transform, (&mut self.outlines, bytes))?;
                 (Vec::new(), extent)
             };
+            // A knockout compares glyph placements by their own pixels.
+            let apart = match node {
+                Node::Glyphs(glyphs)
+                    if self.buffers[buffer].knockout_attribute && !hulls.is_empty() =>
+                {
+                    let pixels = self.inputs.pixels;
+                    let outlines = (&mut self.outlines, &mut *bytes);
+                    glyph_footprints(glyphs, context.transform, pixels, outlines)?
+                }
+                _ => Vec::new(),
+            };
             let stores = Stores {
                 kind,
                 count,
                 hulls: &hulls,
+                apart: &apart,
                 extent,
                 alpha_shape,
             };
             self.mark(buffer, state, &stores, context, depth, bytes)?;
-            let released = hulls.capacity() * size_of::<Option<bounds::Hull>>();
-            drop(hulls);
+            let released = hulls.capacity() * size_of::<Option<bounds::Hull>>()
+                + apart.capacity() * size_of::<DeviceRect>();
+            drop((hulls, apart));
             bytes.refund(released);
         }
         self.settle(buffer, bytes)
     }
 
     /// Flattens the pending groups of `buffer` once its content shows that
-    /// its knockout is the opaque-member identity, so that it composites as
-    /// source-over and they can composite straight into it.
+    /// its knockout is an identity, so that it composites as source-over and
+    /// they can composite straight into it.
     fn settle(&mut self, buffer: usize, bytes: &mut Meter) -> Result<()> {
+        let target = &self.buffers[buffer];
+        // At a pixel of one member, (1 - s) b + s ((1 - α/s) b + (α/s) c)
+        // is (1 - α) b + α c: every store dynamic gives every member a
+        // footprint.
+        if target.knockout() && target.normal && target.stores == target.dynamic {
+            let apart = disjoint_members(target, &mut self.comparisons, bytes)?;
+            self.buffers[buffer].apart_members = apart;
+        }
+        let footprints = std::mem::take(&mut self.buffers[buffer].footprints);
+        let released = footprints.capacity() * size_of::<DeviceRect>();
+        drop(footprints);
+        bytes.refund(released);
         let pending = std::mem::take(&mut self.buffers[buffer].pending);
         if !self.buffers[buffer].knockout() {
             for &(key, child) in &pending {
@@ -468,7 +554,7 @@ impl Survey<'_> {
                 target.children.retain(|&(c, _)| c != child);
                 self.merge(buffer, child, bytes)?;
                 if let Some(entry) = self.groups.get_mut(&key) {
-                    entry.flatten = true;
+                    entry.route = Route::Flatten;
                 }
             }
         }
@@ -513,10 +599,7 @@ impl Survey<'_> {
     ) -> Result<()> {
         let (kind, count) = (stores.kind, stores.count);
         let layout = self.buffers[buffer].layout;
-        let mask = state
-            .soft_mask
-            .map(|id| self.mask(id, layout.process, (context, depth), bytes))
-            .transpose()?;
+        let mask = self.soft_mask(state, layout.process, (context, depth), bytes)?;
         let cell = match kind {
             Kind::Pattern(pattern) => Some(self.cell(pattern, layout, (context, depth), bytes)?),
             Kind::Constant | Kind::Varying => None,
@@ -546,6 +629,7 @@ impl Survey<'_> {
         let first = target.stores == 0 && count == 1;
         target.stores = target.stores.saturating_add(count);
         target.transfer |= transfer;
+        target.visible |= state.alpha != 0.0;
         // A store that keeps channels reads its backdrop.
         target.normal &= state.blend == BlendMode::Normal && !keeps;
         // A store with a transfer function is outside the narrow bounds
@@ -596,6 +680,11 @@ impl Survey<'_> {
                     child: cell,
                     mask,
                 }));
+                if target.knockout_attribute {
+                    bytes.reserve_capacity(&mut target.footprints, rects.len())?;
+                    let own = |(i, &rect)| stores.apart.get(i).copied().unwrap_or(rect);
+                    target.footprints.extend(rects.iter().enumerate().map(own));
+                }
             }
         }
         let released = rects.capacity() * size_of::<DeviceRect>();
@@ -619,31 +708,47 @@ impl Survey<'_> {
         if group.role != GroupRole::Transparency {
             return Ok(());
         }
-        let state = state(scene, group.mark.state)?;
+        let state = folded(state(scene, group.mark.state)?, context);
+        let state = &*state;
         let parent_layout = self.buffers[parent].layout;
         let layout = group_layout(group.attributes, parent_layout);
         let child = self.buffer(layout, group.attributes.knockout, bytes)?;
-        let inner = match group.view {
-            Some(view) => Context {
-                transform: crate::prepare::planner::view_transform(
-                    context.transform,
-                    view,
-                    self.inputs.user_unit,
-                )?,
-                ..context
-            },
-            None => context,
+        let parent_knockout = self.buffers[parent].knockout_attribute;
+        let transform = group.view.map_or(Ok(context.transform), |view| {
+            view_transform(context.transform, view, self.inputs.user_unit)
+        })?;
+        let fold = self.folds((group, state), (parent, layout), context)?;
+        // A folded group's soft mask, its own or the one it took, passes to
+        // its member.
+        let mask = if fold {
+            self.soft_mask(state, parent_layout.process, (context, depth), bytes)?
+        } else {
+            None
+        };
+        let inner = Context {
+            transform,
+            knockout: context.knockout || parent_knockout,
+            alpha: if fold { state.alpha } else { 1.0 },
+            mask,
+            ..context
         };
         self.children(child, &group.children, inner, depth + 1, bytes)?;
         let facts = &self.buffers[child];
-        let plain =
-            state.alpha == 1.0 && state.blend == BlendMode::Normal && state.soft_mask.is_none();
-        let fits = plain
+        let fits = plain(state, context)
             && !facts.knockout()
             && layout == parent_layout
             && (!group.attributes.isolated || facts.normal_content());
-        let parent_knockout = self.buffers[parent].knockout_attribute;
-        let flatten = fits && !parent_knockout;
+        // A result of alpha 0 changes the parent's shape alone, which only
+        // a knockout reads (11.4.6), above it or in a pattern's instances.
+        let route = if self.skips && !inner.knockout && (!facts.visible || state.alpha == 0.0) {
+            Route::Skip
+        } else if fold {
+            Route::Fold
+        } else if fits && !parent_knockout {
+            Route::Flatten
+        } else {
+            Route::Buffer
+        };
         // In a knockout group, a plain group of opaque members is one opaque
         // member: the implicit groups of text objects and of fill-and-stroke
         // operators around Type 3 glyphs or fill-and-stroke text.
@@ -652,29 +757,24 @@ impl Survey<'_> {
         let knockout = facts.knockout();
         let extent = facts.extent;
         let transfer = facts.transfer;
-        let key = (id, parent_layout.process);
-        if !self.groups.contains_key(&key) {
-            bytes.reserve_map_capacity(&mut self.groups, 1)?;
+        let visible = facts.visible && state.alpha != 0.0;
+        let entry = GroupEntry {
+            buffer: child,
+            route,
+            transparent,
+            knockout,
+        };
+        self.record((id, parent_layout.process), entry, bytes)?;
+        match route {
+            Route::Skip => return Ok(()),
+            Route::Flatten | Route::Fold => return self.merge(parent, child, bytes),
+            Route::Buffer => {}
         }
-        self.groups.insert(
-            key,
-            GroupEntry {
-                buffer: child,
-                flatten,
-                transparent,
-                knockout,
-            },
-        );
-        if flatten {
-            self.merge(parent, child, bytes)?;
-            return Ok(());
-        }
-        let mask = state
-            .soft_mask
-            .map(|mask| self.mask(mask, parent_layout.process, (context, depth), bytes))
-            .transpose()?;
+        let mask = self.soft_mask(state, parent_layout.process, (context, depth), bytes)?;
         let buffer = &mut self.buffers[child];
-        buffer.forced |= state.blend.amplifies() || knockout || !transparent;
+        // A result converted into its parent's space stays F64 (ADR 0004 §6).
+        buffer.forced |=
+            state.blend.amplifies() || knockout || !transparent || layout != parent_layout;
         let rect = self.pixels(extent);
         let target = &mut self.buffers[parent];
         target.extent = unite(target.extent, extent);
@@ -685,11 +785,13 @@ impl Survey<'_> {
             child: Some(child),
             mask,
         });
+        target.keep_footprint(rect, bytes)?;
         target.stores = target.stores.saturating_add(1);
         target.dynamic = target.dynamic.saturating_add(1);
         target.normal &= state.blend == BlendMode::Normal;
         target.forced |= state.blend != BlendMode::Normal;
         target.transfer |= transfer;
+        target.visible |= visible;
         target.opaque_members &= pending;
         target.later_opaque &= pending;
         if pending {
@@ -707,6 +809,95 @@ impl Survey<'_> {
             target.forced = true;
         }
         Ok(())
+    }
+
+    /// The soft mask a group or store composites through: its own, or that
+    /// of the folded group it is the member of.
+    fn soft_mask(
+        &mut self,
+        state: &Composite,
+        process: Process,
+        (context, depth): (Context, usize),
+        bytes: &mut Meter,
+    ) -> Result<Option<usize>> {
+        match state.soft_mask {
+            Some(id) => Ok(Some(self.mask(id, process, (context, depth), bytes)?)),
+            None => Ok(context.mask),
+        }
+    }
+
+    /// Records the facts of group `key`'s decision.
+    fn record(
+        &mut self,
+        key: (GroupId, Process),
+        entry: GroupEntry,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        if !self.groups.contains_key(&key) {
+            bytes.reserve_map_capacity(&mut self.groups, 1)?;
+        }
+        self.groups.insert(key, entry);
+        Ok(())
+    }
+
+    /// Whether a group paints as its one member does at the group's alpha
+    /// times its own and through the group's soft mask: a single store or
+    /// group of Normal blend, whose source-over at opacity m a is the
+    /// group's result composited at m (11.4.8), with no knockout, transfer
+    /// or conversion between them and one soft mask at most. Alpha as shape
+    /// changes shape alone, which only a knockout reads, above or in a
+    /// pattern's instances.
+    fn folds(
+        &self,
+        (group, state): (&Group, &Composite),
+        (parent, layout): (usize, Layout),
+        context: Context,
+    ) -> Result<bool> {
+        let target = &self.buffers[parent];
+        let masked = state.soft_mask.is_some() || context.mask.is_some();
+        if (state.alpha == 1.0 && !masked)
+            || state.blend != BlendMode::Normal
+            || (state.alpha_is_shape && context.knockout)
+            || state.transfer.is_some()
+            || group.attributes.knockout
+            || target.knockout_attribute
+            || layout != target.layout
+        {
+            return Ok(false);
+        }
+        let [child] = group.children[..] else {
+            return Ok(false);
+        };
+        let (mark, store) = match self.scene.node(child) {
+            Some(Node::Fill(fill)) => (&fill.mark, true),
+            Some(Node::Stroke(stroke)) => (&stroke.mark, true),
+            Some(Node::Image(image)) => (&image.mark, true),
+            Some(Node::Shading(shading)) => (&shading.mark, true),
+            Some(Node::Group(id)) => match self.scene.group(*id) {
+                Some(member) if member.role == GroupRole::Transparency => (&member.mark, false),
+                _ => return Ok(false),
+            },
+            _ => return Ok(false),
+        };
+        let member = self::state(self.scene, mark.state)?;
+        let keeps = store
+            && Keeping {
+                separated: self.inputs.simulate,
+                policy: self.inputs.policy,
+            }
+            .keeps(
+                member,
+                Place {
+                    masked: context.masked,
+                    cmyk: layout.process == Process::Cmyk,
+                    direct_cmyk: true,
+                },
+            );
+        Ok(member.blend == BlendMode::Normal
+            && !(member.alpha_is_shape && context.knockout)
+            && !(masked && member.soft_mask.is_some())
+            && (store || member.transfer.is_none())
+            && !keeps)
     }
 
     fn mask(
@@ -774,6 +965,8 @@ impl Survey<'_> {
         self.cells.insert((pattern, layout.process), buffer);
         let inner = Context {
             selects: false,
+            knockout: true,
+            alpha: 1.0,
             transform: tiling.matrix.then(context.transform),
             ..context
         };
@@ -811,6 +1004,8 @@ struct Stores<'h> {
     count: usize,
     /// One device hull per store where footprints matter, else none.
     hulls: &'h [Option<bounds::Hull>],
+    /// Glyph placements' own pixels in a knockout group, else none.
+    apart: &'h [DeviceRect],
     /// The device hull of all of them, where a group's extent needs it.
     extent: Option<bounds::Hull>,
     /// The source's alpha is its shape (not an image with a soft mask).
@@ -819,6 +1014,28 @@ struct Stores<'h> {
 
 /// Whether a store of `kind` under `state` is dynamic (ADR 0004 §6): all
 /// but opaque constant colours that only coverage reduces.
+/// A group of alpha 1 and Normal blend through no soft mask, its own or a
+/// folded group's: its result composites as its content.
+fn plain(state: &Composite, context: Context) -> bool {
+    state.alpha == 1.0
+        && state.blend == BlendMode::Normal
+        && state.soft_mask.is_none()
+        && context.mask.is_none()
+}
+
+/// `state` of the member of a folded group: at the group's alpha times its
+/// own.
+fn folded(state: &Composite, context: Context) -> std::borrow::Cow<'_, Composite> {
+    if context.alpha == 1.0 {
+        std::borrow::Cow::Borrowed(state)
+    } else {
+        std::borrow::Cow::Owned(Composite {
+            alpha: state.alpha * context.alpha,
+            ..state.clone()
+        })
+    }
+}
+
 fn dynamic(kind: Kind, state: &Composite) -> bool {
     !(kind == Kind::Constant && state.soft_mask.is_none() && state.alpha == 1.0)
 }

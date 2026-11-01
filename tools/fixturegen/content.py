@@ -792,7 +792,10 @@ def icc_cases():
     yield Case('icc-rgb-columns',pdf(profile,command=command),RENDER,('content-icc-matrix',),'Independent unequal per-channel TRCs and PCS matrix columns',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
     yield Case('icc-initial-zero',pdf(icc_profile(4,version=5),4,b'/C cs 0 0 8 8 re f',b'/DeviceCMYK'),RENDER,('content-icc-matrix',),'Later-version fallback retains ICCBased all-zero initialization, rather than DeviceCMYK black',oracle=opaque_rectangles(8,8,[]))
     yield repaired('icc-simple-operator',pdf(icc_profile(),command=b'/C cs .5 .5 .5 sc'),'color-operator',requirements=('content-icc-matrix',))
-    yield Case('icc-invalid-data',pdf(b'not a profile'),OPEN,('content-icc-matrix',),'Non-profile data cannot establish ICC fallback',extra={'render_error':'Syntax'})
+    # 8.6.5.5: data that is no profile is unusable; the Alternate draws, reported.
+    yield Case('icc-invalid-data',pdf(b'not a profile',command=b'/C cs 1 0 0 scn 0 0 8 8 re f'),RENDER,('content-icc-matrix',),'Unusable ICC data falls back to the Alternate space as a reported repair',oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
+    no_alternate=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/ICCBased 5 0 R] >> >> /Contents 4 0 R >>',stream(b'/C cs 0 1 1 0 scn 0 0 8 8 re f'),stream(b'not a profile',b'/N 4')])
+    yield Case('icc-invalid-data-default',no_alternate,RENDER,('content-icc-matrix',),'Unusable ICC data without an Alternate falls back to the N default',oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
     yield from icc_validation_cases()
     yield from icc_lut_cases()
 
@@ -1348,8 +1351,16 @@ def icc_validation_cases():
     for name,alternate in [('alternate-wrong-n',b'/DeviceGray'),('alternate-pattern',b'/Pattern')]:bad.append((name,icc_profile(),{'alternate':alternate}))
     bad.append(('range-rgb-mismatch',icc_profile(),{'extra':b'/Range [0 2 0 1 0 1]'}))
     for name,raw,options in bad:
-        yield Case('icc-'+name,icc_pdf(raw,**options),OPEN,('content-icc-admission',),
-            'ICC.1:2010 7.2–7.4, 8.2–8.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field',extra={'render_error':'Syntax'})
+        if options:
+            # PDF-level faults (Alternate, Range) stay errors.
+            yield Case('icc-'+name,icc_pdf(raw,**options),OPEN,('content-icc-admission',),
+                'ISO 8.6.5.5 Table 65: reject the independently malformed PDF entry',extra={'render_error':'Syntax'})
+            continue
+        # The malformed profile is unusable: strict mode rejects it, and repair
+        # mode draws the Alternate space instead (8.6.5.5, content.icc-unusable).
+        yield Case('icc-'+name,icc_pdf(raw,command=b'/C cs 1 0 0 scn 0 0 8 8 re f'),RENDER,('content-icc-admission',),
+            'ICC.1:2010 7.2–7.4, 8.2–8.7, 9.2.15/34, 10.1/5/16/29: the independently malformed field makes the profile unusable; the Alternate draws',
+            oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
 
 
 def icc_pcs_rgb(values, pcs, legacy=False):
@@ -1486,6 +1497,18 @@ def icc_lut_cases():
         inputs=[(0,-128,-128),(100,127,127),(50,0,0),(60,25,-20),(-1,-200,200),(200,200,-200),(25,-40,30),(75,10,20)]
         normal=lambda v:(min(100,max(0,v[0]))/100,(min(127,max(-128,v[1]))+128)/255,(min(127,max(-128,v[2]))+128)/255)
         yield icc_samples(f'icc-{kind.decode()}-Lab-input',icc_pack(tags,3,space=b'Lab ',pcs=b'Lab '),inputs,[icc_pcs_rgb(ref(normal(v)),b'Lab ',precision==2) for v in inputs],3,'content-icc-lut',extra=b'/Range [0 100 -128 127 -128 127]')
+        # Without Range, a Lab-input profile's components keep CIELAB units
+        # (Table 65: Range matches the profile), as other readers take them.
+        yield icc_samples(f'icc-{kind.decode()}-Lab-input-default-range',icc_pack(tags,3,space=b'Lab ',pcs=b'Lab '),inputs,[icc_pcs_rgb(ref(normal(v)),b'Lab ',precision==2) for v in inputs],3,'content-icc-lut')
+        # A spot colour whose tint transform yields L*a*b* for such a
+        # profile, as page layout applications write named inks.
+        if kind==b'mft1':
+            tints=(0,.5,1);c0,c1=(100,0,0),(62.3529,4,11)
+            lab=lambda t:tuple(a+t*(b-a) for a,b in zip(c0,c1))
+            command=b'/C cs '+b' '.join(f'{t} scn {i*3} 0 3 8 re f'.encode() for i,t in enumerate(tints))
+            pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/Separation /Ink [/ICCBased 5 0 R] << /FunctionType 2 /Domain [0 1] /C0 [100 0 0] /C1 [62.3529 4 11] /N 1 /Range [0 100 -128 127 -128 127] >>] >> >> /Contents 4 0 R >>',stream(command),stream(icc_pack(tags,3,space=b'Lab ',pcs=b'Lab '),b'/N 3 /Alternate /DeviceRGB')])
+            colours=[icc_pcs_rgb(ref(normal(lab(t))),b'Lab ') for t in tints]
+            yield Case('icc-separation-Lab-default-range',pdf,RENDER,('content-icc-lut',),'Separation through an ICCBased Lab-input alternate without Range: tints keep CIELAB units; independent quantized formula oracle',oracle=opaque_rectangles(8,8,[((i*3,0,min(3,8-i*3),8),colour) for i,colour in enumerate(colours)]),extra={'tolerance':1})
     # Near black, legacy-vs-modern Lab decoding differs by multiple byte levels.
     for version in (2,4):
         tags=icc_tags(4,version=version);tags[b'A2B0']=icc_legacy(4,constant=(3264/65535,32768/65535,32768/65535))[0]
@@ -1524,7 +1547,9 @@ def icc_lut_cases():
         raw=bytearray(base);raw[offset:offset+len(value)]=value;bad.append((name,bytes(raw)))
     for name,raw in bad:
         tags=icc_tags(4);tags[b'A2B0']=raw
-        yield Case('icc-'+name,icc_pdf(icc_pack(tags,4),4),OPEN,('content-icc-admission',),'ICC 10.8/10.10 invalid processing-element structure',extra={'render_error':'Syntax'})
+        yield Case('icc-'+name,icc_pdf(icc_pack(tags,4),4,command=b'/C cs 0 1 1 0 scn 0 0 8 8 re f'),RENDER,('content-icc-admission',),
+            'ICC 10.8/10.10 invalid processing-element structure makes the profile unusable; the CMYK Alternate draws',
+            oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]),repairs=('content.icc-unusable',),strict_valid=False)
 
     for kind in ('mft2','mAB'):
         raw=bytearray(icc_legacy(4)[0] if kind=='mft2' else icc_mab(4))

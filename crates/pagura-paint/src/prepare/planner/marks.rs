@@ -81,6 +81,8 @@ impl Planner<'_> {
         inner.crop = false;
         inner.bounds = bounds;
         inner.plain = false;
+        inner.alpha = 1.0;
+        inner.mask = None;
         inner.records = false;
         inner.depth += 1;
         // This replaces a cell walk, which ordinarily checks the same depth.
@@ -279,10 +281,10 @@ impl Planner<'_> {
         if culling.is_empty() {
             return Ok(());
         }
-        let mask = state
-            .soft_mask
-            .map(|id| self.mask_use(scope, id, budget))
-            .transpose()?;
+        let mask = match state.soft_mask {
+            Some(id) => Some(self.mask_use(scope, id, budget)?),
+            None => scope.mask,
+        };
         if let Colour::Image(node) = spec.colour
             && matches!(paint.as_deref(), Some(Paint::Tiling(_) | Paint::Shading(_)))
             && patterned
@@ -298,7 +300,7 @@ impl Planner<'_> {
         }
         self.use_mask(mask, covered.bounds, budget)?;
         let compositing = Compositing {
-            alpha: state.alpha,
+            alpha: state.alpha * scope.alpha,
             blend: state.blend,
             alpha_is_shape: state.alpha_is_shape,
             mask,

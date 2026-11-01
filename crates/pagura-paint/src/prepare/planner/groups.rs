@@ -6,7 +6,7 @@ use super::{Planner, Scope};
 use crate::plan::{
     Compositing, Conversion, Curve, GroupPlan, Item, ItemKind, Layout, Start, area, intersect,
 };
-use crate::prepare::storage;
+use crate::prepare::storage::{self, Route};
 use crate::prepare::{Budget, bounds, index};
 use pagura_color::{Encoder, Process};
 use pagura_core::{Error, Position, Result};
@@ -52,16 +52,21 @@ impl Planner<'_> {
         if culling.is_empty() {
             return Ok(());
         }
-        let plain = state.alpha == 1.0
+        // The member of a folded group composites at its alpha too.
+        let alpha = state.alpha * scope.alpha;
+        let plain = alpha == 1.0
             && state.blend == pagura_interpret::BlendMode::Normal
-            && state.soft_mask.is_none();
-        let inner = |group: u32, layout: Layout| Scope {
+            && state.soft_mask.is_none()
+            && scope.mask.is_none();
+        let inner = |group: u32, layout: Layout, (alpha, mask): (f64, Option<u32>)| Scope {
             group,
             transform,
             crop: scope.crop,
             bounds: culling,
             layout,
             plain: scope.plain && plain,
+            alpha,
+            mask,
             records: scope.records,
             separated: scope.separated,
             masked: scope.masked,
@@ -69,17 +74,23 @@ impl Planner<'_> {
             stencil_clip: scope.stencil_clip,
             depth: scope.depth + 1,
         };
-        if decision.flatten {
-            return self.children(&inner(scope.group, scope.layout), &group.children, budget);
+        let position = group.mark.position;
+        match decision.route {
+            Route::Skip => return Ok(()),
+            Route::Flatten => {
+                let inner = inner(scope.group, scope.layout, (1.0, None));
+                return self.children(&inner, &group.children, budget);
+            }
+            Route::Fold => {
+                let mask = self.group_mask(scope, &state, position, budget)?;
+                let inner = inner(scope.group, scope.layout, (alpha, mask));
+                return self.children(&inner, &group.children, budget);
+            }
+            Route::Buffer => {}
         }
         self.serial += 1;
         let serial = self.serial;
-        let position = group.mark.position;
-        let mask = state
-            .soft_mask
-            .map(|mask| self.mask_use(scope, mask, budget))
-            .transpose()
-            .map_err(|e| self.fail(e, position))?;
+        let mask = self.group_mask(scope, &state, position, budget)?;
         let layout = storage::group_layout(group.attributes, scope.layout);
         let child = self.new_group(
             GroupPlan {
@@ -97,16 +108,35 @@ impl Planner<'_> {
             },
             budget,
         )?;
-        self.children(&inner(child, layout), &group.children, budget)?;
+        self.children(&inner(child, layout, (1.0, None)), &group.children, budget)?;
         let result = GroupResult {
             group: child,
             state: &state,
+            alpha,
             culling,
             serial,
             position,
             mask,
         };
         self.group_result(scope, &result, budget)
+    }
+
+    /// The soft mask a group composites through: its own, or that of the
+    /// folded group it is the member of.
+    fn group_mask(
+        &mut self,
+        scope: &Scope,
+        state: &pagura_interpret::Composite,
+        position: Position,
+        budget: &mut Budget,
+    ) -> Result<Option<u32>> {
+        match state.soft_mask {
+            Some(id) => self
+                .mask_use(scope, id, budget)
+                .map(Some)
+                .map_err(|e| self.fail(e, position)),
+            None => Ok(scope.mask),
+        }
     }
 
     /// Composites a planned group's result into `scope`'s group.
@@ -136,7 +166,7 @@ impl Planner<'_> {
             Some(self.conversion(layout.process, to, &state.conversion, bounds, budget)?)
         };
         let compositing = Compositing {
-            alpha: state.alpha,
+            alpha: result.alpha,
             blend: state.blend,
             alpha_is_shape: state.alpha_is_shape,
             mask: result.mask,
@@ -198,6 +228,8 @@ impl Planner<'_> {
 struct GroupResult<'a> {
     group: u32,
     state: &'a pagura_interpret::Composite,
+    /// Its alpha times that of the folded group it is the member of.
+    alpha: f64,
     culling: DeviceRect,
     serial: u32,
     position: Position,

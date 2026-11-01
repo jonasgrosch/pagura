@@ -148,7 +148,32 @@ exact result.
   f64 evaluation. Feeding is transitive: a group or soft mask whose result
   enters such a buffer feeds the operation too. The renderer's
   classification of each operation, with its amplification bound, decides
-  the side (`BlendMode::amplifies` for blend modes).
+  the side (`BlendMode::amplifies` for blend modes). Knockout is
+  source-over, and so non-amplifying, where every member's opacity equals
+  its shape (the opaque-member identity) or where its Normal members'
+  footprints share no pixel (the disjoint-member identity): at a pixel of
+  one member, (1 - s) b + s ((1 - α/s) b + (α/s) c) = (1 - α) b + α c.
+  Footprints are conservative device bounds, a pixel wider than a mark's
+  hull, except a glyph placement's: its outline's control hull under L at
+  its origin, grown by 2^-32 of the coordinates' magnitude and 2^-32
+  pixels, far beyond the rasterizer's rounding of that geometry (the
+  flattener's hull allowance stays below 2^-41 of it), so that its far
+  edges keep a geometric point's floor cell.
+  A group whose result
+  has alpha 0 at every pixel (alpha 0, or no member of positive alpha)
+  leaves its parent's colour and alpha as they are and feeds nothing; it is
+  left out unless a knockout above it reads its shape or a transfer function
+  is selected (11.7.5.2). A group of constant alpha m whose one member is
+  a single store (a fill, stroke, image or shading) or group of Normal
+  blend is that member at m times its own opacity: the member's
+  source-over at opacity a, composited at m, is source-over at m a
+  (11.4.8). The group's soft mask multiplies opacity the same way and
+  passes to a member without one. Such a group folds into its parent
+  without a buffer, unless a knockout, a transfer function, another
+  blending space, a kept component or a second soft mask stands between
+  them. Alpha as shape, on either, changes only the shape the member
+  composites with, which only a knockout reads, above them or in a
+  pattern's instances; elsewhere it folds too.
 - **Sources** enter composition as f64 values from prepared converters,
   functions and samplers. The storage bounds of sections 5 and 6 include
   encoding them and reserve a margin for their f64 evaluation.
@@ -566,7 +591,7 @@ format costs bandwidth, not page-sized memory.
   that receives a store with a blend mode other than Normal or with a
   transfer function, and every soft mask with a transfer function; buffers
   with spot channels and every buffer under overprint simulation; buffers
-  whose blending space is not RGB; knockout groups, except those whose
+  whose blending space is not RGB, except a page in CMYK; knockout groups, except those whose
   members after the first have opacity equal to their shape (opaque
   members), which composite as source-over: the first meets the group's
   initial backdrop, where knockout is source-over at any opacity, as the
@@ -591,8 +616,10 @@ and u: one integer rounding of at most 127/255 words. The initial value
 background and within half a word otherwise. The output is the nearest byte
 of u/257, which is never a tie, so it adds at most 128/257 levels.
 
-F32 stores four f32 channels of levels on 0..255, 16 bytes per pixel.
-Inexact source levels are encoded with round-to-odd, which keeps their side
+F32 stores four f32 channels of levels on 0..255, 16 bytes per pixel; a CMYK
+page stores five, its additive C, M, Y and K levels and alpha, 20 bytes per
+pixel, starts transparent, and output converts each pixel in f64 from its
+levels. Inexact source levels are encoded with round-to-odd, which keeps their side
 of a following nearest-byte boundary; exact levels stay exact. Full-opacity
 stores overwrite; other stores evaluate x += a (t - x) with separate
 roundings. Let ρ = 2^-17 levels, one rounding below 256, and
@@ -645,17 +672,30 @@ the 2^-12 margin covers f64 source evaluation, and the final nearest byte
 adds at most half a level. A stack of 270,000 stores of opacity 3/2^27
 therefore stays F64.
 
+**CMYK pages.** Output gives a pixel of a CMYK page with additive levels c
+and k (one colour channel and black, premultiplied) and alpha α the value
+max(min(c, α) + min(k, α) - α, 0) + b (1 - α/255) for a background level b,
+and min is the clamp of straight values to one. Its partial derivatives are
+at most 1 in c and in k and at most 2 in α, so storage errors within E levels
+in each channel move it by at most 4E. A CMYK page is therefore admitted to
+F32 when four times the left side of the F32 inequality is at most
+1/2 - 2^-12 levels, the f64 conversion staying within the margin. N16 has no
+CMYK form. Group and soft-mask buffers in CMYK, and every buffer whose
+result reaches its parent through a conversion between blending spaces,
+stay F64; a CMYK page's F64 children inject into it as above, channel by
+channel.
+
 **Children.** A child buffer B, a group or a soft mask, reaches its parent as
 one dynamic store at each pixel it touches, evaluated in f64 from B's stored
 values and rounded once to the parent's format. A narrow child is an isolated
 group, a non-isolated group of Normal content (source-over is associative, so
 it composites as an isolated one) or a soft mask, in an RGB blending space,
-without knockout other than the opaque-member identity, composited with
-Normal into a narrow parent. Every other child is F64, since no inequality
-bounds what narrow children inject into an F64 parent. Let B's colour and
-alpha channels be within E_c(B) and E_α(B) levels of their reference, and m be
-the composite's opacity factor (constant alpha, coverage and soft-mask
-value). The composite x' = (1 - m α/255) x + m c then injects
+without knockout other than the opaque- and disjoint-member identities,
+composited with Normal into a narrow parent. Every other child is F64, since
+no inequality bounds what narrow children inject into an F64 parent. Let B's
+colour and alpha channels be within E_c(B) and E_α(B) levels of their
+reference, and m be the composite's opacity factor (constant alpha, coverage
+and soft-mask value). The composite x' = (1 - m α/255) x + m c then injects
 
     η ≤ m (E_c(B) + (256/255) E_α(B)) + 2^-40 levels,
 
@@ -698,10 +738,10 @@ dynamic store at an N16 pixel, because two nearest-word roundings exceed its
 room; N16 children; narrow children of F64 parents; blend modes other than
 Normal and transfer functions in a buffer, whose results depend on the
 backdrop in a way the lemma does not model; non-isolated groups whose content
-is not all Normal, because removing the backdrop divides by the group's
-alpha; knockout groups other than the opaque-member identity; non-RGB
-blending spaces, spot channels and overprint simulation, whose conversions
-and spot accumulation the lemma does not cover; and promotion of byte-stored
+is not all Normal, because removing the backdrop divides by the group's alpha;
+knockout groups other than the opaque- and disjoint-member identities; non-RGB
+blending spaces other than a CMYK page, spot channels and overprint simulation,
+whose conversions and spot accumulation the lemma does not cover; and promotion of byte-stored
 chunks to N16 (ADR 0034), which needs a bound for a start already rounded to
 bytes and work aligned to a global chunk grid.
 

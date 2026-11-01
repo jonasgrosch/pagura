@@ -90,6 +90,8 @@ impl Planner<'_> {
                             bounds,
                             layout: scope.layout,
                             plain: false,
+                            alpha: 1.0,
+                            mask: None,
                             records: false,
                             separated: scope.separated,
                             masked: scope.masked,

@@ -4,6 +4,7 @@
 
 use super::{Buffer, Survey};
 use crate::format::Format;
+use pagura_color::Process;
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::DeviceRect;
 
@@ -23,11 +24,19 @@ pub(super) const F64_STORE: f64 = 1.0 / 1_099_511_627_776.0;
 /// The F32 admission limit, in levels.
 const F32_LIMIT: f64 = 0.5 - 1.0 / 4096.0;
 
+/// How far a CMYK page's output conversion amplifies the errors of its
+/// stored levels: one each for a colour channel and black, two for alpha.
+const CMYK_OUTPUT: f64 = 4.0;
+
 /// The room an N16 buffer leaves for dynamic stores, in words.
 const N16_ROOM: f64 = 0.5 - 1.0 / 68_719_476_736.0;
 
 /// The most dynamic stores whose footprints N16 admission compares.
 pub(super) const FOOTPRINTS: usize = 4096;
+
+/// The footprint comparisons the disjoint-member identity may spend on one
+/// page, over all its knockout groups; past them a group knocks out.
+pub(super) const APART_COMPARISONS: usize = 1 << 22;
 
 /// Whether an N16 page admits `buffer`'s dynamic stores: at most one at
 /// any pixel, each injecting less than the room an N16 pixel leaves
@@ -67,19 +76,61 @@ pub(super) fn n16_admits(
             .map(|store| store.rect)
             .filter(|rect| !rect.is_empty()),
     );
-    let admitted = disjoint(&mut rects, bytes)?;
+    // At most FOOTPRINTS rectangles: a sweep never compares more pairs.
+    let admitted = disjoint(&mut rects, |_| true, bytes)?;
     let released = rects.capacity() * size_of::<DeviceRect>();
     drop(rects);
     bytes.refund(released);
     Ok(admitted)
 }
 
-/// Whether no two rectangles share a pixel.
-fn disjoint(rects: &mut [DeviceRect], bytes: &mut Meter) -> Result<bool> {
+/// Whether every dynamic store of knockout `buffer` has a footprint and no
+/// two share a pixel, within `comparisons` (false past them). Footprints are
+/// page-level device bounds, so the answer does not depend on the region.
+pub(super) fn disjoint_members(
+    buffer: &Buffer,
+    comparisons: &mut usize,
+    bytes: &mut Meter,
+) -> Result<bool> {
+    let footprints = &buffer.footprints;
+    if buffer.dynamics.len() != buffer.dynamic
+        || footprints.len() != buffer.dynamic
+        || buffer.dynamic > FOOTPRINTS
+    {
+        return Ok(false);
+    }
+    let mut rects = Vec::new();
+    bytes.reserve_capacity(&mut rects, footprints.len())?;
+    rects.extend(footprints.iter().copied().filter(|rect| !rect.is_empty()));
+    let spend = |visited: usize| match comparisons.checked_sub(visited) {
+        Some(left) => {
+            *comparisons = left;
+            true
+        }
+        None => false,
+    };
+    let admitted = disjoint(&mut rects, spend, bytes)?;
+    let released = rects.capacity() * size_of::<DeviceRect>();
+    drop(rects);
+    bytes.refund(released);
+    Ok(admitted)
+}
+
+/// Whether no two rectangles share a pixel; false once `spend` refuses the
+/// rectangles a sweep step visits.
+fn disjoint(
+    rects: &mut [DeviceRect],
+    mut spend: impl FnMut(usize) -> bool,
+    bytes: &mut Meter,
+) -> Result<bool> {
     rects.sort_unstable_by_key(|r| r.x0);
     let mut active: Vec<DeviceRect> = Vec::new();
     let mut disjoint = true;
     for rect in rects.iter() {
+        if !spend(active.len()) {
+            disjoint = false;
+            break;
+        }
         active.retain(|other| other.x1 > rect.x0);
         if active
             .iter()
@@ -95,6 +146,17 @@ fn disjoint(rects: &mut [DeviceRect], bytes: &mut Meter) -> Result<bool> {
     drop(active);
     bytes.refund(released);
     Ok(disjoint)
+}
+
+/// Narrow storage holds `buffer`'s layout: RGB, or for the page CMYK without
+/// spot channels (ADR 0004 §6). A layout is the buffer's own, so it does not
+/// pass to the buffer a group flattens into.
+fn narrow_layout(buffer: &Buffer) -> bool {
+    match buffer.layout.process {
+        Process::Rgb => true,
+        Process::Cmyk => buffer.page && buffer.layout.spots == 0,
+        Process::Gray => false,
+    }
 }
 
 impl Survey<'_> {
@@ -125,15 +187,18 @@ impl Survey<'_> {
         }
         let stores = buffer.stores as f64;
         let wide = (stores * F64_STORE + MARGIN + injected, Format::F64);
-        let n16 = !buffer.forced && buffer.page && n16_admits(buffer, resolved, bytes)?;
+        // N16 stores RGB alone; a CMYK page's output amplifies its errors.
+        let rgb = buffer.layout.process == Process::Rgb;
+        let n16 = !buffer.forced && buffer.page && rgb && n16_admits(buffer, resolved, bytes)?;
+        let amplified = if rgb { 1.0 } else { CMYK_OUTPUT };
         let f32_bound =
             PI + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64) + injected;
-        let (bound, format) = if buffer.forced {
+        let (bound, format) = if buffer.forced || !narrow_layout(buffer) {
             wide
         } else if n16 {
             // The page's bound is never used as a child's.
             (0.5, Format::N16)
-        } else if f32_bound <= F32_LIMIT {
+        } else if amplified * f32_bound <= F32_LIMIT {
             (f32_bound + MARGIN, Format::F32)
         } else {
             wide
@@ -213,6 +278,7 @@ mod tests {
                 pixels: build.page(),
                 user_unit: 1.0,
             },
+            skips: true,
             buffers: Vec::new(),
             groups: FastMap::default(),
             masks: FastMap::default(),
@@ -220,6 +286,7 @@ mod tests {
             open: Vec::new(),
             outlines: FastMap::default(),
             transfers: false,
+            comparisons: APART_COMPARISONS,
         };
         let mut fixture = Meter::new(1 << 20, "proof fixture");
         let node = survey
@@ -254,5 +321,56 @@ mod tests {
             Format::F64
         );
         assert_eq!(no_scratch.used(), 0);
+    }
+
+    #[test]
+    fn cmyk_pages_admit_f32_at_a_quarter_of_the_bound() {
+        // Pages whose F32 bound is about 0.2 or 0.1 levels: CMYK output
+        // amplifies it four times, so only the smaller one admits CMYK.
+        let build = Build::new(4.0, 4.0);
+        let cases = [
+            (Process::Rgb, 26_000, Format::F32),
+            (Process::Cmyk, 26_000, Format::F64),
+            (Process::Cmyk, 13_000, Format::F32),
+            (Process::Gray, 13_000, Format::F64),
+        ];
+        for (process, dynamic, format) in cases {
+            let mut survey = Survey {
+                scene: &build.scene,
+                inputs: Inputs {
+                    page: Layout { process, spots: 0 },
+                    simulate: false,
+                    policy: false,
+                    depth: 64,
+                    transform: build.transform(),
+                    pixels: build.page(),
+                    user_unit: 1.0,
+                },
+                buffers: Vec::new(),
+                groups: FastMap::default(),
+                masks: FastMap::default(),
+                cells: FastMap::default(),
+                open: Vec::new(),
+                outlines: FastMap::default(),
+                transfers: false,
+                skips: true,
+                comparisons: APART_COMPARISONS,
+            };
+            let mut bytes = Meter::new(1 << 20, "admission fixture");
+            let node = survey
+                .buffer(survey.inputs.page, false, &mut bytes)
+                .unwrap();
+            let buffer = &mut survey.buffers[node];
+            buffer.page = true;
+            buffer.theta = 1.0;
+            buffer.stores = dynamic + 1;
+            buffer.dynamic = dynamic;
+            let mut resolved = vec![None];
+            let (admitted, _) = survey.resolve(node, &mut resolved, 0, &mut bytes).unwrap();
+            assert_eq!(
+                admitted, format,
+                "{process:?} with {dynamic} dynamic stores"
+            );
+        }
     }
 }
