@@ -53,13 +53,14 @@ def cases():
         ('reverse-order',b'[6 0 R null 4 0 R]',[6,4],True,False),
         ('indirect-array',b'[4 0 R null 6 0 R]',[4,6],True,True),
         ('many-nulls',b'['+b'null '*1025+b'4 0 R 6 0 R]',[4,6],True,False),
+        ('indirect-null',b'[4 0 R 9 0 R 6 0 R]',[4,6],True,False),
     ]:
         yield Case(name,pdf(array,indirect=indirect),RENDER,REQUIREMENT,
                    'Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped',
-                   oracle=oracle(members),repairs=(TAG,) if repaired else (),strict_valid=not repaired,
-                   extra={'expected_annotation_ids':members,'expected_link_count':int(6 in members)})
+                   oracle=oracle(members),repairs=(('pages.annotation-null-reference' if name == 'indirect-null' else TAG),) if repaired else (),strict_valid=not repaired,
+                   extra={'expected_annotation_ids':members,'expected_link_count':int(6 in members),
+                          **({'mode_errors':{'strict':{'kind':'Syntax','repair':None}},'scan_recovery':'repair'} if name == 'indirect-null' else {})})
     for name, array, error, repaired, fault in [
-        ('indirect-null',b'[4 0 R 9 0 R 6 0 R]','syntax',False,None),
         ('undefined-reference',b'[4 0 R 99 0 R 6 0 R]','syntax',False,None),
         ('wrong-generation',b'[4 1 R 6 0 R]','syntax',False,None),
         ('boolean',b'[4 0 R true 6 0 R]','syntax',False,None),

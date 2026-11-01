@@ -7,8 +7,15 @@ packaging repair, bounded Type 4 calculator branch proofs, complete inline-EI
 framing and declared-precision JP2 palette-padding recovery. Component evidence
 retains its exact source provenance. This selected union requires its own
 accuracy, all-page, parity, cost, memory and exact-head CI qualification; no
-aggregate gain follows by summing branches. Referenced null annotations remain
-errors in this source.
+aggregate gain follows by summing branches. Immediate exact defined Null references additionally follow the reported Repair-only member policy described below.
+Literal null members of page Annots arrays can be recovered with the
+reported `pages.annotation-null` policy (see [RECOVERY](RECOVERY.md)).
+Rendering, links and signature-role traversal share the gate; original
+references/order and array budgets remain authoritative. Immediate exact defined Null references use the separate reported
+`pages.annotation-null-reference` policy; undefined/free/other-generation or
+chained targets remain errors. Repaired signed graphs cannot
+establish an Allowed modification. Whole-field Annots null handling is
+a separate existing gap; this recovery does not normalize that field.
 
 Pagura has substantial rendering, reading, form-filling and incremental-writing
 support. It is **not a complete PDF implementation**, and feature parity with

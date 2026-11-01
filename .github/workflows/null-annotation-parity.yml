@@ -5,7 +5,9 @@ on:
       - 'crates/**'
       - 'tools/null_annotation_parity.mjs'
       - 'tools/fixturegen/recovery_annotations.py'
+      - 'tools/fixturegen/recovery_annotation_references.py'
       - 'corpus/manifests/recovery_annotations.json'
+      - 'corpus/manifests/recovery_annotation_references.json'
       - 'benchmarks/probes/null-annotation-fixtures.json'
       - '.github/workflows/null-annotation-parity.yml'
   workflow_dispatch:
@@ -17,8 +19,12 @@ concurrency:
 jobs:
   oracle:
     runs-on: ubuntu-latest
+    env:
+      PAGURA_QUAL_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install pinned toolchain
         run: rustup toolchain install 1.99.1 --profile minimal --target wasm32-wasip1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020

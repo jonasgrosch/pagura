@@ -587,8 +587,8 @@ mod tests {
     }
 
     #[test]
-    fn referenced_null_and_missing_annotation_roles_are_not_complete() {
-        for name in ["indirect-null", "undefined-reference", "wrong-generation"] {
+    fn missing_annotation_roles_are_not_complete() {
+        for name in ["undefined-reference", "wrong-generation"] {
             for recovery in [Recovery::Strict, Recovery::Repair] {
                 let doc = Document::open(
                     fixture("recovery_annotations", &format!("{name}.pdf")),
@@ -609,6 +609,45 @@ mod tests {
                 );
                 assert_eq!(doc.diagnostics(), []);
             }
+        }
+    }
+
+    #[test]
+    fn defined_null_annotation_roles_are_repaired_as_ambiguous() {
+        let bytes = fixture("recovery_annotations", "indirect-null.pdf");
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let doc = Document::open(
+                bytes.clone(),
+                &OpenOptions {
+                    recovery,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let result = read(
+                &doc,
+                &mut Context::new(&doc),
+                &super::super::history::Facts::default(),
+            );
+            if recovery == Recovery::Strict {
+                let error = result.err().expect("Strict retains the original refusal");
+                assert_eq!(error.kind, ErrorKind::Syntax);
+                assert_eq!(error.repair, None);
+                assert_eq!(doc.diagnostics(), []);
+            } else {
+                let roles = result.unwrap();
+                assert!(roles.ambiguous);
+                assert_eq!(
+                    roles.page_annotations.get(&ObjectId::new(3, 0)).unwrap(),
+                    &[ObjectId::new(4, 0), ObjectId::new(6, 0)]
+                );
+                assert_eq!(doc.diagnostics().len(), 1);
+                assert_eq!(
+                    doc.diagnostics()[0].tag(),
+                    crate::repairs::ANNOTATION_NULL_REFERENCE.as_str()
+                );
+            }
+            assert_eq!(doc.original_bytes(), bytes.as_slice());
         }
     }
 

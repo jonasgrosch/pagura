@@ -257,17 +257,35 @@
     {
       "id": "recovery_annotations/indirect-null",
       "kind": "pdf",
-      "description": "Non-null references and malformed real annotations remain required; a painted page prefix must not become a partial successful output",
-      "expected": "open",
+      "description": "Stored red Square and green Link appearances retain source order; literal array null is reported before it is skipped",
+      "expected": "render",
       "requirements": [
         "recovery-annotation-null-entry"
       ],
       "path": "corpus/generated/recovery_annotations/indirect-null.pdf",
       "sha256": "1be0e6b8aeee025b210c10809b7da0934728ed5d4245c83c6ced2435221d0fa2",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "syntax"
+      "strict_valid": false,
+      "repairs": [
+        "pages.annotation-null-reference"
+      ],
+      "oracle": "corpus/generated/recovery_annotations/indirect-null.ppm",
+      "oracle_sha256": "b15bd33c850bcebe35d510df83d1744f5ce223accf786b847ace7a96e4868cbd",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "expected_annotation_ids": [
+        4,
+        6
+      ],
+      "expected_link_count": 1,
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "repair": null
+        }
+      },
+      "scan_recovery": "repair"
     },
     {
       "id": "recovery_annotations/undefined-reference",

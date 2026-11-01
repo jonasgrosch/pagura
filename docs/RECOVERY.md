@@ -28,6 +28,8 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   of a page's Annots array after reporting recovery. Original annotation
   references, order and raw-array budgets are preserved. References to
   null or unavailable objects remain validation failures. Strict rejects
+  references, order and raw-array budgets are preserved. Unavailable or chained references remain validation failures; immediate
+  defined Null targets have the separate reported policy below. Strict rejects
   before skipping; this is not the dictionary-null rule of 7.3.9 and does
   not normalize the whole Annots field. Rendering, links and signature-role
   traversal share the document-owned member gate. Signature roles retain
@@ -421,3 +423,28 @@ budgets. Failed retries or concurrent cache misses may repeat work; no global
 ordinary document cache entries/diagnostics, while its own repair tag is emitted
 only after loader success. Exact original Strict errors remain untagged and are
 checked separately from explicit Repair scans and independent full-page pixels.
+
+`pages.annotation-null-reference` is a separate Repair-only reader policy for
+Annots members: the current revision must contain the exact in-use object
+number/generation, and its immediate value must be nonstream Null. The diagnostic
+names that target and its source position. It never follows a reference chain
+or uses undefined/free/different-generation objects as proof. Original source
+bytes, raw-array counts/work, surviving annotation order and dictionary identity
+remain authoritative. Whole-field Annots handling is unchanged.
+
+Strict retains its original untagged expected-dictionary error and full context.
+Rendering, links and signature roles share the gate; later malformed members
+still fail the complete operation. Existing Strict historical-source reopening,
+role ambiguity, diagnostics-to-Inconclusive and incremental-save permission
+guards remain intact. Placeholder signed controls assert no cryptographic
+integrity. The old indirect-null fixture's Repair contract intentionally changes
+under this separate tag; its archived original refusal and all PDF bytes remain
+preserved, and the other30 qualified literal-null contracts remain unchanged.
+
+The immediate defined-null reference policy uses the parsed nonstream value.
+Existing parser recovery can therefore compose: an object body `0 0 R` becomes
+Null through `syntax.reference-zero`, then the annotation gate reports
+`pages.annotation-null-reference`. Strict retains its earlier full parser
+error/tag. The ordinary bounded diagnostic store can suppress either report;
+admission never depends on searching that mutable store. Undefined/free/other
+generations and nonzero reference chains remain required failures.

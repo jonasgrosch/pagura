@@ -4,6 +4,20 @@
 use pagura::{JBIG2_EOF_PAGE_ASSOCIATION, JBIG2_FILE_WRAPPER, form_appearance, repairs, tags};
 
 #[test]
+fn defined_null_annotation_repair_has_one_public_owner() {
+    let repair = pagura::PAGES_ANNOTATION_NULL_REFERENCE;
+    assert_eq!(repair.as_str(), "pages.annotation-null-reference");
+    assert_eq!(repair, pagura_document::repairs::ANNOTATION_NULL_REFERENCE);
+    assert_eq!(
+        pagura_document::repairs::ALL
+            .iter()
+            .filter(|&&tag| tag == repair)
+            .count(),
+        1
+    );
+}
+
+#[test]
 fn rendering_tags_are_unique_and_well_formed() {
     let features = [tags::appearance::ALL, tags::color::ALL, tags::content::ALL];
     let mut seen: Vec<&str> = form_appearance::information::ALL.to_vec();

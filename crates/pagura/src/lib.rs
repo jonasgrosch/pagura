@@ -106,6 +106,8 @@ pub use pagura_image::jbig2::repairs::PAGE_CAPABILITIES as JBIG2_PAGE_CAPABILITI
 pub use pagura_image::jbig2::repairs::UNUSED_AGGREGATION_TABLE as JBIG2_UNUSED_AGGREGATION_TABLE;
 /// Reported recovery of the exact GontDescriptor font key after unavailable loading.
 pub use pagura_text::repairs::DESCRIPTOR_KEY as FONT_DESCRIPTOR_KEY;
+/// Reported recovery of immediate defined parsed-null annotation references.
+pub use pagura_document::repairs::ANNOTATION_NULL_REFERENCE as PAGES_ANNOTATION_NULL_REFERENCE;
 pub mod editing;
 pub mod signatures;
 /// Form-field and annotation appearance generation, kept as data (12.5.5,
