@@ -315,3 +315,51 @@ fn image_source() -> Source {
         .unwrap(),
     )
 }
+
+#[test]
+fn direct_prefix_then_general_tail_keeps_every_paint() {
+    let mut scene = crate::testing::Build::new(9.0, 4.0);
+    let red = scene.rgb([1.0, 0.0, 0.0]);
+    let green = scene.rgb([0.0, 1.0, 0.0]);
+    let blue = scene.rgb([0.0, 0.0, 1.0]);
+    let multiply = scene.state(|s| s.blend = pagura_interpret::BlendMode::Multiply);
+    for (bounds, paint, state) in [
+        ([0.0, 0.0, 3.0, 4.0], red, pagura_interpret::StateId(0)),
+        ([3.0, 0.0, 6.0, 4.0], green, multiply),
+        ([6.0, 0.0, 9.0, 4.0], blue, pagura_interpret::StateId(0)),
+    ] {
+        scene.rect(
+            pagura_interpret::GroupId(0),
+            bounds,
+            paint,
+            crate::testing::mark(state),
+        );
+    }
+    let prepared = scene
+        .prepare(
+            &scene.request(scene.page(), 3),
+            &pagura_core::Limits::default(),
+        )
+        .unwrap();
+    let mut scratch = Scratch::default();
+    let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
+    assert!(!rendering.plan.sizes.direct);
+    assert_eq!(rendering.plan.groups[0].order, [0, 1, 2]);
+    let mut output = Vec::new();
+    rendering.render(&mut output);
+    assert_eq!(output.len(), 9 * 4 * 4);
+    for row in output.as_chunks::<36>().0 {
+        for (stripe, expected) in
+            row.chunks_exact(3 * 4)
+                .zip([[255, 0, 0, 255], [0, 255, 0, 255], [0, 0, 255, 255]])
+        {
+            assert!(
+                stripe
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .all(|pixel| *pixel == expected)
+            );
+        }
+    }
+}

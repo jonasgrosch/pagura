@@ -340,32 +340,36 @@ fn order(parts: &mut Parts) -> Result<bool> {
             .order
             .try_reserve_exact(group.items.len())
             .map_err(|_| Error::limit("render memory budget exceeded"))?;
-        // Classify while filling the already reserved order slots: no extra
-        // input-sized traversal, and the same eligibility execution uses.
-        group.order.extend((0..group.items.len()).map(|i| {
-            if direct {
-                direct = group
-                    .items
-                    .get(i)
-                    .and_then(|&id| items.get(index(id)))
-                    .is_some_and(|item| match &item.kind {
-                        ItemKind::Mark(mark) => {
-                            mark.boundary == Boundary::Absent
-                                && crate::execute::direct_color(
-                                    paints,
-                                    mark,
-                                    group.layout,
-                                    group.knockout,
-                                )
-                                .is_some()
-                                && (group.format != crate::format::Format::F64
-                                    || mark.compositing.alpha == 1.0)
-                        }
-                        _ => false,
-                    });
-            }
-            u32::try_from(i).unwrap_or(u32::MAX)
-        }));
+        // Classify only the eligible prefix while filling its reserved slots.
+        // Once a mark needs general storage, keep the original pure range map
+        // for the remaining positions so its bulk append can still vectorize.
+        let mut next = 0;
+        while direct && next < group.items.len() {
+            direct = group
+                .items
+                .get(next)
+                .and_then(|&id| items.get(index(id)))
+                .is_some_and(|item| match &item.kind {
+                    ItemKind::Mark(mark) => {
+                        mark.boundary == Boundary::Absent
+                            && crate::execute::direct_color(
+                                paints,
+                                mark,
+                                group.layout,
+                                group.knockout,
+                            )
+                            .is_some()
+                            && (group.format != crate::format::Format::F64
+                                || mark.compositing.alpha == 1.0)
+                    }
+                    _ => false,
+                });
+            group.order.push(u32::try_from(next).unwrap_or(u32::MAX));
+            next += 1;
+        }
+        group
+            .order
+            .extend((next..group.items.len()).map(|i| u32::try_from(i).unwrap_or(u32::MAX)));
         group.order.sort_unstable_by_key(|&position| {
             (
                 group
