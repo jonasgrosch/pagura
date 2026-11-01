@@ -2,13 +2,14 @@
 
 Catalog names and page associations are independent discovery routes. Malformed
 views stay lazy: the pages can open before requesting them. Rendering is a
-separate operation: malformed annotation geometry must fail, and absent
-FileAttachment appearances still reach the registered V01 generation gap.
+separate operation: malformed annotation geometry must fail. Built-in icon
+generation has its independent pixel controls in file_attachment_icons;
+these controls exercise the inert typed views and their lazy failures.
 """
 import zlib
 
 from .files import PAYLOAD, attachment_encryption, source, text
-from .model import Case, OPEN, UNSUPPORTED
+from .model import Case, OPEN
 from .pdf import stream
 
 AREA = 'file_annotations'
@@ -17,14 +18,14 @@ BASE = b' /Type /Annot /Subtype /FileAttachment /Rect [9 12 1 2] /FS 5 0 R '
 
 
 def cases():
-    def case(name, annotation=b'<<' + BASE + b'>>', *, annots=b'[8 0 R]', extra=(), render_error: str | None = 'unsupported', **options):
-        # These are typed-view controls, not a claim of icon synthesis. Require
-        # its exact feature tag; malformed renderer inputs require their own
-        # error kind, while the public view tests assert their distinct results.
+    def case(name, annotation=b'<<' + BASE + b'>>', *, annots=b'[8 0 R]', extra=(),
+             render_error: str | None = None, repairs=(), strict_valid=True, **options):
+        # Public view tests assert their own distinct results. Render failures
+        # are required only for inputs malformed for the appearance renderer.
         return Case(name, source(page=b'/Annots ' + annots, extra=(annotation, *extra), **options),
-                    UNSUPPORTED if render_error == 'unsupported' else OPEN, (REQUIREMENT,), name.replace('-', ' '),
-                    feature='annotation.appearance' if render_error == 'unsupported' else None,
-                    extra={'render_error': render_error} if render_error and render_error != 'unsupported' else {})
+                    OPEN, (REQUIREMENT,), name.replace('-', ' '),
+                    repairs=repairs, strict_valid=strict_valid,
+                    extra={'render_error': render_error} if render_error else {})
 
     yield case('populated', b'<<' + BASE + b'/Contents ' + text('Annotation Ω') + b'/Name /Paperclip /Custom (kept) >>')
     yield case('page-only', names=b'')
@@ -32,13 +33,13 @@ def cases():
                annots=b'[' + b'8 0 R ' * 200 + b']')
     yield Case('listing-limit', source(page=b'/Annots [' + b'8 0 R ' * 1025 + b']', extra=(b'<<' + BASE + b'/F 2 >>',)),
                OPEN, (REQUIREMENT, 'host-page-attachments'), 'Hidden annotations still count toward the host listing bound')
-    yield case('absent', annots=b'null', render_error='syntax')
+    yield case('absent', annots=b'null')
     yield case('empty', annots=b'[]', render_error=None)
     yield Case('missing', source(), OPEN, (REQUIREMENT,), 'Missing Annots is an empty view')
     yield case('mixed', b'<< /Subtype /Link /Rect (not read by this view) >>', annots=b'[8 0 R 9 0 R 9 0 R]',
                extra=(b'<<' + BASE + b'/Contents () /Name /CustomIcon >>',), render_error='syntax')
     yield case('indirect-array-and-geometry', b'<< /Subtype /FileAttachment /Rect 10 0 R /FS 5 0 R /Contents 11 0 R /Name 12 0 R >>',
-               annots=b'9 0 R', extra=(b'[8 0 R]', b'[13 0 R 2 9 12]', text('Referenced'), b'/Graph', b'1'), render_error='syntax')
+               annots=b'9 0 R', extra=(b'[8 0 R]', b'[13 0 R 2 9 12]', text('Referenced'), b'/Graph', b'1'))
     yield case('external', b'<<' + BASE.replace(b'/FS 5 0 R', b'/FS (../outside.bin)') + b'>>')
     yield case('direct-external-spec', b'<<' + BASE.replace(b'/FS 5 0 R', b'/FS << /F (https://invalid.example/file) /FS /URL >>') + b'>>')
     yield case('null-optional', b'<<' + BASE + b'/Contents null /Name null >>')
@@ -47,7 +48,7 @@ def cases():
     yield case('flate', file_stream=stream(zlib.compress(PAYLOAD), b'/Filter /FlateDecode'))
     yield case('wrong-array', annots=b'42', render_error='syntax')
     yield case('direct-annotation', annots=b'[<<' + BASE + b'>>]')
-    yield case('null-member', annots=b'[null]', render_error='syntax')
+    yield case('null-member', annots=b'[null]', strict_valid=False, repairs=('pages.annotation-null',))
     yield case('missing-reference', annots=b'[99 0 R]', render_error='syntax')
     yield case('reference-cycle', b'9 0 R', extra=(b'8 0 R',), render_error='limit')
     yield case('stream-annotation', stream(b'', b'/Subtype /FileAttachment /Rect [1 2 9 12] /FS 5 0 R'))
@@ -66,11 +67,11 @@ def cases():
         ('wrong-icon', BASE + b'/Name (Paperclip)'),
         ('invalid-unicode', BASE + b'/Contents <feff004100>'),
     ]:
-        error = 'syntax' if name in {'missing-subtype', 'wrong-subtype', 'missing-rectangle', 'wrong-rectangle', 'short-rectangle', 'wrong-coordinate'} else 'unsupported'
+        error = 'syntax' if name in {'missing-subtype', 'wrong-subtype', 'missing-rectangle', 'wrong-rectangle', 'short-rectangle', 'wrong-coordinate', 'wrong-icon'} else None
         yield case(name, b'<<' + body + b'>>', render_error=error)
     yield case('late-failure', annots=b'[8 0 R 9 0 R]', extra=(b'<< /Subtype /FileAttachment /Rect [1 2 9 12] >>',))
     for name, options in [('encrypted-no-type', {'omit_type': True}), ('encrypted-identity', {'identity': True})]:
-        yield Case(name, attachment_encryption(annotation=True, **options), UNSUPPORTED,
+        yield Case(name, attachment_encryption(annotation=True, **options), OPEN,
                    (REQUIREMENT, 'security-authorization-events'), 'Annotation payload authentication remains lazy',
-                   strict_valid=False, repairs=('security.crypt-filter-event',), feature='annotation.appearance')
+                   strict_valid=False, repairs=('security.crypt-filter-event',))
 
