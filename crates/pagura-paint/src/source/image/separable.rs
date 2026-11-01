@@ -1539,7 +1539,7 @@ mod tests {
 
     fn cache() -> RowCache<u8> {
         let kept = |_| Kept {
-            row: usize::MAX,
+            row: u64::MAX,
             first: 0,
             end: 0,
             values: Vec::new(),
