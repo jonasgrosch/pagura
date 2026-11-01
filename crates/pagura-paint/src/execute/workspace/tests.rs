@@ -349,10 +349,11 @@ fn direct_prefix_then_general_tail_keeps_every_paint() {
     rendering.render(&mut output);
     assert_eq!(output.len(), 9 * 4 * 4);
     for row in output.as_chunks::<36>().0 {
-        for (stripe, expected) in
-            row.chunks_exact(3 * 4)
-                .zip([[255, 0, 0, 255], [0, 255, 0, 255], [0, 0, 255, 255]])
-        {
+        for (stripe, expected) in row.as_chunks::<12>().0.iter().zip([
+            [255, 0, 0, 255],
+            [0, 255, 0, 255],
+            [0, 0, 255, 255],
+        ]) {
             assert!(
                 stripe
                     .as_chunks::<4>()
