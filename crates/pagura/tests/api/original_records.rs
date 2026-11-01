@@ -34,6 +34,7 @@ fn complete_pixels_preserve_admitted_and_declined_stream_recovery() {
         "fake-header-in-string",
         "fake-header-in-comment",
         "fake-header-in-name",
+        "joined-then-clean-override",
         "joined-then-generation-override",
         "encrypt-null",
         "header-extra-format",
@@ -170,7 +171,7 @@ fn recovered_original_records_do_not_certify_a_signed_source_revision() {
 }
 
 #[test]
-fn later_scalar_definition_keeps_the_existing_stream_boundary_refusal() {
+fn later_scalar_definition_keeps_the_existing_bounded_stream_recovery() {
     let original = fixture("original_records", "joined-then-clean-override.pdf");
     let doc = document(original.clone(), Recovery::Repair).unwrap();
     assert_eq!(
@@ -179,7 +180,7 @@ fn later_scalar_definition_keeps_the_existing_stream_boundary_refusal() {
     );
     for dpi in [72.0, 144.0] {
         for background in [Rgba8::WHITE, Rgba8::TRANSPARENT] {
-            let error = pagura::render_page(
+            pagura::render_page(
                 &doc,
                 doc.page(0).unwrap(),
                 &RenderOptions {
@@ -187,12 +188,18 @@ fn later_scalar_definition_keeps_the_existing_stream_boundary_refusal() {
                     ..RenderOptions::from_dpi(dpi)
                 },
             )
-            .unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Syntax);
-            assert_eq!(error.message, "stream Length crosses an object boundary");
-            assert_eq!(error.position, pagura::Position::File(352));
-            assert_eq!(error.object, Some(pagura::ObjectId::new(4, 0)));
-            assert_eq!(error.repair, None);
+            .unwrap();
+            assert_eq!(
+                doc.object(pagura::ObjectId::new(5, 0)).unwrap().value(),
+                &Value::Integer(99)
+            );
+            let diagnostics = doc.diagnostics();
+            assert!(diagnostics.iter().any(|d| matches!(d.kind,
+                pagura::DiagnosticKind::Repair(tag) if tag.as_str() == "stream.length-corrected")));
+            assert!(
+                !diagnostics.iter().any(|d| matches!(d.kind,
+                pagura::DiagnosticKind::Repair(tag) if tag.as_str() == "object.integer-separator"))
+            );
             assert_eq!(doc.original_bytes(), original);
         }
     }

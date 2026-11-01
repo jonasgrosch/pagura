@@ -443,14 +443,14 @@
     "web/thumbnails.mjs": "5b10ee6d8d15ba88ab14a14206f5402db5801a090664f9a3659ea89d6a1b270d",
     "web/viewer.mjs": "b457100750a0ca8f69ddf4e721e97310558e81ea795cf2e03772b21dfb4c4a6c",
     "web/worker.mjs": "1288faca5e10c6ac81010e1fa7689f3b49ccae177f9424155cf27e8f2c84ef71",
-    "corpus/manifests/original_records.json": "c2f3422e4ae64edf9a69344e1740e3e2de37ced1136de3380448e26359533236",
+    "corpus/manifests/original_records.json": "0eae4a4742d9a996209ca92dbcb2990fe17d19ffcdce0926eb0d2f1b99576b0f",
     "crates/pagura-document/src/builder.rs": "cfb221d7ad92acb21c46578729c4efce22645260221dd4f406ab56da9dbde9a6",
     "crates/pagura-document/src/xref.rs": "2ab4210836ea3e893b0a6a74935fce7728686db854e1cb0355d93ff6661d9f67",
     "crates/pagura-document/src/xref/original.rs": "34cc937041a26ea7348195af15cb34c99f2c64cb7ec0cbc6c3d8a8d30debb04b",
     "crates/pagura-document/src/xref/rebuild.rs": "cb541aa3fdf937c8914e0d0c98a0baa30e613c542178cd76980eef4d23e100aa",
     "crates/pagura-document/tests/original_records.rs": "54d13046970222c02b39f8ad65c855fccb00bad2bd873ff1d989e3045ced29e2",
-    "crates/pagura/tests/api/original_records.rs": "78f2ffec2e3338ac0e4b56c1c6a1f56b3cd59e3dd7db57dd6c1d0bc0d90665ea",
-    "tools/fixturegen/original_records.py": "72bff0990c0d2fbddea0e41ec16852dd00b72231a1a76b0dad0c8e2c84f1a838"
+    "crates/pagura/tests/api/original_records.rs": "2ee93f4fe04ee21fa82eed8cff3b8649c22425fc018206c1a1b74f5b6f2aa250",
+    "tools/fixturegen/original_records.py": "f44013bb020eb8817dfcf87e66a9993b78919a382fa69622fc2289c2efbad50b"
   },
   "capabilities": [
     {

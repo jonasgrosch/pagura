@@ -1138,8 +1138,8 @@
     {
       "id": "original_records/joined-then-clean-override",
       "kind": "pdf",
-      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
-      "expected": "open",
+      "description": "Fake headers remain unvisited; final definitions retain existing bounded stream recovery",
+      "expected": "render",
       "requirements": [
         "original-record-scalar-reconstruction"
       ],
@@ -1148,24 +1148,20 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "xref.rebuilt"
+        "xref.rebuilt",
+        "stream.length-corrected"
       ],
+      "oracle": "corpus/generated/original_records/joined-then-clean-override.ppm",
+      "oracle_sha256": "6a7a7255868c80e25ab0d8559eb95dc4b1fb9144b01905d9dc26c24e2afd0623",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
       "mode_errors": {
         "strict": {
           "kind": "Syntax",
           "message": "trailer Size does not cover cross-reference entries",
           "file_position": 326,
           "object": null,
-          "repair": null
-        },
-        "repair": {
-          "kind": "Syntax",
-          "message": "stream Length crosses an object boundary",
-          "file_position": 352,
-          "object": [
-            4,
-            0
-          ],
           "repair": null
         }
       },
@@ -1178,13 +1174,12 @@
           "expected": "integer",
           "value": 99
         }
-      ],
-      "render_error": "syntax"
+      ]
     },
     {
       "id": "original_records/joined-then-generation-override",
       "kind": "pdf",
-      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "description": "Fake headers remain unvisited; final definitions retain existing bounded stream recovery",
       "expected": "render",
       "requirements": [
         "original-record-scalar-reconstruction"
@@ -1232,7 +1227,7 @@
     {
       "id": "original_records/fake-header-in-stream",
       "kind": "pdf",
-      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "description": "Fake headers remain unvisited; final definitions retain existing bounded stream recovery",
       "expected": "render",
       "requirements": [
         "original-record-scalar-reconstruction"
@@ -1271,7 +1266,7 @@
     {
       "id": "original_records/fake-header-in-string",
       "kind": "pdf",
-      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "description": "Fake headers remain unvisited; final definitions retain existing bounded stream recovery",
       "expected": "render",
       "requirements": [
         "original-record-scalar-reconstruction"
@@ -1310,7 +1305,7 @@
     {
       "id": "original_records/fake-header-in-comment",
       "kind": "pdf",
-      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "description": "Fake headers remain unvisited; final definitions retain existing bounded stream recovery",
       "expected": "render",
       "requirements": [
         "original-record-scalar-reconstruction"
@@ -1349,7 +1344,7 @@
     {
       "id": "original_records/fake-header-in-name",
       "kind": "pdf",
-      "description": "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
+      "description": "Fake headers remain unvisited; final definitions retain existing bounded stream recovery",
       "expected": "render",
       "requirements": [
         "original-record-scalar-reconstruction"

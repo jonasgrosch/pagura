@@ -147,23 +147,11 @@ def cases():
                    [{"object": [5, 1], "expected": "integer", "value": 99}, {"object": [5, 0], "expected": "missing"}] if kind == "generation-override" else
                    [{"object": [7, 0], "expected": "missing"}])
         errors = strict_size(xref)
-        boundary_refusal = kind == "override"
-        if boundary_refusal:
-            error_position = data.index(b"stream\n") + len(b"stream\n") + 99
-            # Keyword probing consumes PDF whitespace before reporting the
-            # first incompatible token; retain that precise original offset.
-            while data[error_position] in b"\x00\t\n\f\r ":
-                error_position += 1
-            errors["repair"] = {"kind": "Syntax", "message": "stream Length crosses an object boundary",
-                                "file_position": error_position,
-                                "object": [4, 0], "repair": None}
         extra = {"mode_errors": errors, "document_queries": queries}
-        if boundary_refusal:
-            extra["render_error"] = "syntax"
-        yield Case(name, data, OPEN if boundary_refusal else RENDER, REQUIREMENT,
-                   "Fake headers remain unvisited; final definitions retain existing stream boundary refusals",
-                   oracle=None if boundary_refusal else ORACLE,
-                   strict_valid=False, repairs=(REBUILT,) if boundary_refusal else repairs, extra=extra)
+        yield Case(name, data, RENDER, REQUIREMENT,
+                   "Fake headers remain unvisited; final definitions retain existing bounded stream recovery",
+                   oracle=ORACLE,
+                   strict_valid=False, repairs=repairs, extra=extra)
     for name, options, tag in [
         ("encrypt-null", {"trailer": b" /Encrypt null"}, None),
         ("encrypt-undefined-reference", {"trailer": b" /Encrypt 99 0 R"}, None),
