@@ -6,7 +6,7 @@ use crate::repairs::{
     DICTIONARY_CLOSER, DICTIONARY_OPENER, HEX_DIGIT, KEY_SOLIDUS, LEADING_ZERO_REFERENCE,
     NAME_ESCAPE, NUMBER_SIGN, ZERO_REFERENCE,
 };
-use crate::{Diagnostic, ErrorKind, Limits, Name, ObjectId, Position, Recovery, Value};
+use crate::{Diagnostic, Error, ErrorKind, Limits, Name, ObjectId, Position, Recovery, Value};
 
 fn parse(data: &[u8]) -> crate::Result<Value> {
     Parser::new(data, Origin::Buffer, Limits::default()).parse()
@@ -166,8 +166,6 @@ fn lexical_repairs_are_positioned_and_strict_errors_keep_their_tags() {
         (b"0 0 R", ZERO_REFERENCE),
         (b"<< /A 1 ) >>", DICTIONARY_CLOSER),
         (b"<< << /A 1 >>", DICTIONARY_OPENER),
-        (b"-", NUMBER_SIGN),
-        (b"<4!1>", HEX_DIGIT),
     ] {
         let mut strict = Parser::new(bytes, Origin::File, Limits::default());
         assert_eq!(strict.parse().unwrap_err().repair, Some(tag));
@@ -342,4 +340,20 @@ fn direct_stream_handlers_must_end_after_endstream() {
         error.message,
         "direct stream handler did not consume endstream"
     );
+}
+
+#[test]
+fn new_operand_repairs_preserve_the_original_full_strict_errors() {
+    for (bytes, message, offset) in [
+        (b"-".as_slice(), "invalid number", 0),
+        (b"+".as_slice(), "invalid number", 0),
+        (b"<4!1>".as_slice(), "invalid hexadecimal string", 3),
+    ] {
+        let mut strict = Parser::new(bytes, Origin::File, Limits::default());
+        assert_eq!(
+            strict.parse().unwrap_err(),
+            Error::syntax(message).at(Position::File(offset))
+        );
+        assert!(strict.take_diagnostics().is_empty());
+    }
 }

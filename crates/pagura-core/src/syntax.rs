@@ -480,6 +480,9 @@ impl<'a> Parser<'a> {
                 continue;
             }
             let Some(digit) = hex_digit(byte) else {
+                if self.diagnostics.mode() == Recovery::Strict {
+                    return Err(self.error("invalid hexadecimal string"));
+                }
                 self.diagnostics.repair_once(
                     Diagnostic::new(HEX_DIGIT, "invalid hexadecimal string byte skipped")
                         .at(self.position()),
@@ -691,7 +694,7 @@ impl<'a> Parser<'a> {
         // At most 15 bytes of digits and point: the value and its decimal places, exactly.
         let short = digits.len() <= SHORT_DIGITS;
         let (mut mantissa, mut decimals) = (0_i64, 0);
-        if signed && digits.is_empty() {
+        if signed && digits.is_empty() && self.diagnostics.mode() == Recovery::Repair {
             self.diagnostics.repair(
                 Diagnostic::new(NUMBER_SIGN, "sign without digits read as 0")
                     .at(self.origin.position(start)),

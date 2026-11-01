@@ -141,7 +141,8 @@ def recovery_cases():
         tag = 'syntax.' + label.removesuffix('-array')
         yield Case('repair-operand-' + label, page(command), RENDER, ('content-reported-recovery',),
                    'Reported recovery: ' + tag, repairs=(tag,), strict_valid=False,
-                   oracle=opaque_rectangles(8, 8, full), extra={'api': 'compile_page'})
+                   oracle=opaque_rectangles(8, 8, full),
+                   extra={'api': 'compile_page', 'scan_recovery': 'repair'})
     # The error is the parser's strict rejection of its repair, in both modes.
     yield Case('repair-operand-reference-zero', page(b'/Span << /A 0 0 R >> BDC ' + red + b' EMC'), OPEN,
                ('content-reported-recovery',), 'Reference repairs stay errors in content',

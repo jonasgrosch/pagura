@@ -7402,7 +7402,8 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "api": "compile_page"
+      "api": "compile_page",
+      "scan_recovery": "repair"
     },
     {
       "id": "content/repair-operand-number-sign-array",
@@ -7424,7 +7425,8 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "api": "compile_page"
+      "api": "compile_page",
+      "scan_recovery": "repair"
     },
     {
       "id": "content/repair-operand-hex-digit",
@@ -7446,7 +7448,8 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "api": "compile_page"
+      "api": "compile_page",
+      "scan_recovery": "repair"
     },
     {
       "id": "content/repair-operand-name-escape",
@@ -7468,7 +7471,8 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "api": "compile_page"
+      "api": "compile_page",
+      "scan_recovery": "repair"
     },
     {
       "id": "content/repair-operand-reference-zero",

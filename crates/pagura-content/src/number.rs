@@ -4,7 +4,6 @@
 //! it; `N G R` is recognised at its `R` instead.
 
 use crate::token::is_regular;
-use pagura_core::repairs::NUMBER_SIGN;
 use pagura_core::{Error, Position, Result};
 
 /// The most digit and point bytes, sign excluded, whose value is computed
@@ -34,8 +33,7 @@ pub(crate) enum Number {
 /// # Errors
 ///
 /// The object parser's errors and positions: `invalid number` at the
-/// token, the strict error of its lone-sign repair, and out-of-range
-/// integers and reals after it.
+/// token, and out-of-range integers and reals after it.
 pub(crate) fn read(data: &[u8], start: usize) -> Result<(Number, usize)> {
     let token = data.get(start..).unwrap_or_default();
     let negative = token.first() == Some(&b'-');
@@ -54,13 +52,8 @@ pub(crate) fn read(data: &[u8], start: usize) -> Result<(Number, usize)> {
     };
     // The token is the run of regular bytes: anything regular after the
     // digits (a second point, a letter, a sign) makes it invalid, as does a
-    // token without digits. A lone sign is the parser's to repair.
+    // token without digits.
     if whole + decimals == 0 || token.get(index).copied().is_some_and(is_regular) {
-        if sign == index && !token.get(index).copied().is_some_and(is_regular) {
-            return Err(Error::syntax("sign without digits read as 0")
-                .at(Position::Buffer(start))
-                .with_repair(NUMBER_SIGN));
-        }
         return Err(Error::syntax("invalid number").at(Position::Buffer(start)));
     }
     let length = index;
