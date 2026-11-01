@@ -44,7 +44,10 @@ pub(crate) fn estimate(font: &PdfFont) -> usize {
 
 fn source(source: &Source) -> usize {
     match source {
-        Source::MetricsOnly | Source::CidSubstitute { .. } => 0,
+        Source::MetricsOnly => 0,
+        Source::CidSubstitute { vertical, .. } => vertical
+            .as_ref()
+            .map_or(0, pagura_font::VerticalSubstitution::retained_bytes),
         // The face belongs to the provider; the ToUnicode map to this font.
         Source::UnicodeSubstitute { to_unicode, .. } => to_unicode.as_ref().map_or(0, |map| {
             size_of_val(map.as_ref())

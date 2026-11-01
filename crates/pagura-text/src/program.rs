@@ -266,6 +266,27 @@ fn collection_names<'a>(
     ])
 }
 
+fn collection_names<'a>(
+    document: &'a Document,
+    descriptor: &'a Dictionary,
+    font: &'a Dictionary,
+) -> Result<[&'a [u8]; 4]> {
+    let descriptor = match optional(document, descriptor, b"FontName")? {
+        Some(value) => value
+            .as_name()
+            .ok_or_else(|| Error::syntax("invalid FontName"))?
+            .as_bytes(),
+        None => b"",
+    };
+    let base = crate::encoding::font_name(document, font)?;
+    Ok([
+        descriptor,
+        base,
+        crate::encoding::without_subset_tag(descriptor),
+        crate::encoding::without_subset_tag(base),
+    ])
+}
+
 /// The program length a font stream's `Length1` to `Length3` declare, as an
 /// allocation hint for decoding it (0 when absent or unreadable).
 fn declared_length(document: &Document, dictionary: &Dictionary) -> usize {

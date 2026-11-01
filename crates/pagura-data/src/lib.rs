@@ -9,7 +9,7 @@
 //! | `standard-metrics` | Adobe Core14 AFM metrics: widths and descriptors of the standard 14 fonts | 0.6 MiB |
 //! | `standard-outlines` | Arimo, Tinos, Cousine, FoxitSymbol and FoxitDingbats outlines for them; implies `standard-metrics` | 5.8 MiB |
 //! | `cmaps` | the Table 116 CMaps and four collections' CID-to-Unicode data | 3.4 MiB |
-//! | `cjk-fonts` | horizontal Source Han Sans substitutes for those collections; implies `cmaps` | 22.3 MiB |
+//! | `cjk-fonts` | Source Han Sans substitutes for those collections; implies `cmaps` | 22.3 MiB |
 //!
 //! The first three are enabled by default. With `default-features = false`,
 //! no data bytes are linked and every lookup is `None`; a host can implement

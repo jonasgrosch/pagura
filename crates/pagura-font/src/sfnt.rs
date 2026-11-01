@@ -18,6 +18,7 @@ mod collection;
 mod directory;
 mod glyf;
 mod names;
+mod vertical;
 
 use directory::{Directory, Flavor};
 
@@ -64,6 +65,7 @@ pub(crate) struct Sfnt {
     units: u16,
     cmaps: Vec<cmap::Cmap>,
     names: names::PostNames,
+    gsub: Option<Range<usize>>,
 }
 
 /// One table cursor, or `None` if the font lacks the table.
@@ -141,11 +143,31 @@ impl Sfnt {
             units,
             cmaps,
             names,
+            gsub: tables.get(b"GSUB").cloned(),
         })
     }
 
     pub(crate) fn has_cff_outlines(&self) -> bool {
         self.cff().is_some()
+    }
+
+    pub(crate) fn vertical_substitution(
+        &self,
+        data: &[u8],
+        script: [u8; 4],
+        language: Option<[u8; 4]>,
+        work: &mut Work<'_>,
+    ) -> Result<Option<crate::VerticalSubstitution>> {
+        let Some(range) = self.gsub.clone() else {
+            return Ok(None);
+        };
+        vertical::parse(
+            read::slice(data, range, "GSUB table outside font")?,
+            script,
+            language,
+            self.glyph_count,
+            work,
+        )
     }
 
     fn cff(&self) -> Option<&Cff> {
