@@ -42,7 +42,7 @@ impl Planner<'_> {
         let source = Source::image(
             &node.image,
             node.transform.then(scope.transform),
-            None,
+            (None, &self.held),
             (&context, area(bounds)),
             ImageBudgets {
                 bytes: &mut budget.bytes,

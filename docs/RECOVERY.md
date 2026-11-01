@@ -92,6 +92,14 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   diagnostics. Page outline decoding already forwards its sink through the
   document reporting API.
 - `syntax.duplicate-key`: the last value of a repeated key wins.
+- `syntax.number-sign` (7.3.3): a `+` or `-` with no digits reads as the
+  integer 0; `syntax.hex-digit` (7.3.4.3): a byte that is neither a
+  hexadecimal digit nor white space inside a hexadecimal string is skipped.
+  PDFium, MuPDF, Poppler and pdf.js read both so, in content and objects.
+- Content operands get the object parser's repairs in the document's
+  recovery mode, as objects do; its reference repairs
+  (`syntax.reference-zero`, `syntax.reference-leading-zero`) stay errors
+  there, since content operands are direct (7.8.2).
 - `image.data-short`, `image.data-excess` (8.9.3, 8.9.5.1): zero-fill missing
   packed bytes or ignore the excess suffix; `jpeg.entropy-padding` (T.81
   B.1.1.5, E.1.4): ignore non-one unused entropy bits; `jpeg.adobe-marker`
@@ -324,3 +332,26 @@ lose the correlation needed for nonlinear transfer functions.
   no synthetic begin or device end is emitted. A form cannot close its
   caller's sequence. Strict rejects, and later syntax/resource/cycle/limit
   failures remain errors without successful partial output.
+
+The CLI's default `scan` keeps its strict-first audit and schema 1. Opt-in
+`scan --repair` instead uses one Repair context throughout, sharing the ordinary
+provider, source options, limits and one-pass Store. Its schema 2 always states
+`recovery:"repair"` and `strict:null`, including I/O, opening and page-list
+failures: no full Strict rendering audit was performed. It reports actual
+repairs, information, suppressed-diagnostic count and failures without writing
+images. Conformance fixtures opt in with `scan_recovery:"repair"`; the consumer
+requires that schema/mode and executes a separate actual Strict render. Scan
+JSON exposes kind, feature, repair and message; full Error positions/object
+identity remain separate public-API/parity checks.
+
+- `content.operands-unused` (7.8.2): operands left without an operator at
+  the end of an otherwise balanced content sequence are discarded and reported
+  in Repair. Open compatibility sections, text objects, paths and pending clips
+  remain errors; Strict preserves the original full unfinished-state error.
+
+The content reader coalesces pending object-parser diagnostics by repair kind
+until they are taken. The interpreter takes them after every operation, while
+public callers may leave them pending without growth per repeated occurrence.
+Failed operand parses release their pending parser diagnostics before retry.
+The new lone-sign and hexadecimal-byte repairs retain the original full Strict
+errors; explicit Repair scanning is required to exercise those repairs.

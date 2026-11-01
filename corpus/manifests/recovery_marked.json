@@ -614,6 +614,44 @@
       ]
     },
     {
+      "id": "recovery_marked/unfinished-operands",
+      "kind": "pdf",
+      "description": "unfinished operands",
+      "expected": "render",
+      "requirements": [
+        "recovery-marked-closure"
+      ],
+      "path": "corpus/generated/recovery_marked/unfinished-operands.pdf",
+      "sha256": "4bfa53a9f699a293824b21aeae8a9926ff8e2bdb67902de78c27606bd232431c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.marked-unmatched",
+        "content.operands-unused"
+      ],
+      "oracle": "corpus/generated/recovery_marked/unfinished-operands.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0,
+      "independent_rectangles": [
+        [
+          [
+            1,
+            1,
+            4,
+            4
+          ],
+          [
+            255,
+            0,
+            0
+          ]
+        ]
+      ]
+    },
+    {
       "id": "recovery_marked/unfinished-text",
       "kind": "pdf",
       "description": "Later syntax or resource failure remains an error after the reported ending",
@@ -657,23 +695,6 @@
       ],
       "path": "corpus/generated/recovery_marked/unfinished-clip.pdf",
       "sha256": "c30a76e97ca30c80881ec7dde967b0fb34dff143608bf69a7c07ddfae52f294c",
-      "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "content.marked-unmatched"
-      ],
-      "render_error": "Syntax"
-    },
-    {
-      "id": "recovery_marked/unfinished-operands",
-      "kind": "pdf",
-      "description": "Later syntax or resource failure remains an error after the reported ending",
-      "expected": "open",
-      "requirements": [
-        "recovery-marked-closure"
-      ],
-      "path": "corpus/generated/recovery_marked/unfinished-operands.pdf",
-      "sha256": "4bfa53a9f699a293824b21aeae8a9926ff8e2bdb67902de78c27606bd232431c",
       "pages": 1,
       "strict_valid": false,
       "repairs": [

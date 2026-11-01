@@ -114,7 +114,6 @@ fn later_incomplete_state_and_undefined_resources_remain_errors() {
         "unfinished-text",
         "unfinished-path",
         "unfinished-clip",
-        "unfinished-operands",
         "unfinished-compatibility",
         "unknown-operator",
         "undefined-resource",
@@ -150,4 +149,33 @@ fn required_recursive_content_remains_an_error_after_the_reported_ending() {
         diagnostics[0].position,
         Position::Stream { offset: 22, .. }
     ));
+}
+
+#[test]
+fn unused_operands_compose_with_the_reported_unmatched_ending() {
+    let repaired = document("unfinished-operands", &OpenOptions::default()).unwrap();
+    Interpreter::new(&repaired)
+        .scene(repaired.page(0).unwrap())
+        .unwrap();
+    assert_eq!(
+        repaired
+            .diagnostics()
+            .iter()
+            .map(pagura_core::Diagnostic::tag)
+            .collect::<Vec<_>>(),
+        ["content.marked-unmatched", "content.operands-unused"]
+    );
+    let strict = document(
+        "unfinished-operands",
+        &OpenOptions {
+            recovery: Recovery::Strict,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let error = Interpreter::new(&strict)
+        .scene(strict.page(0).unwrap())
+        .unwrap_err();
+    assert_eq!(error.repair.unwrap().as_str(), "content.marked-unmatched");
+    assert_eq!(strict.diagnostics(), []);
 }

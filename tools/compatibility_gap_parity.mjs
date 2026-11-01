@@ -63,7 +63,8 @@ if (process.argv[2] === '--wasi') {
             {cwd:root,encoding:'utf8',timeout:60000,env:{...process.env,COMPATIBILITY_GAP_SCRATCH:scratch}});
           assert(!r.error,`${stem}: ${r.error}`);
           const strictRepair=mode==='strict' ? c.strict_repair : undefined;
-          const rejectedRepair=Boolean(strictRepair) || (mode==='strict' && !c.strict_valid && c.repairs.length>0);
+          const strictError=mode==='strict' ? c.strict_error_text : undefined;
+          const rejectedRepair=Boolean(strictError) || Boolean(strictRepair) || (mode==='strict' && !c.strict_valid && c.repairs.length>0);
           if(c.expected==='render' && !c.runtime_expected_error_kind && !rejectedRepair) {
             assert.equal(r.status,0,`${stem}: ${r.stderr}`);
             for(const tag of c.repairs) assert(r.stdout.split('\n').includes(tag),`${stem}: missing ${tag}`);
@@ -73,7 +74,10 @@ if (process.argv[2] === '--wasi') {
             assert.equal(r.status,1,`${stem}: expected refusal: ${r.stderr}`);
             assert(!existsSync(localOutput),`${stem}: partial output after refusal`);
             if(mode==='strict' && c.strict_error_tag) assert(r.stderr.includes(c.strict_error_tag),`${stem}: strict source tag`);
-            if(strictRepair) {
+            if(strictError) {
+              assert.deepEqual(r.stderr.split(/\r?\n/).filter(line=>line.startsWith('Error: ')),
+                [strictError],`${stem}: full original strict error`);
+            } else if(strictRepair) {
               assert(r.stderr.includes('Syntax'),`${stem}: strict repair error kind`);
               assert(r.stderr.includes(strictRepair),`${stem}: strict repair tag`);
             } else if(rejectedRepair) assert(c.repairs.some(tag=>r.stderr.includes(tag)),`${stem}: strict repair tag`);

@@ -94,6 +94,8 @@ pub(crate) struct Planner<'s> {
     solids: FastMap<SolidKey, u32>,
     /// Per image key, the storage its latest paint took.
     images: FastMap<ImageKey, u32>,
+    /// The decoded images the paints hold, each charged once.
+    held: crate::source::HeldImages,
     masks: FastMap<MaskKey, u32>,
     /// Masks whose content is being walked.
     open: Vec<MaskKey>,
@@ -256,6 +258,7 @@ impl<'s> Planner<'s> {
             last_clip: None,
             solids: FastMap::default(),
             images: FastMap::default(),
+            held: crate::source::HeldImages::default(),
             masks: FastMap::default(),
             open: Vec::new(),
             users: Vec::new(),
@@ -463,6 +466,7 @@ impl<'s> Planner<'s> {
             + clips::retained_bytes(&self.built_clips, bytes)?
             + clips::stencil_bytes(&self.stencil_clips)
             + bytes.map_bytes(&self.solids)?
+            + self.held.index_bytes(bytes)?
             + bytes.map_bytes(&self.masks)?
             + bytes.map_bytes(&self.transfers)?
             + self.open.capacity() * size_of::<MaskKey>()
@@ -480,6 +484,7 @@ impl<'s> Planner<'s> {
             built_clips,
             stencil_clips,
             solids,
+            held,
             masks,
             transfers,
             open,
@@ -493,6 +498,7 @@ impl<'s> Planner<'s> {
             built_clips,
             stencil_clips,
             solids,
+            held,
             masks,
             transfers,
             open,

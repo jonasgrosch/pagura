@@ -11,6 +11,8 @@ use std::io::{self, Write};
 pub(crate) const INSPECT_SCHEMA: u32 = 2;
 /// Schema of `scan`.
 pub(crate) const SCAN_SCHEMA: u32 = 1;
+/// Schema of the explicit Repair scan, whose Strict audit is unavailable.
+pub(crate) const REPAIR_SCAN_SCHEMA: u32 = 2;
 /// Schema of the stage timings of `render` and `convert`.
 pub(crate) const TIMINGS_SCHEMA: u32 = 1;
 /// Schema of `microbench`.

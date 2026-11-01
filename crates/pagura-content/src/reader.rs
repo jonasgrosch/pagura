@@ -17,7 +17,7 @@ use crate::{Content, Op, Operator};
 use pagura_core::repairs::{LEADING_ZERO_REFERENCE, ZERO_REFERENCE};
 use pagura_core::syntax::{Origin, Parser, is_whitespace};
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, Limits, Meter, Position, Result, Value,
+    Diagnostic, Diagnostics, Dictionary, Error, Limits, Meter, Position, Recovery, Result, Value,
 };
 
 /// The most operands one operator takes, with room for long `SCN` lists:
@@ -58,6 +58,9 @@ pub struct Reader<'c> {
     /// The offsets of `BI` and of the data of an inline image whose header
     /// was yielded and whose data has not been read yet.
     inline: Option<(usize, usize)>,
+    /// First diagnostic of each pending operand-repair kind, bounded by
+    /// the object parser's fixed repair vocabulary even without draining.
+    repairs: Diagnostics,
 }
 
 impl<'c> Reader<'c> {
@@ -75,7 +78,31 @@ impl<'c> Reader<'c> {
             taken: false,
             compatibility: 0,
             inline: None,
+            repairs: Diagnostics::new(Recovery::Repair),
         }
+    }
+
+    /// Applies the object parser's repairs to malformed operands under
+    /// `mode` instead of rejecting them, as it applies them to document
+    /// objects; [`Self::take_diagnostics`] returns the repairs applied. Its
+    /// reference repairs stay errors: content operands are direct (7.8.2).
+    #[must_use]
+    pub fn with_recovery(mut self, mode: Recovery) -> Self {
+        self.parser = Parser::new(self.data, Origin::Buffer, self.limits).with_recovery(mode);
+        self
+    }
+
+    /// Whether the object parser repaired an operand read since the repairs
+    /// were last taken.
+    pub fn has_repairs(&self) -> bool {
+        !self.repairs.is_empty()
+    }
+
+    /// The first diagnostic of each repair kind applied since the last
+    /// call, positioned in the content's bytes. Repeated kinds coalesce
+    /// until drained, so callers need not drain to bound retained storage.
+    pub fn take_diagnostics(&mut self) -> Vec<Diagnostic> {
+        self.repairs.take()
     }
 
     /// The content being read.
@@ -87,6 +114,17 @@ impl<'c> Reader<'c> {
     /// as the end of a content sequence requires.
     pub fn is_balanced(&self) -> bool {
         (self.taken || self.operands.is_empty()) && self.compatibility == 0
+    }
+
+    /// Discards operands left at the end of a sequence, returning whether
+    /// there were any. An open compatibility section remains unbalanced.
+    pub fn discard_operands(&mut self) -> bool {
+        if self.compatibility != 0 || self.taken || self.operands.is_empty() {
+            return false;
+        }
+        self.operands.clear();
+        self.buffers.clear();
+        true
     }
 
     /// The next operation, charging one unit of `tokens` per token, or
@@ -153,11 +191,14 @@ impl<'c> Reader<'c> {
         let data = self.data;
         let next = data.get(offset + 1).copied();
         let operand = match byte {
-            b'+' | b'-' | b'.' | b'0'..=b'9' if budget => {
-                let (number, end) = number::read(data, offset)?;
-                self.position = end;
-                Operand::from(number)
-            }
+            b'+' | b'-' | b'.' | b'0'..=b'9' if budget => match number::read(data, offset) {
+                Ok((number, end)) => {
+                    self.position = end;
+                    Operand::from(number)
+                }
+                // The object parser gives the same errors, and its repairs.
+                Err(_) => self.parse(offset)?,
+            },
             b'(' | b'<' if budget && (byte, next) != (b'<', Some(b'<')) => {
                 let start = self.buffers.bytes.len();
                 if let Some(end) = self.string(byte, offset) {
@@ -265,7 +306,8 @@ impl<'c> Reader<'c> {
     /// Reads the value at `offset` with the object parser.
     fn parse(&mut self, offset: usize) -> Result<Operand> {
         self.parser.seek(offset)?;
-        let value = self.parser.parse()?;
+        let value = self.read_value()?;
+        self.keep_repairs()?;
         self.position = self.parser.offset();
         Ok(match value {
             Value::Integer(n) => Operand::Integer(n),
@@ -278,6 +320,31 @@ impl<'c> Reader<'c> {
             }
             value => Operand::Value(value),
         })
+    }
+
+    /// Failed operands must not leave diagnostics accumulating in the parser
+    /// when a public caller retries the reader after an error.
+    fn read_value(&mut self) -> Result<Value> {
+        let value = self.parser.parse();
+        if value.is_err() {
+            self.parser.take_diagnostics();
+        }
+        value
+    }
+
+    /// Keeps the repairs the object parser applied to the value it just
+    /// read, except those of references, which fail in content.
+    fn keep_repairs(&mut self) -> Result<()> {
+        for diagnostic in self.parser.take_diagnostics() {
+            let repair = diagnostic.repair();
+            if repair == Some(LEADING_ZERO_REFERENCE) || repair == Some(ZERO_REFERENCE) {
+                return Err(diagnostic
+                    .to_error()
+                    .unwrap_or(Error::syntax("indirect reference in content")));
+            }
+            self.repairs.repair_once(diagnostic)?;
+        }
+        Ok(())
     }
 
     fn push(&mut self, offset: usize, operand: Operand) -> Result<()> {
@@ -364,12 +431,13 @@ impl<'c> Reader<'c> {
                 break;
             }
             let key = self
-                .parser
-                .parse()?
+                .read_value()?
                 .as_name()
                 .cloned()
                 .ok_or(Error::syntax("inline image key must be name"))?;
-            let value = self.parser.parse()?;
+            self.keep_repairs()?;
+            let value = self.read_value()?;
+            self.keep_repairs()?;
             no_references(&value)?;
             if dictionary.contains_key(key.as_bytes()) {
                 return Err(Error::syntax("duplicate inline image key"));

@@ -80,6 +80,13 @@ def recovery_cases():
     full = [((0, 0, 8, 8), RED)]
     def page(command, resources=b'<< >>'):
         return single_page([command], media_box=b'[0 0 8 8]', resources=resources)
+    def strict_error(message, offset):
+        # Literal original envelope: page() puts content in object 4. The
+        # source byte position and legacy error come from the authored token.
+        object_id = 'ObjectId { number: 4, generation: 0 }'
+        return ('Error: Error { kind: Syntax, message: "' + message
+                + '", position: Stream { object: ' + object_id + ', offset: '
+                + str(offset) + ' }, object: Some(' + object_id + '), repair: None }')
     for operator, label in [('S', 'stroke'), ('s', 'closed-stroke'), ('f', 'fill'), ('F', 'alias'),
                             ('f*', 'parity'), ('B', 'both'), ('B*', 'both-parity'),
                             ('b', 'closed-both'), ('b*', 'closed-both-parity'), ('n', 'end')]:
@@ -131,6 +138,47 @@ def recovery_cases():
             name = 'repair-optional-' + label + '-' + policy.decode()
             geometry = [] if label == 'unregistered' and policy == b'AnyOff' else full
             yield repaired(name, pdf, tag, geometry, requirements=('content-optional',))
+    unused = red + b' 1 2 /Name'
+    yield Case('repair-operands-unused', page(unused), RENDER,
+               ('content-reported-recovery',), 'Reported recovery: content.operands-unused',
+               repairs=('content.operands-unused',), strict_valid=False,
+               oracle=opaque_rectangles(8, 8, full),
+               extra={'api': 'compile_page', 'scan_recovery': 'repair',
+                      'mode_errors': {'strict': {'kind': 'Syntax', 'feature': None, 'repair': None,
+                                                'message': 'content sequence ends with unfinished state'}},
+                      'strict_error_text': strict_error(
+                          'content sequence ends with unfinished state', len(unused))})
+    for label, command in [('compatibility', b'BX 1 2'), ('text', b'BT 1 2'),
+                           ('path', b'0 0 m 1 2'), ('clip', b'0 0 8 8 re W 1 2')]:
+        yield Case('unused-operands-open-' + label, page(command), OPEN,
+                   ('content-reported-recovery',), 'Unused operands cannot close unfinished state',
+                   extra={'api': 'compile_page', 'render_error': 'Syntax'})
+    # Malformed operands get the object parser's repairs, as document objects
+    # do, read in place or through the parser; its reference repairs stay
+    # errors, since content operands are direct (7.8.2).
+    for label, command in [('number-sign', b'1 0 0 rg - 0 8 8 re f'),
+                           ('number-sign-array', b'[2 -] 0 d ' + red),
+                           ('hex-digit', b'/Span << /Alt <4!1> >> BDC ' + red + b' EMC'),
+                           ('name-escape', b'/Span#zz BMC ' + red + b' EMC')]:
+        tag = 'syntax.' + label.removesuffix('-array')
+        message = ('invalid name escape retained as a literal hash' if label == 'name-escape'
+                   else 'invalid hexadecimal string' if label == 'hex-digit' else 'invalid number')
+        extra = {'api': 'compile_page', 'scan_recovery': 'repair',
+                 'mode_errors': {'strict': {'kind': 'Syntax', 'feature': None, 'message': message,
+                                           'repair': tag if label == 'name-escape' else None}}}
+        if label.startswith('number-sign'):
+            extra['strict_error_text'] = strict_error('invalid number', command.index(b'-'))
+        elif label == 'hex-digit':
+            extra['strict_error_text'] = strict_error(
+                'invalid hexadecimal string', command.index(b'!') + 1)
+        yield Case('repair-operand-' + label, page(command), RENDER, ('content-reported-recovery',),
+                   'Reported recovery: ' + tag, repairs=(tag,), strict_valid=False,
+                   oracle=opaque_rectangles(8, 8, full),
+                   extra=extra)
+    # The error is the parser's strict rejection of its repair, in both modes.
+    yield Case('repair-operand-reference-zero', page(b'/Span << /A 0 0 R >> BDC ' + red + b' EMC'), OPEN,
+               ('content-reported-recovery',), 'Reference repairs stay errors in content',
+               strict_valid=False, extra={'api': 'compile_page', 'render_error': 'Syntax'})
 
 
 def cases():

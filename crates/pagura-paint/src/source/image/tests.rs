@@ -144,6 +144,14 @@ fn masks_own_a_plan_only_for_independent_sampling() {
             .as_ref()
             .map_or(prepared.geometry.cost(), |(g, _)| g.cost());
         assert_eq!(work.used(), prepared.geometry.cost() + mask_cost);
+        let samples =
+            super::decoded_bytes(&prepared.image.image) + super::decoded_bytes(&mask.image.image);
+        let sampler = ImageSampler::new(Some(Box::new(prepared)), 3);
+        let mut held = super::HeldImages::default();
+        assert_eq!(sampler.unheld_bytes(&held).unwrap(), bytes.used());
+        held.reserve(&sampler, &mut meter()).unwrap();
+        held.hold(&sampler);
+        assert_eq!(sampler.unheld_bytes(&held).unwrap(), bytes.used() - samples);
     }
 }
 

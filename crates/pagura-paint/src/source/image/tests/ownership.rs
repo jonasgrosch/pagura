@@ -216,3 +216,26 @@ fn code_table_function_fees_remain_after_converter_is_dropped() {
         }
     }
 }
+
+#[test]
+fn shared_samples_cannot_hide_a_retained_storage_overflow() {
+    let sampler = super::prepared_with_budget(false, None, &mut meter()).unwrap();
+    let prepared = sampler.prepared.as_ref().unwrap();
+    let owned = prepared.bytes_with_samples(0, 0).unwrap();
+    assert!(owned > 0);
+    assert_eq!(
+        prepared.bytes_with_samples(usize::MAX - owned, 0).unwrap(),
+        usize::MAX
+    );
+    assert_eq!(
+        prepared
+            .bytes_with_samples(usize::MAX - owned + 1, 0)
+            .unwrap_err()
+            .kind,
+        pagura_core::ErrorKind::Limit
+    );
+    let mut held = super::super::HeldImages::default();
+    held.reserve(&sampler, &mut meter()).unwrap();
+    held.hold(&sampler);
+    assert_eq!(sampler.unheld_bytes(&held).unwrap(), owned);
+}

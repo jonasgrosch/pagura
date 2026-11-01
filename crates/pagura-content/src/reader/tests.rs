@@ -353,3 +353,89 @@ fn references_fail_as_the_object_parser_reads_them_under_every_budget() {
         }
     }
 }
+
+#[test]
+fn undrained_operand_repairs_retain_only_the_first_of_each_kind() {
+    let bytes = "- w /A#Z Do <4!> Tj\n".repeat(4096);
+    let content = Content::from_bytes(bytes.as_bytes());
+    let limits = Limits {
+        value_nodes: 4,
+        string_bytes: 16,
+        depth: 2,
+        ..Limits::default()
+    };
+    let mut reader = Reader::new(&content, &limits).with_recovery(Recovery::Repair);
+    let mut tokens = Meter::new(4096 * 6, "test tokens");
+    let mut operations = 0;
+    while reader.next(&mut tokens).unwrap().is_some() {
+        operations += 1;
+        assert!(reader.repairs.as_slice().len() <= 3);
+    }
+    assert_eq!(operations, 4096 * 3);
+    let repairs = reader.take_diagnostics();
+    assert_eq!(
+        repairs.iter().map(Diagnostic::tag).collect::<Vec<_>>(),
+        [
+            "syntax.number-sign",
+            "syntax.name-escape",
+            "syntax.hex-digit"
+        ]
+    );
+    assert_eq!(
+        repairs
+            .iter()
+            .map(|repair| repair.position)
+            .collect::<Vec<_>>(),
+        [
+            Position::Buffer(0),
+            Position::Buffer(6),
+            Position::Buffer(15)
+        ]
+    );
+    assert!(!reader.has_repairs());
+}
+
+#[test]
+fn draining_operand_repairs_keeps_later_occurrences_reported() {
+    let content = Content::from_bytes(b"- w - w");
+    let mut reader = Reader::new(&content, &Limits::default()).with_recovery(Recovery::Repair);
+    let mut tokens = meter();
+    for offset in [0, 4] {
+        assert!(reader.next(&mut tokens).unwrap().is_some());
+        let repairs = reader.take_diagnostics();
+        assert_eq!(repairs.len(), 1);
+        assert_eq!(repairs[0].position, Position::Buffer(offset));
+    }
+    assert!(reader.next(&mut tokens).unwrap().is_none());
+}
+
+#[test]
+fn failed_operand_retries_do_not_retain_parser_repairs() {
+    let content = Content::from_bytes(b"[/A#Z");
+    let mut reader = Reader::new(&content, &Limits::default()).with_recovery(Recovery::Repair);
+    let mut tokens = Meter::new(4096, "test tokens");
+    for _ in 0..4096 {
+        assert_eq!(
+            reader.next(&mut tokens).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
+        assert_eq!(reader.parser.take_diagnostics(), []);
+        assert!(!reader.has_repairs());
+    }
+}
+
+#[test]
+fn repaired_operands_keep_the_original_full_strict_reader_errors() {
+    for (bytes, message, offset) in [
+        (b"- w".as_slice(), "invalid number", 0),
+        (b"<4!1> Tj".as_slice(), "invalid hexadecimal string", 3),
+    ] {
+        let content = Content::from_bytes(bytes);
+        let mut reader = Reader::new(&content, &Limits::default());
+        assert_eq!(
+            reader.next(&mut meter()).unwrap_err(),
+            Error::syntax(message).at(Position::Buffer(offset))
+        );
+        assert!(!reader.has_repairs());
+    }
+}

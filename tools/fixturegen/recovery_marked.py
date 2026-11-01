@@ -75,13 +75,17 @@ def cases():
     case = painted('split-content-sequence', b'', RED_RECT + BLUE_RECT, (TAG,))
     yield replace(case, pdf=single_page(split, media_box=b'[0 0 16 16]'))
 
+    # Trailing operands compose with the earlier reported no-op; neither
+    # changes the independently authored red rectangle or original bytes.
+    yield painted('unfinished-operands', RED_MARK + b'EMC 1 2', RED_RECT,
+                  (TAG, 'content.operands-unused'))
+
     # A repair never authorizes a later incomplete operation, unknown resource
     # or recursive required content to produce a successful partial page.
     for name, suffix in [
         ('unfinished-text', b'BT'),
         ('unfinished-path', b'1 1 m'),
         ('unfinished-clip', b'W'),
-        ('unfinished-operands', b'1 2'),
         ('unfinished-compatibility', b'BX'),
         ('unknown-operator', b'notAnOperator'),
         ('undefined-resource', b'/Missing Do'),

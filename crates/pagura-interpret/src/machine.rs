@@ -28,7 +28,7 @@ use pagura_color::ColorSpace;
 use pagura_content::{Content, Op, Operation, Reader};
 use pagura_core::hash::FastMap;
 use pagura_core::{
-    Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store,
+    Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Recovery, Result, Store,
 };
 use pagura_document::{Document, Page};
 use pagura_raster::{FillRule, PathBuilder, Transform};
@@ -280,7 +280,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     /// # Errors
     ///
     /// Positioned errors of the operators, and `Syntax` for a sequence that
-    /// ends with pending operands, an open section, path, clip or text
+    /// ends with an open section, path, clip or text
     /// object; open marked content and unmatched `q` are reported repairs.
     pub(crate) fn run(
         &mut self,
@@ -302,7 +302,8 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     ) -> Result<()> {
         self.session.serial += 1;
         scope.initial = Some((Arc::new(scope.state.clone()), self.session.serial));
-        let mut reader = Reader::new(content, &self.session.limits);
+        let mut reader =
+            Reader::new(content, &self.session.limits).with_recovery(self.document().recovery());
         while let Some(Operation { op, offset }) = reader.next(&mut self.session.tokens)? {
             self.position = content.position(offset);
             let result = match op {
@@ -312,6 +313,30 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 op => self.operation(op, resources, scope),
             };
             result.map_err(|error| content.locate(error, offset))?;
+            if reader.has_repairs() {
+                self.report_parsed(content, reader.take_diagnostics())?;
+            }
+        }
+        if reader.has_repairs() {
+            self.report_parsed(content, reader.take_diagnostics())?;
+        }
+        if scope.path.is_empty()
+            && scope.pending_clip.is_none()
+            && scope.text.is_none()
+            && reader.discard_operands()
+        {
+            let error = Error::syntax("content sequence ends with unfinished state");
+            if self.document().recovery() == Recovery::Strict {
+                return Err(content.locate(error, content.end()));
+            }
+            self.repair_at_end(
+                content,
+                error,
+                Diagnostic::new(
+                    repairs::OPERANDS_UNUSED,
+                    "operands without an operator discarded at end of content sequence (7.8.2)",
+                ),
+            )?;
         }
         if !reader.is_balanced()
             || !scope.path.is_empty()
@@ -346,6 +371,22 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 ),
             )?;
             scope.saved.clear();
+        }
+        Ok(())
+    }
+
+    /// Reports the object parser's repairs on operands of `content`, each in
+    /// the stream holding it. Under strict recovery the parser has already
+    /// failed on them instead.
+    fn report_parsed(&self, content: &Content<'_>, repairs: Vec<Diagnostic>) -> Result<()> {
+        for mut diagnostic in repairs {
+            if let Position::Buffer(offset) = diagnostic.position {
+                diagnostic.position = content.position(offset);
+                if let Position::Stream { object, .. } = diagnostic.position {
+                    diagnostic = diagnostic.in_object(object);
+                }
+            }
+            self.document().repair(diagnostic)?;
         }
         Ok(())
     }

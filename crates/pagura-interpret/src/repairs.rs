@@ -52,8 +52,13 @@ pub const PATTERN_UNDERLYING: Repair = Repair::new("content.pattern-underlying")
 /// for `N`, draws instead. Budget errors are never repaired.
 pub const ICC_UNUSABLE: Repair = Repair::new("content.icc-unusable");
 
+/// 7.8.2: discard operands that no operator takes at the end of an
+/// otherwise balanced content sequence.
+pub const OPERANDS_UNUSED: Repair = Repair::new("content.operands-unused");
+
 /// Every tag above.
 pub const ALL: &[Repair] = &[
+    OPERANDS_UNUSED,
     COLOR_OPERATOR,
     EMPTY_PATH,
     CLIP_ORDER,
