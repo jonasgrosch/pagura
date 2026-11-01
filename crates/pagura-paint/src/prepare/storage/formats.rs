@@ -353,6 +353,8 @@ mod tests {
                 open: Vec::new(),
                 outlines: FastMap::default(),
                 transfers: false,
+                skips: true,
+                comparisons: APART_COMPARISONS,
             };
             let mut bytes = Meter::new(1 << 20, "admission fixture");
             let node = survey
