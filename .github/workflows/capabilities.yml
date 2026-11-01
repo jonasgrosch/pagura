@@ -29,6 +29,15 @@ on:
       - 'uv.lock'
       - 'pyproject.toml'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Normal capability probes or bounded four-case PDF.js diagnostics
+        type: choice
+        required: true
+        default: normal
+        options:
+          - normal
+          - packed-pdfjs-diagnostic
 permissions:
   contents: read
 concurrency:
@@ -36,6 +45,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   inventory:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode != 'packed-pdfjs-diagnostic' }}
     strategy:
       fail-fast: false
       matrix:
@@ -61,6 +71,7 @@ jobs:
           node-version: 26.8.1
       - run: node tools/capability_pdfjs_test.mjs
   document-services:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode != 'packed-pdfjs-diagnostic' }}
     # Hosted only (ADR 0031). Competitor packages never enter the checkout.
     strategy:
       fail-fast: false
@@ -130,6 +141,7 @@ jobs:
           path: ${{ runner.temp }}/render-images
           if-no-files-found: error
   combined-report:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode != 'packed-pdfjs-diagnostic' }}
     needs: document-services
     runs-on: ubuntu-latest
     steps:
@@ -149,6 +161,7 @@ jobs:
           path: ${{ runner.temp }}/capability-report.json
           if-no-files-found: error
   combined-render-report:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode != 'packed-pdfjs-diagnostic' }}
     needs: document-services
     runs-on: ubuntu-latest
     steps:
@@ -167,3 +180,49 @@ jobs:
           name: capability-rendering
           path: ${{ runner.temp }}/render-report.json
           if-no-files-found: error
+
+  packed-pdfjs-diagnostic:
+    # Capture only: no Rust build, no G01 pass, no normal-job deadline changes.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'packed-pdfjs-diagnostic' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PAGURA_COMPETITORS_DIR: ${{ runner.temp }}/pagura-competitors
+      DIAGNOSTIC_RUNNER_SHA256: a9df6b1eb1c534aa1a2b11300e9267a44693590f05cecab8acb7cf32fc79ed67
+    steps:
+      - name: Require the isolated diagnostic infrastructure branch
+        env:
+          ACTUAL_REF: ${{ github.ref }}
+        run: test "$ACTUAL_REF" = refs/heads/codex/packed-mask-pdfjs-diagnostic-infra
+      - name: Check out only the reviewed diagnostic runner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: diagnostic-infra
+          sparse-checkout: tools/diagnose_packed_pdfjs.py
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Check out the immutable packed fixture source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 70cc5196b66ad279ebe1bca4fc1369fa59440046
+          path: fixture-source
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: fixture-source/.python-version
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.8.1
+      - name: Install only the existing pinned PDF.js comparator
+        run: python fixture-source/tools/competitors.py setup --engines pdfjs
+      - name: Capture exactly four bounded synthetic render attempts
+        run: python diagnostic-infra/tools/diagnose_packed_pdfjs.py --source "$GITHUB_WORKSPACE/fixture-source" --output "$RUNNER_TEMP/packed-pdfjs-diagnostic"
+      - name: Preserve raw outcomes, FD3 traces and any returned synthetic pixels
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: packed-pdfjs-diagnostic-${{ github.run_id }}
+          path: ${{ runner.temp }}/packed-pdfjs-diagnostic
+          if-no-files-found: error
+          retention-days: 7
