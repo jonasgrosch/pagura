@@ -730,7 +730,7 @@
       "files": {
         ".contract.json": {
           "path": "corpus/generated/font_directory/ttf-unknown-signature.contract.json",
-          "sha256": "dae8f385851a7d517b3f03263ba159e7dc01474cb766f0ee7ee449c560b82628"
+          "sha256": "4bd7229fc8d79bb63f09e59db34d5495a395c4a69b585eefe827546b0e4bc99d"
         },
         ".expect": {
           "path": "corpus/generated/font_directory/ttf-unknown-signature.expect",
@@ -761,9 +761,9 @@
           "font": {
             "status": "refused",
             "error": {
-              "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 52,
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
               "repair": null,
               "diagnostics": [],
               "object": null
@@ -773,9 +773,9 @@
           "render": {
             "status": "refused",
             "error": {
-              "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 52,
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
               "repair": "font.embedded-unusable",
               "diagnostics": [],
               "object": [
@@ -790,9 +790,9 @@
           "font": {
             "status": "refused",
             "error": {
-              "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 52,
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
               "repair": null,
               "diagnostics": [],
               "object": null
@@ -802,9 +802,9 @@
           "render": {
             "status": "refused",
             "error": {
-              "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 52,
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
               "repair": null,
               "diagnostics": [],
               "object": [
@@ -1570,7 +1570,7 @@
       "files": {
         ".contract.json": {
           "path": "corpus/generated/font_directory/cff-cid-unknown-signature.contract.json",
-          "sha256": "acb9ca021eeb18d1c2c4275ccef87bd2f1b5b535f52114d74f655142f0dbfb93"
+          "sha256": "6733e797ae4f180925ecfb86779a607fde4e2235367d5e99ddced36d39d4d7ef"
         },
         ".expect": {
           "path": "corpus/generated/font_directory/cff-cid-unknown-signature.expect",
@@ -1601,9 +1601,9 @@
           "font": {
             "status": "refused",
             "error": {
-              "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 20,
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
               "repair": null,
               "diagnostics": [],
               "object": null
@@ -1613,9 +1613,9 @@
           "render": {
             "status": "refused",
             "error": {
-              "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 20,
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
               "repair": "font.embedded-unusable",
               "diagnostics": [],
               "object": [
@@ -1630,9 +1630,9 @@
           "font": {
             "status": "refused",
             "error": {
-              "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 20,
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
               "repair": null,
               "diagnostics": [],
               "object": null
@@ -1642,9 +1642,9 @@
           "render": {
             "status": "refused",
             "error": {
-              "kind": "Syntax",
-              "message": "sfnt table overlaps directory",
-              "position": 20,
+              "kind": "Unsupported(Feature(\"font.format\"))",
+              "message": "unknown font collection version",
+              "position": 4,
               "repair": null,
               "diagnostics": [],
               "object": [
@@ -2583,7 +2583,7 @@
       "files": {
         ".contract.json": {
           "path": "corpus/generated/font_directory/ttf-ttc-outer.contract.json",
-          "sha256": "b730076c139a11b8e2d4dcfeaffc96e3325500949a550d82dba284acb7ab4f22"
+          "sha256": "8dc817eb1ca917ef40c6743a48f545f7ae01b494e8f36d97a613f7aca036c13d"
         },
         ".expect": {
           "path": "corpus/generated/font_directory/ttf-ttc-outer.expect",
@@ -2604,18 +2604,18 @@
       "expected_repair_render": "refused",
       "strict": {
         "kind": "Syntax",
-        "message": "sfnt table exceeds available data",
-        "repair": "font.table-bounds",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
         "diagnostics": [],
-        "buffer_position": 20,
+        "buffer_position": 68,
         "status": "refused"
       },
       "strict_scope": "standalone-font-program",
       "pdf_strict": {
         "kind": "Syntax",
-        "message": "sfnt table exceeds available data",
-        "position": 20,
-        "repair": "font.table-bounds",
+        "message": "font collection name not found",
+        "position": 12,
+        "repair": "font.embedded-unusable",
         "diagnostics": [],
         "object": [
           7,
@@ -2629,9 +2629,9 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table exceeds available data",
-              "position": 20,
-              "repair": "font.table-bounds",
+              "message": "sfnt table overlaps directory",
+              "position": 68,
+              "repair": null,
               "diagnostics": [],
               "object": null
             },
@@ -2641,9 +2641,9 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table exceeds available data",
-              "position": 20,
-              "repair": "font.table-bounds",
+              "message": "font collection name not found",
+              "position": 12,
+              "repair": "font.embedded-unusable",
               "diagnostics": [],
               "object": [
                 7,
@@ -2658,36 +2658,28 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "unsupported sfnt version",
-              "position": 0,
+              "message": "sfnt table overlaps directory",
+              "position": 68,
               "repair": null,
-              "diagnostics": [
-                "font.table-bounds"
-              ],
+              "diagnostics": [],
               "object": null
             },
-            "diagnostics": [
-              "font.table-bounds"
-            ]
+            "diagnostics": []
           },
           "render": {
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "unsupported sfnt version",
-              "position": 0,
+              "message": "font collection name not found",
+              "position": 12,
               "repair": null,
-              "diagnostics": [
-                "font.table-bounds"
-              ],
+              "diagnostics": [],
               "object": [
                 7,
                 0
               ]
             },
-            "diagnostics": [
-              "font.table-bounds"
-            ]
+            "diagnostics": []
           }
         }
       }
@@ -3368,7 +3360,7 @@
       "files": {
         ".contract.json": {
           "path": "corpus/generated/font_directory/cff-cid-ttc-outer.contract.json",
-          "sha256": "d69cc790fb5e147a2488d1b5e97dc5e6ed5b760f7103befe1cdc14a3aaa8adae"
+          "sha256": "d1bd68086aba8f55db5fe56968690dfb91e4f538bc064b8ed4980963a029425e"
         },
         ".expect": {
           "path": "corpus/generated/font_directory/cff-cid-ttc-outer.expect",
@@ -3389,18 +3381,18 @@
       "expected_repair_render": "refused",
       "strict": {
         "kind": "Syntax",
-        "message": "sfnt table exceeds available data",
-        "repair": "font.table-bounds",
+        "message": "sfnt table overlaps directory",
+        "repair": null,
         "diagnostics": [],
-        "buffer_position": 20,
+        "buffer_position": 36,
         "status": "refused"
       },
       "strict_scope": "standalone-font-program",
       "pdf_strict": {
         "kind": "Syntax",
-        "message": "sfnt table exceeds available data",
-        "position": 20,
-        "repair": "font.table-bounds",
+        "message": "font collection name not found",
+        "position": 12,
+        "repair": "font.embedded-unusable",
         "diagnostics": [],
         "object": [
           7,
@@ -3414,9 +3406,9 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table exceeds available data",
-              "position": 20,
-              "repair": "font.table-bounds",
+              "message": "sfnt table overlaps directory",
+              "position": 36,
+              "repair": null,
               "diagnostics": [],
               "object": null
             },
@@ -3426,9 +3418,9 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "sfnt table exceeds available data",
-              "position": 20,
-              "repair": "font.table-bounds",
+              "message": "font collection name not found",
+              "position": 12,
+              "repair": "font.embedded-unusable",
               "diagnostics": [],
               "object": [
                 7,
@@ -3443,36 +3435,28 @@
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "unsupported sfnt version",
-              "position": 0,
+              "message": "sfnt table overlaps directory",
+              "position": 36,
               "repair": null,
-              "diagnostics": [
-                "font.table-bounds"
-              ],
+              "diagnostics": [],
               "object": null
             },
-            "diagnostics": [
-              "font.table-bounds"
-            ]
+            "diagnostics": []
           },
           "render": {
             "status": "refused",
             "error": {
               "kind": "Syntax",
-              "message": "unsupported sfnt version",
-              "position": 0,
+              "message": "font collection name not found",
+              "position": 12,
               "repair": null,
-              "diagnostics": [
-                "font.table-bounds"
-              ],
+              "diagnostics": [],
               "object": [
                 7,
                 0
               ]
             },
-            "diagnostics": [
-              "font.table-bounds"
-            ]
+            "diagnostics": []
           }
         }
       }

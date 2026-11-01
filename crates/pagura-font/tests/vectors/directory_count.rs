@@ -95,7 +95,12 @@ fn ambiguous_or_incomplete_directories_never_become_a_font_prefix() {
                     &mut diagnostics,
                 )
                 .unwrap_err();
-                assert_eq!(error.kind, ErrorKind::Syntax, "{kind}/{fault}/{recovery:?}");
+                let expected_kind = if fault == "unknown-signature" {
+                    ErrorKind::Unsupported(pagura_font::features::FORMAT)
+                } else {
+                    ErrorKind::Syntax
+                };
+                assert_eq!(error.kind, expected_kind, "{kind}/{fault}/{recovery:?}");
                 assert!(
                     diagnostics
                         .as_slice()
@@ -182,7 +187,16 @@ fn complete_decline_contracts_and_ttc_outer_scope() {
                 &mut diagnostics,
             )
             .unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Syntax, "{name}/{mode}");
+            let expected_kind = if detail.get("kind").unwrap().as_str() == Some("Syntax") {
+                ErrorKind::Syntax
+            } else {
+                assert_eq!(
+                    detail.get("kind").unwrap().as_str(),
+                    Some("Unsupported(Feature(\"font.format\"))")
+                );
+                ErrorKind::Unsupported(pagura_font::features::FORMAT)
+            };
+            assert_eq!(error.kind, expected_kind, "{name}/{mode}");
             assert_eq!(Some(error.message), detail.get("message").unwrap().as_str());
             assert_eq!(
                 error.position,

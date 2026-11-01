@@ -110,10 +110,23 @@ def make(kind,fault):
   inner=serialize(bytes(b),rows,n+1)
   return b'ttcf'+struct.pack('>III',0x10000,1,16)+inner
  return bytes(b)
-def original_contract(b,repair):
- n=int.from_bytes(b[4:6],'big');end=12+16*n;diags=[];seen=set()
+def original_contract(b,repair,operation='font'):
+ # Current-base TTC dispatch precedes sfnt parsing. These controls keep the
+ # exact parent refusal; the standalone count proof never applies to TTC.
+ base=0
+ if b[:4]==b'ttcf':
+  version=int.from_bytes(b[4:8],'big')
+  if version not in (0x10000,0x20000):
+   return dict(kind='Unsupported(Feature("font.format"))',message='unknown font collection version',position=4,repair=None,diagnostics=[])
+  assert int.from_bytes(b[8:12],'big')==1
+  base=int.from_bytes(b[12:16],'big')
+  if operation=='render':
+   # These independently written fonts contain no name table. PDF binding
+   # requires a unique original FontName/BaseFont match, never face zero.
+   return dict(kind='Syntax',message='font collection name not found',position=12,repair=None,diagnostics=[])
+ n=int.from_bytes(b[base+4:base+6],'big');end=base+12+16*n;diags=[];seen=set()
  for i in range(n):
-  tag,_,start,size=struct.unpack_from('>4sIII',b,12+16*i);at=12+16*i+8
+  tag,_,start,size=struct.unpack_from('>4sIII',b,base+12+16*i);at=base+12+16*i+8
   assert size<=256*1024**2
   if size and start<end:return dict(kind='Syntax',message='sfnt table overlaps directory',position=at,repair=None,diagnostics=diags)
   assert not size or start%4==0
@@ -130,7 +143,7 @@ def counter_records():
   for fault in faults:
    program=make(kind,fault);contracts={}
    for mode in ['strict','repair']:
-    c=original_contract(program,mode=='repair');pc=dict(c);pc['object']=[7,0];pc['repair']=c['repair'] or ('font.embedded-unusable' if mode=='strict' else None);contracts[mode]={'standalone':c,'pdf':pc}
+    c=original_contract(program,mode=='repair');pc=original_contract(program,mode=='repair','render');pc['object']=[7,0];pc['repair']=pc['repair'] or ('font.embedded-unusable' if mode=='strict' else None);contracts[mode]={'standalone':c,'pdf':pc}
    strict=dict(contracts['strict']['standalone']);strict['buffer_position']=strict.pop('position');strict['status']='refused'
    rows.append(dict(name=kind+'-'+fault,kind=kind,program=program,expected_repair='refused',strict=strict,reason='Independent directory ambiguity/required-program/outer-TTC countercontrol; original error and no count repair',forbidden_repairs=['font.sfnt-directory-count'],contracts=contracts))
  return rows
@@ -158,8 +171,8 @@ def cases():
     tags=row.get('repair_tags',[]) if mode=='repair' else []
     portable[mode]={'font':{'status':'rendered','diagnostics':tags},'render':{'status':'rendered','diagnostics':tags}}
    else:
-    error=original_contract(program,mode=='repair');font=dict(error);font['object']=None;page=dict(error);page['object']=[7,0];page['repair']=error['repair'] or ('font.embedded-unusable' if mode=='strict' else None)
-    portable[mode]={'font':{'status':'refused','error':font,'diagnostics':error['diagnostics']},'render':{'status':'refused','error':page,'diagnostics':error['diagnostics']}}
+    error=original_contract(program,mode=='repair');font=dict(error);font['object']=None;page=original_contract(program,mode=='repair','render');page['object']=[7,0];page['repair']=page['repair'] or ('font.embedded-unusable' if mode=='strict' else None)
+    portable[mode]={'font':{'status':'refused','error':font,'diagnostics':error['diagnostics']},'render':{'status':'refused','error':page,'diagnostics':page['diagnostics']}}
   row['portable_contracts']=portable
   expected=("count 5\nadvance 1 600\noutline 1\nm 0 0\nl 100 0\nl 100 200\nl 0 200\nh\n"
             if row["expected_repair"]=="rendered" else "parse-error\n")
