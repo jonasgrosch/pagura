@@ -18,7 +18,7 @@ on:
         description: Exact existing probe protocol; no implicit substitution
         type: choice
         default: inline-v2
-        options: [inline-v2, cid-v1, integer-v1]
+        options: [inline-v2, cid-v1, integer-v1, gont-v4]
       candidate_sha:
         description: Full immutable candidate SHA; empty uses the reviewed pair.json
         type: string
@@ -34,7 +34,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 120
     env:
-      PROBE_BUNDLE_SHA256: 835a3d0e30a473f4731e617a8857b5c9c1422a97d472bc412e77397c9a149e19
+      PROBE_BUNDLE_SHA256: 83fbbcf9ee376c45794a65681d372977a5ed31cb3153302fe319643e03b31c50
     steps:
       - name: Checkout reviewed infrastructure
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

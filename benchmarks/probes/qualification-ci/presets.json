@@ -52,5 +52,23 @@
       "rust": "runtime-cid-v1.rs",
       "package": "curved-stencil-runtime-qualification"
     }
+  },
+  "gont-v4": {
+    "api": {
+      "rust": "adapter.rs",
+      "package": "pagura-image-repair-qualification"
+    },
+    "memory_native": {
+      "rust": "memory_native.rs",
+      "package": "curved-stencil-memory-lifecycle"
+    },
+    "memory_wasi": {
+      "rust": "memory_wasi.rs",
+      "package": "curved-stencil-memory-lifecycle"
+    },
+    "runtime": {
+      "rust": "runtime-gont-v4.rs",
+      "package": "curved-stencil-runtime-qualification"
+    }
   }
 }
