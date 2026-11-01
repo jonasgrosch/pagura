@@ -148,7 +148,7 @@
     "crates/pagura-content/src/reader.rs": "ffab74c9b0e875620e4f3f32cfabcbaf872025d6629063fb4018d44410ed18c2",
     "crates/pagura-content/src/repairs.rs": "6051c316d3806007ea5b7b03e2d90cc8490ea37671411509b2a6ab26ad7af867",
     "crates/pagura-content/tests/inline_framing.rs": "f3a8bbd02b3d94090e6a0848a34d4f70ca1bdbd5a3b253444ce79de6bade13f0",
-    "crates/pagura-core/src/error.rs": "c43b6a9db6cc264930a0fc4639d602fcc5ab39415965b948df2dff5f3b58fe9a",
+    "crates/pagura-core/src/error.rs": "9b016aadcc859bc1cfc943bd7541b6e019d778604ace0afc4efc43b89e25a1ff",
     "crates/pagura-core/src/lib.rs": "214ac0bc9248bb9641d96993b65b876a8d74d1ebfc7ae9640a1dca8f844159b1",
     "crates/pagura-crypto/src/lib.rs": "82617555b3c716f71ef58d8c418a3833f435898bb77723b34a165528a02d0225",
     "crates/pagura-crypto/src/standard/handler.rs": "f9347255dd505772387d760b1a6e43b4551052060a41479cb7e3436bfcc1365a",

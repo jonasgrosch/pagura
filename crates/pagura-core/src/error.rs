@@ -185,6 +185,8 @@ pub struct Error {
 impl Error {
     /// Creates an error without position or object context. Prefer the
     /// constructor named after the kind, such as [`Error::syntax`].
+    #[cold]
+    #[inline(never)]
     pub const fn new(kind: ErrorKind, message: &'static str) -> Self {
         Self {
             kind,
