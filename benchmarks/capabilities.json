@@ -316,7 +316,7 @@
     "crates/pagura-text/src/font.rs": "531be3357fb38bbee52d992bd9da1284eec61281c4c133f78ed1ffbf0499e45c",
     "crates/pagura-text/src/font/load.rs": "a76147e9c994d2a267bb944e4a60eebda10c853f447d0e55d9a2773018e9e764",
     "crates/pagura-text/src/font/shape.rs": "1f39ea5690346cc48c70d5c860c9dd4b0ce9c5b96bb32092ee9930fb68897334",
-    "crates/pagura-text/src/program.rs": "de8a469b819f99159d2c08021d42629e6cf5f5edf17b885c7282f8b84013b44c",
+    "crates/pagura-text/src/program.rs": "4a7c556bb068ecabded06f74727546958af7ab9bd8981fd8479105c35dd64dd9",
     "crates/pagura-text/src/repairs.rs": "1ded00366db87c676290a2ef2795ab51ddef15cef0716ff72166c53ec26b7dd6",
     "crates/pagura-text/src/substitute.rs": "077ced467dc3173d027b3b59aaa2ac3ec0a7033c0cc512a63dd6a3d68d6f9348",
     "crates/pagura-text/src/substitute/cid.rs": "f17634b2dfdb8e6cb6b3bf1c180f9bacdc6801fcce07b5e0a4bd6cb4e7916192",
