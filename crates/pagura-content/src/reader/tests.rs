@@ -389,7 +389,7 @@ fn undrained_operand_repairs_retain_only_the_first_of_each_kind() {
         [
             Position::Buffer(0),
             Position::Buffer(6),
-            Position::Buffer(14)
+            Position::Buffer(15)
         ]
     );
     assert!(!reader.has_repairs());
