@@ -26,7 +26,7 @@ they differ. The [competitive parity plan](COMPETITIVE_PARITY.md) owns the
 remaining work, dependencies and acceptance criteria.
 
 G00 source inventory is complete for this revision in the [checked inventory](CAPABILITIES.md):
-43 capability families, all 90 literal tags reviewed, and all 371 requirement IDs assigned.
+43 capability families, all 90 literal tags reviewed, and all 372 requirement IDs assigned.
 It includes API families without tags and separates library, CLI, host and viewer support.
 All 258 competitor family cells remain unprobed; G01 owns executable probe evidence.
 The source check detects stale evidence and missing ownership, not runtime parity.
@@ -116,6 +116,23 @@ comment gaps and incomplete samples do not qualify through this repair.
 The independent `paint_inline_framing` controls distinguish new complete
 images from retained legacy sample-padding behavior. Runtime, public-corpus,
 performance and memory qualification of this addition remains pending.
+
+Document recovery includes a narrow `object.integer-separator` repair for a
+top-level unsigned integer joined to `endobj`, proven by the exact effective
+cross-reference identity and next physical object/revision boundary. Source
+bytes and stream extents remain unchanged. Signs, real/exponent syntax,
+noninteger/nested values, overflow and ambiguous spans remain outside this
+repair. Strict and historical-source checks remain strict; see [recovery](RECOVERY.md).
+A separate original-record policy can authorize the same scalar repair at an
+existing reconstruction visit after a sole positive Size-coverage fault in a
+pristine unencrypted classic section. Original records/bounds share the retained
+document budget; there is no raw-offset traversal/index merge or new valid
+history. Header/Encrypt/Prev/XRefStm and inexact/scanned-only evidence remain
+excluded. Source tests and exact-head corpus/runtime evidence are separate;
+this implementation description is not a new coverage or release claim.
+Nonnegative declared stream lengths exceed the same caller cap on native and
+WebAssembly before platform-sized conversion; this preserves the default
+budget and the existing negative/malformed, in-cap and cyclic length rules.
 
 Source entry points and existing tests supporting this reconciliation include:
 

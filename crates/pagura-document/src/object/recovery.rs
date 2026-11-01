@@ -26,14 +26,69 @@ pub(super) fn integer_separator(
         .revisions()
         .iter()
         .find_map(|revision| revision.entries.get(&id.number));
-    if entry.is_none_or(|entry| {
-        entry.generation != id.generation || entry.location != Location::Offset(offset)
-    }) {
+    let primary = entry.is_some_and(|entry| {
+        entry.generation == id.generation && entry.location == Location::Offset(offset)
+    });
+    let original = document.original.as_deref().and_then(|original| {
+        document
+            .slots
+            .get(&id)
+            .filter(|slot| slot.location == Location::Offset(offset))
+            .and_then(|_| original.boundary(id, offset))
+    });
+    if !primary && original.is_none() {
         return Ok(None);
     }
+    integer_in_span(
+        id,
+        value_start,
+        parser,
+        &document.limits(),
+        diagnostics,
+        || {
+            let boundaries = document.boundaries()?;
+            let current = boundaries
+                .get(boundaries.partition_point(|&at| at <= offset))
+                .copied();
+            Ok(match (current, original) {
+                (Some(current), Some(original)) => Some(current.min(original)),
+                (current, None) => current,
+                (None, original) => original,
+            })
+        },
+    )
+}
+
+/// Reconstruction may repair only a header it visited that has an exact original record.
+pub(crate) fn integer_separator_from_original(
+    original: &crate::xref::original::OriginalRecords,
+    id: ObjectId,
+    offset: usize,
+    value_start: usize,
+    parser: &mut Parser<'_>,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Option<Value>> {
+    let Some(boundary) = original.boundary(id, offset) else {
+        return Ok(None);
+    };
+    integer_in_span(id, value_start, parser, limits, diagnostics, || {
+        Ok(Some(boundary))
+    })
+}
+
+// Source authorization stays in the two typed entry points above. Keep the
+// boundary lookup after the candidate-word proof, preserving355's budget order.
+fn integer_in_span(
+    id: ObjectId,
+    value_start: usize,
+    parser: &mut Parser<'_>,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+    boundary: impl FnOnce() -> Result<Option<usize>>,
+) -> Result<Option<Value>> {
     let bytes = parser.data();
-    let limits = document.limits();
-    let mut probe = Parser::with_offset(bytes, value_start, Origin::File, limits)?;
+    let mut probe = Parser::with_offset(bytes, value_start, Origin::File, *limits)?;
     if !probe.peek().is_some_and(|byte| byte.is_ascii_digit()) {
         return Ok(None);
     }
@@ -45,8 +100,7 @@ pub(super) fn integer_separator(
     if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
         return Ok(None);
     }
-    let boundaries = document.boundaries()?;
-    let Some(&boundary) = boundaries.get(boundaries.partition_point(|&at| at <= offset)) else {
+    let Some(boundary) = boundary()? else {
         return Ok(None);
     };
     if probe.offset() > boundary {
@@ -57,7 +111,7 @@ pub(super) fn integer_separator(
     let Some(span) = bytes.get(..boundary.saturating_add(1)) else {
         return Ok(None);
     };
-    let mut suffix = Parser::with_offset(span, probe.offset(), Origin::File, limits)?;
+    let mut suffix = Parser::with_offset(span, probe.offset(), Origin::File, *limits)?;
     suffix.skip_whitespace();
     if suffix.offset() != boundary {
         return Ok(None);
@@ -68,7 +122,7 @@ pub(super) fn integer_separator(
     let Some(prefix) = bytes.get(..end) else {
         return Ok(None);
     };
-    let mut integer = Parser::with_offset(prefix, start, Origin::File, limits)?;
+    let mut integer = Parser::with_offset(prefix, start, Origin::File, *limits)?;
     let value = integer.parse().map_err(|error| error.in_object(id))?;
     if !matches!(value, Value::Integer(_)) {
         return Ok(None);
