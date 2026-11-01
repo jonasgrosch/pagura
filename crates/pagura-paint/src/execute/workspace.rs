@@ -329,13 +329,15 @@ pub(crate) struct Workspace {
     pub(crate) active: Vec<Active>,
     /// What the last render used.
     pub(crate) usage: Usage,
-    /// The rows and cells `coverage` was sized for.
-    capacity: (usize, usize),
+    /// The rows and cells `coverage` was sized for, absent on direct pages.
+    capacity: Option<(usize, usize)>,
 }
 
 /// The sizes of a workspace, from which preparation charges it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct Sizes {
+    /// Every item stores straight into the page, without span scratch.
+    pub(crate) direct: bool,
     /// Region width.
     pub(crate) width: usize,
     /// Band rows.
@@ -361,24 +363,35 @@ impl Sizes {
             .iter()
             .map(|mask| mask_values(mask.extent, self.rows))
             .fold(0, usize::saturating_add);
-        let spans = self
-            .width
-            .saturating_mul(self.channels.saturating_mul(3).saturating_add(5))
-            .saturating_add(self.width.saturating_mul(self.stride));
+        let spans = if self.direct {
+            0
+        } else {
+            self.width
+                .saturating_mul(self.channels.saturating_mul(3).saturating_add(5))
+                .saturating_add(self.width.saturating_mul(self.stride))
+        };
         // Growth by doubling may leave up to twice the spans and cells a band
         // of one-pixel spans needs; a mark and a pattern outline.
-        let coverage = pixels
-            .saturating_mul(size_of::<u8>() + 12)
-            .saturating_add(self.rows * 12)
-            .saturating_mul(4)
-            .saturating_add(self.width)
-            .saturating_add(self.rows * size_of::<[u32; 2]>());
+        let coverage = if self.direct {
+            self.rows * size_of::<[u32; 2]>()
+        } else {
+            pixels
+                .saturating_mul(size_of::<u8>() + 12)
+                .saturating_add(self.rows * 12)
+                .saturating_mul(4)
+                .saturating_add(self.width)
+                .saturating_add(self.rows * size_of::<[u32; 2]>())
+        };
         let active: usize = plan
             .groups
             .iter()
             .map(|group| group.items.len())
             .fold(0, usize::saturating_add);
-        let gathered = run_shapes(plan).saturating_mul(size_of::<u32>());
+        let gathered = if self.direct {
+            0
+        } else {
+            run_shapes(plan).saturating_mul(size_of::<u32>())
+        };
         let f64s = stack.wide.saturating_add(masks).saturating_add(spans);
         f64s.saturating_mul(size_of::<f64>())
             .saturating_add(stack.levels.saturating_mul(size_of::<[f32; 4]>()))
@@ -390,20 +403,24 @@ impl Sizes {
             .saturating_add(active.saturating_mul(size_of::<u32>()))
             .saturating_add(plan.groups.len() * size_of::<Active>())
             .saturating_add(plan.masks.len() * size_of::<MaskCache>())
-            .saturating_add(
+            .saturating_add(if self.direct {
+                0
+            } else {
                 plan.slots
                     .layouts
                     .len()
-                    .saturating_mul(size_of::<PaintScratch>()),
-            )
-            .saturating_add(
+                    .saturating_mul(size_of::<PaintScratch>())
+            })
+            .saturating_add(if self.direct {
+                0
+            } else {
                 plan.slots
                     .layouts
                     .iter()
                     .flatten()
                     .map(|layout| layout.bytes())
-                    .fold(0, usize::saturating_add),
-            )
+                    .fold(0, usize::saturating_add)
+            })
     }
 }
 
@@ -482,7 +499,13 @@ impl Workspace {
             coverage,
             paints,
         } = previous.unwrap_or_default();
-        let paint_scratch = paint_storage(&plan.slots.layouts, paints, bytes)?;
+        let span_width = if sizes.direct { 0 } else { sizes.width };
+        let paint_scratch = if sizes.direct {
+            drop(paints);
+            Vec::new()
+        } else {
+            paint_storage(&plan.slots.layouts, paints, bytes)?
+        };
         let (format, layout) = page_layout(plan);
         let zeroed = |count: usize, bytes: &mut Meter| -> Result<Vec<f64>> {
             let mut values = reserve(count, bytes)?;
@@ -507,8 +530,8 @@ impl Workspace {
             active.push(Active::new(reserve(group.items.len(), bytes)?));
         }
         let colors = SpanColors {
-            colors: reserve(sizes.width.saturating_mul(sizes.channels), bytes)?,
-            alpha: reserve(sizes.width, bytes)?,
+            colors: reserve(span_width.saturating_mul(sizes.channels), bytes)?,
+            alpha: reserve(span_width, bytes)?,
             ..SpanColors::default()
         };
         let mut selection = Vec::new();
@@ -516,13 +539,13 @@ impl Workspace {
             selection = reserve(pixels, bytes)?;
             selection.resize(pixels, 0);
         }
-        let run_shapes = reserve(run_shapes(plan), bytes)?;
+        let run_shapes = reserve(if sizes.direct { 0 } else { run_shapes(plan) }, bytes)?;
         // Only a shading pattern's outline needs a second coverage.
         let outlines = plan.items.iter().any(|item| {
             matches!(&item.kind, ItemKind::Mark(mark) if matches!(mark.boundary, Boundary::Shape(_)))
         });
-        let mut dense = reserve(sizes.width, bytes)?;
-        dense.resize(sizes.width, 0);
+        let mut dense = reserve(span_width, bytes)?;
+        dense.resize(span_width, 0);
         let outline = if outlines {
             warm_coverage(sizes, None, bytes)?
         } else {
@@ -537,21 +560,26 @@ impl Workspace {
             levels,
             starts,
             masks,
-            coverage: warm_coverage(sizes, coverage, bytes)?,
+            coverage: if sizes.direct {
+                drop(coverage);
+                BandCoverage::default()
+            } else {
+                warm_coverage(sizes, coverage, bytes)?
+            },
             boundary: (outline, dense),
             colors,
             paint_scratch,
-            alpha: zeroed(sizes.width, bytes)?,
-            shape: zeroed(sizes.width, bytes)?,
-            texel_shape: reserve(sizes.width, bytes)?,
-            mask: zeroed(sizes.width, bytes)?,
-            source: zeroed(sizes.width.saturating_mul(sizes.channels), bytes)?,
-            initial: zeroed(sizes.width.saturating_mul(sizes.stride), bytes)?,
+            alpha: zeroed(span_width, bytes)?,
+            shape: zeroed(span_width, bytes)?,
+            texel_shape: reserve(span_width, bytes)?,
+            mask: zeroed(span_width, bytes)?,
+            source: zeroed(span_width.saturating_mul(sizes.channels), bytes)?,
+            initial: zeroed(span_width.saturating_mul(sizes.stride), bytes)?,
             selection,
             run_shapes,
             active,
             usage: Usage::default(),
-            capacity: (sizes.rows, pixels),
+            capacity: (!sizes.direct).then_some((sizes.rows, pixels)),
         })
     }
 
@@ -628,8 +656,13 @@ impl Kept {
         coverage.clear();
         Self {
             page: page.pixels.keep(page_layout(plan), pixels),
-            coverage: (capacity == (plan.sizes.rows, pixels)).then_some(coverage),
-            paints: keep_paints(&plan.slots.layouts, paint_scratch),
+            coverage: (!plan.sizes.direct && capacity == Some((plan.sizes.rows, pixels)))
+                .then_some(coverage),
+            paints: if plan.sizes.direct {
+                None
+            } else {
+                keep_paints(&plan.slots.layouts, paint_scratch)
+            },
         }
     }
 }

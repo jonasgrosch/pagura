@@ -8,7 +8,10 @@ use super::planner::{Parts, Planner, Walked};
 use super::stacks::needs;
 use super::{Budget, Shapes, index};
 use crate::execute::{Sizes, coverage_capacity, validate};
-use crate::plan::{Curve, Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};
+use crate::plan::{
+    Boundary, Curve, Item, ItemKind, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area,
+    intersect,
+};
 use pagura_color::{ColorSpace, Colorant, Conversion, Converter, Process, Target};
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::{BandCoverage, BandRasterizer};
@@ -183,7 +186,7 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     let spots = spot_plans(&definitions, &names.empty, &mut budget.bytes);
     drop_definitions(definitions, &mut budget.bytes);
     let spots = spots?;
-    order(&mut parts)?;
+    let direct = order(&mut parts)? && spots.is_empty();
     let charged = needs(&parts, rows, &mut budget.bytes)?;
     let stack = needs(&parts, band_rows, &mut budget.bytes)?;
     let layout = parts.groups.first().map_or(
@@ -213,7 +216,7 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
         scratch: 0,
     };
     reserve_output(&plan, budget)?;
-    let sizes = sizes(&plan, rows, transfers);
+    let sizes = sizes(&plan, rows, transfers, direct);
     let workspace = sizes.bytes(&plan, charged);
     budget.bytes.charge(workspace)?;
     let before = budget.bytes.used();
@@ -250,8 +253,9 @@ fn drop_definitions(definitions: Vec<(pagura_core::Name, Arc<ColorSpace>)>, byte
 }
 
 /// The sizes of the workspace of `plan` for bands of `rows` rows.
-fn sizes(plan: &Plan, rows: usize, selections: bool) -> Sizes {
+fn sizes(plan: &Plan, rows: usize, selections: bool, direct: bool) -> Sizes {
     Sizes {
+        direct,
         width: index(plan.area.region.width()),
         rows,
         channels: plan
@@ -304,14 +308,18 @@ fn reserve_output(plan: &Plan, budget: &mut Budget) -> Result<()> {
 
 /// Each group's activation order: positions by first band, then source
 /// order.
-fn order(parts: &mut Parts) -> Result<()> {
+fn order(parts: &mut Parts) -> Result<bool> {
     let items = &parts.items;
+    let paints = &parts.paints;
+    let mut direct =
+        parts.groups.len() <= 1 && parts.masks.is_empty() && parts.transfers.is_empty();
     let first = |id: u32| {
         items
             .get(index(id))
             .map_or(u32::MAX, |item: &Item| item.bands[0])
     };
     for group in &mut parts.groups {
+        direct &= !group.knockout;
         // The ordered walk reserved each future order slot separately
         // from the capacity of the source-order item list.
         // Order in place; the source position makes ties explicit, without
@@ -321,9 +329,32 @@ fn order(parts: &mut Parts) -> Result<()> {
             .order
             .try_reserve_exact(group.items.len())
             .map_err(|_| Error::limit("render memory budget exceeded"))?;
-        group
-            .order
-            .extend((0..group.items.len()).map(|i| u32::try_from(i).unwrap_or(u32::MAX)));
+        // Classify while filling the already reserved order slots: no extra
+        // input-sized traversal, and the same eligibility execution uses.
+        group.order.extend((0..group.items.len()).map(|i| {
+            if direct {
+                direct = group
+                    .items
+                    .get(i)
+                    .and_then(|&id| items.get(index(id)))
+                    .is_some_and(|item| match &item.kind {
+                        ItemKind::Mark(mark) => {
+                            mark.boundary == Boundary::Absent
+                                && crate::execute::direct_color(
+                                    paints,
+                                    mark,
+                                    group.layout,
+                                    group.knockout,
+                                )
+                                .is_some()
+                                && (group.format != crate::format::Format::F64
+                                    || mark.compositing.alpha == 1.0)
+                        }
+                        _ => false,
+                    });
+            }
+            u32::try_from(i).unwrap_or(u32::MAX)
+        }));
         group.order.sort_unstable_by_key(|&position| {
             (
                 group
@@ -334,7 +365,7 @@ fn order(parts: &mut Parts) -> Result<()> {
             )
         });
     }
-    Ok(())
+    Ok(direct)
 }
 
 /// Spot channels grouped by their first painting definition (ADR 0004 §7).

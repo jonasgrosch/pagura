@@ -375,6 +375,7 @@ impl Fixture {
             output: self.output,
             stack,
             sizes: Sizes {
+                direct: false,
                 width: self.width as usize,
                 rows,
                 channels: 40,

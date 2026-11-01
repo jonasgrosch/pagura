@@ -82,7 +82,7 @@ fn normalization_drops_incompatible_owners_before_replacement() {
     let mut previous = Workspace::new(plan, plan.sizes, None, &mut free).unwrap();
     previous.page.pixels = PageBuffer::F64(allocate(4096).unwrap());
     previous.coverage = BandCoverage::with_capacity(coverage_capacity(64, 64), &mut free).unwrap();
-    previous.capacity = (64, 4096);
+    previous.capacity = Some((64, 4096));
     previous.paint_scratch = allocate(4096).unwrap();
     previous
         .paint_scratch
@@ -101,7 +101,15 @@ fn normalization_drops_incompatible_owners_before_replacement() {
 
 #[test]
 fn exact_page_and_coverage_owners_keep_pointers_and_charges() {
-    let scene = crate::testing::Build::new(8.0, 2.0);
+    let mut scene = crate::testing::Build::new(8.0, 2.0);
+    let paint = scene.rgb([0.0; 3]);
+    let state = scene.state(|s| s.blend = pagura_interpret::BlendMode::Multiply);
+    scene.rect(
+        pagura_interpret::GroupId(0),
+        [0.0, 0.0, 8.0, 2.0],
+        paint,
+        crate::testing::mark(state),
+    );
     let limits = pagura_core::Limits::default();
     let prepared = scene
         .prepare(&scene.request(scene.page(), 2), &limits)
@@ -145,6 +153,61 @@ fn exact_page_and_coverage_owners_keep_pointers_and_charges() {
         .rasterizer
         .rasterize(mark, 0, &mut workspace.coverage);
     assert_eq!(partial_pointer(&workspace.coverage), cells);
+}
+
+#[test]
+fn direct_pages_omit_unused_spans_and_reuse_in_both_directions() {
+    let mut direct = crate::testing::Build::new(16.0, 8.0);
+    let paint = direct.rgb([0.25, 0.5, 0.75]);
+    direct.rect(
+        pagura_interpret::GroupId(0),
+        [0.25, 0.5, 12.5, 6.75],
+        paint,
+        crate::testing::mark(pagura_interpret::StateId(0)),
+    );
+    let mut general = crate::testing::Build::new(16.0, 8.0);
+    let paint = general.rgb([0.25, 0.5, 0.75]);
+    let state = general.state(|s| s.blend = pagura_interpret::BlendMode::Multiply);
+    general.rect(
+        pagura_interpret::GroupId(0),
+        [0.25, 0.5, 12.5, 6.75],
+        paint,
+        crate::testing::mark(state),
+    );
+    let limits = pagura_core::Limits::default();
+    let direct = direct
+        .prepare(&direct.request(direct.page(), 3), &limits)
+        .unwrap();
+    let general = general
+        .prepare(&general.request(general.page(), 3), &limits)
+        .unwrap();
+    let mut scratch = Scratch::default();
+    for (prepared, omitted) in [
+        (&direct, true),
+        (&general, false),
+        (&direct, true),
+        (&general, false),
+    ] {
+        let mut cold = Scratch::default();
+        let mut expected = Vec::new();
+        prepared
+            .with_scratch(&mut cold)
+            .unwrap()
+            .render(&mut expected);
+        let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
+        assert_eq!(rendering.plan.sizes.direct, omitted);
+        assert_eq!(rendering.workspace.coverage.retained_bytes() == 0, omitted);
+        assert_eq!(rendering.workspace.alpha.capacity() == 0, omitted);
+        if omitted {
+            assert_eq!(rendering.workspace.colors.colors.capacity(), 0);
+            assert_eq!(rendering.workspace.initial.capacity(), 0);
+            assert_eq!(rendering.workspace.paint_scratch.capacity(), 0);
+        }
+        let mut actual = Vec::new();
+        rendering.render(&mut actual);
+        assert_eq!(actual, expected);
+        assert!(scratch.retained_bytes() <= prepared.charges().render_bytes());
+    }
 }
 
 #[test]
