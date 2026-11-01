@@ -7404,6 +7404,14 @@
       "height": 8,
       "api": "compile_page",
       "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "feature": null,
+          "repair": null,
+          "message": "content sequence ends with unfinished state"
+        }
+      },
       "strict_error_text": "Error: Error { kind: Syntax, message: \"content sequence ends with unfinished state\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 31 }, object: Some(ObjectId { number: 4, generation: 0 }), repair: None }"
     },
     {
@@ -7417,7 +7425,7 @@
       "path": "corpus/generated/content/unused-operands-open-compatibility.pdf",
       "sha256": "9b8eed9c1b5560b109c1cb1f05c3779db31dfcc836a26145fcb75e2ad1a67b17",
       "pages": 1,
-      "strict_valid": false,
+      "strict_valid": true,
       "repairs": [],
       "api": "compile_page",
       "render_error": "Syntax"
@@ -7433,7 +7441,7 @@
       "path": "corpus/generated/content/unused-operands-open-text.pdf",
       "sha256": "11b57f4b028a0208b7706abeafc9da07c0eda9b16bb3606e05571996efc512b4",
       "pages": 1,
-      "strict_valid": false,
+      "strict_valid": true,
       "repairs": [],
       "api": "compile_page",
       "render_error": "Syntax"
@@ -7449,7 +7457,7 @@
       "path": "corpus/generated/content/unused-operands-open-path.pdf",
       "sha256": "7048490530c8248612ce3822e8113d53745c835a00e3d2c5b21bd667b65f7514",
       "pages": 1,
-      "strict_valid": false,
+      "strict_valid": true,
       "repairs": [],
       "api": "compile_page",
       "render_error": "Syntax"
@@ -7465,7 +7473,7 @@
       "path": "corpus/generated/content/unused-operands-open-clip.pdf",
       "sha256": "198b70bc2ecc129d3664774321d6d7631f70c2852c0e645d1eec29f4aa1c7f98",
       "pages": 1,
-      "strict_valid": false,
+      "strict_valid": true,
       "repairs": [],
       "api": "compile_page",
       "render_error": "Syntax"
@@ -7492,6 +7500,14 @@
       "height": 8,
       "api": "compile_page",
       "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "feature": null,
+          "message": "invalid number",
+          "repair": null
+        }
+      },
       "strict_error_text": "Error: Error { kind: Syntax, message: \"invalid number\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }, object: Some(ObjectId { number: 4, generation: 0 }), repair: None }"
     },
     {
@@ -7516,6 +7532,14 @@
       "height": 8,
       "api": "compile_page",
       "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "feature": null,
+          "message": "invalid number",
+          "repair": null
+        }
+      },
       "strict_error_text": "Error: Error { kind: Syntax, message: \"invalid number\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 3 }, object: Some(ObjectId { number: 4, generation: 0 }), repair: None }"
     },
     {
@@ -7540,6 +7564,14 @@
       "height": 8,
       "api": "compile_page",
       "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "feature": null,
+          "message": "invalid hexadecimal string",
+          "repair": null
+        }
+      },
       "strict_error_text": "Error: Error { kind: Syntax, message: \"invalid hexadecimal string\", position: Stream { object: ObjectId { number: 4, generation: 0 }, offset: 17 }, object: Some(ObjectId { number: 4, generation: 0 }), repair: None }"
     },
     {
@@ -7563,7 +7595,15 @@
       "width": 8,
       "height": 8,
       "api": "compile_page",
-      "scan_recovery": "repair"
+      "scan_recovery": "repair",
+      "mode_errors": {
+        "strict": {
+          "kind": "Syntax",
+          "feature": null,
+          "message": "invalid name escape retained as a literal hash",
+          "repair": "syntax.name-escape"
+        }
+      }
     },
     {
       "id": "content/repair-operand-reference-zero",
