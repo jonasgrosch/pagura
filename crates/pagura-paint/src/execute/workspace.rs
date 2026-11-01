@@ -74,9 +74,15 @@ pub(crate) enum PageBuffer {
     F32Cmyk(Vec<[f32; 5]>),
 }
 
+impl Default for PageBuffer {
+    fn default() -> Self {
+        Self::F64(Vec::new())
+    }
+}
+
 /// Page pixels and the dirty rows that output must drain and restore
 /// before another band can elide stores of the background.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct PageBand {
     pixels: PageBuffer,
     extents: Extents,
@@ -287,7 +293,7 @@ pub(crate) struct Usage {
 }
 
 /// The storage of execution.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct Workspace {
     /// The page's band buffer.
     pub(crate) page: PageBand,
@@ -483,11 +489,69 @@ fn paint_storage(
     Ok(storage)
 }
 
+/// Activation headers and positions, reserved identically for either owner.
+fn active_storage(plan: &Plan, bytes: &mut Meter) -> Result<Vec<Active>> {
+    let mut active = reserve(plan.groups.len(), bytes)?;
+    for group in &plan.groups {
+        active.push(Active::new(reserve(group.items.len(), bytes)?));
+    }
+    Ok(active)
+}
+
 impl Workspace {
     /// Allocates the storage `plan` executes in, charging it to `bytes`
     /// (what preparation reserved, [`Sizes::bytes`]) and taking the
     /// already normalized owners of `previous`.
     pub(crate) fn new(
+        plan: &Plan,
+        sizes: Sizes,
+        previous: Option<Kept>,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
+        if sizes.direct {
+            Self::direct(plan, sizes, previous, bytes)
+        } else {
+            Self::general(plan, sizes, previous, bytes)
+        }
+    }
+
+    /// Only the admitted page and activation owners. Keep this frame separate
+    /// from the general constructor's span/paint/mask construction machinery.
+    #[inline(never)]
+    fn direct(
+        plan: &Plan,
+        sizes: Sizes,
+        previous: Option<Kept>,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
+        let Kept {
+            page,
+            coverage,
+            paints,
+        } = previous.unwrap_or_default();
+        drop(coverage);
+        drop(paints);
+        let pixels = sizes.width.saturating_mul(sizes.rows);
+        let active = active_storage(plan, bytes)?;
+        let mut selection = Vec::new();
+        if sizes.selections {
+            selection = reserve(pixels, bytes)?;
+            selection.resize(pixels, 0);
+        }
+        let (format, layout) = page_layout(plan);
+        Ok(Self {
+            page: PageBand {
+                pixels: PageBuffer::new((format, layout), pixels, page, bytes)?,
+                extents: Extents::new(sizes.rows, bytes)?,
+            },
+            active,
+            selection,
+            ..Self::default()
+        })
+    }
+
+    #[inline(never)]
+    fn general(
         plan: &Plan,
         sizes: Sizes,
         previous: Option<Kept>,
@@ -499,13 +563,7 @@ impl Workspace {
             coverage,
             paints,
         } = previous.unwrap_or_default();
-        let span_width = if sizes.direct { 0 } else { sizes.width };
-        let paint_scratch = if sizes.direct {
-            drop(paints);
-            Vec::new()
-        } else {
-            paint_storage(&plan.slots.layouts, paints, bytes)?
-        };
+        let paint_scratch = paint_storage(&plan.slots.layouts, paints, bytes)?;
         let (format, layout) = page_layout(plan);
         let zeroed = |count: usize, bytes: &mut Meter| -> Result<Vec<f64>> {
             let mut values = reserve(count, bytes)?;
@@ -525,13 +583,10 @@ impl Workspace {
                 band: None,
             });
         }
-        let mut active = reserve(plan.groups.len(), bytes)?;
-        for group in &plan.groups {
-            active.push(Active::new(reserve(group.items.len(), bytes)?));
-        }
+        let active = active_storage(plan, bytes)?;
         let colors = SpanColors {
-            colors: reserve(span_width.saturating_mul(sizes.channels), bytes)?,
-            alpha: reserve(span_width, bytes)?,
+            colors: reserve(sizes.width.saturating_mul(sizes.channels), bytes)?,
+            alpha: reserve(sizes.width, bytes)?,
             ..SpanColors::default()
         };
         let mut selection = Vec::new();
@@ -539,13 +594,13 @@ impl Workspace {
             selection = reserve(pixels, bytes)?;
             selection.resize(pixels, 0);
         }
-        let run_shapes = reserve(if sizes.direct { 0 } else { run_shapes(plan) }, bytes)?;
+        let run_shapes = reserve(run_shapes(plan), bytes)?;
         // Only a shading pattern's outline needs a second coverage.
         let outlines = plan.items.iter().any(|item| {
             matches!(&item.kind, ItemKind::Mark(mark) if matches!(mark.boundary, Boundary::Shape(_)))
         });
-        let mut dense = reserve(span_width, bytes)?;
-        dense.resize(span_width, 0);
+        let mut dense = reserve(sizes.width, bytes)?;
+        dense.resize(sizes.width, 0);
         let outline = if outlines {
             warm_coverage(sizes, None, bytes)?
         } else {
@@ -560,26 +615,21 @@ impl Workspace {
             levels,
             starts,
             masks,
-            coverage: if sizes.direct {
-                drop(coverage);
-                BandCoverage::default()
-            } else {
-                warm_coverage(sizes, coverage, bytes)?
-            },
+            coverage: warm_coverage(sizes, coverage, bytes)?,
             boundary: (outline, dense),
             colors,
             paint_scratch,
-            alpha: zeroed(span_width, bytes)?,
-            shape: zeroed(span_width, bytes)?,
-            texel_shape: reserve(span_width, bytes)?,
-            mask: zeroed(span_width, bytes)?,
-            source: zeroed(span_width.saturating_mul(sizes.channels), bytes)?,
-            initial: zeroed(span_width.saturating_mul(sizes.stride), bytes)?,
+            alpha: zeroed(sizes.width, bytes)?,
+            shape: zeroed(sizes.width, bytes)?,
+            texel_shape: reserve(sizes.width, bytes)?,
+            mask: zeroed(sizes.width, bytes)?,
+            source: zeroed(sizes.width.saturating_mul(sizes.channels), bytes)?,
+            initial: zeroed(sizes.width.saturating_mul(sizes.stride), bytes)?,
             selection,
             run_shapes,
             active,
             usage: Usage::default(),
-            capacity: (!sizes.direct).then_some((sizes.rows, pixels)),
+            capacity: Some((sizes.rows, pixels)),
         })
     }
 
