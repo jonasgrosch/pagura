@@ -93,9 +93,12 @@ fn strict_error_and_negative_full_page_refusals_are_preserved() {
         .unwrap_err();
         assert_eq!(error.kind, ErrorKind::Syntax);
         assert_eq!(error.message, "sfnt table overlaps directory");
-        // The PDF wrapper's pre-existing Strict refusal tag is independent
-        // of the untagged standalone FontProgram error.
-        assert_eq!(error.repair, Some(pagura_text::repairs::EMBEDDED_UNUSABLE));
+        // Only an available substitute provider adds this existing Strict tag.
+        // Without bundled data the original program error remains untagged.
+        assert_eq!(
+            error.repair,
+            pagura::provider::BUNDLED.then_some(pagura_text::repairs::EMBEDDED_UNUSABLE)
+        );
         let object = ObjectId::new(7, 0);
         assert_eq!(error.object, Some(object));
         assert_eq!(
@@ -193,10 +196,23 @@ fn additional_ambiguity_and_outer_ttc_keep_full_pdf_errors() {
                         .unwrap()
                 }
             );
-            assert_eq!(
-                error.repair.map(pagura::Repair::as_str),
-                detail.get("repair").unwrap().as_str()
-            );
+            let mut expected_repair = detail.get("repair").unwrap().as_str();
+            if !pagura::provider::BUNDLED
+                && expected_repair == Some(pagura_text::repairs::EMBEDDED_UNUSABLE.as_str())
+            {
+                let original = contract
+                    .get("portable_contracts")
+                    .unwrap()
+                    .get(mode)
+                    .unwrap()
+                    .get("font")
+                    .unwrap()
+                    .get("error")
+                    .unwrap();
+                assert_eq!(original.get("repair").unwrap().as_str(), None);
+                expected_repair = None;
+            }
+            assert_eq!(error.repair.map(pagura::Repair::as_str), expected_repair);
             let notes = document.diagnostics();
             let tags: Vec<_> = notes.iter().map(pagura::Diagnostic::tag).collect();
             let expected_tags: Vec<_> = expected

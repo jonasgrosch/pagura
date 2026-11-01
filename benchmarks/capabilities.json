@@ -197,7 +197,7 @@
     "crates/pagura-font/tests/vectors/main.rs": "d8a9f8858d97b6af754223021e0b5a3d850f622860233db2144507e094037cc6",
     "crates/pagura-font/tests/vectors/directory_count.rs": "7ca9b4e0ee570002ce40108a17b94768919308b999f0270af836e0f02b68f90d",
     "crates/pagura/tests/api/main.rs": "2fe4cef4856f491b9224780cb0e4fc5e244c83d79d46382ee05885c3686eb3ba",
-    "crates/pagura/tests/api/font_directory_count.rs": "340c7dc3066c2d36d555df2b8c5a5a845bb9930d2202491a21424542df95bc6e",
+    "crates/pagura/tests/api/font_directory_count.rs": "05cdc69b127384a23ce7cc01c69e804bfcbee6b2554122786b00eb2262257383",
     "corpus/manifests/font_directory.json": "56ea9181288fc43c9f46d4b96290c5f0839217e3f614fb4f3c1aab21ca5c01ed",
     "tools/font_directory_build.py": "7c9b21f3a8bb9d61c8111f6c85ceaeef2769af4c2e80e53a798664ef2fc6e924",
     "tools/font_directory_parity.mjs": "0f29d129b3b49128df8d73a9c847016587e9c7250c1a039822566518fcc4d8a3",
