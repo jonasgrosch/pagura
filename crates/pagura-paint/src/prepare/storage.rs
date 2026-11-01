@@ -340,6 +340,15 @@ impl Buffer {
         self.normal && !self.knockout() && !self.reads
     }
 
+    /// Keeps a member's footprint only where knockout can read it.
+    fn keep_footprint(&mut self, rect: DeviceRect, bytes: &mut Meter) -> Result<()> {
+        if self.knockout_attribute {
+            bytes.reserve_capacity(&mut self.footprints, 1)?;
+            self.footprints.push(rect);
+        }
+        Ok(())
+    }
+
     fn merge(&mut self, other: &Self, bytes: &mut Meter) -> Result<()> {
         self.forced |= other.forced;
         self.opaque_members &= other.opaque_members;
@@ -776,10 +785,7 @@ impl Survey<'_> {
             child: Some(child),
             mask,
         });
-        if target.knockout_attribute {
-            bytes.reserve_capacity(&mut target.footprints, 1)?;
-            target.footprints.push(rect);
-        }
+        target.keep_footprint(rect, bytes)?;
         target.stores = target.stores.saturating_add(1);
         target.dynamic = target.dynamic.saturating_add(1);
         target.normal &= state.blend == BlendMode::Normal;
