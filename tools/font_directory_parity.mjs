@@ -117,9 +117,11 @@ function main() {
       }
     }
   }
+  // The current shared reader charges record work at the count (4), then
+  // retained entries at the standalone directory start (0).
   for (const kind of ['ttf', 'cff-cid']) {
     const c = cases.find((c) => c.id === `font_directory/${kind}-count-plus-one`); assert(c);
-    for (const [budget, message, position] of [['work', 'font work budget exceeded', 12], ['entries', 'font entry budget exceeded', 4], ['input', 'font program exceeds the byte budget', null]]) {
+    for (const [budget, message, position] of [['work', 'font work budget exceeded', 4], ['entries', 'font entry budget exceeded', 0], ['input', 'font program exceeds the byte budget', null]]) {
       requests.push({ id: `${c.id}/${budget}`, kind, operation: 'font', input: c.files['.font'].path,
         input_sha256: c.files['.font'].sha256, mode: 'repair', dpi: 72, format: c.format, budget,
         expectation: { status: 'refused', diagnostics: [], error: { kind: 'Limit', message, position, object: null, repair: null } } });
